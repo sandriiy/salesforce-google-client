@@ -1,0 +1,71 @@
+<template>
+    <div class="slds-p-top_xx-small slds-p-horizontal_medium slds-is-relative">
+        <lightning-spinner lwc:if={isLoading} alternative-text="Loading" size="small"></lightning-spinner>
+
+        <div class="slds-text-body_regular slds-m-bottom_large">
+            <p>Anyone with the link can view and download this file. To keep things more secure, consider setting an expiration date or sharing it only with specific individuals or groups.</p>
+        </div>
+        <div class="slds-grid slds-grid_vertical-align-center expiration-date-container">
+            <div class="slds-col slds-grid slds-wrap slds-size_3-of-12">
+                <label class="slds-form-element__label slds-text-color_default slds-m-right_x-small">
+                    Expiration date
+                </label>
+                <div class="expireAt">
+                    <lightning-input
+                        type="toggle"
+                        variant="label-hidden"
+                        message-toggle-active=""
+                        message-toggle-inactive=""
+                        checked={expirationOn}
+                        onchange={handleExpirationToggle}
+                        disabled={publicLinkExists}
+                    ></lightning-input>
+                </div>
+            </div>
+            <div class="slds-col_bump-left slds-m-left_small slds-m-top_xx-small">
+                <lightning-input
+                    lwc:ref="expirationDatetime"
+                    type="datetime"
+                    variant="label-hidden"
+                    time-step-minutes="10"
+                    value={datetime}
+                    onchange={handleExpirationDatetime}
+                    disabled={dateTimeDisabled}>
+                </lightning-input>
+            </div>
+        </div>
+
+        <div class="slds-grid slds-wrap slds-p-top_small">
+            <div class="slds-size_3-of-4">
+                <lightning-input
+                    class="recordViewUrl slds-form-element"
+                    type="text" 
+                    variant="label-hidden"
+                    value={publicLink}
+                    placeholder="No public link created"
+                    readonly>
+                </lightning-input>
+            </div>
+            <div class="slds-col_bump-left">
+                <div class="slds-grid slds-grid_vertical-align-end">
+                    <div lwc:if={publicLinkExists} class="slds-col">
+                        <lightning-button
+                            variant="destructive"
+                            label="Remove Link"
+                            onclick={handlePublicLinkDelete}
+                            stretch>
+                        </lightning-button>
+                    </div>
+                    <div lwc:else>
+                        <lightning-button
+                            variant="brand"
+                            label="Create Link"
+                            onclick={handlePublicLinkCreate}
+                            stretch>
+                        </lightning-button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>

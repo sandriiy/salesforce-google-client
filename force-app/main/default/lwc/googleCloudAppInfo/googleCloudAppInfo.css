@@ -1,0 +1,18 @@
+.container {
+    border-radius: 12px;
+}
+
+.sectionBody {
+    padding-top: 6px;
+}
+
+.linkRow {
+    margin-top: 8px;
+}
+
+.callout {
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 12px;
+    background: #f8fafc;
+}

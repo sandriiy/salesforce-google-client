@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsLatestFile__c</fullName>
+    <defaultValue>false</defaultValue>
+    <inlineHelpText>Determines whether this file is the latest uploaded version for this local file.</inlineHelpText>
+    <label>Is Latest File?</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

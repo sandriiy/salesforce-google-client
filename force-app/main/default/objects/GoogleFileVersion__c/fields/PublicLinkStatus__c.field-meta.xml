@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>PublicLinkStatus__c</fullName>
+    <defaultValue>&apos;None&apos;</defaultValue>
+    <description>Specifies the public link status for the file version. If no public link exists, the status is set to None.</description>
+    <label>Public Link Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>GoogleFileSharingStatus</valueSetName>
+    </valueSet>
+</CustomField>

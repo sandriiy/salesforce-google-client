@@ -1,0 +1,30 @@
+{
+  "packageDirectories": [
+    {
+      "path": "force-app",
+      "default": true,
+      "package": "Salesforce Google Client",
+      "versionName": "Version 1.0.0",
+      "versionNumber": "1.0.0.NEXT",
+      "versionDescription": "An integrated Google Cloud solution on the Salesforce platform designed to simplify file management and improve productivity at scale.",
+      "releaseNotesUrl": "https://github.com/sandriiy/salesforce-google-client/releases",
+      "dependencies": [
+        {
+          "package": "04tJ80000011MDdIAM"
+        },
+        {
+          "package": "04tKe0000011N4KIAU"
+        }
+      ]
+    }
+  ],
+  "name": "salesforce-google-client",
+  "namespace": "",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "64.0",
+  "packageAliases": {
+    "Google Drive Library Dependency": "04tJ80000011MDdIAM",
+    "Nebula Logger Dependency": "04tKe0000011N4KIAU",
+    "Salesforce Google Client": "0HoJ8000000fxSVKAY"
+  }
+}

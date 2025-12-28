@@ -1,0 +1,88 @@
+/* Body spacing – no extra padding, card chrome will handle it */
+.version-list__body {
+    padding: 0;
+}
+
+/* UL containing rows */
+.version-list__rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Each row */
+.version-list__row {
+}
+
+/* Divider between rows (not above the first) */
+.version-list__row + .version-list__row {
+    border-top: 1px solid #dddbda;
+}
+
+/* Full-width clickable row */
+.version-row-button {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+/* Hover like standard list rows */
+.version-row-button:hover,
+.version-row-button:focus {
+    background-color: #f3f2f2;
+}
+
+/* LEFT column – date/time */
+.version-row__date {
+    flex: 0 0 auto;
+    width: 4.5rem;
+    margin-right: 1rem;
+    font-size: 0.75rem;
+    color: #706e6b;
+    line-height: 1.2;
+}
+
+.version-row__date-day {
+    /* date line (e.g. 24 July) */
+}
+
+.version-row__date-time {
+    margin-top: 0.125rem;
+}
+
+/* RIGHT column – main content */
+.version-row__main {
+    flex: 1 1 auto;
+    min-width: 0; /* allow truncation */
+    line-height: 1.2;
+}
+
+/* Title (file version name) */
+.version-row__title {
+    font-size: 0.875rem;      /* ~ slds-text-body_small */
+    font-weight: 600;         /* similar to screenshot */
+}
+
+/* Meta: owner | type | size */
+.version-row__meta {
+    margin-top: 0.125rem;
+    font-size: 0.75rem;       /* ~ slds-text-body_x-small */
+    color: #706e6b;
+}
+
+/* Optional warning message */
+.version-row__warning {
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: flex-start;
+    font-size: 0.75rem;
+    color: #ba0517;           /* SLDS error/warning red */
+}
+
+.version-row__warning-icon {
+    margin-right: 0.25rem;
+}

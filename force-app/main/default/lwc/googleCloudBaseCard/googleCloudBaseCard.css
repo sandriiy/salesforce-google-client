@@ -1,0 +1,43 @@
+.base-card-header {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: var(--slds-g-sizing-border-1) solid var(--slds-s-container-color-border);
+	border-radius: var(--slds-c-card-radius-border, var(--slds-s-container-radius-border, var(--slds-g-radius-border-2))) var(--slds-c-card-radius-border, var(--slds-s-container-radius-border, var(--slds-g-radius-border-2))) 0 0;
+	background: var(--slds-c-card-color-background, var(--slds-g-color-surface-container-1));
+}
+
+.base-card-icon-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center; 
+    background-color: #939393;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.25rem;
+}
+
+.base-card-icon {
+    --slds-c-icon-color-foreground-default: #FFFFFF;
+    --slds-c-icon-color-background: #939393;
+}
+
+.base-card-hidden {
+    display: none;
+}
+
+.base-card-text-center {
+    text-align: center;
+}
+
+.base-card-clickable {
+    cursor: pointer;
+}
+
+.base-card-secondary-text {
+    width: 95%;
+    min-width: 0;
+}
+
+.base-card-footer {
+	margin-top: 0;
+}

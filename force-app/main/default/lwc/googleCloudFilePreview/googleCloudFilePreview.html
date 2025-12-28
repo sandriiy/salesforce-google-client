@@ -1,0 +1,62 @@
+<template>
+    <section lwc:if={isOpen} class="overlay" role="dialog" aria-modal="true" aria-labelledby="gvm-title">
+        <div class="chrome">
+            <header class="topbar slds-grid slds-grid_vertical-align-center">
+                <div class="slds-col slds-size_1-of-3 slds-grid slds-grid_vertical-align-center">
+                    <lightning-icon icon-name={fileType} size="small" class="slds-m-right_small"></lightning-icon>
+                    <span class="topbar-filename slds-truncate slds-text-heading_small" title={fileName}>
+                        {fileName}
+                    </span>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3 slds-grid slds-grid_align-center slds-grid_vertical-align-center">
+                    <lightning-button-icon onclick={handleFileDownload} value="download" icon-name="utility:download" title="Download" class="topbar-icon slds-m-horizontal_x-small"></lightning-button-icon>
+                    <lightning-button-icon onclick={handleFileSharing} value="share" icon-name="utility:share" title="Share" class="topbar-icon slds-m-horizontal_x-small" disabled={isReadMode} style={readModeStyles}></lightning-button-icon>
+                    <lightning-button-icon onclick={handleFilePublicLink} value="link" icon-name="utility:link" title="Public Link" class="topbar-icon slds-m-horizontal_x-small" disabled={isReadMode} style={readModeStyles}></lightning-button-icon>
+                    <lightning-button-menu class="topbar-dropdown slds-m-left_small" alternative-text="More" icon-name="utility:chevrondown" menu-alignment="right">
+                        <lightning-menu-item onclick={handleGoogleFileOpen} value="view" label="View File Details" disabled={isOldVersion}></lightning-menu-item>
+                        <lightning-menu-item onclick={handleNewVersionUpload} value="upload" label="Upload New Version" disabled={isOldOrReadMode}></lightning-menu-item>
+                        <lightning-menu-item onclick={handleFileDetailsEdit} value="edit" label="Edit File Details" disabled={isOldOrReadMode}></lightning-menu-item>
+                        <lightning-menu-item onclick={handleFileDelete} value="delete" label="Delete" disabled={isOldOrReadMode}></lightning-menu-item>
+                    </lightning-button-menu>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3 slds-grid slds-grid_align-end slds-grid_vertical-align-center">
+                    <lightning-button-icon
+                        onclick={handlePreviewModalClose} 
+                        class="topbar-icon"
+                        icon-name="utility:close"
+                        title="Close">
+                    </lightning-button-icon>
+                </div>
+            </header>
+
+            <div class="stage">
+                <div class="doc" aria-label="Document canvas">
+                    <template lwc:if={isLoading}>
+                        <div class="slds-spinner slds-spinner_medium" role="status">
+                            <span class="slds-assistive-text">Loading...</span>
+                            <div class="slds-spinner__dot-a"></div>
+                            <div class="slds-spinner__dot-b"></div>
+                        </div>
+                    </template>
+                    <div lwc:elseif={isUnavailablePreview} class="slds-grid slds-grid_vertical slds-grid_align-center slds-grid_vertical-align-center slds-text-align_center absolute-centered">
+                        <div class="slds-text-heading_large slds-m-bottom_small">
+                            {unavailablePreviewMessage}
+                        </div>
+                        <lightning-button 
+                            label="Download" 
+                            onclick={handleFileDownload} 
+                            variant="brand"
+                            icon-name="utility:download"
+                            class="slds-m-top_small">
+                        </lightning-button>
+                    </div>
+                    <div class="content">
+                        <iframe class="pdfjs-iframe" lwc:dom="manual"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</template>

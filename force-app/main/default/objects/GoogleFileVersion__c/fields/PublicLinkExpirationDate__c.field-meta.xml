@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>PublicLinkExpirationDate__c</fullName>
+    <encryptionScheme>None</encryptionScheme>
+    <inlineHelpText>Exists with the public link and triggers a process at the specified time to remove that link from the file.</inlineHelpText>
+    <label>Public Link Expiration Date</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

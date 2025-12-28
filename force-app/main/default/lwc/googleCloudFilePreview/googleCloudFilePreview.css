@@ -1,0 +1,83 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  place-items: center;
+}
+
+.chrome {
+  width: 100%;
+  height: 100%;
+  color: #eee;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.topbar {
+  border-radius: 0 !important;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 99999999999;
+}
+
+.topbar-icon {
+	--slds-g-color-neutral-base-100: transparent;
+	--slds-c-icon-color-foreground: #dadada;
+	--slds-c-button-shadow-focus: 0 0 0 2px #a6faff;
+	--slds-c-button-text-color-active: #737373;
+	--slds-c-button-text-color-hover: #ffffff;
+}
+
+.topbar-filename {
+	max-width: 250px;
+	min-width: 40px;
+	margin-right: 5%;
+}
+
+.topbar-dropdown {
+	--slds-g-color-neutral-base-100: #000000;
+	--lwc-colorTextDefault: #FFFFFF;
+	--slds-c-dropdown-item-color: #FFFFFF;
+	--slds-c-button-text-color-hover: #ffffff;
+	--slds-c-icon-color-foreground: #dadada;
+	--slds-c-button-text-color-active: #737373;
+	--slds-c-button-shadow-focus: 0 0 0 2px #a6faff;
+}
+
+.stage {
+  display: grid;
+  place-items: center;
+  overflow: auto;
+}
+
+.doc {
+  width: min(840px, 92%);
+  height: 100%;
+  margin: 32px 0;
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.content {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.absolute-centered {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.pdfjs-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}

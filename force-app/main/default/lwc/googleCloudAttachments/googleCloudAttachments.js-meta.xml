@@ -1,0 +1,30 @@
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>65.0</apiVersion>
+    <isExposed>true</isExposed>
+	<masterLabel>Google Client: Attachments</masterLabel>
+    <targets>
+        <target>lightning__RecordPage</target>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightningCommunity__Default">
+            <property name="recordId" type="String" label="Record Id" required="true" description="Associates the page record ID with the component. Use {!recordId} for dynamic binding."/>
+            <property name="objectApiName" type="String" label="Object API Name" required="true" description="Bind the current page’s object API name to the component."/>
+            <property label="Title Icon" name="icon" type="String" required="true" default="utility:file" description="The SLDS icon to display alongside the title."/>
+            <property label="Title" name="title" type="String" required="true" default="Notes &amp; Attachments" description="The title displayed at the top of the component."/>
+            <property label="Number of Visible Files" name="countVisibleFiles" type="Integer" required="true" default="12" description="Number of files to display before requiring user action to see more."/>
+            <property label="Allow Multiple Files?" name="isMultiple" type="Boolean" description="Set to true to allow multiple files upload at once; false for single files only."/>
+            <property label="Supported File Extensions" name="fileTypes" type="String" description="Comma-separated list of allowed extensions (e.g., PDF,DOC,DOCX,JPG,PNG). Leave blank for all types."/>
+            <property label="Maximum File Size (MB)" name="maximumSizeMb" type="Integer" required="false" description="Maximum file size in megabytes. Leave blank for no limit."/>
+        </targetConfig>
+        <targetConfig targets="lightning__RecordPage">
+            <property label="Title Icon" name="icon" type="String" required="true" default="utility:file" description="The SLDS icon to display alongside the title."/>
+            <property label="Title" name="title" type="String" required="true" default="Notes &amp; Attachments" description="The title displayed at the top of the component."/>
+            <property label="Number of Visible Files" name="countVisibleFiles" type="Integer" required="true" default="12" description="Number of files to display before requiring user action to see more."/>
+            <property label="Allow Multiple Files?" name="isMultiple" type="Boolean" description="Set to true to allow multiple files upload at once; false for single files only."/>
+            <property label="Supported File Extensions" name="fileTypes" type="String" description="Comma-separated list of allowed extensions (e.g., PDF,DOC,DOCX,JPG,PNG). Leave blank for all types."/>
+            <property label="Maximum File Size (MB)" name="maximumSizeMb" type="Integer" required="false" description="Maximum file size in megabytes. Leave blank for no limit."/>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

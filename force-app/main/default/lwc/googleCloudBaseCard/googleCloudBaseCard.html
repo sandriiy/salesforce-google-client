@@ -1,0 +1,55 @@
+<template>
+    <div class="slds-card slds-card_boundary">
+        <div class="slds-grid slds-page-header base-card-header">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media slds-media_center slds-has-flexi-truncate">
+                    <div class="slds-media__figure">
+                        <div class="base-card-icon-wrapper">
+                            <lightning-icon
+                                class="base-card-icon"
+                                icon-name={iconName}
+                                size="x-small"
+                                alternative-text={title}
+                            ></lightning-icon>
+                        </div>
+                    </div>
+                    <div class="slds-media__body">
+                        <h2 class="slds-card__header-title">
+                            <a class="slds-card__header-link" href="javascript:void(0)" onclick={handleHeaderClick}>
+                                <span class="slds-truncate slds-m-right_xx-small" title={title}>
+                                    {title}
+                                </span>
+
+                                <template lwc:if={badgeText}>
+                                    <span class="slds-shrink-none slds-m-right_xx-small">
+                                        {badgeText}
+                                    </span>
+                                </template>
+                            </a>
+                        </h2>
+
+                        <template lwc:if={subtitle}>
+                            <p class="slds-text-body_small slds-truncate" title={subtitle}>
+                                {subtitle}
+                            </p>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="slds-no-flex">
+                    <slot name="actions"></slot>
+                </div>
+            </header>
+        </div>
+
+        <div>
+            <slot></slot>
+        </div>
+
+        <template lwc:if={showFooter}>
+            <div class="slds-card__footer base-card-footer">
+                <slot name="footer"></slot>
+            </div>
+        </template>
+    </div>
+</template>

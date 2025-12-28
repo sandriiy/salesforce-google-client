@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>InternalUsers</fullName>
+        <default>true</default>
+        <label>InternalUsers</label>
+    </customValue>
+    <customValue>
+        <fullName>AllUsers</fullName>
+        <default>false</default>
+        <label>AllUsers</label>
+    </customValue>
+    <masterLabel>Google File Visibility Types</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

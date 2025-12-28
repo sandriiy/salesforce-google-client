@@ -1,0 +1,60 @@
+<template>
+    <lightning-modal-header label="Upload Files"></lightning-modal-header>
+
+    <lightning-modal-body>
+        <lightning-spinner lwc:if={isLoading} alternative-text="Loading" size="small"></lightning-spinner>
+        <div class="slds-grid slds-grid_vertical slds-p-around_xxx-small">
+            <template iterator:it={files}>
+                <div key={it.value.id} class="slds-col slds-grid slds-wrap slds-grid--vertical-align-center">
+                    <div class="slds-size_6-of-12">
+                        <div class="slds-media slds-media_center">
+                            <div class="slds-media__figure">
+                                <lightning-icon
+                                    icon-name={it.value.icon}
+                                    alternative-text={it.value.fileType}
+                                    size="medium">
+                                </lightning-icon>
+                            </div>
+                            <div class="slds-media__body">
+                                <div class="slds-truncate">
+                                    {it.value.name}
+                                </div>
+                                <span class="slds-text-color_weak slds-text-body_small">
+                                    {it.value.size}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size_5-of-12">
+                        <lightning-progress-bar value={it.value.progress} variant="circular"></lightning-progress-bar>
+                    </div>
+                    <div class="slds-size_1-of-12 slds-text-align_center progress-icon-container">
+                        <lightning-icon
+                            icon-name="utility:success"
+                            alternative-text="Completed"
+                            size="small"
+                            style={it.value.style}>
+                        </lightning-icon>
+                    </div>
+                    <template if:false={it.last}>
+                        <div role="separator" class="files-divider"></div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </lightning-modal-body>
+
+    <lightning-modal-footer>
+        <div class="slds-grid slds-grid_vertical-align-center">
+            <div class="slds-col_bump-right slds-text-body_small">{fileCountLabel}</div>
+            <div class="slds-col">
+                <lightning-button
+                    label="Done"
+                    variant="brand"
+                    onclick={handleDone}
+                    disabled={isUploading}>
+                </lightning-button>
+            </div>
+        </div>
+    </lightning-modal-footer>
+</template>

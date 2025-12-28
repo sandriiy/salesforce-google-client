@@ -1,0 +1,200 @@
+<template>
+    <template lwc:if={isLoading}>
+        <div class="spinner-container">
+            <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+        </div>
+    </template>
+    <template lwc:else>
+        <div class="share-container">
+            <div class="sharebar">
+                <div class="slds-grid">
+                    <div class="slds-col slds-size_2-of-12 slds-m-right_x-small">
+                        <lightning-combobox
+                            value={selectFromObjectApiName}
+                            options={shareToOptions}
+                            variant="label-hidden"
+                            dropdown-alignment="right"
+                            aria-label="Choose who, user or group?"
+                            placeholder="Who?"
+                            onchange={handleFromObjectChange}>
+                        </lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-grow slds-size_7-of-12 slds-m-right_x-small">
+                        <lightning-record-picker
+                            label="Search People..."
+                            variant="label-hidden"
+                            placeholder={selectFromObjectPlaceholder}
+                            object-api-name={selectFromObjectApiName}
+                            filter={selectFromObjectFilters}
+                            onchange={handleShareRecordChange}>
+                        </lightning-record-picker>
+                    </div>
+                    <div class="slds-col slds-grow">
+                        <lightning-combobox
+                            value={selectForAccessLevel}
+                            options={shareRoleOptions}
+                            variant="label-hidden"
+                            dropdown-alignment="right"
+                            aria-label="Choose access level"
+                            placeholder="Choose Access"
+                            onchange={handleAccessLevelChange}>
+                        </lightning-combobox>
+                    </div>
+                </div>
+
+                <div lwc:if={readyToShare} class="slds-grid slds-col slds-size_1-of-1 slds-m-top_small slds-text-align_center">
+                    <button class="share-button slds-button slds-button_stretch" title="Share" onclick={handleNewSharingClick}>
+                        Share
+                    </button>
+                </div>
+            </div>
+
+            <lightning-accordion allow-multiple-sections-open>
+                <lightning-accordion-section name="access" label="Who Can Access">
+                    <template lwc:if={sharingDetails}>
+                        <div class="share-table-scroll">
+                            <table class="share-table">
+                                <colgroup>
+                                    <col style="width: 40%">
+                                    <col style="width: 30%">
+                                    <col style="width: 25%">
+                                    <col style="width: 5%">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>Name &amp; Type</th>
+                                        <th>Customer Access</th>
+                                        <th>Access</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template lwc:if={sharingDetails.owner}>
+                                        <tr>
+                                            <td>
+                                                <div class="name-cell">
+                                                    <lightning-avatar
+                                                        variant="square"
+                                                        size="medium"
+                                                        fallback-icon-name="standard:user"
+                                                        alternative-text="Owner">
+                                                    </lightning-avatar>
+                                                    <div class="info">
+                                                        <div class="title">{sharingDetails.owner.Name}</div>
+                                                        <div class="meta">Owner</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td></td>
+                                            <td>
+                                                <lightning-combobox
+                                                    value="Owner"
+                                                    options={ownerRoleOptions}
+                                                    disabled
+                                                    variant="label-hidden">
+                                                </lightning-combobox>
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </template>
+                                    <template lwc:if={sharingDetails.principals}>
+                                        <template for:each={sharingDetails.principals} for:item="principal">
+                                            <tr key={principal.Id} data-target={principal.targetId}>
+                                                <td>
+                                                    <div class="name-cell">
+                                                    <lightning-avatar
+                                                        variant="square"
+                                                        size="medium"
+                                                        fallback-icon-name={principal.icon}
+                                                        alternative-text={principal.kindLabel}>
+                                                    </lightning-avatar>
+                                                    <div class="info">
+                                                        <div class="title">{principal.displayName}</div>
+                                                        <div class="meta">{principal.kindLabel}</div>
+                                                    </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                </td>
+                                                <td>
+                                                    <lightning-combobox
+                                                        data-id={principal.Id}
+                                                        value={principal.role}
+                                                        options={shareRoleOptions}
+                                                        onchange={handleSharingRoleChange}
+                                                        variant="label-hidden">
+                                                    </lightning-combobox>
+                                                </td>
+                                                <td>
+                                                    <lightning-button-icon
+                                                        class="slds-p-left_xx-small"
+                                                        icon-name="utility:close"
+                                                        variant="bare"
+                                                        alternative-text="Remove"
+                                                        title="Remove"
+                                                        onclick={handleSharingRemoveClick}
+                                                        data-id={principal.Id}>
+                                                    </lightning-button-icon>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+                                    <template lwc:if={sharingDetails.recordLinks}>
+                                        <template for:each={sharingDetails.recordLinks} for:item="recordLink">
+                                            <tr key={recordLink.Id} data-target={recordLink.targetId}>
+                                                <td>
+                                                    <div class="name-cell">
+                                                        <lightning-avatar
+                                                            variant="square"
+                                                            size="medium"
+                                                            fallback-icon-name={recordLink.icon}
+                                                            alternative-text={recordLink.kindLabel}>
+                                                        </lightning-avatar>
+                                                        <div class="info">
+                                                            <div class="title">{recordLink.displayName}</div>
+                                                            <div class="meta">{recordLink.kindLabel}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <lightning-input
+                                                        type="toggle"
+                                                        variant="label-hidden"
+                                                        checked={recordLink.customerAccess}
+                                                        data-id={recordLink.Id}
+                                                        onchange={handleCustomAccessChange}
+                                                        style="margin-top: 4px;">
+                                                    </lightning-input>
+                                                </td>
+                                                <td>
+                                                    <lightning-combobox
+                                                        data-id={recordLink.Id}
+                                                        value={recordLink.role}
+                                                        options={shareRecordOptions}
+                                                        onchange={handleSharingRoleChange}
+                                                        variant="label-hidden">
+                                                    </lightning-combobox>
+                                                </td>
+                                                <td>
+                                                    <lightning-button-icon
+                                                        class="slds-p-left_xx-small"
+                                                        icon-name="utility:close"
+                                                        variant="bare"
+                                                        alternative-text="Remove"
+                                                        title="Remove"
+                                                        onclick={handleSharingRemoveClick}
+                                                        data-id={recordLink.Id}>
+                                                    </lightning-button-icon>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+                </lightning-accordion-section>
+            </lightning-accordion>
+        </div>
+    </template>
+</template>

@@ -1,0 +1,10 @@
+.expiration-date-container {
+	padding-bottom: 2%;
+    border-bottom: 1px solid #d8dde6;
+}
+
+.expiration-date-container .expireAt {
+	margin-left: 1%;
+	margin-right: 1%;
+	margin-top: 2px;
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSetGroup xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Grants access to Google Cloud file operations and management features, including upload, download, preview, sharing, public links, application access, file metadata, and all related system integration and configuration settings.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Google Cloud Client User &amp; Admin</label>
+    <permissionSets>GoogleCloudClientAdmin</permissionSets>
+    <permissionSets>GoogleCloudClientUser</permissionSets>
+    <status>Updated</status>
+</PermissionSetGroup>

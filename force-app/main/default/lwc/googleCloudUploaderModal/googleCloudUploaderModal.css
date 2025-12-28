@@ -1,0 +1,9 @@
+.progress-icon-container {
+    margin-top: -2px;
+}
+
+.files-divider {
+    flex: 0 0 100%;
+    border-top: 1px solid #d8dde6;
+    margin: 0.5rem 0;
+}

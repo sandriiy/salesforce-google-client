@@ -1,0 +1,15 @@
+site_name: SF Google Client Docs
+site_url: https://sandriiy.github.io/salesforce-google-client/
+
+theme:
+  name: material
+
+repo_url: https://github.com/sandriiy/salesforce-google-client
+edit_uri: edit/main/docs/
+
+nav:
+  - Home: index.md
+  - Setup:
+      - Prerequisites: setup/prerequisites.md
+      - Authentication: setup/authentication.md
+  - Troubleshooting: troubleshooting.md

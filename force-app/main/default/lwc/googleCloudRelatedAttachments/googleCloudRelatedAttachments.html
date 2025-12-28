@@ -1,0 +1,120 @@
+<template>
+    <div class="slds-card slds-card_boundary slds-grid slds-grid_vertical slds-grid--vertical full-page-container">
+        <div class="slds-page-header_object-home slds-page-header--object-home slds-page-header_joined slds-page-header_bleed slds-page-header slds-shrink-none full-page-header">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-media_center slds-no-space slds-grow">
+                        <div class="slds-media__body slds-align-middle">
+                            <lightning-breadcrumbs>
+                                <lightning-breadcrumb label={sobjectApiName} href="javascript:void(0)" onclick={handleListViewOpen}></lightning-breadcrumb>
+                                <lightning-breadcrumb label={recordIdentifierValue} href="javascript:void(0)" onclick={handleRecordOpen}></lightning-breadcrumb>
+                            </lightning-breadcrumbs>
+                            <h1 class="slds-page-header__title listViewTitle slds-truncate" title={title}>
+                                {title}
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-col slds-no-flex slds-grid slds-align-top slds-p-bottom--xx-small">
+                    <lightning-button onclick={handleFileUpload} label="Upload Files" variant="neutral"></lightning-button>
+                    <input id="file-upload-input" type="file" multiple={isMultiple} accept={acceptedTypes} onchange={handleFileSelected} class="file-input gcdc-hidden"/>
+                </div>
+            </div>
+            <div class="slds-grid">
+                <div class="slds-col slds-align-bottom">
+                    <p class="slds-text-body_small slds-text-body--small">
+                        {files.length} items • Sorted by {sortedByLabel}
+                    </p>
+                </div>
+                <div class="slds-col slds-no-flex slds-grid slds-align-bottom">
+                    <lightning-input type="text" variant="label-hidden" placeholder="Search..." onkeyup={handleSearch}></lightning-input>
+                    <lightning-button-icon class="slds-m-left_xxx-small" variant="border-filled" icon-name="utility:refresh" alternative-text="Refresh" title="Refresh" onclick={handleDataRefresh}></lightning-button-icon>
+                </div>
+            </div>
+        </div>
+        <div class="slds-grid full-page-content">
+            <div class="slds-grid full-page-datatable">
+                <div class="slds-col slds-no-space">
+                    <div class="full-page-datatable-scroller native">
+                        <div class="full-page-datatable-scroller-files">
+                            <div class="slds-table_edit_container slds-table--edit_container slds-is-relative">
+                                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_fixed-layout">
+                                    <colgroup>
+                                        <col style="width: 35%;" />
+                                        <col style="width: 20%;" />
+                                        <col style="width: 25%;" />
+                                        <col style="width: 20%;" />
+                                    </colgroup>
+                                    <thead>
+                                        <tr class="slds-text-title_caps">
+                                            <th data-id="name" data-name="Title" class="sortable-column" scope="col" onclick={handleColumnSort}>
+                                                <div class="slds-truncate" title="Title">Title</div>
+                                            </th>
+                                            <th data-id="createdBy" data-name="Created By" class="sortable-column" scope="col" onclick={handleColumnSort}>
+                                                <div class="slds-truncate" title="Created By">Created By</div>
+                                            </th>
+                                            <th data-id="date" data-name="Last Modified" class="sortable-column" scope="col" onclick={handleColumnSort}>
+                                                <div class="slds-truncate" title="Last Modified">Last Modified</div>
+                                            </th>
+                                            <th data-id="originalSize" data-name="Size" class="sortable-column" scope="col" onclick={handleColumnSort}>
+                                                <div class="slds-truncate" title="Size">Size</div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template for:each={displayedFiles} for:item="file">
+                                            <tr key={file.id} data-id={file.localId}>
+                                                <th scope="row">
+                                                    <div class="slds-truncate" title={file.name}>
+                                                        <a href="javascript:void(0)" onclick={handleFilePreview}>
+                                                            <lightning-icon
+                                                            icon-name={file.icon}
+                                                            size="x-small"
+                                                            class="slds-m-right_x-small"
+                                                            alternative-text="">
+                                                            </lightning-icon>
+                                                            {file.name}
+                                                        </a>
+                                                    </div>
+                                                </th>
+                                                <td>
+                                                    <div class="slds-truncate" title={file.createdBy.name}>
+                                                        <a href="javascript:void(0)" data-id={file.createdBy.id} onclick={handleUserPreview}>
+                                                            {file.createdBy.name}
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="slds-truncate" title={file.date}>
+                                                        {file.date}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="slds-truncate" title={file.size}>
+                                                        {file.size}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <lightning-spinner 
+            lwc:if={isLoading}
+            alternative-text="Loading"
+            size="small">
+        </lightning-spinner>
+        <c-google-cloud-file-preview
+            lwc:ref="filePreviewModal"
+            onnewversionrequest={handleNewVersionRequest}
+            onfilechange={handleDataRefresh}
+            onfiledeleted={handleDataRefresh}
+            onpreviewclosed={handlePreviewCloseReset}>
+        </c-google-cloud-file-preview>
+    </div>
+</template>

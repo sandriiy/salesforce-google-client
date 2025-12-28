@@ -1,0 +1,107 @@
+.spinner-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 120px;
+}
+
+.share-container {
+  	margin: 0 1rem;
+}
+
+.sharebar {
+  padding-top: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+
+.share-button {
+	background: #005FB2;
+    color: white;
+    border: none;
+}
+
+.share-button:hover {
+    background: #004A8A;
+}
+
+.share-button:active {
+    background: #003A6B;
+}
+
+.share-table-scroll {
+	max-height: 300px;
+    overflow-x: auto;
+    overflow-y: auto;
+    width: 100%;
+}
+
+.share-table {
+	width: 100%;
+	border-collapse: collapse;
+	border-spacing: 0;
+	margin-top: 2%;
+}
+
+th {
+	text-align: left;
+	color: #444;
+	font-size: 0.75rem;
+	padding-bottom: 0.4rem;
+	border-bottom: 1px solid #e5e5e5;
+}
+
+tr {
+  	border-bottom: 1px solid #e5e5e5;
+}
+
+td {
+	vertical-align: middle;
+	padding: 0.75rem 0;
+}
+
+.name-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.info .title {
+	font-size: 1rem;
+	line-height: 1.1rem;
+	white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+	max-width: 150px;
+}
+
+.info .meta {
+	color: #7c7c7c;
+	font-size: 0.70rem;
+	margin-top: 0.1rem;
+	white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+	max-width: 150px;
+}
+
+td lightning-input {
+	display: block;
+	margin: auto;
+}
+
+td lightning-combobox {
+	display: block;
+	min-width: 8rem;
+	margin: auto;
+}
+
+td lightning-button-icon {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin: auto;
+}
+
+tbody tr:last-child {
+  	border-bottom: none;
+}

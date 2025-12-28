@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>Viewer</fullName>
+        <default>true</default>
+        <label>Viewer</label>
+    </customValue>
+    <customValue>
+        <fullName>Collaborator</fullName>
+        <default>false</default>
+        <label>Collaborator</label>
+    </customValue>
+    <customValue>
+        <fullName>InferredFromRecord</fullName>
+        <default>false</default>
+        <label>InferredFromRecord</label>
+    </customValue>
+    <masterLabel>Google File Sharing Types</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

@@ -1,0 +1,179 @@
+<template>
+    <div class="cloud-file-layout-wrapper">
+        <div class="cloud-record-layout slds-grid slds-wrap slds-gutters">
+            <header class="slds-page-header slds-page-header_record-home record-layout__header slds-size_1-of-1">
+                <input
+                    id="file-upload-input"
+                    type="file"
+                    accept="*"
+                    onchange={handleFileSelected}
+                    class="file-input gcdc-hidden"
+                />
+                <div class="record-layout__header-top">
+                    <div class="slds-page-header__row slds-grid_align-center slds-grid_vertical-align-center">
+                        <div class="slds-page-header__col-title">
+                            <div class="slds-media">
+                                <div class="slds-media__figure">
+                                    <lightning-icon
+                                        icon-name="standard:timesheet"
+                                        size="medium"
+                                        alternative-text="File"
+                                        class="record-layout__header-icon"
+                                    ></lightning-icon>
+                                </div>
+                                <div class="slds-media__body">
+                                    <p class="cloud-file-file-type">File</p>
+                                    <div
+                                        class="slds-grid slds-grid_vertical-align-center cloud-file-file-name"
+                                    >
+                                        <h1
+                                            class="slds-page-header__title slds-truncate"
+                                            title={fileName}
+                                        >
+                                            {fileName}
+                                        </h1>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="slds-page-header__col-actions">
+                            <div class="slds-page-header__controls">
+                                <div class="slds-page-header__control">
+                                    <lightning-button-group>
+                                        <lightning-button
+                                            label="Download"
+                                            onclick={handleFileDownload}
+                                        ></lightning-button>
+                                        <lightning-button
+                                            label="Preview"
+                                            onclick={handleFilePreview}
+                                        ></lightning-button>
+                                        <lightning-button
+                                            label="Share"
+                                            onclick={handleFileSharing}
+                                            disabled={isReadOnlyAccess}
+                                        ></lightning-button>
+                                        <lightning-button-menu lwc:if={isEditAccess} alternative-text="Show menu" menu-alignment="right">
+                                            <lightning-menu-item
+                                                label="Upload New Version"
+                                                value="newVersion"
+                                                onclick={handleFileVersionUpload}
+                                            ></lightning-menu-item>
+                                            <lightning-menu-item
+                                                label="Public Link"
+                                                value="publicLink"
+                                                onclick={handlePublicLinkCreate}
+                                            ></lightning-menu-item>
+                                            <lightning-menu-item
+                                                label="Delete"
+                                                value="delete"
+                                                onclick={handleFileDelete}
+                                            ></lightning-menu-item>
+                                        </lightning-button-menu>
+                                    </lightning-button-group>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HEADER COMPACT FIELDS + SPINNER -->
+                <div
+                    class="slds-page-header__row record-layout__header-bottom"
+                >
+                    <div class="slds-page-header__col-details cloud-record-layout-compact">
+                        <template lwc:if={isHeaderLoading}>
+                            <div class="record-layout__header-spinner gcdc-relative">
+                                <lightning-spinner
+                                    alternative-text="Loading header details..."
+                                    size="small"
+                                ></lightning-spinner>
+                            </div>
+                        </template>
+                        <template lwc:elseif={recordId}>
+                            <template if:true={hasHeaderCompactFields}>
+                                <div class="slds-grid">
+                                    <template for:each={headerCompactFields} for:item="compactField">
+                                        <div
+                                            key={compactField.key}
+                                            class="slds-col slds-large-size_2-of-12 slds-p-vertical_xx-small"
+                                        >
+                                            <div class={compactField.containerClass}>
+                                                <p class="slds-text-title">
+                                                    {compactField.label}
+                                                </p>
+                                                <p class="slds-truncate" title={compactField.displayValue}>
+                                                    <template if:true={compactField.isReference}>
+                                                        <a data-id={compactField.referenceId} href="javascript:void(0)" onclick={handleRedirectClick}>
+                                                            {compactField.displayValue}
+                                                        </a>
+                                                    </template>
+                                                    <template if:false={compactField.isReference}>
+                                                        {compactField.displayValue}
+                                                    </template>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </template>
+                    </div>
+                </div>
+            </header>
+
+            <div class="slds-size_1-of-1 slds-grid slds-wrap">
+                <div class="slds-col record-layout-main-region slds-large-size_8-of-12 slds-small-size_12-of-12">
+                    <section class="record-layout__card" style="padding: 0.5% 1% 0 1%;">
+                        <template lwc:if={isMainLoading}>
+                            <div class="record-layout__main-spinner gcdc-relative slds-p-vertical_xx-large">
+                                <lightning-spinner
+                                    alternative-text="Loading content details..."
+                                    size="medium"
+                                ></lightning-spinner>
+                            </div>
+                        </template>
+                        <template lwc:elseif={recordId}>
+                            <lightning-tabset>
+                                <lightning-tab label="Details">
+                                    <lightning-flow
+                                        flow-api-name="GoogleFileRecordDetails"
+                                        flow-input-variables={flowInputVariables}
+                                        onstatuschange={handleFlowStatusChange}>
+                                    </lightning-flow>
+                                </lightning-tab>
+                            </lightning-tabset>
+                        </template>
+                    </section>
+                </div>
+
+                <div class="slds-col record-layout-side-region slds-large-size_4-of-12 slds-small-size_12-of-12">
+                    <section class="record-layout__card">
+                        <template lwc:if={isMainLoading}>
+                            <div class="record-layout__main-spinner gcdc-relative slds-p-vertical_xx-large">
+                                <lightning-spinner
+                                    alternative-text="Loading content details..."
+                                    size="medium"
+                                ></lightning-spinner>
+                            </div>
+                        </template>
+                        <template lwc:elseif={recordId}>
+                            <c-google-cloud-file-versions
+                                lwc:ref="versions" 
+                                record-id={recordId}
+                                onlatestversionselected={handleLatestVersionSelection}>
+                            </c-google-cloud-file-versions>
+                        </template>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+    <c-google-cloud-file-preview
+        lwc:ref="filePreviewModal"
+        onnewversionrequest={handleNewVersionUpload}
+        onfilechange={handleFileEdit}
+        onfiledeleted={handleFileDelete}
+    ></c-google-cloud-file-preview>
+</template>

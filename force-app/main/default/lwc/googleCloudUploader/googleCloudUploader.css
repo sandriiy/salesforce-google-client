@@ -1,0 +1,121 @@
+.dropzone {
+    position: relative;
+    border: 2px dashed var(--slds-g-color-neutral-base-50, #c9c9c9);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all .15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+}
+
+.dropzone:hover {
+    border-color: var(--slds-g-color-brand-base-40, #0176D3);
+	background: rgba(21, 137, 238, 0.1);
+}
+
+.file-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.file-delete {
+	--slds-c-button-text-color-hover: #1b4446;
+}
+
+.file-replace {
+	margin-top: -5px;
+	--slds-c-button-text-color-hover: #1b4446;
+}
+
+.files-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.dropzone__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-card {
+	position: relative;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: #f3f3f3;
+    margin-bottom: 1rem;
+    flex-direction: column;
+	cursor: pointer;
+	transition: all .15s ease;
+}
+
+.file-card:hover {
+	border-radius: 0.25rem;
+	background: rgba(139, 188, 230, 0.1);
+}
+
+.file-card__icon {
+    background: rgba(1, 118, 211, .08);
+    border-radius: 0.5rem;
+    padding: .25rem;
+    margin-right: .75rem;
+}
+
+.file-card__status-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: start;
+    justify-content: center;
+    opacity: 1;
+    pointer-events: none;
+    transition: opacity 250ms ease-in-out;
+    z-index: 2;
+	margin-top: 5px;
+}
+
+.file-card__status-overlay--hidden {
+    opacity: 0;
+}
+
+.file-card__status-content {
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: rgb(0 0 0 / 80%);
+    color: #FFFFFF;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+}
+
+.file-meta {
+    font-size: .725rem;
+    color: var(--slds-g-color-neutral-base-50, #6e6e6e);
+}
+
+.file-percent {
+    font-weight: 600;
+}
+
+.file-progress {
+    --slds-c-progress-bar-value-color-background: var(--slds-g-color-brand-base-40, #0176D3);
+    width: 100%;
+}
+
+.inline-spinner-container {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    position: relative;
+	margin-left: 5px;
+}

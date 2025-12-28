@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>DefaultGoogleUploadFolderId__c</fullName>
+    <description>The ID of the Google Drive folder where files will be uploaded by default. If this field is not specified, files may be uploaded to My Drive, which is considered a bad practice. Therefore, this field is required.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>The ID of the Google Drive folder where files will be uploaded by default. If this field is not specified, files may be uploaded to My Drive, which is considered a bad practice. Therefore, this field is required.</inlineHelpText>
+    <label>Default Google Upload Folder Id</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

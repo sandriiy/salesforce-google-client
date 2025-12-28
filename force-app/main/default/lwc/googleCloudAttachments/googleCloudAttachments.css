@@ -1,5 +1,42 @@
-.gcds-header {
+.gcdc-header {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     border-bottom: var(--slds-g-sizing-border-1) solid var(--slds-s-container-color-border);
+}
+
+.gcdc-files-icon-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center; 
+    background-color: #939393;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.25rem;
+}
+
+.gcdc-no-files-container {
+	padding-bottom: 0.75rem;
+	margin-bottom: 0;
+}
+
+.gcdc-files-icon {
+    --slds-c-icon-color-foreground-default: #FFFFFF;
+    --slds-c-icon-color-background: #939393;
+}
+
+.gcdc-link-cursor {
+    cursor: pointer;
+}
+
+.gcdc-hidden {
+    display:none
+}
+
+.gcdc-text-align-center {
+    text-align: center;
+}
+
+.gcdc-file-info {
+	width: 95%;
+  	min-width: 0; 
 }

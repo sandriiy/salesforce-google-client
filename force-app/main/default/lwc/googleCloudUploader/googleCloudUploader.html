@@ -1,0 +1,125 @@
+<template>
+    <div class="slds-card slds-p-top_xx-small slds-p-horizontal_small slds-p-bottom_xx-small" style="position: relative;">
+        <div class="slds-p-horizontal_xx-small">
+            <label class="dropzone slds-grid slds-grid_vertical-align-center slds-grid_align-center slds-gutters_small">
+                <span class="dropzone__icon">
+                    <lightning-icon
+                        icon-name="utility:add"
+                        size="small"
+                        alternative-text="add files"
+                    ></lightning-icon>
+                </span>
+                <div>
+                    <p class="slds-text-body_regular">
+                        Drop files or <span class="link">browse</span>
+                    </p>
+                    <p lwc:if={supportedFileExtensions} class="slds-text-body_small slds-text-color_weak">
+                        Support files: {supportedFileExtensions}
+                    </p>
+                    <p lwc:if={maximumSizeMb} class="slds-text-body_small slds-text-color_weak">
+                        Max file size: {maximumSizeMb}&nbsp;MB
+                    </p>
+                </div>
+                <input
+                    type="file"
+                    multiple={isMultiple}
+                    accept={acceptedTypes}
+                    onchange={handleFileSelect}
+                    class="file-input"
+                />
+            </label>
+        </div>
+
+        <div lwc:if={filesExist} class="slds-m-top_medium files-container">
+            <div lwc:ref="fileUploadedToast" class="file-card__status-overlay file-card__status-overlay--hidden">
+                <div class="file-card__status-content">
+                    <lightning-icon
+                        icon-name="utility:success"
+                        size="small"
+                        class="slds-m-right_x-small">
+                    </lightning-icon>
+                    <span>File Uploaded</span>
+                </div>
+            </div>
+
+            <template for:each={files} for:item="file" for:index="index">
+                <article key={file.id} data-id={file.id} class="file-card slds-p-around_medium slds-theme_default slds-rounded_medium" onclick={handleFilePreview}>
+                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                        <div class="slds-grid slds-grow" style="min-width: 0;">
+                            <span class="file-card__icon slds-m-right_medium">
+                                <lightning-icon
+                                    icon-name={file.icon}
+                                    size="small">
+                                </lightning-icon>
+                            </span>
+
+                            <div class="slds-truncate slds-grow">
+                                <p class="slds-text-body_regular slds-truncate" title={file.name}>
+                                    {file.name}
+                                </p>
+                                <p class="file-meta slds-text-color_weak slds-truncate" title={file.name}>
+                                    {file.size} • {file.type}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="slds-grid slds-grid_vertical-align-center slds-shrink-none">
+                            <template lwc:if={file.localId}>
+                                <div lwc:if={file.isEditAccess} class="slds-grid slds-grid_vertical slds-m-left_small">
+                                    <lightning-button-icon
+                                        class="file-replace"
+                                        icon-name="utility:refresh"
+                                        size="small"
+                                        variant="bare"
+                                        alternative-text="Replace"
+                                        title="Replace"
+                                        onclick={handleFileReplace}>
+                                    </lightning-button-icon>
+                                    <lightning-button-icon
+                                        class="file-delete"
+                                        icon-name="utility:close"
+                                        size="small"
+                                        variant="bare"
+                                        alternative-text="Remove"
+                                        title="Remove"
+                                        onclick={handleFileDelete}>
+                                    </lightning-button-icon>
+                                </div>
+                            </template>
+
+                            <template lwc:else>
+                                <div class="inline-spinner-container">
+                                    <lightning-spinner
+                                        alternative-text="Loading"
+                                        size="x-small"
+                                        variant="brand">
+                                    </lightning-spinner>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div if:false={file.localId} class="slds-m-top_small">
+                        <lightning-progress-bar
+                            class="file-progress"
+                            size="x-small"
+                            value={file.progress}>
+                        </lightning-progress-bar>
+                    </div>
+                </article>
+            </template>
+        </div>
+        <lightning-spinner
+            lwc:if={isLoading}
+            alternative-text="Loading"
+            size="xx-small">
+        </lightning-spinner>
+    </div>
+    <c-google-cloud-file-preview
+        lwc:ref="filePreviewModal"
+        onnewversionrequest={handleNewVersionRequest}
+        onfilechange={handleFilesRefresh}
+        onfiledeleted={handleFilesRefresh}
+        onpreviewclosed={handlePreviewCloseReset}>
+    </c-google-cloud-file-preview>
+</template>

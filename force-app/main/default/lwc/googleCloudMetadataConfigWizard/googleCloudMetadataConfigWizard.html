@@ -1,0 +1,236 @@
+<template>
+    <div class="googleConfigShell">
+        <div class="googleConfigFrame">
+            <div class="googleConfigHeader">
+                <div class="slds-grid slds-grid_vertical-align-center slds-gutters_small">
+                    <div class="slds-col slds-grow-none">
+                        <div class="googleConfigBadge">
+                            <lightning-icon icon-name="standard:settings" size="small"></lightning-icon>
+                        </div>
+                    </div>
+
+                    <div class="slds-col slds-truncate">
+                        <h1 class="googleConfigH1 slds-truncate">Google Drive Setup</h1>
+                        <p class="googleConfigSubtitle slds-truncate">
+                            Configure your Google Drive integration in guided steps.
+                        </p>
+                    </div>
+
+                    <div class="slds-col slds-grow-none">
+                        <lightning-button
+                            variant="brand"
+                            label="Save"
+                            onclick={handleSave}
+                            disabled={saveDisabled}
+                        ></lightning-button>
+                    </div>
+                </div>
+
+                <div class="slds-m-top_small">
+                    <lightning-progress-indicator current-step={currentStep} type="base" variant="base">
+                        <lightning-progress-step label="Authorization" value="1" onclick={handleStepClick}></lightning-progress-step>
+                        <lightning-progress-step label="Upload Folder" value="2" onclick={handleStepClick}></lightning-progress-step>
+                        <lightning-progress-step label="Other Settings" value="3" onclick={handleStepClick}></lightning-progress-step>
+                    </lightning-progress-indicator>
+                </div>
+            </div>
+
+            <template lwc:if={isLoading}>
+                <div class="googleConfigCard">
+                    <div class="googleConfigPad googleConfigSpinnerWrap">
+                        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+                    </div>
+                </div>
+            </template>
+
+            <template lwc:else>
+                <template lwc:if={errorMessage}>
+                    <div class="googleConfigCard googleConfigErrorCard">
+                        <div class="googleConfigPad">
+                            <div class="googleConfigErrorTitle">Something went wrong</div>
+                            <div class="googleConfigErrorText">{errorMessage}</div>
+                        </div>
+                    </div>
+                </template>
+
+                <template lwc:if={isStep1}>
+                    <div class="slds-grid slds-wrap slds-gutters_x-small">
+                        <div class="slds-col slds-size_1-of-1 slds-large-size_8-of-12">
+                            <section class="googleConfigCard">
+                                <div class="googleConfigPad">
+                                    <div class="googleConfigKicker">Stage 1</div>
+                                    <h2 class="googleConfigH2">Authorization (Service Account)</h2>
+
+                                    <p class="googleConfigMuted slds-m-bottom_small">
+                                        We assume your Google Cloud Console setup is already complete and you have a Service Account key (JSON or P12) ready.
+                                    </p>
+
+                                    <lightning-input
+                                        value={draft.customGoogleAuthorizerClass}
+                                        onchange={handleChange}
+                                        data-field="customGoogleAuthorizerClass"
+                                        label="Custom Google Authorizer Class"
+                                        field-level-help="The name of your Apex class responsible for obtaining the access token. This class must implement the GoogleAuthorizer interface"
+                                        placeholder="e.g. MyGoogleAuthorizer"
+                                        required
+                                    ></lightning-input>
+
+                                    <div class="slds-grid slds-grid_align-end slds-m-top_small">
+                                        <lightning-button variant="brand" label="Validate" onclick={handleValidate} disabled={busy}></lightning-button>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <div class="slds-col slds-size_1-of-1 slds-large-size_4-of-12">
+                            <aside class="googleConfigCard">
+                                <div class="googleConfigPad">
+                                    <div class="googleConfigSideTitle">Quick Setup</div>
+
+                                    <div class="googleConfigStep">
+                                        <div class="googleConfigStepNum">1</div>
+                                        <div>
+                                            <div class="googleConfigStepTitle">Generate certificate</div>
+                                            <div class="googleConfigStepText">Convert the key obtained from the Google into a certificate.</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="googleConfigStep">
+                                        <div class="googleConfigStepNum">2</div>
+                                        <div>
+                                            <div class="googleConfigStepTitle">Upload to Salesforce</div>
+                                            <div class="googleConfigStepText">Setup → Certificate and Key Management.</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="googleConfigStep">
+                                        <div class="googleConfigStepNum">3</div>
+                                        <div>
+                                            <div class="googleConfigStepTitle">Implement authorizer</div>
+                                            <div class="googleConfigStepText">
+                                                Create a custom Apex class that implements the <b>GoogleAuthorizer</b> interface and defines the <b>retrieveAccessToken</b> method to retrieve and return an access token using the previously uploaded certificate.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="googleConfigDivider"></div>
+
+                                    <lightning-button
+                                        variant="neutral"
+                                        label="Open Quick Setup Guide"
+                                        onclick={openQuickSetupGuide}
+                                    ></lightning-button>
+                                </div>
+                            </aside>
+                        </div>
+                    </div>
+
+                    <template lwc:if={step1HasValue}>
+                        <div class="slds-grid slds-grid_align-end slds-m-top_small">
+                            <lightning-button variant="brand" label="Next" onclick={goStep2}></lightning-button>
+                        </div>
+                    </template>
+                </template>
+
+                <template lwc:elseif={isStep2}>
+                    <div class="slds-grid slds-wrap slds-gutters_small">
+                        <div class="slds-col slds-size_1-of-1">
+                            <section class="googleConfigCard">
+                                <div class="googleConfigPad">
+                                    <div class="googleConfigKicker">Stage 2</div>
+                                    <h2 class="googleConfigH2">Default Upload Folder</h2>
+
+                                    <lightning-input
+                                        value={draft.defaultGoogleUploadFolderId}
+                                        onchange={handleChange}
+                                        data-field="defaultGoogleUploadFolderId"
+                                        label="Default Google Upload Folder Id"
+                                        field-level-help="The ID of the Google Drive folder where files will be uploaded by default. If this field is not specified, files may be uploaded to My Drive, which is considered a bad practice"
+                                        placeholder="e.g. 1a2B3cD4eF5g..."
+                                        required
+                                    ></lightning-input>
+
+                                    <div class="googleConfigHint">
+                                        <div class="googleConfigHintTitle">Recommendation</div>
+                                        <div class="googleConfigHintText">
+                                            For org-wide storage, consider using a folder located in a <b>Shared Drive</b>.
+                                            It simplifies ownership and long-term access management.
+                                        </div>
+                                    </div>
+
+                                    <div class="slds-grid slds-grid_align-end slds-m-top_small">
+                                        <lightning-button variant="neutral" label="Back" onclick={goStep1}></lightning-button>
+
+                                        <template lwc:if={step2HasValue}>
+                                            <div class="slds-m-left_x-small">
+                                                <lightning-button variant="brand" label="Next" onclick={goStep3}></lightning-button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </template>
+
+                <template lwc:elseif={isStep3}>
+                    <div class="slds-grid slds-wrap slds-gutters_small">
+                        <div class="slds-col slds-size_1-of-1 slds-large-size_12-of-12">
+                            <section class="googleConfigCard">
+                                <div class="googleConfigPad">
+                                    <div class="googleConfigKicker">Stage 3</div>
+                                    <h2 class="googleConfigH2">Other Settings</h2>
+
+                                    <p class="googleConfigMuted">
+                                        To change the Authorizer Class or Default Upload Folder, go back to Stage 1 or Stage 2.
+                                    </p>
+
+                                    <div class="googleConfigFieldGrid">
+                                        <lightning-input
+                                            type="number"
+                                            value={draft.defaultBigFileSize}
+                                            onchange={handleChangeNumber}
+                                            data-field="defaultBigFileSize"
+                                            label="Default Big File Size"
+                                            field-level-help="Specifies the maximum file size (in bytes) that will be used for generating a preview. Setting a value that is too high may cause a heap size limit exception. The default value is 2097152 bytes (2 MB)"
+                                            placeholder="e.g. 5000000"
+                                        ></lightning-input>
+
+                                        <lightning-input
+                                            type="number"
+                                            value={draft.maxDeleteChainSize}
+                                            onchange={handleChangeNumber}
+                                            data-field="maxDeleteChainSize"
+                                            label="Max Delete Chain Size"
+                                            field-level-help="Defines how many files can be deleted within a single queueable job before another job is chained"
+                                            placeholder="e.g. 50"
+                                            required
+                                        ></lightning-input>
+                                    </div>
+
+                                    <div class="slds-m-top_small">
+                                        <lightning-input
+                                            type="toggle"
+                                            checked={draft.isFilePreviewDisabled}
+                                            onchange={handleToggle}
+                                            data-field="isFilePreviewDisabled"
+                                            label="Is File Preview Disabled"
+                                            field-level-help="When enabled, this setting blocks the creation of Google Docs type files used for preview purposes. New and old previews will be unavailable"
+                                        ></lightning-input>
+                                    </div>
+
+                                    <div class="googleConfigFooterBar slds-grid slds-grid_align-end slds-m-top_medium">
+                                        <lightning-button variant="neutral" label="Back" onclick={goStep2}></lightning-button>
+                                        <div class="slds-m-left_x-small">
+                                            <lightning-button variant="brand" label="Save Changes" onclick={handleSave} disabled={saveDisabled}></lightning-button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </template>
+            </template>
+        </div>
+    </div>
+</template>

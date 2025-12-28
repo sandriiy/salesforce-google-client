@@ -1,0 +1,39 @@
+<template>
+    <section class="slds-card container" aria-label="Support Information">
+        <div class="slds-card__body slds-p-horizontal_medium">
+            <lightning-accordion allow-multiple-sections-open active-section-name={activeSections}>
+                <lightning-accordion-section name="community" label="Community Support">
+                    <div class="sectionBody">
+                        <p class="slds-text-body_regular slds-m-bottom_small">
+                            Google Client is an open-source UI client for Salesforce to operate on Google Drive files.
+                            It is released under the MIT License.
+                        </p>
+
+                        <p class="slds-text-body_regular slds-m-bottom_small">
+                            If you run into an issue or want to propose an enhancement, open a GitHub issue.
+                            Requests may be reviewed and addressed by the community as time permits, but fixes and timelines are not guaranteed.
+                        </p>
+
+                        <div class="linkRow">
+                            <a class="slds-text-link" href={githubUrl} target="_blank" rel="noopener noreferrer">
+                                Open GitHub Repository
+                            </a>
+                        </div>
+                    </div>
+                </lightning-accordion-section>
+
+                <lightning-accordion-section name="paid" label="Support Plans">
+                    <div class="sectionBody">
+                        <p class="slds-text-body_regular slds-m-bottom_small">
+                            If this solution is part of a critical team workflow, enterprise support ensures it is configured, secured, and maintained correctly. We provide hands-on assistance with setup and troubleshooting, along with security-focused consulting on Google Cloud and Google Drive API configuration, covering authentication models, access control, and long-term operational best practices. Enhancements are prioritized and delivered as part of the versioned package to ensure stability and smooth upgrades.
+                        </p>
+
+                        <div class="callout slds-m-top_medium">
+                            <lightning-formatted-rich-text value={contactHtml}></lightning-formatted-rich-text>
+                        </div>
+                    </div>
+                </lightning-accordion-section>
+            </lightning-accordion>
+        </div>
+    </section>
+</template>

@@ -1,49 +1,67 @@
 <template>
-    <div class="slds-card slds-card_boundary">
-        <div class="slds-grid slds-page-header gcds-header">
-            <header class="slds-media slds-media--center slds-has-flexi-truncate">
-                <div class="slds-media slds-media_center slds-has-flexi-truncate">
-                    <div class="slds-media__figure">
-                        <div class="slds-m-right_small stencil slds-avatar slds-avatar_small">
-                            <div style="background-color: #939393">
-                                <lightning-icon icon-name="utility:file" size="small" alternative-text="Notes & Attachments"></lightning-icon>
+    <c-google-cloud-base-card title={title} icon-name={icon} badge-text={filesCount} show-footer={files.length} onheaderclick={openSeparateTab}>
+        <div slot="actions">
+            <lightning-button onclick={handleFileUpload} label="Upload Files" variant="neutral"></lightning-button>
+            <input id="file-upload-input" type="file" multiple={isMultiple} accept={acceptedTypes} onchange={handleFileSelected} class="file-input gcdc-hidden"/>
+        </div>
+        <div lwc:if={files.length} class="slds-grid slds-wrap slds-card__body slds-card__body_inner">
+            <template for:each={files} for:item="file">
+                <div key={file.id} data-id={file.localId} class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-p-bottom_small">
+                    <div class="slds-media slds-media_center slds-has-flexi-truncate gcdc-link-cursor" onclick={handleFilePreviewOpen}>
+                        <div class="slds-media__figure">
+                            <lightning-icon
+                                icon-name={file.icon}
+                                alternative-text={file.type}
+                                size="medium">
+                            </lightning-icon>
+                        </div>
+
+                        <div class="slds-media__body">
+                            <div class="slds-truncate slds-p-right_small" title={file.name}>
+                                <a href="javascript:void(0)">{file.name}</a>
+                            </div>
+
+                            <div class="slds-text-body_small slds-text-color_weak slds-truncate gcdc-file-info" title={file.info}>
+                                {file.info}
                             </div>
                         </div>
                     </div>
-                    <div class="slds-media__body">
-                        <h2 class="slds-card__header-title">
-                            <a href="#" class="slds-card__header-link">
-                                <span title="Notes & Attachments" class="slds-truncate slds-m-right--xx-small">Notes & Attachments</span>
-                                <span title={records.length} class="slds-shrink-none slds-m-right--xx-small">({records.length})</span>
-                            </a>
-                        </h2>
-                    </div>
                 </div>
-                <div class="slds-no-flex">
-                    <lightning-button label="Upload Files" variant="neutral"></lightning-button>
-                </div>
-            </header>
+            </template>
         </div>
-
-        <div class="slds-card__body slds-card__body_inner">
-            <div class="slds-grid slds-wrap">
-                <template for:each={records} for:item="record">
-                    <div key={record.id} class="slds-col slds-size_1-of-2 slds-p-around_small">
-                        <div class="slds-grid slds-grid_align-spread slds-has-flexi-truncate">
-                            <a href={record.link} class="slds-truncate" title={record.name}>{record.name}</a>
-                            <span class="slds-truncate">{record.size} • {record.type}</span>
-                        </div>
-                        <div class="slds-text-body_small slds-truncate">
-                            {record.date}
-                        </div>
-                    </div>
-                </template>
-            </div>
+        <div lwc:else class="slds-card__body gcdc-no-files-container slds-card__body_inner">
+            <label class="slds-grid slds-grid_vertical gcdc-text-align-center slds-file-selector__body" for="file-upload-input">
+                <lightning-button
+                    variant="neutral"
+                    icon-name="utility:upload"
+                    icon-position="left"
+                    label="Upload Files"
+                    class="slds-col"
+                    onclick={handleFileUpload}>
+                </lightning-button>
+                <span class="slds-col slds-m-top_x-small slds-p-bottom_x-small slds-file-selector__text">
+                    Or drop files
+                </span>
+            </label>
         </div>
-        <a href="#">
-            <div class="slds-card__footer">
-                <span class="view-all-label">View All</span>
+        <template lwc:if={files.length}>
+            <div slot="footer">
+                <a href="javascript:void(0)" onclick={openSeparateTab}>
+                    <span class="view-all-label">View All</span>
+                </a>
             </div>
-        </a>
-    </div>
+        </template>
+        <lightning-spinner
+            lwc:if={isLoading}
+            alternative-text="Loading"
+            size="xx-small">
+        </lightning-spinner>
+    </c-google-cloud-base-card>
+    <c-google-cloud-file-preview
+        lwc:ref="filePreviewModal"
+        onnewversionrequest={handleNewVersionRequest}
+        onfilechange={handleFileEdit}
+        onfiledeleted={handleFileDelete}
+        onpreviewclosed={handlePreviewCloseReset}>
+    </c-google-cloud-file-preview>
 </template>

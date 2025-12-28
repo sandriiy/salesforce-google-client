@@ -1,0 +1,135 @@
+/* ============================================================
+   Layout container / wrapper
+   ============================================================ */
+.cloud-file-layout-wrapper {
+    width: 100%;
+    margin-left: 0.75rem;
+}
+
+.cloud-record-layout {
+    width: 100%;
+}
+
+/* ============================================================
+   Header (top area)
+   ============================================================ */
+.record-layout__header {
+    background: #ffffff;
+    border-radius: var(--lwc-borderRadiusMedium, 0.25rem);
+    box-shadow: var(--lwc-shadowDropDown, 0 2px 2px 0 rgba(0, 0, 0, 0.16));
+    padding: 0;
+    margin-bottom: 0.75rem;
+}
+
+.record-layout__header-top {
+    background: #f3f2f2;
+    padding: 1rem 1rem 0.75rem 1rem;
+    border-radius: var(--lwc-borderRadiusMedium, 0.25rem)
+        var(--lwc-borderRadiusMedium, 0.25rem) 0 0;
+}
+
+.record-layout__header-bottom {
+    padding: 0.7rem 0.25rem;
+}
+
+.record-layout__header-icon {
+    border-radius: 0.25rem;
+}
+
+.cloud-file-file-type {
+    color: #444444;
+    margin-top: -4px;
+}
+
+.cloud-file-file-name {
+    margin-top: -3px;
+}
+
+.cloud-record-layout-compact {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.cloud-record-layout-compact .slds-grid {
+    flex-wrap: nowrap;
+}
+
+/* Hide compact fields based on screen width */
+@media (max-width: 820px) {
+    .cloud-record-layout-compact .slds-grid > .slds-col:nth-child(4) {
+        display: none;
+    }
+}
+
+@media (max-width: 615px) {
+    .cloud-record-layout-compact .slds-grid > .slds-col:nth-child(3),
+    .cloud-record-layout-compact .slds-grid > .slds-col:nth-child(4) {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .cloud-record-layout-compact .slds-grid > .slds-col:nth-child(2),
+    .cloud-record-layout-compact .slds-grid > .slds-col:nth-child(3),
+    .cloud-record-layout-compact .slds-grid > .slds-col:nth-child(4) {
+        display: none;
+    }
+}
+
+/* Compact field wrappers */
+.cloud-compact-field {
+    width: 100%;
+}
+
+.cloud-compact-field_owner {
+    display: flex;
+    align-items: center;
+}
+
+.cloud-compact-field-owner-icon {
+    margin-left: 0.25rem;
+}
+
+/* ============================================================
+   Spinners — Header & Main Content
+   ============================================================ */
+.record-layout__header-spinner,
+.record-layout__main-spinner {
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================================
+   Main + Side region card layout
+   ============================================================ */
+.record-layout__card {
+    background: #ffffff;
+    border-radius: var(--lwc-borderRadiusMedium, 0.25rem);
+    box-shadow: var(--lwc-shadowDropDown, 0 2px 2px 0 rgba(0, 0, 0, 0.16));
+}
+
+.gcdc-hidden {
+    display:none
+}
+
+.gcdc-relative {
+	position: relative;
+}
+
+.record-layout-main-region {
+    padding-left: 0;
+}
+
+@media (max-width: 1023px) {
+    .record-layout-main-region {
+        padding-right: 0 !important;
+        margin-bottom: 0.75rem;
+    }
+}
+
+.record-layout-side-region {
+    padding-left: 0;
+    padding-right: 0;
+}

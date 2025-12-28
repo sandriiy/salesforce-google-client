@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Source__c</fullName>
+    <inlineHelpText>Specifies the source from which this file was uploaded.</inlineHelpText>
+    <label>Source</label>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Notes &amp; Attachments</fullName>
+                <default>false</default>
+                <label>Notes &amp; Attachments</label>
+            </value>
+            <value>
+                <fullName>Uploader</fullName>
+                <default>false</default>
+                <label>Uploader</label>
+            </value>
+            <value>
+                <fullName>File Details</fullName>
+                <default>false</default>
+                <label>File Details</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

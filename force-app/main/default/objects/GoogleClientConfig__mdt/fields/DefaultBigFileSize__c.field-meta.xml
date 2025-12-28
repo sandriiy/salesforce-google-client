@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>DefaultBigFileSize__c</fullName>
+    <defaultValue>2097152</defaultValue>
+    <description>Specifies the maximum file size (in bytes) that will be used for generating a preview. Setting a value that is too high may cause a heap size limit exception. The default value is 2097152 bytes (2 MB).</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Specifies the maximum file size (in bytes) that will be used for generating a preview. Setting a value that is too high may cause a heap size limit exception. The default value is 2097152 bytes (2 MB).</inlineHelpText>
+    <label>Default Big File Size</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

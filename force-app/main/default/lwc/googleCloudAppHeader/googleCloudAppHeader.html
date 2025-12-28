@@ -1,0 +1,24 @@
+<template>
+	<section class="header" role="banner">
+		<div class="left">
+			<div class="appIcon" aria-hidden="true">
+				<lightning-icon
+					icon-name="utility:thunder"
+					size="small"
+					variant="inverse"
+				></lightning-icon>
+			</div>
+
+			<h1 class="title" title={titleLabel}>{titleLabel}</h1>
+		</div>
+
+		<div class="right">
+			<lightning-button
+				variant="neutral"
+				label={releaseButtonLabel}
+				title={releaseButtonLabel}
+				onclick={handleViewReleaseNotes}
+			></lightning-button>
+		</div>
+	</section>
+</template>

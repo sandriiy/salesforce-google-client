@@ -13,6 +13,8 @@
 </div>
 
 ## <span id="getting-started">Getting Started</span>
+> [!NOTE]
+> This open-source project can be backed by an enterprise support plan for production use, including hands-on setup, security guidance, troubleshooting, and prioritized feature extensions delivered in an upgrade-safe way. Contact [opensupport@cloudrylabs.com](mailto:opensupport@cloudrylabs.com) for details.
 
 **Salesforce Google Client** is an intelligent, server-to-server integration between Salesforce and Google Cloud, designed to simplify file management, reduce Salesforce storage costs, and make Google Drive files behave like native Salesforce files.
 
@@ -26,26 +28,6 @@ Beyond cost optimization, the client addresses long-standing limitations of Sale
 - Detailed usage and access reporting on the Google Cloud side
 - Secure public link generation
 
-Today, the focus is file management through Google Drive. Going forward, this project is designed to evolve into a broader **Google Workspace integration for Salesforce**, including deeper Workspace services and future Gemini-powered experiences.
-
-### Data Model
-
-The internal structure mirrors Salesforce Files:
-- **Google File**
-- **Google File Version**
-- **Google File Link**
-
-This design closely follows Salesforce’s native model (for example, `ContentDocument`, `ContentVersion`, and `ContentDocumentLink`), making the integration feel familiar, predictable, and fully aligned with Salesforce patterns.
-
-### Platform Compatibility
-
-The Salesforce Google Client has been tested with:
-- Service Cloud  
-- Sales Cloud  
-- Experience Cloud  
-
-It is designed to work consistently across other Salesforce Clouds as well.
-
 ## Installation
 
 This client depends on two required packages, which **must be installed first**:
@@ -56,31 +38,23 @@ This client depends on two required packages, which **must be installed first**:
 
 Once both dependencies are installed, you can install the Salesforce Google Client package:
 
-`sf package install --wait 20 --security-type AdminsOnly --package PACKAGE_ID_PLACEHOLDER`
+`sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MDsIAM`
 
 <br>
 <div align="center" style="display: flex; justify-content: space-between;">
-  <a href="SANDBOX_PACKAGE_INSTALL_URL_PLACEHOLDER">
+  <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MDsIAM">
     <img src="https://img.shields.io/badge/Install%20In%20Sandbox-blue?style=for-the-badge&logo=salesforce" alt="Install the Unlocked Package in Sandbox">
   </a>
-  <a href="PRODUCTION_PACKAGE_INSTALL_URL_PLACEHOLDER">
+  <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MDsIAM">
     <img src="https://img.shields.io/badge/Install%20In%20Production-blue?style=for-the-badge&logo=salesforce" alt="Install the Unlocked Package in Production">
   </a>
 </div>
 
 ## Usage Guide
 
-Comprehensive documentation is being actively developed and will be available via GitHub Pages.
+Comprehensive documentation is available via GitHub Pages and provides step-by-step guidance for setting up and using Salesforce Google Client in real-world environments.
 
-Documentation URL:  
-DOCUMENTATION_URL_PLACEHOLDER
-
-The documentation will cover:
-- Google Cloud and Salesforce configuration
-- Authentication and security setup
-- File operations and sharing
-- Public links and access control
-- Common patterns, examples, and best practices
+Documentation URL: https://sandriiy.github.io/salesforce-google-client/
 
 ## <span id="info">Acknowledgments</span>
 

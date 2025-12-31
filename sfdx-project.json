@@ -25,6 +25,7 @@
   "packageAliases": {
     "Google Drive Library Dependency": "04tJ80000011MDdIAM",
     "Nebula Logger Dependency": "04tKe0000011N4KIAU",
-    "Salesforce Google Client": "0HoJ8000000fxSVKAY"
+    "Salesforce Google Client": "0HoJ8000000fxSVKAY",
+    "Salesforce Google Client@1.0.0-1": "04tJ80000011MDsIAM"
   }
 }

@@ -1,0 +1,27 @@
+:root {
+	--md-default-bg-color: #0b0f14;
+}
+
+[data-md-color-scheme="slate"] {
+	--md-code-bg-color: rgba(255, 255, 255, 0.06);
+  	--md-default-fg-color: rgba(255, 255, 255, 0.92);
+	--md-default-fg-color--light: rgba(255, 255, 255, 0.85);
+	--md-default-fg-color--lighter: rgba(255, 255, 255, 0.75);
+}
+
+.md-header, .md-tabs {
+	backdrop-filter: blur(10px);
+}
+
+.md-typeset .admonition,
+.md-typeset details {
+	border-radius: 12px;
+}
+
+.md-header__title {
+  font-weight: 400 !important;
+}
+
+.md-header__topic {
+  font-weight: 400 !important;
+}

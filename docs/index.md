@@ -1,17 +1,9 @@
-# Welcome to MkDocs
+# Salesforce Google Client (Open-Source)
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+Welcome to the documentation for **Salesforce Google Client** — a server-to-server client between Salesforce and Google Cloud that makes Google Drive files behave like native Salesforce Files.
 
-## Commands
+## Where to start
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
-
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+- New here? → Go to [**Prerequisites**](prerequisites.md)
+- Ready to configure? → Jump to [**Setup**](setup/dependencies.md)
+- Want to embed components? → See [**Usage**](usage/core-clouds.md)

@@ -1,15 +1,81 @@
-site_name: SF Google Client Docs
+site_name: Google Client for Salesforce
 site_url: https://sandriiy.github.io/salesforce-google-client/
-
-theme:
-  name: material
-
 repo_url: https://github.com/sandriiy/salesforce-google-client
 edit_uri: edit/main/docs/
 
+theme:
+  name: material
+  logo: null
+
+  palette:
+    - scheme: slate
+      primary: black
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+
+plugins:
+  - search
+
+extra_css:
+  - stylesheets/extra.css
+
 nav:
-  - Home: index.md
+  - Overview:
+      - Home: index.md
+      - Prerequisites: prerequisites.md
+
   - Setup:
-      - Prerequisites: setup/prerequisites.md
-      - Authentication: setup/authentication.md
-  - Troubleshooting: troubleshooting.md
+      - Install Dependencies: setup/dependencies.md
+      - Google Cloud Setup: setup/google-cloud.md
+      - Install & Configure: setup/install-and-configure.md
+      - Permissions: setup/permissions.md
+
+  - Usage:
+      - Add Components (Core Clouds): usage/core-clouds.md
+      - Add Components (Experience Cloud): usage/experience-cloud.md
+
+  - Features:
+      - Capability Map: features/index.md
+      - Preview: features/preview.md
+      - Sharing: features/sharing.md
+      - Public Links: features/public-links.md
+      - Security & Audit: features/security.md
+
+  - Help:
+      - Known Issues & Fixes: help/known-issues.md
+      - FAQ: help/faq.md

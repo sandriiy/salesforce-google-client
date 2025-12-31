@@ -16,7 +16,7 @@
 > [!NOTE]
 > This open-source project can be backed by an enterprise support plan for production use, including hands-on setup, security guidance, troubleshooting, and prioritized feature extensions delivered in an upgrade-safe way. Contact [opensupport@cloudrylabs.com](mailto:opensupport@cloudrylabs.com) for details.
 
-**Salesforce Google Client** is an intelligent, server-to-server integration between Salesforce and Google Cloud, designed to simplify file management, reduce Salesforce storage costs, and make Google Drive files behave like native Salesforce files.
+**Salesforce Google Client** is an intelligent, server-to-server solution between Salesforce and Google Cloud, designed to simplify file management, reduce Salesforce storage costs, and make Google Drive files behave like native Salesforce files.
 
 At its core, this project allows you to connect Salesforce to Google Drive and work with files **exactly as if they were standard Salesforce Files** — upload, preview, details, share, generate public links  — while the actual files live securely inside Google Workspace. From a user perspective, there is no visible difference: files feel fully native to Salesforce, even though they are powered by Google Cloud.
 

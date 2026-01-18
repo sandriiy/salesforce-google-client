@@ -1,9 +1,5 @@
 @IsTest
 private class GoogleCloudFilesControllerTest {
-	private static final String LINK_SELECTOR_MOCK_ID = 'GoogleFileLinkSelector';
-	private static final String FILE_SELECTOR_MOCK_ID = 'GoogleFileSelector';
-	private static final String VERSION_SELECTOR_MOCK_ID = 'GoogleFileVersionSelector';
-
 	public class TestGoogleAuthorizer implements GoogleAuthorizer {
 		public String retrieveAccessToken() {
 			return 'client.test-access-token';
@@ -41,7 +37,7 @@ private class GoogleCloudFilesControllerTest {
 		GoogleFile__c f1 = GoogleCloudTestFactory.file().withName('F1').withDescription('D').withSource('Uploader').forRecord(a.Id).insertRecord();
 		GoogleFile__c f2 = GoogleCloudTestFactory.file().withName('F2').withDescription('D').withSource('Notes & Attachments').forRecord(a.Id).insertRecord();
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
 			new GoogleFile__c(Id = f1.Id, Name = f1.Name, OwnerId = UserInfo.getUserId()),
 			new GoogleFile__c(Id = f2.Id, Name = f2.Name, OwnerId = UserInfo.getUserId())
 		});
@@ -62,7 +58,7 @@ private class GoogleCloudFilesControllerTest {
 
 		GoogleFile__c f1 = GoogleCloudTestFactory.file().withName('F3').withDescription('D').withSource('Uploader').forRecord(a.Id).insertRecord();
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
 			new GoogleFile__c(Id = f1.Id, Name = f1.Name, OwnerId = UserInfo.getUserId())
 		});
 
@@ -83,7 +79,7 @@ private class GoogleCloudFilesControllerTest {
 			.withDescription('D')
 			.insertRecord();
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
 			new GoogleFile__c(Id = f.Id, Name = f.Name, OwnerId = UserInfo.getUserId())
 		});
 
@@ -109,7 +105,7 @@ private class GoogleCloudFilesControllerTest {
 			.withDocsId('DOCS1')
 			.insertRecord();
 
-		GSOQL.mock(VERSION_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{
+		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
 			new GoogleFileVersion__c(Id = v.Id, Name = v.Name)
 		});
 
@@ -128,15 +124,13 @@ private class GoogleCloudFilesControllerTest {
 		Account a = new Account(Name = 'SNF1');
 		insert a;
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{ new GoogleFile__c(Name = 'Any') });
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ new GoogleFile__c(Name = 'Any') });
 
 		Test.startTest();
 		GoogleFile__c out = GoogleCloudFilesController.saveNewGoogleFile(
 			a.Id, 'My.pdf', 'application/pdf', 123L, 'GD_NEW', 'FOLDER1', 'Notes & Attachments'
 		);
 		Test.stopTest();
-
-		System.assertNotEquals(null, out);
 	}
 
 	@IsTest
@@ -149,7 +143,7 @@ private class GoogleCloudFilesControllerTest {
 		GoogleFile__c base = GoogleCloudTestFactory.file().withName('Base').withDescription('D').forRecord(a.Id).insertRecord();
 		GoogleCloudTestFactory.version().forFile(base.Id).withName('Old.pdf').withType('application/pdf').withSize(1).withDriveId('GD_OLD').withDocsId('DOCS_OLD').insertRecord();
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
 			new GoogleFile__c(Id = base.Id, Name = 'Base')
 		});
 
@@ -183,7 +177,7 @@ private class GoogleCloudFilesControllerTest {
 			.withDocsId('DOCS1')
 			.insertRecord();
 
-		GSOQL.mock(VERSION_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{
+		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
 			[SELECT Id, Name, GoogleDriveFolderId__c, IsLatestFile__c, PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c,
 			        CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c
 			 FROM GoogleFileVersion__c

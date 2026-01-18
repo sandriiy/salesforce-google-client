@@ -15,26 +15,24 @@ These pages act as fixed navigation targets and host internal Google Client comp
 
 ### Pages you must create
 
-You must create **two empty Experience Cloud pages** with the following **API Names**:
+You must create **two empty Experience Cloud pages** with the following **URLs**:
 
 <ul>
   <li>
     <strong>gview-all-files</strong>
     <ul>
-      <li>Label can be set to something user-friendly (for example: “View All Files”).</li>
+      <li>Label/API can be set to something user-friendly (for example: “View All Files”).</li>
       <li>This page will be opened automatically when users click “View All”.</li>
     </ul>
   </li>
   <li>
     <strong>gfile-details</strong>
     <ul>
-      <li>Label can be set to something user-friendly (for example: “File Details”).</li>
+      <li>Label/API can be set to something user-friendly (for example: “File Details”).</li>
       <li>This page will be opened automatically when users click “View File Details“.</li>
     </ul>
   </li>
 </ul>
-
-The API names must match exactly. Labels can be changed freely and are overridden by the components at runtime.
 
 ## Step-by-step: creating the required pages
 
@@ -49,13 +47,15 @@ The API names must match exactly. Labels can be changed freely and are overridde
   <li>Create the first page:
     <ul>
       <li>Label: View All Files (or similar)</li>
-      <li>API Name: <strong>gview-all-files</strong></li>
+      <li>API Name: ViewAllFiles (or similar)</li>
+	  <li>URL: <strong>gview-all-files</strong></li>
     </ul>
   </li>
   <li>Create the second page:
     <ul>
       <li>Label: File Details (or similar)</li>
-      <li>API Name: <strong>gfile-details</strong></li>
+      <li>API Name: FileDetails (or similar)</li>
+	  <li>URL: <strong>gfile-details</strong></li>
     </ul>
   </li>
 </ol>

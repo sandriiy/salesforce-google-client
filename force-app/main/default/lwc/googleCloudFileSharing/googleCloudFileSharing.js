@@ -161,7 +161,7 @@ export default class GoogleCloudFileSharing extends LightningElement {
 
 		const recordLinks = (fileSharings?.recordsSharedTo || []).map(r => ({
 			Id: r.Id,
-			displayName: r.LinkedObjectId__c,
+			displayName: r.LinkedObjectName__c || r.LinkedObjectId__c,
 			targetId: r.LinkedObjectId__c,
 			kindLabel: r.LinkedObjectType__c || 'Record',
 			customerAccess: r.Visibility__c === 'AllUsers' ? true : false,

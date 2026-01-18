@@ -38,14 +38,14 @@ This client depends on two required packages, which **must be installed first**:
 
 Once both dependencies are installed, you can install the Salesforce Google Client package:
 
-`sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MDsIAM`
+`sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MEqIAM`
 
 <br>
 <div align="center" style="display: flex; justify-content: space-between;">
-  <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MDsIAM">
+  <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MEqIAM">
     <img src="https://img.shields.io/badge/Install%20In%20Sandbox-blue?style=for-the-badge&logo=salesforce" alt="Install the Unlocked Package in Sandbox">
   </a>
-  <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MDsIAM">
+  <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MEqIAM">
     <img src="https://img.shields.io/badge/Install%20In%20Production-blue?style=for-the-badge&logo=salesforce" alt="Install the Unlocked Package in Production">
   </a>
 </div>

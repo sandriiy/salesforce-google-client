@@ -11,7 +11,7 @@ export default class GoogleCloudFileDeleteModal extends LightningModal {
 	@track isLoading = false;
 
 	handleDeleteCancel(event) {
-		this.close('cancel');
+		this.close(false);
 	}
 
 	handleDeleteConfirm(event) {

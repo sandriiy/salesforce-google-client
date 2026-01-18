@@ -1,5 +1,5 @@
 <template>
-    <div class="slds-card slds-p-top_xx-small slds-p-horizontal_small slds-p-bottom_xx-small" style="position: relative;">
+    <div lwc:if={isAccessible} class="slds-card slds-p-top_xx-small slds-p-horizontal_small slds-p-bottom_xx-small" style="position: relative;">
         <div class="slds-p-horizontal_xx-small">
             <label class="dropzone slds-grid slds-grid_vertical-align-center slds-grid_align-center slds-gutters_small">
                 <span class="dropzone__icon">
@@ -24,7 +24,8 @@
                     type="file"
                     multiple={isMultiple}
                     accept={acceptedTypes}
-                    onchange={handleFileSelect}
+                    onclick={handleFileReset}
+                    onchange={handleFileSelected}
                     class="file-input"
                 />
             </label>

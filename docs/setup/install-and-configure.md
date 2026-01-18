@@ -6,7 +6,7 @@ Once dependencies are installed and auth is ready, install **Salesforce Google C
 
 Package install command:
 ```bash
-sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MDsIAM
+sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MEqIAM
 ```
 
 ## Configure in the Google Client App

@@ -58,18 +58,14 @@ export async function navigateToByAttributes(pageName, attributes, isNewWindow =
 	return url;
 }
 
-export async function updateTabPresentation({
-	label,
-	iconName,
-	iconOptions,
-	targetComponentName,
-	maxRetries = DEFAULT_TAB_MAX_RETRIES,
-	pollDelayMs = DEFAULT_TAB_POLL_DELAY_MS
-} = {}) {
+export async function updateTabPresentation({label, iconName, iconOptions, targetComponentName, maxRetries = DEFAULT_TAB_MAX_RETRIES, pollDelayMs = DEFAULT_TAB_POLL_DELAY_MS} = {}) {
+	if (isPreviewContext()) return;
+
 	if (isExperienceCloudContext()) {
 		if (label) {
 			try { document.title = label; } catch (e) {}
 		}
+
 		return { tabInfo: null, isWorkspace: false };
 	}
 
@@ -78,6 +74,7 @@ export async function updateTabPresentation({
 		if (label) {
 			try { document.title = label; } catch (e) {}
 		}
+
 		return { tabInfo: null, isWorkspace: false };
 	}
 
@@ -86,6 +83,7 @@ export async function updateTabPresentation({
 		if (iconName) {
 			await trySetTabIcon(ws.tabInfo?.tabId, iconName, iconOptions);
 		}
+
 		return { tabInfo: ws.tabInfo, isWorkspace: true };
 	}
 
@@ -109,10 +107,13 @@ export async function updateTabPresentation({
 	if (label) {
 		try { document.title = label; } catch (e) {}
 	}
+
 	return { tabInfo: null, isWorkspace: false };
 }
 
 export async function closeCurrentContext({ tabInfo, fallbackUrl } = {}) {
+	if (isPreviewContext()) return;
+
 	if (isExperienceCloudContext()) {
 		return closeInBrowser({ fallbackUrl: fallbackUrl || defaultExperienceHome() });
 	}
@@ -126,13 +127,9 @@ export async function closeCurrentContext({ tabInfo, fallbackUrl } = {}) {
 	return closeInBrowser({ fallbackUrl: fallbackUrl || '/lightning/page/home' });
 }
 
-export async function closeWhenReady({
-	getTabInfo,
-	maxRetries = DEFAULT_TAB_MAX_RETRIES,
-	pollDelayMs = DEFAULT_TAB_POLL_DELAY_MS,
-	fallbackUrl
-} = {}) {
-	// Experience doesn't need tab polling
+export async function closeWhenReady({getTabInfo, maxRetries = DEFAULT_TAB_MAX_RETRIES, pollDelayMs = DEFAULT_TAB_POLL_DELAY_MS, fallbackUrl} = {}) {
+	if (isPreviewContext()) return;
+	
 	if (isExperienceCloudContext()) {
 		return closeInBrowser({ fallbackUrl: fallbackUrl || defaultExperienceHome() });
 	}
@@ -149,37 +146,45 @@ export async function closeWhenReady({
 		await delay(pollDelayMs);
 	}
 
-	// fallback
 	return closeInBrowser({ fallbackUrl: fallbackUrl || '/lightning/page/home' });
 }
 
-export function isInSitePreview() {
+export function isPreviewContext() {
 	const loc = safeLocation();
-	if (!loc) return false;
+	if (!loc) {
+		return false;
+	}
 
 	const href = lower(loc.href);
 	const host = lower(loc.hostname);
 
-	if (hostMatches(host, [
-		'.builder.salesforce-communities.com',
-		'.preview.salesforce-communities.com',
-		'.livepreview.salesforce-communities.com',
-		'.builder.salesforce-experience.com',
-		'.preview.salesforce-experience.com',
-		'.livepreview.salesforce-experience.com'
-	])) {
-		return true;
-	}
-	if (host.includes('--sitestudio') || host.includes('--sitepreview') || host.includes('--livepreview')) {
+	if (href.includes('/visualeditor/appbuilder.app')) {
 		return true;
 	}
 
-	return (
-		href.includes('sitepreview') ||
-		href.includes('livepreview') ||
-		href.includes('live-preview') ||
-		href.includes('.builder.')
-	);
+	if (hostMatches(host, [
+		'.builder.salesforce-experience.com'
+	])) {
+		return true;
+	}
+
+	if (host.includes('--sitepreview') || host.includes('--livepreview')) {
+		return true;
+	}
+
+	const PREVIEW_TOKENS = [
+		'sitepreview',
+		'livepreview',
+		'live-preview',
+		'live.',
+		'.builder.'
+	];
+
+	if (PREVIEW_TOKENS.some(token => href.includes(token))) {
+		return true;
+	}
+
+	return false;
 }
 
 export function isExperienceCloudContext({ allowSoftGuess = false } = {}) {
@@ -190,8 +195,6 @@ export function isExperienceCloudContext({ allowSoftGuess = false } = {}) {
 	const path = lower(loc.pathname);
 
 	if (pathStartsWith(path, ['/lightning', '/lightning/'])) return false;
-
-	if (isInSitePreview()) return true;
 
 	if (hasPathSegment(path, 's')) return true;
 

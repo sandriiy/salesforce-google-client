@@ -1,8 +1,5 @@
 @IsTest
 private class GoogleCloudFilesViewControllerTest {
-	private static final String FILE_SELECTOR_MOCK_ID = 'GoogleFileSelector';
-	private static final String VERSION_SELECTOR_MOCK_ID = 'GoogleFileVersionSelector';
-
 	public class TestGoogleAuthorizer implements GoogleAuthorizer {
 		public String retrieveAccessToken() {
 			return 'client.test-access-token';
@@ -32,7 +29,7 @@ private class GoogleCloudFilesViewControllerTest {
 	private static void fetchFileHeaderDetailsTestSuccessMissing() {
 		initMocks();
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn(new List<SObject>());
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>());
 
 		Test.startTest();
 		GoogleFileHeaderInfoDTO out = GoogleCloudFilesViewController.fetchFileHeaderDetails('a0B000000000001AAA');
@@ -53,7 +50,7 @@ private class GoogleCloudFilesViewControllerTest {
 			.withDescription('D')
 			.insertRecord();
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
 			new GoogleFile__c(Id = f.Id, Name = f.Name, OwnerId = UserInfo.getUserId())
 		});
 
@@ -82,7 +79,7 @@ private class GoogleCloudFilesViewControllerTest {
 			.withDocsId('DOCS1')
 			.insertRecord();
 
-		GSOQL.mock(VERSION_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{
+		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
 			new GoogleFileVersion__c(Id = v.Id, Name = v.Name, GoogleFileId__c = f.Id)
 		});
 

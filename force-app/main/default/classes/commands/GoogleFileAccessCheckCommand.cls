@@ -1,5 +1,6 @@
 public without sharing class GoogleFileAccessCheckCommand {
 	public class GoogleFileAccessCheckException extends Exception {}
+	public enum AccessLevel { View, Edit}
 
 	private List<GoogleFile__c> inputFiles = new List<GoogleFile__c>();
 	private Set<Id> fileIds = new Set<Id>();
@@ -19,7 +20,7 @@ public without sharing class GoogleFileAccessCheckCommand {
 		if (fileRecordId != null) {
 			inputFiles.add(new GoogleFile__c(Id = fileRecordId));
 		}
-		
+
 		return this;
 	}
 
@@ -40,22 +41,61 @@ public without sharing class GoogleFileAccessCheckCommand {
 		Boolean isInternalUser = isInternalUserType(targetUser.UserType);
 
 		Map<Id, Id> fileIdToOwnerId = loadFileOwners(fileIds, inputFiles);
-		Map<Id, List<GoogleFile__Share>> fileIdToShares = loadSharesForUserAndGroups(fileIds, targetUserId);
+
+		Set<Id> ownedFileIds = new Set<Id>();
+		Set<Id> nonOwnedFileIds = new Set<Id>();
+
+		for (Id fileId : fileIds) {
+			Id ownerId = fileIdToOwnerId.get(fileId);
+			if (ownerId != null && ownerId == targetUserId) {
+				ownedFileIds.add(fileId);
+			} else {
+				nonOwnedFileIds.add(fileId);
+			}
+		}
+
+		List<GoogleFile__c> accessibleFiles = new List<GoogleFile__c>();
+
+		if (!ownedFileIds.isEmpty()) {
+			for (GoogleFile__c fileRecord : inputFiles) {
+				if (fileRecord != null && fileRecord.Id != null && ownedFileIds.contains(fileRecord.Id)) {
+					fileRecord.UserAccessLevel__c = toAccessLevelString(AccessLevel.Edit);
+					accessibleFiles.add(fileRecord);
+				}
+			}
+		}
+
+		if (nonOwnedFileIds.isEmpty()) {
+			return accessibleFiles;
+		}
+
+		Map<Id, List<GoogleFile__Share>> fileIdToShares = loadSharesForUserAndGroups(nonOwnedFileIds, targetUserId);
 
 		Logger.info('Files Access Check: ' + fileIdToOwnerId.keySet());
 
-		LinkCompilationResult linkData = loadLinks(fileIds);
+		LinkCompilationResult linkData = loadLinks(nonOwnedFileIds);
 		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, linkData.inferredRecordIds);
 
-		return resolveAccessibleFiles(
-			inputFiles,
-			targetUserId,
-			isInternalUser,
-			fileIdToOwnerId,
-			fileIdToShares,
-			linkData.linksByFileId,
-			parentAccessByRecordId
+		List<GoogleFile__c> nonOwnedFiles = new List<GoogleFile__c>();
+		for (GoogleFile__c fileRecord : inputFiles) {
+			if (fileRecord != null && fileRecord.Id != null && nonOwnedFileIds.contains(fileRecord.Id)) {
+				nonOwnedFiles.add(fileRecord);
+			}
+		}
+
+		accessibleFiles.addAll(
+			resolveAccessibleFiles(
+				nonOwnedFiles,
+				targetUserId,
+				isInternalUser,
+				fileIdToOwnerId,
+				fileIdToShares,
+				linkData.linksByFileId,
+				parentAccessByRecordId
+			)
 		);
+
+		return accessibleFiles;
 	}
 
 	private void resolveDefaults() {
@@ -213,7 +253,7 @@ public without sharing class GoogleFileAccessCheckCommand {
 		for (GoogleFile__c localFile : files) {
 			if (localFile == null || localFile.Id == null) continue;
 
-			String resolvedAccess = resolveFileAccess(
+			AccessLevel resolvedAccess = resolveFileAccess(
 				localFile.Id,
 				userId,
 				isInternalUser,
@@ -224,7 +264,7 @@ public without sharing class GoogleFileAccessCheckCommand {
 			);
 
 			if (resolvedAccess != null) {
-				localFile.UserAccessLevel__c = resolvedAccess;
+				localFile.UserAccessLevel__c = toAccessLevelString(resolvedAccess);
 				accessibleFiles.add(localFile);
 			}
 		}
@@ -232,7 +272,7 @@ public without sharing class GoogleFileAccessCheckCommand {
 		return accessibleFiles;
 	}
 
-	private String resolveFileAccess(
+	private AccessLevel resolveFileAccess(
 		Id fileId,
 		Id userId,
 		Boolean isInternalUser,
@@ -242,69 +282,69 @@ public without sharing class GoogleFileAccessCheckCommand {
 		Map<Id, UserRecordAccess> parentAccessByRecordId
 	) {
 		if (ownerId != null && ownerId == userId) {
-			return 'Edit';
+			return AccessLevel.Edit;
 		}
 
-		String accessFromShares = resolveBestAccessFromShares(shares);
-		if (accessFromShares == 'Edit') {
-			return 'Edit';
+		AccessLevel accessFromShares = resolveBestAccessFromShares(shares);
+		if (accessFromShares == AccessLevel.Edit) {
+			return AccessLevel.Edit;
 		}
 
-		String accessFromLinks = resolveBestAccessFromLinks(links, isInternalUser, parentAccessByRecordId);
+		AccessLevel accessFromLinks = resolveBestAccessFromLinks(links, isInternalUser, parentAccessByRecordId);
 		return pickHigherAccess(accessFromShares, accessFromLinks);
 	}
 
-	private String resolveBestAccessFromShares(List<GoogleFile__Share> shares) {
+	private AccessLevel resolveBestAccessFromShares(List<GoogleFile__Share> shares) {
 		if (shares == null || shares.isEmpty()) return null;
 
-		String resolved = null;
+		AccessLevel resolved = null;
 
 		for (GoogleFile__Share shareRecord : shares) {
-			String candidate = mapShareAccessLevel(shareRecord.AccessLevel);
+			AccessLevel candidate = mapShareAccessLevel(shareRecord.AccessLevel);
 			resolved = pickHigherAccess(resolved, candidate);
 
-			if (resolved == 'Edit') {
-				return 'Edit';
+			if (resolved == AccessLevel.Edit) {
+				return AccessLevel.Edit;
 			}
 		}
 
 		return resolved;
 	}
 
-	private String resolveBestAccessFromLinks(List<GoogleFileLink__c> links, Boolean isInternalUser, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+	private AccessLevel resolveBestAccessFromLinks(List<GoogleFileLink__c> links, Boolean isInternalUser, Map<Id, UserRecordAccess> parentAccessByRecordId) {
 		if (links == null || links.isEmpty()) return null;
 
-		String resolved = null;
+		AccessLevel resolved = null;
 
 		for (GoogleFileLink__c link : links) {
 			if (!grantsVisibility(link.Visibility__c, isInternalUser)) {
 				continue;
 			}
 
-			String candidate = mapLinkAccessLevel(link, parentAccessByRecordId);
+			AccessLevel candidate = mapLinkAccessLevel(link, parentAccessByRecordId);
 			resolved = pickHigherAccess(resolved, candidate);
 
-			if (resolved == 'Edit') {
-				return 'Edit';
+			if (resolved == AccessLevel.Edit) {
+				return AccessLevel.Edit;
 			}
 		}
 
 		return resolved;
 	}
 
-	private String mapShareAccessLevel(String shareAccessLevel) {
+	private AccessLevel mapShareAccessLevel(String shareAccessLevel) {
 		if (String.isBlank(shareAccessLevel)) return null;
-		return shareAccessLevel == 'Read' ? 'View' : 'Edit';
+		return shareAccessLevel == 'Read' ? AccessLevel.View : AccessLevel.Edit;
 	}
 
-	private String mapLinkAccessLevel(GoogleFileLink__c link, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+	private AccessLevel mapLinkAccessLevel(GoogleFileLink__c link, Map<Id, UserRecordAccess> parentAccessByRecordId) {
 		if (link == null) return null;
 
 		if (link.ShareType__c == 'Viewer') {
-			return 'View';
+			return AccessLevel.View;
 		}
 		if (link.ShareType__c == 'Collaborator') {
-			return 'Edit';
+			return AccessLevel.Edit;
 		}
 		if (link.ShareType__c == 'InferredFromRecord') {
 			return inferLevelFromParent(parentAccessByRecordId.get((Id) link.LinkedObjectId__c));
@@ -313,7 +353,7 @@ public without sharing class GoogleFileAccessCheckCommand {
 		return null;
 	}
 
-	private String pickHigherAccess(String current, String candidate) {
+	private AccessLevel pickHigherAccess(AccessLevel current, AccessLevel candidate) {
 		if (candidate == null) return current;
 		if (current == null) return candidate;
 
@@ -323,9 +363,9 @@ public without sharing class GoogleFileAccessCheckCommand {
 		return candidateRank > currentRank ? candidate : current;
 	}
 
-	private Integer accessRank(String accessLevel) {
-		if (accessLevel == 'Edit') return 2;
-		if (accessLevel == 'View') return 1;
+	private Integer accessRank(AccessLevel level) {
+		if (level == AccessLevel.Edit) return 2;
+		if (level == AccessLevel.View) return 1;
 		return 0;
 	}
 
@@ -351,10 +391,14 @@ public without sharing class GoogleFileAccessCheckCommand {
 		return false;
 	}
 
-	private String inferLevelFromParent(UserRecordAccess userRecordAccess) {
+	private AccessLevel inferLevelFromParent(UserRecordAccess userRecordAccess) {
 		if (userRecordAccess == null) return null;
-		if (userRecordAccess.HasEditAccess) return 'Edit';
-		if (userRecordAccess.HasReadAccess) return 'View';
+		if (userRecordAccess.HasEditAccess) return AccessLevel.Edit;
+		if (userRecordAccess.HasReadAccess) return AccessLevel.View;
 		return null;
+	}
+
+	private String toAccessLevelString(AccessLevel level) {
+		return level == null ? null : String.valueOf(level);
 	}
 }

@@ -49,7 +49,7 @@ Provides full Google Drive file management for a Salesforce record in a familiar
 
 ### Google Client: Uploader
 
-Provides a dedicated upload interface for adding files to Google Drive from Salesforce.
+Provides a dedicated upload interface for adding files to Google Drive from Salesforce. <strong>This component is available for use in Screen Flows since version 1.1</strong>
 
 <strong>Where it can be used</strong>
 <ul>

@@ -1,9 +1,5 @@
 @IsTest
 private class GoogleCloudFilesSharingControllerTest {
-	private static final String LINK_SELECTOR_MOCK_ID = 'GoogleFileLinkSelector';
-	private static final String FILE_SELECTOR_MOCK_ID = 'GoogleFileSelector';
-	private static final String VERSION_SELECTOR_MOCK_ID = 'GoogleFileVersionSelector';
-
 	public class TestGoogleAuthorizer implements GoogleAuthorizer {
 		public String retrieveAccessToken() {
 			return 'client.test-access-token';
@@ -40,7 +36,7 @@ private class GoogleCloudFilesSharingControllerTest {
 			.withLinkedType('Account')
 			.insertRecord();
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
 			new GoogleFile__c(Id = f.Id, OwnerId = UserInfo.getUserId(), Name = f.Name)
 		});
 

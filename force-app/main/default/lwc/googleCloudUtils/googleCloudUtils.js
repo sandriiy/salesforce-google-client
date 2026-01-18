@@ -68,6 +68,21 @@ const isEmpty = (value) => {
     return value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
 };
 
+const isPermissionMissing = (error) => {
+    const message = (typeof error === 'string')
+        ? error
+        : error?.body?.message || error?.message || '';
+
+    if (!message) {
+        return false;
+    }
+
+    // Pattern Salesforce uses: "You do not have access to the Apex class named 'X'"
+    const regex = /you do not have access to the apex class named/i;
+
+    return regex.test(message);
+}
+
 const generateId = (length = 8) => {
     return Array.from(crypto.getRandomValues(new Uint8Array(length)))
         .map(b => b.toString(36))
@@ -312,4 +327,4 @@ const findRoleForAccessType = (access) => {
 	return 'Viewer';
 };
 
-export { showToast, isEmpty, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, findIconForRecordType, findRoleForAccessType };
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, findIconForRecordType, findRoleForAccessType };

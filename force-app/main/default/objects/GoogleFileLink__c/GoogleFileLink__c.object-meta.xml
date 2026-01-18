@@ -143,6 +143,7 @@
     <allowInChatterGroups>false</allowInChatterGroups>
     <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
     <deploymentStatus>Deployed</deploymentStatus>
+    <deprecated>false</deprecated>
     <description>Links a Google File record to any Salesforce record, defining how file access is derived or shared. Each link represents a relationship between one GoogleFile__c and a specific parent record (standard or custom) and determines the type of access (Viewer, Collaborator, or Inferred from Record).</description>
     <enableActivities>false</enableActivities>
     <enableBulkApi>true</enableBulkApi>

@@ -6,6 +6,7 @@
                     id="file-upload-input"
                     type="file"
                     accept="*"
+                    onclick={handleFileReset}
                     onchange={handleFileSelected}
                     class="file-input gcdc-hidden"
                 />
@@ -172,7 +173,7 @@
     </div>
     <c-google-cloud-file-preview
         lwc:ref="filePreviewModal"
-        onnewversionrequest={handleNewVersionUpload}
+        onnewversionrequest={handleNewVersionRequest}
         onfilechange={handleFileEdit}
         onfiledeleted={handleFileDelete}
     ></c-google-cloud-file-preview>

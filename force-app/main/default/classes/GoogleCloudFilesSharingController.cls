@@ -1,52 +1,32 @@
 public with sharing class GoogleCloudFilesSharingController {
 	@AuraEnabled
-    public static GoogleSharingInfoDTO fetchSharingDetails(Id localFileRecordId) {
-		GoogleLocalFileService recordService = new GoogleLocalFileService();
-        Map<Id,GoogleSharingInfoDTO> sharingInfo = recordService.retrieveSharingDetails()
-			.forFile(localFileRecordId)
-			.includeAll()
-			.fetch();
-
-		return sharingInfo.get(localFileRecordId);
+	public static GoogleSharingInfoDTO fetchSharingDetails(Id localFileRecordId) {
+		GoogleLocalFileSharingService sharingService = new GoogleLocalFileSharingService();
+		return sharingService.fetchSharingDetails(localFileRecordId);
 	}
 
 	@AuraEnabled
-    public static Id createNewSharing(Id localFileRecordId, String shareToObjectApiName, Id shareToRecordId, String uiAccessLevel) {
-		GoogleLocalFileService recordService = new GoogleLocalFileService();
-        return recordService.createGoogleFileSharing()
-			.forFile(localFileRecordId)
-			.shareTo(shareToObjectApiName, shareToRecordId)
-			.withUiAccessLevel(uiAccessLevel)
-			.apply();
+	public static Id createNewSharing(Id localFileRecordId, String shareToObjectApiName, Id shareToRecordId, String uiAccessLevel) {
+		GoogleLocalFileSharingService sharingService = new GoogleLocalFileSharingService();
+		return sharingService.createNewSharing(localFileRecordId, shareToObjectApiName, shareToRecordId, uiAccessLevel);
 	}
 
 	@AuraEnabled
-    public static void modifyExistingSharingAccess(Id localFileRecordId, Id shareToRecordId, String uiAccessLevel) {
-		GoogleLocalFileService recordService = new GoogleLocalFileService();
-        recordService.modifyGoogleFileSharing()
-			.forFile(localFileRecordId)
-			.shareTo(shareToRecordId)
-			.withUiAccessLevel(uiAccessLevel)
-			.apply();
+	public static void modifyExistingSharingAccess(Id localFileRecordId, Id shareToRecordId, String uiAccessLevel) {
+		GoogleLocalFileSharingService sharingService = new GoogleLocalFileSharingService();
+		sharingService.modifyExistingSharingAccess(localFileRecordId, shareToRecordId, uiAccessLevel);
 	}
 
 	@AuraEnabled
-    public static void modifyExistingSharingVisibility(Id localFileRecordId, Id shareToRecordId, String visibility) {
-		GoogleLocalFileService recordService = new GoogleLocalFileService();
-        recordService.modifyGoogleFileSharing()
-			.forFile(localFileRecordId)
-			.shareTo(shareToRecordId)
-			.withVisibility(visibility)
-			.apply();
+	public static void modifyExistingSharingVisibility(Id localFileRecordId, Id shareToRecordId, String visibility) {
+		GoogleLocalFileSharingService sharingService = new GoogleLocalFileSharingService();
+		sharingService.modifyExistingSharingVisibility(localFileRecordId, shareToRecordId, visibility);
 	}
 
 	@AuraEnabled
-    public static void deleteExistingSharing(Id localFileRecordId, Id shareToRecordId) {
-		GoogleLocalFileService recordService = new GoogleLocalFileService();
-        recordService.deleteGoogleFileSharing()
-			.forFile(localFileRecordId)
-			.shareTo(shareToRecordId)
-			.apply();
+	public static void deleteExistingSharing(Id localFileRecordId, Id shareToRecordId) {
+		GoogleLocalFileSharingService sharingService = new GoogleLocalFileSharingService();
+		sharingService.deleteExistingSharing(localFileRecordId, shareToRecordId);
 	}
 
     @AuraEnabled

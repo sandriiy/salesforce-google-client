@@ -12,6 +12,7 @@ import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
 
 import {
 	isEmpty,
+	isPermissionMissing,
 	showToast,
 	normalizeAllowedTypes,
 	formatExistingLocalFiles,
@@ -36,6 +37,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@api fileTypes;
 	@api maximumSizeMb;
 
+	@track isAccessible = true; // false when the user does not have permission
 	@track isNewFileVersionUpload = false;
 	@track subscription;
 	@track tabInfo;
@@ -123,6 +125,11 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 				});
 			}
 		}
+	}
+
+	handleFileReset(event) {
+		const input = event.target;
+		input.value = null;
 	}
 
 	handleColumnSort(event) {
@@ -285,8 +292,12 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 				this.sortRecords(this.sortedBy);
 			})
 			.catch((error) => {
-				console.error(error);
-				showToast(this, UNABLE_TO_RETRIEVE_FILES, DEFAULT_FAILED_RETRIEVE_MESSAGE, 'error');
+				if (isPermissionMissing(error)) {
+					this.isAccessible = false;
+					this.closeTabWhenReady();
+				} else {
+					showToast(this, UNABLE_TO_RETRIEVE_FILES, DEFAULT_FAILED_RETRIEVE_MESSAGE, 'error');
+				}
 			})
 			.finally(() => {
 				this.isLoading = false;

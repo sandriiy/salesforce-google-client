@@ -1,8 +1,8 @@
 <template>
-    <c-google-cloud-base-card title={title} icon-name={icon} badge-text={filesCount} show-footer={files.length} onheaderclick={openSeparateTab}>
+    <c-google-cloud-base-card lwc:if={isAccessible} title={title} icon-name={icon} badge-text={filesCount} show-footer={files.length} onheaderclick={openSeparateTab}>
         <div slot="actions">
             <lightning-button onclick={handleFileUpload} label="Upload Files" variant="neutral"></lightning-button>
-            <input id="file-upload-input" type="file" multiple={isMultiple} accept={acceptedTypes} onchange={handleFileSelected} class="file-input gcdc-hidden"/>
+            <input id="file-upload-input" type="file" multiple={isMultiple} accept={acceptedTypes} onclick={handleFileReset} onchange={handleFileSelected} class="file-input gcdc-hidden"/>
         </div>
         <div lwc:if={files.length} class="slds-grid slds-wrap slds-card__body slds-card__body_inner">
             <template for:each={files} for:item="file">

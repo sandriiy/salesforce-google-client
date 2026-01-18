@@ -36,6 +36,7 @@ public inherited sharing class GoogleFileLinkSelector extends GSOQL implements G
             GoogleFileLink__c.LinkedObjectId__c
         );
         with(
+			GoogleFileLink__c.LinkedObjectName__c,
             GoogleFileLink__c.LinkedObjectType__c,
             GoogleFileLink__c.ShareType__c,
             GoogleFileLink__c.Visibility__c

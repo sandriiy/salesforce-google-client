@@ -2,7 +2,8 @@ import { LightningElement, api, track, wire } from 'lwc';
 import { saveGoogleFileLocally, uploadInChunks, upload } from 'c/googleCloudUploadUtils';
 import { BIG_FILE_SIZE } from 'c/googleCloudUploadUtils';
 import { DEFAULT_FILE_UPLOAD_FAILURE, DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
-import { isEmpty, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension } from 'c/googleCloudUtils';
+import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension } from 'c/googleCloudUtils';
+import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
 
 import GoogleCloudFileDeleteModal from 'c/googleCloudFileDeleteModal';
 import retrieveGoogleFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveGoogleFiles';
@@ -17,6 +18,7 @@ export default class GoogleCloudUploader extends LightningElement {
     @api allowMultipleFiles;
 	@api maxFileCount;
 
+	@track isAccessible = true; // false when the user does not have permission
 	@track isNewFileVersionUpload = false;
 	@track isLoading = true;
     @track files = [];
@@ -25,10 +27,9 @@ export default class GoogleCloudUploader extends LightningElement {
 		this.loadFiles();
 	}
 
-    async handleFileSelect(event) {
+    async handleFileSelected(event) {
         const selectedFiles = [...event.target.files];
 		const allowedFiles = this.retrieveAllowedFiles(selectedFiles);
-
 		let isNotAllowed = this.validateAllowedFileAmount(allowedFiles);
 		if (isNotAllowed) return;
         
@@ -50,19 +51,24 @@ export default class GoogleCloudUploader extends LightningElement {
         }
     }
 
+	handleFileReset(event) {
+		const input = event.target;
+		input.value = null;
+	}
+
     handleLargeFileUpload(selectedFile) {
 		let newFilePlaceholder = createNewFilePlaceholder(selectedFile);
 		this.files.unshift(newFilePlaceholder);
 
 		uploadInChunks(newFilePlaceholder.id, selectedFile, {
-			onProgress: (uID, pID, id, progress) => {
+			onProgress: (uploadedId, parentFolderId, id, progress) => {
 				const fileIndex = this.files.findIndex(file => file.id === id);
 				const file = this.files[fileIndex];
 
 				if (progress < 100) {
 					this.files[fileIndex] = { ...file, progress: String(progress) };
 				} else {
-					this.files[fileIndex] = { ...file, parentFolderId: pID, id: uID };
+					this.files[fileIndex] = { ...file, parentFolderId: parentFolderId, id: uploadedId };
 					this.saveGoogleFileLocally(this.files[fileIndex]);
 					this.showFileToast();
 				}
@@ -84,11 +90,16 @@ export default class GoogleCloudUploader extends LightningElement {
 		this.files.unshift(newFilePlaceholder);
 
 		upload(newFilePlaceholder.id, selectedFile, {
-			onSuccess: (uID, pID, id) => {
+			onSuccess: (uploadedId, parentFolderId, id) => {
 				const fileIndex = this.files.findIndex(file => file.id === id);
 				const file = this.files[fileIndex];
 
-				this.files[fileIndex] = { ...file, parentFolderId: pID, id: uID };
+				this.files[fileIndex] = {
+					...file, 
+					parentFolderId: parentFolderId, 
+					id: uploadedId 
+				};
+
 				this.saveGoogleFileLocally(this.files[fileIndex]);
 				this.showFileToast();
 			}
@@ -149,6 +160,8 @@ export default class GoogleCloudUploader extends LightningElement {
 
 			this.isNewFileVersionUpload = true;
 			this.openFileSelection();
+
+			this.dispatchEvent(new FlowAttributeChangeEvent('files', this.files));
 		}
 	}
 
@@ -175,6 +188,8 @@ export default class GoogleCloudUploader extends LightningElement {
 
 			this.dispatchEvent(new CustomEvent('filedeleted', { detail: eventDetail }));
 			this.handleFilesRefresh();
+
+			this.dispatchEvent(new FlowAttributeChangeEvent('files', this.files));
 		}
 	}
 	
@@ -232,7 +247,7 @@ export default class GoogleCloudUploader extends LightningElement {
     }
 
 	validateAllowedFileAmount(newFiles) {
-		if (isEmpty(this.maxFileCount)) return false;
+		if (isEmpty(this.maxFileCount) || this.isNewFileVersionUpload === true) return false;
 
 		const existingCount = Array.isArray(this.files) ? this.files.length : 0;
 		const newCount = newFiles.length;
@@ -272,13 +287,14 @@ export default class GoogleCloudUploader extends LightningElement {
 				let fileIndex = this.files.findIndex(file => file.id === fileToUpload.id);
 				this.files[fileIndex] = formattedExistingFiles[0];
 
-				const eventDetail = { 
+				const eventDetail = {
 					fileName: fileUpdated.name,
 					fileId: fileUpdated.localId,
 					numberOfFiles: this.files?.length ?? 0
 				};
 
 				this.dispatchEvent(new CustomEvent('filecreated', { detail: eventDetail }));
+				this.dispatchEvent(new FlowAttributeChangeEvent('files', this.files));
             }).catch(error => {
                 showToast(
 					this,
@@ -298,12 +314,16 @@ export default class GoogleCloudUploader extends LightningElement {
 
 			this.files = formatExistingLocalFiles(data);
 		} catch (error) {
-			showToast(
-				this,
-				UNABLE_TO_RETRIEVE_FILES,
-				DEFAULT_FAILED_RETRIEVE_MESSAGE,
-				'error'
-			);
+			if (isPermissionMissing(error)) {
+				this.isAccessible = false;
+			} else {
+				showToast(
+					this,
+					UNABLE_TO_RETRIEVE_FILES,
+					DEFAULT_FAILED_RETRIEVE_MESSAGE,
+					'error'
+				);
+			}
 		} finally {
 			this.isLoading = false;
 		}

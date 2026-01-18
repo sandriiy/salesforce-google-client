@@ -7,7 +7,7 @@ import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
 
 import { startConfigSession } from 'c/googleCloudConfigBus';
 import { navigateToByAttributes, isExperienceCloudContext } from 'c/googleCloudCrossPlatformUtils';
-import { isEmpty, showToast, normalizeAllowedTypes, formatExistingLocalFiles, formatDateAsDayMonthYear, extractFileExtension } from 'c/googleCloudUtils';
+import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, formatDateAsDayMonthYear, extractFileExtension } from 'c/googleCloudUtils';
 import { DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
 import { INT_VIEW_ALL_FILES_PAGE_NAME, EXT_VIEW_ALL_FILES_PAGE_NAME } from 'c/googleCloudCrossPlatformUtils';
 
@@ -33,6 +33,7 @@ export default class GoogleCloudAttachments extends NavigationMixin(LightningEle
 	@track isLoading = true;
 	@track isNewFileVersionUpload = false;
 	@track isExperienceSite = false;
+	@track isAccessible = true; // false when the user does not have permission
 
 	wiredFilesResult;
 	@wire(retrieveGoogleFiles, { relatedRecordId: '$recordId', source: UPLOAD_SOURCE, recordsCount: '$countVisibleFiles' })
@@ -44,12 +45,16 @@ export default class GoogleCloudAttachments extends NavigationMixin(LightningEle
             this.files = this.formatFilesInfo(formatExistingLocalFiles(data));
 			this.isLoading = false;
         } else if (error) {
-            showToast(
-				this,
-				UNABLE_TO_RETRIEVE_FILES,
-				DEFAULT_FAILED_RETRIEVE_MESSAGE,
-				'error'
-			);
+			if (isPermissionMissing(error)) {
+				this.isAccessible = false;
+			} else {
+				showToast(
+					this,
+					UNABLE_TO_RETRIEVE_FILES,
+					DEFAULT_FAILED_RETRIEVE_MESSAGE,
+					'error'
+				);
+			}
 
 			this.isLoading = false;
         }
@@ -96,6 +101,11 @@ export default class GoogleCloudAttachments extends NavigationMixin(LightningEle
 			await refreshApex(this.wiredFilesResult);
 			this.isNewFileVersionUpload = false;
 		}
+	}
+
+	handleFileReset(event) {
+		const input = event.target;
+		input.value = null;
 	}
 
 	async handleFileDelete(event) {

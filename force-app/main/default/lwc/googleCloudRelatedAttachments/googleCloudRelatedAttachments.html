@@ -1,5 +1,5 @@
 <template>
-    <div class="slds-card slds-card_boundary slds-grid slds-grid_vertical slds-grid--vertical full-page-container">
+    <div lwc:if={isAccessible} class="slds-card slds-card_boundary slds-grid slds-grid_vertical slds-grid--vertical full-page-container">
         <div class="slds-page-header_object-home slds-page-header--object-home slds-page-header_joined slds-page-header_bleed slds-page-header slds-shrink-none full-page-header">
             <div class="slds-grid">
                 <div class="slds-col slds-has-flexi-truncate">
@@ -17,7 +17,7 @@
                 </div>
                 <div class="slds-col slds-no-flex slds-grid slds-align-top slds-p-bottom--xx-small">
                     <lightning-button onclick={handleFileUpload} label="Upload Files" variant="neutral"></lightning-button>
-                    <input id="file-upload-input" type="file" multiple={isMultiple} accept={acceptedTypes} onchange={handleFileSelected} class="file-input gcdc-hidden"/>
+                    <input id="file-upload-input" type="file" multiple={isMultiple} accept={acceptedTypes} onclick={handleFileReset} onchange={handleFileSelected} class="file-input gcdc-hidden"/>
                 </div>
             </div>
             <div class="slds-grid">

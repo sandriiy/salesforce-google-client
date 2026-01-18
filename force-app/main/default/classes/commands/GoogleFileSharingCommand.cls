@@ -239,11 +239,10 @@ public without sharing class GoogleFileSharingCommand {
 				return new List<GoogleFileLink__c>();
 			}
 
-			return [
-				SELECT Id, ShareType__c, Visibility__c, LinkedObjectType__c, LinkedObjectId__c
-				FROM GoogleFileLink__c
-				WHERE GoogleFileId__c = :localFile.Id
-			];
+			return (List<GoogleFileLink__c>) GoogleFileLinkSelector.query()
+				.withBaseFields()
+				.byParentId(localFile.Id)
+				.toList();
 		}
 	}
 

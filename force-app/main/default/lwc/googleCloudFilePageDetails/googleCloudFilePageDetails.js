@@ -141,9 +141,18 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 			let versionsComponent = this.refs.versions;
 			versionsComponent.refresh();
 
+			// Close preview if it was open
+			let previewComponent = this.refs.filePreviewModal;
+			previewComponent.close();
+
 			const headerDto = await fetchFileHeaderDetails({ localFileRecordId: this.recordId });
 			this.headerFieldData = headerDto?.compactFields || [];
 		}
+	}
+
+	handleFileReset(event) {
+		const input = event.target;
+		input.value = null;
 	}
 
 	handleNewVersionRequest(event) {
@@ -173,15 +182,15 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 			localFileRecordId: this.recordId
 		});
 
-		if (isDeleted) {
-			showToast(this, `File "${this.fileName}" was deleted`, '', 'success');
-			setTimeout(() => {
-				closeWhenReady({
-					getTabInfo: () => this.tabInfo,
-					maxRetries: TAB_MAX_RETRIES,
-					pollDelayMs: TAB_POLL_DELAY_MS
-				});
-			}, 2000);
+		if (isDeleted === true) {
+			this.isHeaderLoading = true;
+			this.isMainLoading = true;
+
+			closeWhenReady({
+				getTabInfo: () => this.tabInfo,
+				maxRetries: TAB_MAX_RETRIES,
+				pollDelayMs: TAB_POLL_DELAY_MS
+			});
 		}
 	}
 

@@ -1,8 +1,5 @@
 @IsTest
 private class GoogleLocalFileVersionServiceTest {
-	private static final String FILE_SELECTOR_MOCK_ID = 'GoogleFileSelector';
-	private static final String VERSION_SELECTOR_MOCK_ID = 'GoogleFileVersionSelector';
-
 	public class TestGoogleAuthorizer implements GoogleAuthorizer {
 		public String retrieveAccessToken() {
 			return 'client.test-access-token';
@@ -39,7 +36,7 @@ private class GoogleLocalFileVersionServiceTest {
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('File A').withDescription('Old').insertRecord();
 		GoogleFileVersion__c v = GoogleCloudTestFactory.version().forFile(f.Id).withName('V1.docx').withDescription('New').isLatest(true).withType('application/msword').withSize(1).withDriveId('GD_FILE_ID').withDocsId(null).insertRecord();
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{ mockFileAllFields(f.Id, 'Old') });
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ mockFileAllFields(f.Id, 'Old') });
 
 		GoogleFileVersion__c oldV = new GoogleFileVersion__c(Id = v.Id, Description__c = 'Old', GoogleFileId__c = f.Id, IsLatestFile__c = true);
 
@@ -58,7 +55,7 @@ private class GoogleLocalFileVersionServiceTest {
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('File B').withDescription('Desc').insertRecord();
 		GoogleFileVersion__c v = GoogleCloudTestFactory.version().forFile(f.Id).withName('V1.docx').withDescription('Desc').isLatest(true).withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document').withSize(1).withDriveId('GD_SRC_ID').withDocsId(null).insertRecord();
 
-		GSOQL.mock(VERSION_SELECTOR_MOCK_ID).thenReturn(new List<SObject>{ mockVersionAdvancedFields(v.Id) });
+		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{ mockVersionAdvancedFields(v.Id) });
 
 		Test.startTest();
 		new GoogleLocalFileVersionService().applyPreviewStateIfEligible(new List<GoogleFileVersion__c>{ v });
@@ -76,7 +73,7 @@ private class GoogleLocalFileVersionServiceTest {
 		GoogleFileVersion__c newest = GoogleCloudTestFactory.version().forFile(f.Id).withName('VNewest.pdf').withDescription('D-New').isLatest(false).withType('application/pdf').withSize(1).withDriveId('GD_NEW').withDocsId('DOCS_NEW').insertRecord();
 		GoogleFileVersion__c older = GoogleCloudTestFactory.version().forFile(f.Id).withName('VOlder.pdf').withDescription('D-Old').isLatest(true).withType('application/pdf').withSize(1).withDriveId('GD_OLD').withDocsId('DOCS_OLD').insertRecord();
 
-		GSOQL.mock(FILE_SELECTOR_MOCK_ID).thenReturn([
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn([
 			SELECT Id,
 				(SELECT Id, IsLatestFile__c FROM GoogleFileVersions__r ORDER BY CreatedDate DESC)
 			FROM GoogleFile__c
@@ -96,7 +93,7 @@ private class GoogleLocalFileVersionServiceTest {
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('File P').withDescription('Desc').insertRecord();
 		GoogleFileVersion__c v = GoogleCloudTestFactory.version().forFile(f.Id).withName('VPDF.pdf').withDescription('Desc').isLatest(true).withType('application/pdf').withSize(1).withDriveId('GD_FILE_ID').withDocsId('IGNORED_FOR_PDF').insertRecord();
 
-		GSOQL.mock(VERSION_SELECTOR_MOCK_ID).thenReturn(mockVersionAdvancedFields(v.Id));
+		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(mockVersionAdvancedFields(v.Id));
 
 		Test.startTest();
 		String b64 = new GoogleLocalFileVersionService().exportPreviewBase64BodyIfEligible(v.Id);
@@ -113,7 +110,7 @@ private class GoogleLocalFileVersionServiceTest {
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('File Dwn').withDescription('Desc').insertRecord();
 		GoogleFileVersion__c v = GoogleCloudTestFactory.version().forFile(f.Id).withName('VDWN.pdf').withDescription('Desc').isLatest(true).withType('application/pdf').withSize(1).withDriveId('GD_FILE_ID').withDocsId('IGNORED').insertRecord();
 
-		GSOQL.mock(VERSION_SELECTOR_MOCK_ID).thenReturn(mockVersionAdvancedFields(v.Id));
+		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(mockVersionAdvancedFields(v.Id));
 
 		Test.startTest();
 		String b1 = new GoogleLocalFileVersionService().downloadFileBase64Body(v.Id);
@@ -133,7 +130,7 @@ private class GoogleLocalFileVersionServiceTest {
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('File PL').withDescription('Desc').insertRecord();
 		GoogleFileVersion__c v = GoogleCloudTestFactory.version().forFile(f.Id).withName('VPL.pdf').withDescription('Desc').isLatest(true).withType('application/pdf').withSize(1).withDriveId('GD_FILE_ID').withDocsId('IGNORED').insertRecord();
 
-		GSOQL.mock(VERSION_SELECTOR_MOCK_ID).thenReturn(mockVersionAdvancedFields(v.Id));
+		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(mockVersionAdvancedFields(v.Id));
 
 		Test.startTest();
 		new GoogleLocalFileVersionService().applyPublicLinkSharing(v.Id, System.now().addDays(7));
@@ -158,7 +155,7 @@ private class GoogleLocalFileVersionServiceTest {
 		v.PublicLinkStatus__c = 'Active';
 		update v;
 
-		GSOQL.mock(VERSION_SELECTOR_MOCK_ID).thenReturn(mockVersionAdvancedFields(v.Id));
+		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(mockVersionAdvancedFields(v.Id));
 
 		Test.startTest();
 		new GoogleLocalFileVersionService().removePublicLinkSharing(v.Id);

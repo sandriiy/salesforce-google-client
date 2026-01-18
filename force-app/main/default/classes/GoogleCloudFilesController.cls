@@ -84,33 +84,33 @@ public with sharing class GoogleCloudFilesController {
 
     @AuraEnabled
     public static GoogleFile__c saveNewGoogleFile(Id recordId, String fileName, String fileType, Long fileSize, String googleDriveId, String parentFolderId, String source) {
-        GoogleLocalFileService recordService = new GoogleLocalFileService();
-        return recordService.createGoogleFileRecord()
-            .setRecordId(recordId)
-            .setFileName(fileName)
-            .setFileType(fileType)
-            .setFileSize(fileSize)
-            .setGoogleDriveId(googleDriveId)
-            .setParentFolderId(parentFolderId)
-            .setSource(source)
-            .save();
+        GoogleFileCreateRequestDTO request = new GoogleFileCreateRequestDTO();
+		request.recordId = recordId;
+		request.fileName = fileName;
+		request.fileType = fileType;
+		request.fileSize = fileSize;
+		request.googleDriveId = googleDriveId;
+		request.parentFolderId = parentFolderId;
+		request.source = source;
+
+		GoogleLocalFileService recordService = new GoogleLocalFileService();
+		return recordService.createGoogleFileRecord(request);
     }
 
 	@AuraEnabled
     public static GoogleFile__c saveNewGoogleFileVersion(Id recordId, Id localGoogleFileId, String fileName, String fileType, Long fileSize, String googleDriveId, String parentFolderId, String source) {
-		GoogleLocalFileService recordService = new GoogleLocalFileService();
-        GoogleFile__c result = recordService.createGoogleFileRecord()
-            .setRecordId(recordId)
-			.setLocalGoogleFileId(localGoogleFileId)
-            .setFileName(fileName)
-            .setFileType(fileType)
-            .setFileSize(fileSize)
-            .setGoogleDriveId(googleDriveId)
-            .setParentFolderId(parentFolderId)
-            .setSource(source)
-            .save();
+		GoogleFileCreateRequestDTO request = new GoogleFileCreateRequestDTO();
+		request.recordId = recordId;
+		request.localGoogleFileId = localGoogleFileId;
+		request.fileName = fileName;
+		request.fileType = fileType;
+		request.fileSize = fileSize;
+		request.googleDriveId = googleDriveId;
+		request.parentFolderId = parentFolderId;
+		request.source = source;
 
-		return result;
+		GoogleLocalFileService recordService = new GoogleLocalFileService();
+		return recordService.createGoogleFileRecord(request);
     }
 
 	@AuraEnabled

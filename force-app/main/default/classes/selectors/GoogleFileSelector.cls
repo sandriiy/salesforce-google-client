@@ -15,7 +15,11 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
         GoogleFile__c.OwnerId,
         GoogleFile__c.CreatedById
     };
-	
+
+	public static final List<SObjectField> ROLL_UP_FIELDS = new List<SObjectField>{
+        GoogleFile__c.NumberOfVersions__c,
+        GoogleFile__c.NumberOfLinks__c
+    };
 
     public static GoogleFileSelector query() {
         return new GoogleFileSelector();
@@ -33,7 +37,7 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
         return this;
     }
 
-	public GoogleFileSelector byRecordIds(List<Id> recordIds) {
+    public GoogleFileSelector byRecordIds(List<Id> recordIds) {
         whereAre(Filter.with(GoogleFile__c.Id).equal(recordIds));
         return this;
     }
@@ -57,6 +61,11 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
         return this;
     }
 
+	public GoogleFileSelector byOwner(Id userId) {
+        whereAre(Filter.with(GoogleFile__c.OwnerId).equal(userId));
+        return this;
+    }
+
     public GoogleFileSelector withSpecificFields(List<String> fields) {
         with(String.join(fields, ','));
         return this;
@@ -69,7 +78,8 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
 
     public GoogleFileSelector withAllFields() {
         with(BASE_FIELDS);
-		with(DETAIL_FIELDS);
+        with(DETAIL_FIELDS);
+		with(ROLL_UP_FIELDS);
         return this;
     }
 
@@ -101,6 +111,45 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
 
     public GoogleFileSelector limitTo(Integer n) {
         setLimit(n);
+        return this;
+    }
+
+    public GoogleFileSelector bySharedToPrincipals(Set<Id> principalIds) {
+        whereAre(GSOQL.Filter.id().isIn(
+			GSOQL.InnerJoin.of(GoogleFile__Share.SObjectType)
+				.with(GoogleFile__Share.ParentId)
+				.whereAre(GSOQL.Filter.with(GoogleFile__Share.UserOrGroupId).equal(principalIds))
+        ));
+
+        return this;
+    }
+
+   	public GoogleFileSelector bySharedToUserOrGroups(Set<Id> userAndGroupIds) {
+        whereAre(
+            GSOQL.Filter.id().isIn(
+                GSOQL.InnerJoin.of(GoogleFile__Share.SObjectType)
+                    .with(GoogleFile__Share.ParentId)
+                    .whereAre(
+                        GSOQL.Filter.with(GoogleFile__Share.UserOrGroupId).equal(userAndGroupIds)
+                    )
+            )
+        );
+        return this;
+    }
+
+    public GoogleFileSelector byDirectLinkForInternalVisibility() {
+        whereAre(
+            GSOQL.Filter.id().isIn(
+                GSOQL.InnerJoin.of(GoogleFileLink__c.SObjectType)
+                    .with(GoogleFileLink__c.GoogleFileId__c)
+                    .whereAre(
+                        GSOQL.FilterGroup
+                            .add(GSOQL.Filter.with(GoogleFileLink__c.ShareType__c).equal(new List<String>{ 'Viewer', 'Collaborator' }))
+                            .add(GSOQL.Filter.with(GoogleFileLink__c.Visibility__c).equal(new List<String>{ 'AllUsers', 'InternalUsers' }))
+                            .conditionLogic('1 AND 2')
+                    )
+            )
+        );
         return this;
     }
 }

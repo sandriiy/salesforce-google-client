@@ -4,8 +4,6 @@ public with sharing class GoogleFileLinkTriggerHandler extends GTriggerHandler {
 	private Map<Id, GoogleFileLink__c> newRecordsMap;
 	private Map<Id, GoogleFileLink__c> oldRecordsMap;
 
-	private GoogleLocalFileLinkService fileLinkService;
-
 	public GoogleFileLinkTriggerHandler() {
 		super('GoogleFileLinkTriggerHandler');
 
@@ -13,11 +11,10 @@ public with sharing class GoogleFileLinkTriggerHandler extends GTriggerHandler {
 		this.oldRecords = (List<GoogleFileLink__c>) Trigger.old;
 		this.newRecordsMap = (Map<Id, GoogleFileLink__c>) Trigger.newMap;
 		this.oldRecordsMap = (Map<Id, GoogleFileLink__c>) Trigger.oldMap;
-
-		this.fileLinkService = new GoogleLocalFileLinkService();
 	}
 
 	public override void beforeInsert() {
-		this.fileLinkService.applyLinkedRecordAttributes(this.newRecords);
+		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
+		enrichmentService.applyLinkedRecordAttributes(this.newRecords);
 	}
 }

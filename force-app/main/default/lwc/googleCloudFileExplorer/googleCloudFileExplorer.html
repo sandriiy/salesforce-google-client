@@ -1,0 +1,92 @@
+<template>
+    <div class="slds-page-header slds-page-header_record-home gcdc-file-explorer-header">
+        <div class="slds-page-header__row">
+            <div class="slds-page-header__col-title">
+                <div class="slds-media">
+                    <div class="slds-media__body">
+                        <div class="slds-page-header__name">
+                            <div class="slds-page-header__name-title">
+                                <span class="slds-page-header__title slds-truncate gcdc-file-explorer-section-label" title="Files">
+                                    Files
+                                </span>
+                            </div>
+                        </div>
+
+                        <h1 class="slds-page-header__title slds-truncate gcdc-file-explorer-page-title" title={pageTitle}>
+                            {pageTitle}
+                        </h1>
+
+                        <p class="slds-text-body_small slds-m-top_x-small gcdc-file-explorer-meta-line">
+                            {metaLine}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slds-page-header__col-actions">
+                <div class="slds-page-header__controls">
+                    <div class="slds-page-header__control">
+                        <lightning-button
+                            label="Upload Files"
+                            onclick={handleUploadClick}
+                        ></lightning-button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input class="gcdc-file-explorer-file-input slds-hide" type="file" multiple onchange={handleFileSelected} onclick={handleFileInputReset}/>
+
+    <div class="gcdc-file-explorer-container slds-p-around_none">
+        <div class="gcdc-file-explorer-layout">
+            <aside class="gcdc-file-explorer-left-nav slds-border_right" style="margin-top: -1rem;">
+                <lightning-vertical-navigation selected-item={selectedNavKey} onselect={handleNavSelect}>
+                    <lightning-vertical-navigation-section>
+                        <lightning-vertical-navigation-item
+                            label="Owned by Me"
+                            name="owned">
+                        </lightning-vertical-navigation-item>
+                        <lightning-vertical-navigation-item
+                            label="Shared with Me"
+                            name="shared">
+                        </lightning-vertical-navigation-item>
+                    </lightning-vertical-navigation-section>
+                </lightning-vertical-navigation>
+            </aside>
+
+            <main class="gcdc-file-explorer-main-area">
+                <template lwc:if={hasError}>
+                    <div class="slds-notify slds-notify_alert slds-alert_error slds-m-around_medium" role="alert">
+                        <span class="slds-assistive-text">Error</span>
+                        <h2>{errorMessage}</h2>
+                    </div>
+                </template>
+                <template lwc:else>
+                    <div class="gcdc-file-explorer-table-wrap">
+                        <lightning-datatable
+                            key-field="localId"
+                            data={visibleRows}
+                            columns={columns}
+                            hide-checkbox-column
+                            sorted-by={sortedBy}
+                            sorted-direction={sortedDirection}
+                            onsort={handleSort}
+                            onrowaction={handleRowAction}
+                            class="gcdc-file-explorer-table"
+                        ></lightning-datatable>
+                    </div>
+                </template>
+            </main>
+        </div>
+    </div>
+
+    <lightning-spinner lwc:if={isLoading} alternative-text="Loading files..." size="medium"></lightning-spinner>
+
+    <c-google-cloud-file-preview
+        lwc:ref="filePreviewModal"
+        onnewversionrequest={handleNewVersionRequest}
+        onfilechange={handleFileEdit}
+        onfiledeleted={handleFileDelete}>
+    </c-google-cloud-file-preview>
+</template>

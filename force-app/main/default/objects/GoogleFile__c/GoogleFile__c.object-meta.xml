@@ -149,6 +149,7 @@
     <allowInChatterGroups>false</allowInChatterGroups>
     <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
     <deploymentStatus>Deployed</deploymentStatus>
+    <deprecated>false</deprecated>
     <enableActivities>false</enableActivities>
     <enableBulkApi>true</enableBulkApi>
     <enableFeeds>false</enableFeeds>
@@ -161,7 +162,6 @@
     <externalSharingModel>Private</externalSharingModel>
     <label>Google File</label>
     <nameField>
-        <encryptionScheme>None</encryptionScheme>
         <label>Google File Name</label>
         <type>Text</type>
     </nameField>

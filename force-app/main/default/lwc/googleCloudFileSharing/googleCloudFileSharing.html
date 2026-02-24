@@ -6,6 +6,13 @@
     </template>
     <template lwc:else>
         <div class="share-container">
+            <div lwc:if={showOwnerRestrictionMessage} class="owner-message slds-m-bottom_small" role="status" aria-live="polite">
+                <p class="owner-message__text">
+                    You have collaborator access to this file, so you may run into limitations when creating or updating sharing settings.
+                    If that happens, please contact the file owner and ask them to perform the change on your behalf.
+                </p>
+            </div>
+            
             <div class="sharebar">
                 <div class="slds-grid">
                     <div class="slds-col slds-size_2-of-12 slds-m-right_x-small">
@@ -97,6 +104,7 @@
                                             <td></td>
                                         </tr>
                                     </template>
+
                                     <template lwc:if={sharingDetails.principals}>
                                         <template for:each={sharingDetails.principals} for:item="principal">
                                             <tr key={principal.Id} data-target={principal.targetId}>
@@ -122,11 +130,13 @@
                                                         value={principal.role}
                                                         options={shareRoleOptions}
                                                         onchange={handleSharingRoleChange}
-                                                        variant="label-hidden">
+                                                        variant="label-hidden"
+                                                        disabled={principal.isSelf}>
                                                     </lightning-combobox>
                                                 </td>
                                                 <td>
                                                     <lightning-button-icon
+                                                        lwc:if={principal.isNotSelf}
                                                         class="slds-p-left_xx-small"
                                                         icon-name="utility:close"
                                                         variant="bare"
@@ -139,6 +149,7 @@
                                             </tr>
                                         </template>
                                     </template>
+
                                     <template lwc:if={sharingDetails.recordLinks}>
                                         <template for:each={sharingDetails.recordLinks} for:item="recordLink">
                                             <tr key={recordLink.Id} data-target={recordLink.targetId}>

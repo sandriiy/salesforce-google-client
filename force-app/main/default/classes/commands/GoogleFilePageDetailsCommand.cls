@@ -30,7 +30,7 @@ public without sharing class GoogleFilePageDetailsCommand {
 
 			HeaderQueryPlan queryPlan = buildHeaderQueryPlan(requestedHeaderFields, fieldTokenByApiName);
 
-			Logger.info('File Header Retrieve: Local File ID: ' + fileId + '; Requested Fields: ' + String.join(queryPlan.requestedFieldApiNames, ','));
+			Logger.info('File Header Retrieve: Local File ID: ' + fileId + '; Requested Fields: ' + String.join(queryPlan.requestedFieldApiNames, ',')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
 			GoogleFile__c fileRecord = fetchFileRecord(fileId, queryPlan.selectFields);
 			if (fileRecord == null) {

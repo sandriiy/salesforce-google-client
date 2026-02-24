@@ -1,0 +1,281 @@
+<template>
+    <div class="drive-config-shell">
+        <div class="slds-grid slds-wrap slds-gutters_small">
+            <div class="slds-col slds-size_1-of-1 slds-large-size_8-of-12">
+                <section class="config-card">
+                    <div class="config-padding">
+                        <div class="config-step-bar">
+                            <button class={authorizationStepClass} data-step="auth" onclick={handleStepClick} type="button">
+                                <span class="step-indicator"></span>
+                                <span class="step-label">Authorization</span>
+                            </button>
+
+                            <button class={folderStepClass} data-step="folder" onclick={handleStepClick} type="button">
+                                <span class="step-indicator"></span>
+                                <span class="step-label">Folder Structure</span>
+                            </button>
+                        </div>
+
+                        <template lwc:if={isAuthStep}>
+                            <div class="slds-m-top_medium">
+                                <lightning-radio-group
+                                    name="authMode"
+                                    label="Setup type"
+                                    options={authModeOptions}
+                                    value={authMode}
+                                    type="radio"
+                                    onchange={handleAuthModeChange}
+                                ></lightning-radio-group>
+
+                                <template lwc:if={isDeveloperMode}>
+                                    <div class="slds-m-top_small">
+                                        <lightning-input
+                                            value={draft.customGoogleAuthorizerClass}
+                                            onchange={handleTextChange}
+                                            data-field="customGoogleAuthorizerClass"
+                                            label="Custom Google Authorizer Class"
+                                            field-level-help="Apex class name that implements GoogleAuthorizer and retrieves an access token."
+                                            placeholder="e.g. MyGoogleAuthorizer"
+                                            required
+                                        ></lightning-input>
+                                    </div>
+
+                                    <div class="info-panel slds-m-top_small">
+                                        <div class="info-title">Developer setup</div>
+                                        <div class="info-text">Use this if you want full control and already have (or plan to build) a custom authorizer class.</div>
+                                    </div>
+                                </template>
+
+                                <template lwc:if={isAdminMode}>
+                                    <div class="config-two-column-grid slds-m-top_small">
+                                        <lightning-input
+                                            value={draft.customGoogleServiceAccount}
+                                            onchange={handleTextChange}
+                                            data-field="customGoogleServiceAccount"
+                                            label="Service Account Email"
+                                            field-level-help="Service account email from Google Cloud Console (ends with iam.gserviceaccount.com)."
+                                            placeholder="e.g. drive-integration@my-project.iam.gserviceaccount.com"
+                                            required
+                                        ></lightning-input>
+
+                                        <lightning-input
+                                            value={draft.customGoogleCertificate}
+                                            onchange={handleTextChange}
+                                            data-field="customGoogleCertificate"
+                                            label="Salesforce Certificate Name"
+                                            field-level-help="Certificate uploaded in Setup → Certificate and Key Management."
+                                            placeholder="e.g. GoogleDriveServiceAccount"
+                                            required
+                                        ></lightning-input>
+                                    </div>
+
+                                    <div class="info-panel slds-m-top_small">
+                                        <div class="info-title">Admin setup</div>
+                                        <div class="info-text">Use this option if you’d like to provide your integration details and have us set up the integration for you, no coding required.</div>
+                                    </div>
+                                </template>
+
+                                <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+                                    <div class="action-buttons">
+                                        <lightning-button
+                                            variant="neutral"
+                                            label="Revert changes"
+                                            onclick={handleRevert}
+                                            disabled={busy}
+                                        ></lightning-button>
+
+                                        <lightning-button
+                                            class="slds-m-left_x-small"
+                                            variant="brand"
+                                            label={authPrimaryActionLabel}
+                                            onclick={handleAuthPrimaryAction}
+                                            disabled={busy}
+                                        ></lightning-button>
+
+                                        <template lwc:if={authorizationStepComplete}>
+                                            <div class="slds-m-left_x-small">
+                                                <lightning-button
+                                                    variant="brand"
+                                                    label="Next"
+                                                    onclick={goToFolderStep}
+                                                    disabled={busy}>
+                                                </lightning-button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template lwc:if={isFolderStep}>
+                            <div class="slds-m-top_medium">
+                                <lightning-input
+                                    value={draft.defaultGoogleUploadFolderId}
+                                    onchange={handleTextChange}
+                                    data-field="defaultGoogleUploadFolderId"
+                                    label="Default Upload Folder Id"
+                                    field-level-help="The ID of the Google Drive folder where files will be uploaded by default. Prefer a Shared Drive folder for org-wide ownership and simpler access management."
+                                    placeholder="e.g. 1a2B3cD4eF5g..."
+                                    required
+                                ></lightning-input>
+
+                                <div class="folder-structure-card slds-m-top_small">
+                                    <div class="folder-structure-header">
+                                        <div class="folder-structure-title">
+                                            Folder structure
+                                            <lightning-helptext content="Build a subfolder structure under the Default Upload Folder. Enable User and/or Record, then reorder using drag-and-drop or the arrow controls. Leave both options disabled to upload files directly into the default folder."></lightning-helptext>
+                                        </div>
+                                        <div class="folder-structure-preview">
+                                            <span class="preview-label">Preview:</span>
+                                            <span class="preview-path">{folderStructurePreview}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="folder-structure-grid slds-m-top_small">
+                                        <div class="folder-structure-item folder-structure-item-locked">
+                                            <div class="structure-item-left">
+                                                <div class="structure-item-title">Default upload folder</div>
+                                                <div class="structure-item-subtitle">Required start point</div>
+                                            </div>
+                                            <div class="structure-item-right">
+                                                <span class="structure-item-status">Always on</span>
+                                            </div>
+                                        </div>
+
+                                        <template for:each={structureItems} for:item="item">
+                                            <div
+                                                key={item.key}
+                                                class={item.containerClass}
+                                                data-key={item.key}
+                                                draggable={item.draggable}
+                                                ondragstart={handleDragStart}
+                                                ondragover={handleDragOver}
+                                                ondrop={handleDrop}
+                                                ondragend={handleDragEnd}
+                                            >
+                                                <div class="structure-item-left">
+                                                    <div class="structure-item-title">{item.title}</div>
+                                                    <div class="structure-item-subtitle">{item.subtitle}</div>
+                                                </div>
+
+                                                <div class="structure-item-right">
+                                                    <lightning-input
+                                                        class="structure-item-toggle"
+                                                        type="toggle"
+                                                        checked={item.enabled}
+                                                        onchange={handleStructureToggle}
+                                                        data-key={item.key}
+                                                        label="Enabled"
+                                                        variant="label-hidden"
+                                                    ></lightning-input>
+
+                                                    <div class="structure-item-reorder">
+                                                        <lightning-button-icon
+                                                            icon-name="utility:up"
+                                                            variant="bare"
+                                                            alternative-text="Move up"
+                                                            title="Move up"
+                                                            onclick={handleMoveUp}
+                                                            data-key={item.key}
+                                                            disabled={item.disableMoveUp}
+                                                        ></lightning-button-icon>
+
+                                                        <lightning-button-icon
+                                                            icon-name="utility:down"
+                                                            variant="bare"
+                                                            alternative-text="Move down"
+                                                            title="Move down"
+                                                            onclick={handleMoveDown}
+                                                            data-key={item.key}
+                                                            disabled={item.disableMoveDown}
+                                                        ></lightning-button-icon>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <div class="info-panel slds-m-top_small">
+                                        <div class="info-title">Usage</div>
+                                        <div class="info-text">Enable <b>User</b> folder to create a folder for each user and <b>Record</b> folder to create a folder for each record. When both options are enabled, the order defines the folder hierarchy (e.g., Record → User or User → Record). See the <b>Preview</b> in the top-right corner.</div>
+                                    </div>
+                                </div>
+
+                                <div class="slds-grid slds-grid_align-end slds-m-top_medium">
+                                    <lightning-button variant="neutral" label="Back" onclick={goToAuthStep} disabled={busy}></lightning-button>
+                                    <lightning-button class="slds-m-left_x-small" variant="brand" label="Save" onclick={handleSave} disabled={busy}></lightning-button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+            </div>
+
+            <div class="slds-col slds-size_1-of-1 slds-large-size_4-of-12">
+                <aside class="config-card config-quick-setup-right">
+                    <div class="config-padding">
+                        <div class="quick-setup-title">Quick Setup</div>
+
+                        <template lwc:if={isAdminMode}>
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">1</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Generate certificate</div>
+                                    <div class="quick-setup-step-text">Create a Service Account → Create a new Key → Convert it into a certificate.</div>
+                                </div>
+                            </div>
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">2</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Upload to Salesforce</div>
+                                    <div class="quick-setup-step-text">Setup → Certificate and Key Management.</div>
+                                </div>
+                            </div>
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">3</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Enter details</div>
+                                    <div class="quick-setup-step-text">Specify the Service Account email &amp; uploaded certificate name.</div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template lwc:if={isDeveloperMode}>
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">1</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Generate certificate</div>
+                                    <div class="quick-setup-step-text">Create a Service Account → Create a new Key → Convert it into a certificate.</div>
+                                </div>
+                            </div>
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">2</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Upload to Salesforce</div>
+                                    <div class="quick-setup-step-text">Setup → Certificate and Key Management.</div>
+                                </div>
+                            </div>
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">3</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Implement authorizer</div>
+                                    <div class="quick-setup-step-text">Create an Apex class that implements <b>GoogleAuthorizer</b> and returns an access token.</div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div class="content-divider"></div>
+
+                        <div class="quick-setup-button-row">
+                            <lightning-button
+                                variant="neutral"
+                                label="Open Quick Setup Guide"
+                                onclick={openQuickSetupGuide}
+                            ></lightning-button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+</template>

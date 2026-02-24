@@ -1,0 +1,48 @@
+.gcdc-file-explorer-header {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: var(--slds-g-sizing-border-1) solid var(--slds-s-container-color-border);
+}
+
+.gcdc-file-explorer-container {
+    background: var(--lwc-colorBackgroundAlt, #ffffff);
+}
+
+.gcdc-file-explorer-layout {
+    display: flex;
+    min-height: calc(100vh - 160px);
+    overflow-x: auto;
+}
+
+.gcdc-file-explorer-left-nav {
+    width: 280px;
+    min-width: 240px;
+    background: var(--lwc-colorBackgroundAlt, #ffffff);
+}
+
+.gcdc-file-explorer-main-area {
+    flex: 1;
+    min-width: 0;
+}
+
+.gcdc-file-explorer-table-wrap {
+    background: var(--lwc-colorBackgroundAlt, #ffffff);
+}
+
+.gcdc-file-explorer-table {
+    --_slds-c-datatable-radius-border: 0px !important;
+}
+
+.gcdc-file-explorer-section-label {
+    font-size: 0.85rem;
+    color: var(--lwc-colorTextLabel, #706e6b);
+}
+
+.gcdc-file-explorer-page-title {
+    font-size: 1.65rem;
+    font-weight: 400;
+}
+
+.gcdc-file-explorer-meta-line {
+    color: var(--lwc-colorTextLabel, #706e6b);
+}

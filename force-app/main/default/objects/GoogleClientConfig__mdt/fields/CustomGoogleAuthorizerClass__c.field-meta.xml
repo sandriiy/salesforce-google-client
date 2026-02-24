@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>CustomGoogleAuthorizerClass__c</fullName>
+    <deprecated>false</deprecated>
     <description>The name of your Apex class responsible for obtaining the access token. This class must implement the CustomGoogleAuthorizer interface.</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>

@@ -1,0 +1,96 @@
+public without sharing class GoogleLocalFileVersionService {
+	public class GoogleFileVersionException extends Exception {}
+
+	private final GoogleMetadataConfigService googleConfig;
+	private final GoogleDriveApiProvider remoteFileService;
+
+	public GoogleLocalFileVersionService() {
+		this.googleConfig = new GoogleMetadataConfigService();
+		this.remoteFileService = new GoogleDriveApiProvider();
+	}
+
+	public String exportPreviewBase64BodyIfEligible(Id localFileVersionId) {
+		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
+
+		assertPreviewEligible(localFileVersion);
+
+		GoogleFileEntity fileResult = exportOrDownloadAsPdf(localFileVersion);
+		return EncodingUtil.base64Encode(fileResult.bodyAsBlob);
+	}
+
+	public String downloadFileBase64Body(Id localFileVersionId) {
+		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
+
+		GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
+		GoogleFileEntity remoteFileEntity = removeGoogleDrive.files().retrieve().download(localFileVersion.GoogleDriveFileId__c)
+			.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.CONTENT)
+			.setSearchOnAllDrives(true)
+			.execute();
+
+		return EncodingUtil.base64Encode(remoteFileEntity.bodyAsBlob);
+	}
+
+	public String downloadFileBase64Body(Id localFileVersionId, Long startByte, Long endByte) {
+		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
+
+		GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
+		GoogleFileEntity remoteFileEntity = removeGoogleDrive.files().retrieve().download(localFileVersion.GoogleDriveFileId__c)
+			.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.CONTENT)
+			.setPartialRange(startByte, endByte)
+			.setSearchOnAllDrives(true)
+			.execute();
+
+		return EncodingUtil.base64Encode(remoteFileEntity.bodyAsBlob);
+	}
+
+	private GoogleFileVersion__c queryLocalFileVersion(Id localFileVersionId) {
+		return (GoogleFileVersion__c) GoogleFileVersionSelector.query()
+			.withAdvancedFields()
+			.byId(localFileVersionId)
+			.toObject();
+	}
+
+	private GoogleFileEntity exportOrDownloadAsPdf(GoogleFileVersion__c localFileVersion) {
+		GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
+
+		if (localFileVersion.Type__c == 'application/pdf') {
+			return removeGoogleDrive.files().retrieve().download(localFileVersion.GoogleDriveFileId__c)
+				.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.CONTENT)
+				.setSearchOnAllDrives(true)
+				.execute();
+		}
+
+		return removeGoogleDrive.files().retrieve().export(localFileVersion.GoogleDocsFileId__c)
+			.setMimeType('application/pdf')
+			.setSearchOnAllDrives(true)
+			.execute();
+	}
+
+	private void assertPreviewEligible(GoogleFileVersion__c localFileVersion) {
+		if (this.googleConfig.isPreviewDisabled() || localFileVersion == null) {
+			throw new GoogleFileVersionException('Preview Unavailable. Please download it to open');
+		}
+
+		if (localFileVersion.Size__c > this.googleConfig.getBigFileSizeInBytes()) {
+			throw new GoogleFileVersionException('Oops! This file is too large to preview. Please download it to open');
+		} else if (isVersionPreviewDocInProgress(localFileVersion)) {
+			throw new GoogleFileVersionException('Preview is being prepared. Please try again shortly or download the file');
+		} else if (isVersionPreviewDocUnavailable(localFileVersion)) {
+			throw new GoogleFileVersionException('Preview unavailable for the selected file type. Please download the file to open');
+		}
+	}
+
+	private Boolean isVersionPreviewDocInProgress(GoogleFileVersion__c fileVersion) {
+		return (
+			fileVersion.IsPreviewableFile__c &&
+			String.isBlank(fileVersion.GoogleDocsFileId__c) &&
+			fileVersion.Type__c != 'application/pdf'
+		);
+	}
+
+	private Boolean isVersionPreviewDocUnavailable(GoogleFileVersion__c fileVersion) {
+		return (
+			!fileVersion.IsPreviewableFile__c
+		);
+	}
+}

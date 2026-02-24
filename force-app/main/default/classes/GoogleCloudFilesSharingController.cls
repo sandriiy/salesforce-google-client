@@ -30,15 +30,22 @@ public with sharing class GoogleCloudFilesSharingController {
 	}
 
     @AuraEnabled
-    public static GoogleFileVersion__c createNewPublicLink(Id localFileVersionId, Datetime expirationDate) {
-		GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
-		List<GoogleFileVersion__c> updatedFiles = localVersionService.applyPublicLinkSharing(localFileVersionId, expirationDate);
+    public static GoogleFileVersion__c createNewPublicLink(Id localFileVersionId, Datetime expirationDate, Boolean isDomainSkip) {
+		GoogleLocalFileVersionPublicLinkService localPublicLinkService = new GoogleLocalFileVersionPublicLinkService();
+		List<GoogleFileVersion__c> updatedFiles = localPublicLinkService.applyPublicLinkSharing(localFileVersionId, expirationDate, isDomainSkip);
 		return updatedFiles.isEmpty() ? null : updatedFiles.get(0);
 	}
 
 	@AuraEnabled
     public static void deleteExistingPublicLink(Id localFileVersionId) {
-		GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
-		List<GoogleFileVersion__c> updatedFiles = localVersionService.removePublicLinkSharing(localFileVersionId);
+		GoogleLocalFileVersionPublicLinkService localPublicLinkService = new GoogleLocalFileVersionPublicLinkService();
+		localPublicLinkService.removePublicLinkSharing(localFileVersionId);
+	}
+
+	@AuraEnabled(cacheable=true)
+    public static Boolean isPublicLinkDomain() {
+		GoogleMetadataConfigService googleConfig = new GoogleMetadataConfigService();
+		String googleDomain = googleConfig.getGoogleDriveDomain();
+		return String.isNotBlank(googleDomain);
 	}
 }

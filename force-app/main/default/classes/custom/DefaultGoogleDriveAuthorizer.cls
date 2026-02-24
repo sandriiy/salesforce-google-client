@@ -1,16 +1,14 @@
-public with sharing class CustomGoogleAuthorizer2 implements GoogleAuthorizer {
-    private final String SERVICE_ACCOUNT_EMAIL = 'googleclient1@inspiring-dryad-481303-f4.iam.gserviceaccount.com';
-    private final String CERTIFICATE_NAME = 'privatekey';
+public with sharing class DefaultGoogleDriveAuthorizer implements GoogleAuthorizer {
+    private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
     public String retrieveAccessToken() {
         Auth.JWT jwt = new Auth.JWT();
         jwt.setAud('https://oauth2.googleapis.com/token');
-        jwt.setSub(SERVICE_ACCOUNT_EMAIL);
-        jwt.setIss(SERVICE_ACCOUNT_EMAIL);
+        jwt.setSub(metadataService.getGoogleDriveServiceAccountEmail());
+        jwt.setIss(metadataService.getGoogleDriveServiceAccountEmail());
         jwt.setAdditionalClaims(new Map<String, Object>{'scope' => 'https://www.googleapis.com/auth/drive'});
 
-        Auth.JWS jws = new Auth.JWS(jwt, CERTIFICATE_NAME);
-
+        Auth.JWS jws = new Auth.JWS(jwt, metadataService.getGoogleDriveCertificateName());
         Auth.JWTBearerTokenExchange bearer = new Auth.JWTBearerTokenExchange(
             jwt.getAud(),
             jws

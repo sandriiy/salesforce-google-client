@@ -4,7 +4,7 @@ public with sharing class GoogleFileVersionTriggerHandler extends GTriggerHandle
 	private Map<Id, GoogleFileVersion__c> newRecordsMap;
 	private Map<Id, GoogleFileVersion__c> oldRecordsMap;
 
-	private GoogleLocalFileVersionService fileVersionService;
+	private GoogleLocalFileVersionLifecycleService lifecycleService;
 
 	public GoogleFileVersionTriggerHandler() {
 		super('GoogleFileVersionTriggerHandler');
@@ -14,20 +14,20 @@ public with sharing class GoogleFileVersionTriggerHandler extends GTriggerHandle
 		this.newRecordsMap = (Map<Id, GoogleFileVersion__c>) Trigger.newMap;
 		this.oldRecordsMap = (Map<Id, GoogleFileVersion__c>) Trigger.oldMap;
 
-		this.fileVersionService = new GoogleLocalFileVersionService();
+		this.lifecycleService = new GoogleLocalFileVersionLifecycleService();
 	}
 
 	public override void afterInsert() {
-		this.fileVersionService.applyPreviewStateIfEligible(this.newRecords);
-		this.fileVersionService.markAsLatestVersionIfApplicable(this.newRecords, null);
+		this.lifecycleService.applyPreviewStateIfEligible(this.newRecords);
+		this.lifecycleService.markAsLatestVersionIfApplicable(this.newRecords, null);
 	}
 
 	public override void afterUpdate() {
-		this.fileVersionService.syncLatestVersionToMainFile(this.newRecords, this.oldRecordsMap);
+		this.lifecycleService.syncLatestVersionToMainFile(this.newRecords, this.oldRecordsMap);
 	}
 
 	public override void afterDelete() {
-		this.fileVersionService.removeGoogleFiles(this.oldRecords);
-		this.fileVersionService.markAsLatestVersionIfApplicable(null, this.oldRecords);
+		this.lifecycleService.markAsLatestVersionIfApplicable(null, this.oldRecords);
+		this.lifecycleService.removeGoogleFiles(this.oldRecords);
 	}
 }

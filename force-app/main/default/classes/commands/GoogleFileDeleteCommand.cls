@@ -25,7 +25,7 @@ public without sharing class GoogleFileDeleteCommand {
 			.byParentId(recordId)
 			.toList();
 
-		Logger.info('File Delete: ' + recordId);
+		Logger.info('File Delete: ' + recordId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
 		uowRef.registerDeleted(googleFile);
 		uowRef.commitWork(true);

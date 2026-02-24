@@ -1,177 +1,214 @@
 public without sharing class GoogleFileInsertCommand {
-	private final String DEFAULT_FILE_NAME = 'Untitled';
-	private final IGoogleUnitOfWork uowRef;
+    public class GoogleFileInsertCommandException extends Exception {}
 
-	private Id relatedRecordId;
-	private String fileName;
-	private String fileType;
-	private Long fileSize;
-	private String googleDriveFileId;
-	private String googleDriveFolderId;
-	private String source;
-	private Id existingLocalGoogleFileId;
+    private final String DEFAULT_FILE_NAME = 'Untitled';
+    private final IGoogleUnitOfWork uowRef;
 
-	public GoogleFileInsertCommand(IGoogleUnitOfWork uowRef) {
-		this.uowRef = uowRef;
-	}
+    private Id relatedRecordId;
+    private String fileName;
+    private String fileType;
+    private Long fileSize;
+    private String googleDriveFileId;
+    private String googleDriveFolderId;
+    private String source;
+    private Id existingLocalGoogleFileId;
 
-	public GoogleFileInsertCommand setRecordId(Id value) {
-		this.relatedRecordId = value;
-		return this;
-	}
+    public GoogleFileInsertCommand(IGoogleUnitOfWork uowRef) {
+        this.uowRef = uowRef;
+    }
 
-	public GoogleFileInsertCommand setGoogleDriveId(String value) {
-		this.googleDriveFileId = value;
-		return this;
-	}
+    public GoogleFileInsertCommand setRecordId(Id value) {
+        this.relatedRecordId = value;
+        return this;
+    }
 
-	public GoogleFileInsertCommand setFileName(String value) {
-		this.fileName = value;
-		return this;
-	}
+    public GoogleFileInsertCommand setGoogleDriveId(String value) {
+        this.googleDriveFileId = value;
+        return this;
+    }
 
-	public GoogleFileInsertCommand setFileType(String value) {
-		this.fileType = value;
-		return this;
-	}
+    public GoogleFileInsertCommand setFileName(String value) {
+        this.fileName = value;
+        return this;
+    }
 
-	public GoogleFileInsertCommand setFileSize(Long value) {
-		this.fileSize = value;
-		return this;
-	}
+    public GoogleFileInsertCommand setFileType(String value) {
+        this.fileType = value;
+        return this;
+    }
 
-	public GoogleFileInsertCommand setParentFolderId(String value) {
-		this.googleDriveFolderId = value;
-		return this;
-	}
+    public GoogleFileInsertCommand setFileSize(Long value) {
+        this.fileSize = value;
+        return this;
+    }
 
-	public GoogleFileInsertCommand setSource(String value) {
-		this.source = value;
-		return this;
-	}
+    public GoogleFileInsertCommand setParentFolderId(String value) {
+        this.googleDriveFolderId = value;
+        return this;
+    }
 
-	public GoogleFileInsertCommand setLocalGoogleFileId(Id value) {
-		this.existingLocalGoogleFileId = value;
-		return this;
-	}
+    public GoogleFileInsertCommand setSource(String value) {
+        this.source = value;
+        return this;
+    }
 
-	public GoogleFile__c save() {
-		if (existingLocalGoogleFileId != null) {
-			return saveNewVersion();
-		} else {
-			return saveNewFile();
-		}
-	}
+    public GoogleFileInsertCommand setLocalGoogleFileId(Id value) {
+        this.existingLocalGoogleFileId = value;
+        return this;
+    }
 
-	private GoogleFile__c saveNewVersion() {
-		GoogleFileVersion__c versionRecord = new GoogleFileVersion__c(
-			Name = buildLocalFileName(false),
-			Type__c = fileType,
-			Size__c = fileSize,
-			GoogleFileId__c = existingLocalGoogleFileId,
-			GoogleDriveFileId__c = googleDriveFileId,
-			GoogleDriveFolderId__c = googleDriveFolderId
-		);
+    public GoogleFileInsertResult save() {
+        if (existingLocalGoogleFileId != null) {
+            return registerNewVersion();
+        }
 
-		Logger.info('File Insert, New Version for: ' + existingLocalGoogleFileId);
+        return registerNewFile();
+    }
 
-		uowRef.registerNew(versionRecord);
-		uowRef.commitWork(true);
+    private GoogleFileInsertResult registerNewVersion() {
+        GoogleFileVersion__c versionRecord = new GoogleFileVersion__c(
+            Name = buildLocalFileName(false),
+            Type__c = fileType,
+            Size__c = fileSize,
+            GoogleFileId__c = existingLocalGoogleFileId,
+            GoogleDriveFileId__c = googleDriveFileId,
+            GoogleDriveFolderId__c = googleDriveFolderId
+        );
 
-		return (GoogleFile__c) GoogleFileSelector.query()
-			.byRecordId(existingLocalGoogleFileId)
-			.withLatestVersionSubquery()
-			.withBaseFields()
-			.toObject();
-	}
+        Logger.info('File Insert, Register New Version --> FileId=' + String.valueOf(existingLocalGoogleFileId)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
-	private GoogleFile__c saveNewFile() {
-		GoogleFile__c fileRecord = new GoogleFile__c(
-			Name = buildLocalFileName(true),
-			Source__c = source
-		);
+        uowRef.registerNew(versionRecord);
 
-		GoogleFileVersion__c versionToBind = new GoogleFileVersion__c(
-			Name = buildLocalFileName(false),
-			Type__c = fileType,
-			Size__c = fileSize,
-			GoogleDriveFileId__c = googleDriveFileId,
-			GoogleDriveFolderId__c = googleDriveFolderId
-		);
+        GoogleFileInsertResult result = new GoogleFileInsertResult();
+        result.localGoogleFileId = existingLocalGoogleFileId;
+        result.localGoogleFileVersionRecord = versionRecord;
+        result.isNewFile = false;
 
-		GoogleFileLink__c linkToBind = new GoogleFileLink__c(
-			LinkedObjectId__c = String.valueOf(relatedRecordId),
-			LinkedObjectType__c = relatedRecordId.getSObjectType().getDescribe().getName()
-		);
+        return result;
+    }
 
-		linkToBind = applyUserBasedChanges(linkToBind);
+    private GoogleFileInsertResult registerNewFile() {
+        GoogleFile__c fileRecord = new GoogleFile__c(
+            Name = buildLocalFileName(true),
+            Source__c = source
+        );
 
-		Logger.info('File Insert, New File with Remote: Google ID: ' + googleDriveFileId + '; Folder ID: ' + googleDriveFolderId);
-		Logger.info('Known File Source: ' + source);
+        GoogleFileVersion__c versionToBind = new GoogleFileVersion__c(
+            Name = buildLocalFileName(false),
+            Type__c = fileType,
+            Size__c = fileSize,
+            GoogleDriveFileId__c = googleDriveFileId,
+            GoogleDriveFolderId__c = googleDriveFolderId
+        );
 
-		uowRef.registerNew(fileRecord);
-		uowRef.registerNew(versionToBind, GoogleFileVersion__c.GoogleFileId__c, fileRecord);
-		uowRef.registerNew(linkToBind, GoogleFileLink__c.GoogleFileId__c, fileRecord);
-		uowRef.commitWork(true);
+        Logger.info(
+            'File Insert, Register New File --> RemoteFileId=' + String.valueOf(googleDriveFileId) +
+            ', UploadFolderId=' + String.valueOf(googleDriveFolderId) +
+            ', Source=' + String.valueOf(source) +
+            ', RelatedRecordId=' + String.valueOf(relatedRecordId)
+        ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
-		return (GoogleFile__c) GoogleFileSelector.query()
-			.byRecordId(fileRecord.Id)
-			.withLatestVersionSubquery()
-			.withBaseFields()
-			.toObject();
-	}
+        uowRef.registerNew(fileRecord);
+        uowRef.registerNew(versionToBind, GoogleFileVersion__c.GoogleFileId__c, fileRecord);
 
-	private GoogleFileLink__c applyUserBasedChanges(GoogleFileLink__c newLink) {
-		User userRow = [SELECT Id, UserType FROM User WHERE Id = :UserInfo.getUserId() LIMIT 1];
+        GoogleFileLink__c linkToBind;
+        if (shouldCreateLink()) {
+            linkToBind = new GoogleFileLink__c(
+                LinkedObjectId__c = String.valueOf(relatedRecordId),
+                LinkedObjectType__c = relatedRecordId.getSObjectType().getDescribe().getName()
+            );
 
-		newLink.ShareType__c = isInternal(userRow.UserType) ? 'Viewer' : 'InferredFromRecord';
-		newLink.Visibility__c = isInternal(userRow.UserType) ? 'InternalUsers' : 'AllUsers';
+            linkToBind = applyUserBasedChanges(linkToBind);
+            uowRef.registerNew(linkToBind, GoogleFileLink__c.GoogleFileId__c, fileRecord);
+        }
 
-		return newLink;
-	}
+        GoogleFileInsertResult result = new GoogleFileInsertResult();
+        result.localGoogleFileRecord = fileRecord;
+        result.localGoogleFileVersionRecord = versionToBind;
+        result.localGoogleFileLinkRecord = linkToBind; // null for standalone uploads
+        result.isNewFile = true;
 
-	private String buildLocalFileName(Boolean removeExtension) {
-		String originalName = String.isBlank(fileName)
-			? DEFAULT_FILE_NAME
-			: fileName.trim();
+        return result;
+    }
 
-		String namePart = originalName;
-		String extPart = '';
+    private Boolean shouldCreateLink() {
+        return relatedRecordId != null;
+    }
 
-		Integer lastDot = originalName.lastIndexOf('.');
-		if (lastDot > 0 && lastDot < originalName.length() - 1) {
-			namePart = originalName.substring(0, lastDot);
+    private GoogleFileLink__c applyUserBasedChanges(GoogleFileLink__c newLink) {
+        User userRow = [SELECT Id, UserType FROM User WHERE Id = :UserInfo.getUserId() LIMIT 1];
 
-			if (!removeExtension) {
-				extPart = originalName.substring(lastDot);
-			}
-		}
+        newLink.ShareType__c = isInternal(userRow.UserType) ? 'Viewer' : 'InferredFromRecord';
+        newLink.Visibility__c = isInternal(userRow.UserType) ? 'InternalUsers' : 'AllUsers';
 
-		Integer maxTotalLength = 80;
-		Integer maxNameLength = maxTotalLength - extPart.length();
+        return newLink;
+    }
 
-		if (maxNameLength < 1) {
-			String fallback = DEFAULT_FILE_NAME + extPart;
-			return fallback.length() > maxTotalLength
-				? fallback.substring(0, maxTotalLength)
-				: fallback;
-		}
+    private String buildLocalFileName(Boolean removeExtension) {
+        String originalName = String.isBlank(fileName)
+            ? DEFAULT_FILE_NAME
+            : fileName.trim();
 
-		if (namePart.length() > maxNameLength) {
-			namePart = namePart.substring(0, maxNameLength);
-		}
+        String namePart = originalName;
+        String extPart = '';
 
-		return namePart + extPart;
-	}
+        Integer lastDot = originalName.lastIndexOf('.');
+        if (lastDot > 0 && lastDot < originalName.length() - 1) {
+            namePart = originalName.substring(0, lastDot);
 
-	private Boolean isInternal(String userType) {
-		if (userType == null) return true;
+            if (!removeExtension) {
+                extPart = originalName.substring(lastDot);
+            }
+        }
 
-		String t = userType.toLowerCase();
-		if (t.contains('guest') || t.contains('portal') || t.contains('partner') || t.contains('customer') || t.contains('csn')) {
-			return false;
-		}
+        Integer maxTotalLength = 80;
+        Integer maxNameLength = maxTotalLength - extPart.length();
 
-		return true;
-	}
+        if (maxNameLength < 1) {
+            String fallback = DEFAULT_FILE_NAME + extPart;
+            return fallback.length() > maxTotalLength
+                ? fallback.substring(0, maxTotalLength)
+                : fallback;
+        }
+
+        if (namePart.length() > maxNameLength) {
+            namePart = namePart.substring(0, maxNameLength);
+        }
+
+        return namePart + extPart;
+    }
+
+    private Boolean isInternal(String userType) {
+        if (userType == null) return true;
+
+        String t = userType.toLowerCase();
+        if (t.contains('guest') || t.contains('portal') || t.contains('partner') || t.contains('customer') || t.contains('csn')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public class GoogleFileInsertResult {
+        public Boolean isNewFile;
+
+        public Id localGoogleFileId;
+        public GoogleFile__c localGoogleFileRecord;
+
+        public GoogleFileVersion__c localGoogleFileVersionRecord;
+        public GoogleFileLink__c localGoogleFileLinkRecord;
+
+        public Id getLocalGoogleFileId() {
+            if (this.localGoogleFileId != null) return this.localGoogleFileId;
+            return this.localGoogleFileRecord == null ? null : this.localGoogleFileRecord.Id;
+        }
+
+        public Id getLocalGoogleFileVersionId() {
+            return this.localGoogleFileVersionRecord == null ? null : this.localGoogleFileVersionRecord.Id;
+        }
+
+        public Id getLocalGoogleFileLinkId() {
+            return this.localGoogleFileLinkRecord == null ? null : this.localGoogleFileLinkRecord.Id;
+        }
+    }
 }

@@ -31,7 +31,7 @@ public without sharing class GoogleLocalFileSharingService {
 
 			return sharingInfo.get(localFileRecordId);
 		} catch (Exception ex) {
-			Logger.error('Retrieve Sharing Details (Local): ' + ex.getMessage());
+			Logger.error('Retrieve Sharing Details (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 			throw new GoogleLocalFileSharingException('Unable to retrieve sharing details. Please try again or contact your system administrator');
 		}
@@ -46,7 +46,7 @@ public without sharing class GoogleLocalFileSharingService {
 				.withUiAccessLevel(uiAccessLevel)
 				.apply();
 		} catch (Exception ex) {
-			Logger.error('Create Google File Sharing (Local/Remote): ' + ex.getMessage());
+			Logger.error('Create Google File Sharing (Local/Remote): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 			throw new GoogleLocalFileSharingException('Unable to share the file. Please try again or contact your system administrator');
 		}
@@ -61,7 +61,7 @@ public without sharing class GoogleLocalFileSharingService {
 				.withUiAccessLevel(uiAccessLevel)
 				.apply();
 		} catch (Exception ex) {
-			Logger.error('Modify Google File Sharing (Local - Access): ' + ex.getMessage());
+			Logger.error('Modify Google File Sharing (Local - Access): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 			throw new GoogleLocalFileSharingException('Unable to update sharing for this file. Please try again or contact your system administrator');
 		}
@@ -76,7 +76,7 @@ public without sharing class GoogleLocalFileSharingService {
 				.withVisibility(visibility)
 				.apply();
 		} catch (Exception ex) {
-			Logger.error('Modify Google File Sharing (Local - Visibility): ' + ex.getMessage());
+			Logger.error('Modify Google File Sharing (Local - Visibility): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 			throw new GoogleLocalFileSharingException('Unable to update sharing visibility for this file. Please try again or contact your system administrator');
 		}
@@ -90,7 +90,7 @@ public without sharing class GoogleLocalFileSharingService {
 				.shareTo(shareToRecordId)
 				.apply();
 		} catch (Exception ex) {
-			Logger.error('Delete Google File Sharing (Local): ' + ex.getMessage());
+			Logger.error('Delete Google File Sharing (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 			throw new GoogleLocalFileSharingException('Unable to remove sharing for this file. Please try again or contact your system administrator');
 		}

@@ -11,11 +11,12 @@ public with sharing class GoogleFileVersionExpireLinkAction {
     public static void expireLink(List<Input> inputs) {
         if (inputs == null || inputs.isEmpty()) return;
 
-        GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
+        GoogleLocalFileVersionPublicLinkService localPublicLinkService = new GoogleLocalFileVersionPublicLinkService();
 
         for (Input input : inputs) {
-            if (input == null) continue;
-			localVersionService.removePublicLinkSharing(input.localFileRecordId);
+            if (input != null) {
+				localPublicLinkService.removePublicLinkSharing(input.localFileRecordId);
+			}
         }
     }
 }

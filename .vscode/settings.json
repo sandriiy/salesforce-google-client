@@ -10,5 +10,6 @@
     "javascript": true,
     "css": true,
     "html": true
-  }
+},
+"xml.preferences.showSchemaDocumentationType": "none"
 }

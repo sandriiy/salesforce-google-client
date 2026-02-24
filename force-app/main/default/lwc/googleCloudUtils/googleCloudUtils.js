@@ -324,7 +324,31 @@ const findRoleForAccessType = (access) => {
 	if (access === 'All' || access === 'Owner') return 'Owner';
 	if (access === 'Collaborator' || access === 'Edit') return 'Collaborator';
 	if (access === 'InferredFromRecord') return 'InferredFromRecord';
-	return 'Viewer';
+	return access !== 'None' ? 'Viewer' : 'None';
 };
 
-export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, findIconForRecordType, findRoleForAccessType };
+const extractGraphValue = (value) => {
+	if (value === null || value === undefined) return '';
+
+	const type = typeof value;
+	if (type === 'string' || type === 'number' || type === 'boolean') {
+		return value;
+	} else if (type === 'object') {
+		const objectValue = value?.value;
+		if (objectValue === null) {
+			return '';
+		}
+
+		return objectValue;
+	}
+
+	return value;
+};
+
+const asString = (value) => {
+	const extracted = extractGraphValue(value);
+	if (extracted === null || extracted === undefined) return '';
+	return String(extracted);
+};
+
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };

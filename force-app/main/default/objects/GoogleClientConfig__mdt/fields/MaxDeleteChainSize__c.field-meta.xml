@@ -2,9 +2,10 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>MaxDeleteChainSize__c</fullName>
     <defaultValue>3</defaultValue>
+    <deprecated>false</deprecated>
     <description>Defines how many files can be deleted within a single queueable job before another job is chained.</description>
     <externalId>false</externalId>
-    <fieldManageability>DeveloperControlled</fieldManageability>
+    <fieldManageability>SubscriberControlled</fieldManageability>
     <inlineHelpText>Defines how many files can be deleted within a single queueable job before another job is chained.</inlineHelpText>
     <label>Max Delete Chain Size</label>
     <precision>18</precision>

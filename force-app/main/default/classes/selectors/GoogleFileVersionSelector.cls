@@ -25,7 +25,6 @@ public inherited sharing class GoogleFileVersionSelector extends GSOQL implement
         GoogleFileVersion__c.PublicLinkExpirationDate__c,
         GoogleFileVersion__c.PublicLinkPermissionId__c
     };
-	
 
     public static GoogleFileVersionSelector query() {
         return new GoogleFileVersionSelector();

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CustomGoogleUploadFolderStructure__c</fullName>
+    <description>Defines the folder pattern used to organize files. This pattern is always applied within the “Default Google Upload Folder ID&quot;.</description>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Defines the folder pattern used to organize files. This pattern is always applied within the “Default Google Upload Folder ID&quot;.</inlineHelpText>
+    <label>Custom Google Upload Folder Structure</label>
+    <length>1024</length>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

@@ -143,6 +143,7 @@
     <allowInChatterGroups>false</allowInChatterGroups>
     <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
     <deploymentStatus>Deployed</deploymentStatus>
+    <deprecated>false</deprecated>
     <enableActivities>false</enableActivities>
     <enableBulkApi>true</enableBulkApi>
     <enableFeeds>false</enableFeeds>
@@ -155,7 +156,6 @@
     <externalSharingModel>ControlledByParent</externalSharingModel>
     <label>Google File Version</label>
     <nameField>
-        <encryptionScheme>None</encryptionScheme>
         <label>Google File Version Name</label>
         <type>Text</type>
     </nameField>

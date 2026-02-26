@@ -25,3 +25,7 @@
 .md-header__topic {
   font-weight: 400 !important;
 }
+
+.task-list-control {
+	margin-left: 4px;
+}

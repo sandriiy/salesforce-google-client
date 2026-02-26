@@ -1,6 +1,14 @@
 public inherited sharing class GoogleMetadataConfigService {
 	public class GoogleMetadataConfigException extends Exception {}
 
+	private static GoogleOrgCacheProvider orgWideProvider = new GoogleOrgCacheProvider(GoogleCacheConfigService.PARTITION);
+	private static GoogleCacheConfigService cacheService = new GoogleCacheConfigService(orgWideProvider);
+
+	@TestVisible
+	public static final String DEFAULT_METADATA_DEPLOY_KEY = 'DefaultGoogleMetadataDeployerKey';
+	@TestVisible
+	public static final String DEFAULT_AUTH_CLASS_NAME = 'DefaultGoogleDriveAuthorizer';
+
 	private GoogleClientConfig__mdt configRecord;
 	private IGoogleMetadataDeployer metadataDeployer;
 
@@ -16,12 +24,12 @@ public inherited sharing class GoogleMetadataConfigService {
 			: new GoogleClientConfig__mdt();
     }
 
-    public void saveConfig(Map<String, Object> fieldApiToValue) {
+    public Id saveConfig(Map<String, Object> fieldApiToValue) {
         if (fieldApiToValue == null || fieldApiToValue.isEmpty()) {
-            return;
+            return null;
         }
 
-        deployNewMetadataChanges(fieldApiToValue);
+        return deployNewMetadataChanges(fieldApiToValue);
     }
 
     public GoogleClientConfig__mdt getConfig() {
@@ -48,11 +56,28 @@ public inherited sharing class GoogleMetadataConfigService {
         return configRecord.DefaultGoogleUploadFolderId__c;
     }
 
-    public String getGoogleAuthorizerClassName() {
-        return configRecord.CustomGoogleAuthorizerClass__c;
+    public String getGoogleDriveAuthorizerClassName() {
+        String customClassName = configRecord.CustomGoogleAuthorizerClass__c;
+		return String.isNotBlank(customClassName) ? customClassName : DEFAULT_AUTH_CLASS_NAME;
     }
 
-	private void deployNewMetadataChanges(Map<String, Object> fieldApiToValue) {
+	public String getGoogleDriveServiceAccountEmail() {
+        return configRecord.CustomGoogleServiceAccount__c;
+    }
+
+	public String getGoogleDriveCertificateName() {
+        return configRecord.CustomGoogleCertificate__c;
+    }
+
+	public String getGoogleDriveFolderStructure() {
+        return configRecord.CustomGoogleUploadFolderStructure__c;
+    }
+
+	public String getGoogleDriveDomain() {
+        return configRecord.OrganizationalDomain__c;
+    }
+
+	private Id deployNewMetadataChanges(Map<String, Object> fieldApiToValue) {
 		try {
             Metadata.DeployContainer container = new Metadata.DeployContainer();
 
@@ -72,17 +97,28 @@ public inherited sharing class GoogleMetadataConfigService {
             container.addMetadata(cmdt);
 
             Id deploymentId = metadataDeployer.enqueue(container);
-            if (deploymentId == null) {
-                throw new GoogleMetadataConfigException('Failed to enqueue Custom Metadata deployment');
-            }
+			cacheService.put(DEFAULT_METADATA_DEPLOY_KEY, 'pending');
+			return deploymentId;
         } catch (Exception ex) {
-            throw new GoogleMetadataConfigException('Failed to save Google Client configuration');
+            throw new GoogleMetadataConfigException('Failed to save Google Client configuration. Ensure the user has “Modify Metadata Through Metadata API Functions” or refer to "Google Client Config" custom metadata directly.');
         }
 	}
 
 	private class DefaultMetadataDeployer implements IGoogleMetadataDeployer {
 		public Id enqueue(Metadata.DeployContainer container) {
-			return Metadata.Operations.enqueueDeployment(container, null);
+			return Metadata.Operations.enqueueDeployment(container, new DefaultMetadataCallback());
+		}
+	}
+	
+	private class DefaultMetadataCallback implements Metadata.DeployCallback {
+		public void handleResult(Metadata.DeployResult result, Metadata.DeployCallbackContext context) {
+			Id jobId = context.getCallbackJobId();
+
+			if (result.status == Metadata.DeployStatus.Succeeded) {
+				GoogleMetadataConfigService.cacheService.put(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY, 'success');
+			} else {
+				GoogleMetadataConfigService.cacheService.put(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY, 'fail');
+			}
 		}
 	}
 }

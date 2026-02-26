@@ -2,18 +2,23 @@
 private class GoogleCacheConfigServiceTest {
 	private class FakeCacheProvider implements IGoogleCacheProvider {
 		private Map<String, Object> store = new Map<String, Object>();
+
 		public void put(String key, String value) {
 			store.put(key, value);
 		}
+
 		public Object get(String key) {
 			return store.get(key);
 		}
+
 		public void remove(String key) {
 			store.remove(key);
 		}
+
 		public Cache.SessionPartition getSessionPartition() {
 			return null;
 		}
+
 		public Cache.OrgPartition getOrgPartition() {
 			return null;
 		}
@@ -23,44 +28,48 @@ private class GoogleCacheConfigServiceTest {
 		public void put(String key, String value) {
 			throw new CalloutException('x');
 		}
+
 		public Object get(String key) {
 			throw new CalloutException('x');
 		}
+
 		public void remove(String key) {
 			throw new CalloutException('x');
 		}
+
 		public Cache.SessionPartition getSessionPartition() {
 			return null;
 		}
+
 		public Cache.OrgPartition getOrgPartition() {
 			return null;
 		}
 	}
 
 	@IsTest
-	private static void ctorTestSuccessDefault() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService();
-		System.assertNotEquals(null, svc);
+	private static void testCtorPositiveDefault() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService();
+		System.assertNotEquals(null, cacheConfigService);
 	}
 
 	@IsTest
-	private static void ctorTestSuccessNullProvider() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService((IGoogleCacheProvider) null);
-		System.assertNotEquals(null, svc);
+	private static void testCtorPositiveNullProvider() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService((IGoogleCacheProvider) null);
+		System.assertNotEquals(null, cacheConfigService);
 	}
 
 	@IsTest
-	private static void getSessionPartitionTestSuccessNulls() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new FakeCacheProvider());
-		System.assertEquals(null, svc.getSessionPartition());
-		System.assertEquals(null, svc.getOrgPartition());
+	private static void testGetPartitionsPositiveNulls() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
+		System.assertEquals(null, cacheConfigService.getSessionPartition());
+		System.assertEquals(null, cacheConfigService.getOrgPartition());
 	}
 
 	@IsTest
-	private static void getTestFailBlankKey() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new FakeCacheProvider());
+	private static void testGetNegativeBlankKey() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		try {
-			svc.get('');
+			cacheConfigService.get('');
 			System.assert(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
 			System.assert(true);
@@ -68,12 +77,13 @@ private class GoogleCacheConfigServiceTest {
 	}
 
 	@IsTest
-	private static void getTestFailLongKey() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new FakeCacheProvider());
-		String k = '';
-		while (k.length() <= 121) k += 'a';
+	private static void testGetNegativeLongKey() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
+		String cacheKey = '';
+		while (cacheKey.length() <= 121) cacheKey += 'a';
+
 		try {
-			svc.get(k);
+			cacheConfigService.get(cacheKey);
 			System.assert(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
 			System.assert(true);
@@ -81,10 +91,10 @@ private class GoogleCacheConfigServiceTest {
 	}
 
 	@IsTest
-	private static void putTestFailNullValue() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new FakeCacheProvider());
+	private static void testPutNegativeNullValue() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		try {
-			svc.put('abc', null);
+			cacheConfigService.put('abc', null);
 			System.assert(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
 			System.assert(true);
@@ -92,33 +102,51 @@ private class GoogleCacheConfigServiceTest {
 	}
 
 	@IsTest
-	private static void putGetRemoveTestSuccessRoundtrip() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new FakeCacheProvider());
+	private static void testPutGetRemovePositiveRoundtrip() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 
-		svc.put('a-b_c', 'v1');
-		System.assertEquals('v1', svc.get('a-b_c'));
+		String rawCacheKey = 'a-b_c';
+		String cacheValue = 'v1';
 
-		svc.remove('a-b_c');
-		System.assertEquals(null, svc.get('a-b_c'));
+		cacheConfigService.put(rawCacheKey, cacheValue);
+		System.assertEquals(cacheValue, cacheConfigService.get(rawCacheKey));
+
+		cacheConfigService.remove(rawCacheKey);
+		System.assertEquals(null, cacheConfigService.get(rawCacheKey));
 	}
 
 	@IsTest
-	private static void generateConfigIdTestSuccessValidate() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new FakeCacheProvider());
-		String id = svc.generateConfigId();
+	private static void testPutGetRemovePositiveSanitizedKeyToEmpty() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 
-		System.assertEquals(true, svc.isValidConfigId(id));
-		System.assertEquals(false, svc.isValidConfigId(null));
-		System.assertEquals(false, svc.isValidConfigId(''));
-		System.assertEquals(false, svc.isValidConfigId('cfg_abc_12345678'));
-		System.assertEquals(false, svc.isValidConfigId('cfg_123_zzzzzzzz'));
+		String rawCacheKey = '---___---';
+		String cacheValue = 'v1';
+
+		cacheConfigService.put(rawCacheKey, cacheValue);
+		System.assertEquals(cacheValue, cacheConfigService.get(rawCacheKey));
+
+		cacheConfigService.remove(rawCacheKey);
+		System.assertEquals(null, cacheConfigService.get(rawCacheKey));
 	}
 
 	@IsTest
-	private static void putConfigTestFailInvalidId() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new FakeCacheProvider());
+	private static void testGenerateConfigIdPositiveValidate() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
+		String generatedConfigId = cacheConfigService.generateConfigId();
+
+		System.assertEquals(true, cacheConfigService.isValidConfigId(generatedConfigId));
+		System.assertEquals(false, cacheConfigService.isValidConfigId(null));
+		System.assertEquals(false, cacheConfigService.isValidConfigId(''));
+		System.assertEquals(false, cacheConfigService.isValidConfigId('cfg_abc_12345678'));
+		System.assertEquals(false, cacheConfigService.isValidConfigId('cfg_123_zzzzzzzz'));
+		System.assertEquals(false, cacheConfigService.isValidConfigId(' cfg_123_12345678 '));
+	}
+
+	@IsTest
+	private static void testPutConfigNegativeInvalidId() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		try {
-			svc.putConfig('bad', '{}');
+			cacheConfigService.putConfig('bad', '{}');
 			System.assert(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
 			System.assert(true);
@@ -126,11 +154,10 @@ private class GoogleCacheConfigServiceTest {
 	}
 
 	@IsTest
-	private static void putConfigTestFailNullPayload() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new FakeCacheProvider());
-		String id = svc.generateConfigId();
+	private static void testGetConfigNegativeInvalidId() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		try {
-			svc.putConfig(id, null);
+			cacheConfigService.getConfig('bad');
 			System.assert(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
 			System.assert(true);
@@ -138,22 +165,51 @@ private class GoogleCacheConfigServiceTest {
 	}
 
 	@IsTest
-	private static void putGetRemoveConfigTestSuccessRoundtrip() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new FakeCacheProvider());
-
-		String id = svc.generateConfigId();
-		svc.putConfig(id, '{"a":1}');
-		System.assertEquals('{"a":1}', svc.getConfig(id));
-
-		svc.removeConfig(id);
-		System.assertEquals(null, svc.getConfig(id));
+	private static void testRemoveConfigNegativeInvalidId() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
+		try {
+			cacheConfigService.removeConfig('bad');
+			System.assert(false);
+		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
+			System.assert(true);
+		}
 	}
 
 	@IsTest
-	private static void putTestFailCacheAccess() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new ThrowingCacheProvider());
+	private static void testPutConfigNegativeNullPayload() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
+		String generatedConfigId = cacheConfigService.generateConfigId();
+
 		try {
-			svc.put('k', 'v');
+			cacheConfigService.putConfig(generatedConfigId, null);
+			System.assert(false);
+		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
+			System.assert(true);
+		}
+	}
+
+	@IsTest
+	private static void testPutGetRemoveConfigPositiveRoundtrip() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
+
+		String generatedConfigId = cacheConfigService.generateConfigId();
+		String payloadJson = '{"a":1}';
+
+		cacheConfigService.putConfig(generatedConfigId, payloadJson);
+		System.assertEquals(payloadJson, cacheConfigService.getConfig(generatedConfigId));
+
+		cacheConfigService.removeConfig(generatedConfigId);
+		System.assertEquals(null, cacheConfigService.getConfig(generatedConfigId));
+	}
+
+	@IsTest
+	private static void testPutNegativeCacheAccess() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new ThrowingCacheProvider());
+		String cacheKey = 'k';
+		String cacheValue = 'v';
+
+		try {
+			cacheConfigService.put(cacheKey, cacheValue);
 			System.assert(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
 			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
@@ -161,10 +217,12 @@ private class GoogleCacheConfigServiceTest {
 	}
 
 	@IsTest
-	private static void getTestFailCacheAccess() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new ThrowingCacheProvider());
+	private static void testGetNegativeCacheAccess() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new ThrowingCacheProvider());
+		String cacheKey = 'k';
+
 		try {
-			svc.get('k');
+			cacheConfigService.get(cacheKey);
 			System.assert(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
 			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
@@ -172,10 +230,52 @@ private class GoogleCacheConfigServiceTest {
 	}
 
 	@IsTest
-	private static void removeTestFailCacheAccess() {
-		GoogleCacheConfigService svc = new GoogleCacheConfigService(new ThrowingCacheProvider());
+	private static void testRemoveNegativeCacheAccess() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new ThrowingCacheProvider());
+		String cacheKey = 'k';
+
 		try {
-			svc.remove('k');
+			cacheConfigService.remove(cacheKey);
+			System.assert(false);
+		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
+			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
+		}
+	}
+
+	@IsTest
+	private static void testPutConfigNegativeCacheAccess() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new ThrowingCacheProvider());
+		String generatedConfigId = cacheConfigService.generateConfigId();
+		String payloadJson = '{"a":1}';
+
+		try {
+			cacheConfigService.putConfig(generatedConfigId, payloadJson);
+			System.assert(false);
+		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
+			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
+		}
+	}
+
+	@IsTest
+	private static void testGetConfigNegativeCacheAccess() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new ThrowingCacheProvider());
+		String generatedConfigId = cacheConfigService.generateConfigId();
+
+		try {
+			cacheConfigService.getConfig(generatedConfigId);
+			System.assert(false);
+		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
+			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
+		}
+	}
+
+	@IsTest
+	private static void testRemoveConfigNegativeCacheAccess() {
+		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new ThrowingCacheProvider());
+		String generatedConfigId = cacheConfigService.generateConfigId();
+
+		try {
+			cacheConfigService.removeConfig(generatedConfigId);
 			System.assert(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
 			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));

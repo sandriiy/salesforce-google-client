@@ -8,193 +8,193 @@ private class GoogleCloudFilesSharingControllerTest {
 
 	private static void initMocks() {
 		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleRemoteFileService.authorizerClassNameOverride = 'GoogleCloudFilesSharingControllerTest.TestGoogleAuthorizer';
+		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleCloudFilesSharingControllerTest.TestGoogleAuthorizer';
 	}
 
 	@IsTest
-	private static void fetchSharingDetailsTestSuccessDto() {
+	private static void testFetchSharingDetailsPositive() {
 		initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('FS1').withDescription('D').insertRecord();
+		User sharedUser = GoogleCloudTestFactory.newUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('FS1').withDescription('D').insertRecord();
 
 		insert new GoogleFile__Share(
-			ParentId = f.Id,
-			UserOrGroupId = u.Id,
+			ParentId = localFile.Id,
+			UserOrGroupId = sharedUser.Id,
 			AccessLevel = 'Read',
 			RowCause = Schema.GoogleFile__Share.RowCause.Manual
 		);
 
-		Account a = new Account(Name = 'FS1-A');
-		insert a;
+		Account linkedAccount = new Account(Name = 'FS1-A');
+		insert linkedAccount;
 
 		GoogleCloudTestFactory.link()
-			.forFile(f.Id)
+			.forFile(localFile.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(a.Id)
+			.withLinkedRecord(linkedAccount.Id)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = f.Id, OwnerId = UserInfo.getUserId(), Name = f.Name)
+			new GoogleFile__c(Id = localFile.Id, OwnerId = UserInfo.getUserId(), Name = localFile.Name)
 		});
 
 		Test.startTest();
-		GoogleSharingInfoDTO dto = GoogleCloudFilesSharingController.fetchSharingDetails(f.Id);
+		GoogleSharingInfoDTO sharingInfo = GoogleCloudFilesSharingController.fetchSharingDetails(localFile.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, dto);
-		System.assertEquals(f.Id, dto.fileId);
+		System.assertNotEquals(null, sharingInfo);
+		System.assertEquals(localFile.Id, sharingInfo.fileId);
 	}
 
 	@IsTest
-	private static void createNewSharingTestSuccessViewer() {
+	private static void testCreateNewSharingPositiveViewer() {
 		initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS1').withDescription('D').insertRecord();
+		User targetUser = GoogleCloudTestFactory.newUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('CS1').withDescription('D').insertRecord();
 
 		Test.startTest();
-		Id shareId = GoogleCloudFilesSharingController.createNewSharing(
-			f.Id,
+		Id createdShareId = GoogleCloudFilesSharingController.createNewSharing(
+			localFile.Id,
 			'User',
-			u.Id,
+			targetUser.Id,
 			'viewer'
 		);
 		Test.stopTest();
 
-		System.assertNotEquals(null, shareId);
+		System.assertNotEquals(null, createdShareId);
 
-		GoogleFile__Share created = [
+		GoogleFile__Share createdShare = [
 			SELECT Id, ParentId, UserOrGroupId, AccessLevel, RowCause
 			FROM GoogleFile__Share
-			WHERE Id = :shareId
+			WHERE Id = :createdShareId
 			LIMIT 1
 		];
 
-		System.assertEquals(f.Id, created.ParentId);
-		System.assertEquals(u.Id, created.UserOrGroupId);
-		System.assertEquals('Read', created.AccessLevel);
-		System.assertEquals(String.valueOf(Schema.GoogleFile__Share.RowCause.Manual), String.valueOf(created.RowCause));
+		System.assertEquals(localFile.Id, createdShare.ParentId);
+		System.assertEquals(targetUser.Id, createdShare.UserOrGroupId);
+		System.assertEquals('Read', createdShare.AccessLevel);
+		System.assertEquals(String.valueOf(Schema.GoogleFile__Share.RowCause.Manual), String.valueOf(createdShare.RowCause));
 	}
 
 	@IsTest
-	private static void modifyExistingSharingAccessTestSuccessEdit() {
+	private static void testModifyExistingSharingAccessPositive() {
 		initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('MS1').withDescription('D').insertRecord();
+		User targetUser = GoogleCloudTestFactory.newUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('MS1').withDescription('D').insertRecord();
 
-		GoogleFile__Share sh = new GoogleFile__Share(
-			ParentId = f.Id,
-			UserOrGroupId = u.Id,
+		GoogleFile__Share existingShare = new GoogleFile__Share(
+			ParentId = localFile.Id,
+			UserOrGroupId = targetUser.Id,
 			AccessLevel = 'Read',
 			RowCause = Schema.GoogleFile__Share.RowCause.Manual
 		);
-		insert sh;
+		insert existingShare;
 
 		Test.startTest();
-		GoogleCloudFilesSharingController.modifyExistingSharingAccess(f.Id, u.Id, 'Collaborator');
+		GoogleCloudFilesSharingController.modifyExistingSharingAccess(localFile.Id, targetUser.Id, 'Collaborator');
 		Test.stopTest();
 
-		GoogleFile__Share updated = [
+		GoogleFile__Share updatedShare = [
 			SELECT AccessLevel
 			FROM GoogleFile__Share
-			WHERE Id = :sh.Id
+			WHERE Id = :existingShare.Id
 			LIMIT 1
 		];
-		System.assertEquals('Edit', updated.AccessLevel);
+		System.assertEquals('Edit', updatedShare.AccessLevel);
 	}
 
 	@IsTest
-	private static void modifyExistingSharingVisibilityTestSuccessUpdate() {
+	private static void testModifyExistingSharingVisibilityPositive() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('MV1').withDescription('D').insertRecord();
-		Account a = new Account(Name = 'MV1-A');
-		insert a;
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('MV1').withDescription('D').insertRecord();
+		Account linkedAccount = new Account(Name = 'MV1-A');
+		insert linkedAccount;
 
-		GoogleFileLink__c link = GoogleCloudTestFactory.link()
-			.forFile(f.Id)
+		GoogleFileLink__c fileLink = GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(a.Id)
+			.withLinkedRecord(linkedAccount.Id)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		Test.startTest();
-		GoogleCloudFilesSharingController.modifyExistingSharingVisibility(f.Id, a.Id, 'InternalUsers');
+		GoogleCloudFilesSharingController.modifyExistingSharingVisibility(localFile.Id, linkedAccount.Id, 'InternalUsers');
 		Test.stopTest();
 
-		GoogleFileLink__c updated = [
+		GoogleFileLink__c updatedLink = [
 			SELECT Visibility__c
 			FROM GoogleFileLink__c
-			WHERE Id = :link.Id
+			WHERE Id = :fileLink.Id
 			LIMIT 1
 		];
-		System.assertEquals('InternalUsers', updated.Visibility__c);
+		System.assertEquals('InternalUsers', updatedLink.Visibility__c);
 	}
 
 	@IsTest
-	private static void deleteExistingSharingTestSuccessUser() {
+	private static void testDeleteExistingSharingPositiveUser() {
 		initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS1').withDescription('D').insertRecord();
+		User targetUser = GoogleCloudTestFactory.newUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('DS1').withDescription('D').insertRecord();
 
 		insert new GoogleFile__Share(
-			ParentId = f.Id,
-			UserOrGroupId = u.Id,
+			ParentId = localFile.Id,
+			UserOrGroupId = targetUser.Id,
 			AccessLevel = 'Read',
 			RowCause = Schema.GoogleFile__Share.RowCause.Manual
 		);
 
 		Test.startTest();
-		GoogleCloudFilesSharingController.deleteExistingSharing(f.Id, u.Id);
+		GoogleCloudFilesSharingController.deleteExistingSharing(localFile.Id, targetUser.Id);
 		Test.stopTest();
 
 		System.assertEquals(0, [
 			SELECT count()
 			FROM GoogleFile__Share
-			WHERE ParentId = :f.Id AND UserOrGroupId = :u.Id
+			WHERE ParentId = :localFile.Id AND UserOrGroupId = :targetUser.Id
 		]);
 	}
 
 	@IsTest
-	private static void deleteExistingSharingTestSuccessLink() {
+	private static void testDeleteExistingSharingPositiveLink() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS2').withDescription('D').insertRecord();
-		Account a = new Account(Name = 'DS2-A');
-		insert a;
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('DS2').withDescription('D').insertRecord();
+		Account linkedAccount = new Account(Name = 'DS2-A');
+		insert linkedAccount;
 
-		GoogleFileLink__c link = GoogleCloudTestFactory.link()
-			.forFile(f.Id)
+		GoogleFileLink__c fileLink = GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(a.Id)
+			.withLinkedRecord(linkedAccount.Id)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		Test.startTest();
-		GoogleCloudFilesSharingController.deleteExistingSharing(f.Id, a.Id);
+		GoogleCloudFilesSharingController.deleteExistingSharing(localFile.Id, linkedAccount.Id);
 		Test.stopTest();
 
 		System.assertEquals(0, [
 			SELECT count()
 			FROM GoogleFileLink__c
-			WHERE Id = :link.Id
+			WHERE Id = :fileLink.Id
 		]);
 	}
 
 	@IsTest
-	private static void createNewPublicLinkTestSuccessExec() {
+	private static void testCreateNewPublicLinkPositive() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('PL1').withDescription('D').insertRecord();
-		GoogleFileVersion__c v = GoogleCloudTestFactory.version()
-			.forFile(f.Id)
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('PL1').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
 			.withName('V1.pdf')
 			.withType('application/pdf')
 			.withSize(1)
@@ -203,13 +203,69 @@ private class GoogleCloudFilesSharingControllerTest {
 			.insertRecord();
 
 		Test.startTest();
-		try {
-			GoogleFileVersion__c updated = GoogleCloudFilesSharingController.createNewPublicLink(v.Id, System.now().addDays(7));
-			GoogleCloudFilesSharingController.deleteExistingPublicLink(v.Id);
-			System.assert(true, 'Public link methods executed');
-		} catch (Exception e) {
-			System.assertNotEquals(null, e.getMessage());
-		}
+		GoogleFileVersion__c updatedVersion = GoogleCloudFilesSharingController.createNewPublicLink(
+			localFileVersion.Id,
+			System.now().addDays(7),
+			false
+		);
 		Test.stopTest();
+
+		GoogleFileVersion__c reloaded = [
+			SELECT PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c, PublicLinkStatus__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :localFileVersion.Id
+			LIMIT 1
+		];
+
+		System.assert(String.isNotBlank(reloaded.PublicLink__c));
+		System.assertNotEquals(null, reloaded.PublicLinkExpirationDate__c);
+		System.assert(String.isNotBlank(reloaded.PublicLinkPermissionId__c));
+		System.assertEquals('Pending Expiration', reloaded.PublicLinkStatus__c);
+	}
+
+	@IsTest
+	private static void testDeleteExistingPublicLinkPositive() {
+		initMocks();
+
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('PL2').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName('V2.pdf')
+			.withType('application/pdf')
+			.withSize(1)
+			.withDriveId('GD2')
+			.withDocsId('DOCS2')
+			.insertRecord();
+
+		localFileVersion.PublicLink__c = 'https://example.test/view';
+		localFileVersion.PublicLinkExpirationDate__c = System.now().addDays(7);
+		localFileVersion.PublicLinkPermissionId__c = 'perm_123';
+		localFileVersion.PublicLinkStatus__c = 'Active';
+		update localFileVersion;
+
+		Test.startTest();
+		GoogleCloudFilesSharingController.deleteExistingPublicLink(localFileVersion.Id);
+		Test.stopTest();
+
+		GoogleFileVersion__c reloaded = [
+			SELECT PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c, PublicLinkStatus__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :localFileVersion.Id
+			LIMIT 1
+		];
+
+		System.assertEquals(null, reloaded.PublicLink__c);
+		System.assertEquals(null, reloaded.PublicLinkExpirationDate__c);
+		System.assertEquals(null, reloaded.PublicLinkPermissionId__c);
+		System.assertEquals('None', reloaded.PublicLinkStatus__c);
+	}
+
+	@IsTest
+	private static void testIsPublicLinkDomainPositive() {
+		Test.startTest();
+		Boolean isDomainConfigured = GoogleCloudFilesSharingController.isPublicLinkDomain();
+		Test.stopTest();
+
+		System.assertNotEquals(null, isDomainConfigured);
 	}
 }

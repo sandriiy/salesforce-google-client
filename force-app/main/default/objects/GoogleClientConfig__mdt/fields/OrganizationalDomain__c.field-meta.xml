@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>OrganizationalDomain__c</fullName>
+    <description>Specify your organization’s domain (for example, “cloudrylabs.com”). If set, all public links and shares created for outside Salesforce will be restricted to this domain, unless the user specifies otherwise.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Specify your organization’s domain (for example, “cloudrylabs.com”). If set, all public links and shares created for outside Salesforce will be restricted to this domain, unless the user specifies otherwise.</inlineHelpText>
+    <label>Organizational Domain</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

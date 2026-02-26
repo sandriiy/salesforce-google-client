@@ -2,137 +2,157 @@ import { LightningElement, api, track, wire } from 'lwc';
 import { isEmpty, showToast } from 'c/googleCloudUtils';
 
 import retrieveLocalGoogleFileVersionById from '@salesforce/apex/GoogleCloudFilesController.retrieveLocalGoogleFileVersionById';
+import isPublicLinkDomain from '@salesforce/apex/GoogleCloudFilesSharingController.isPublicLinkDomain';
 import createNewPublicLink from '@salesforce/apex/GoogleCloudFilesSharingController.createNewPublicLink';
 import deleteExistingPublicLink from '@salesforce/apex/GoogleCloudFilesSharingController.deleteExistingPublicLink';
 
 export default class GoogleCloudFilePublicLink extends LightningElement {
-	@api localFileVersionId;
+    @api localFileVersionId;
 
-	@track localFileVersionRecord;
+    @track localFileVersionRecord;
     @track expirationOn;
     @track datetime;
-	@track publicLink;
-	@track isLoading = true;
+    @track publicLink;
+    @track isLoading = true;
+    @track isDomainSkip = false;
 
-	connectedCallback() {
-		this.loadLocalFileVersion();
-	}
+    @wire(isPublicLinkDomain)
+    isDomainSpecified;
 
-	handleExpirationToggle(event) {
-		let isEnabled = event.target.checked;
-		this.expirationOn = isEnabled;
-		this.datetime = undefined;
-	}
+    connectedCallback() {
+        this.loadLocalFileVersion();
+    }
 
-	handleExpirationDatetime(event) {
-		let selectedDateTime = event.target.value;
-		this.datetime = selectedDateTime;
-	}
+    handleExpirationToggle(event) {
+        let isEnabled = event.target.checked;
+        this.expirationOn = isEnabled;
+        this.datetime = undefined;
+    }
 
-	handlePublicLinkCreate(event) {
-		if (!this.isValidExpirationDate()) return;
+    handleExpirationDatetime(event) {
+        let selectedDateTime = event.target.value;
+        this.datetime = selectedDateTime;
+    }
 
-		this.isLoading = true;
-		createNewPublicLink({ localFileVersionId: this.localFileVersionId, expirationDate: this.datetime })
-			.then(result => {
-				this.publicLink = result.PublicLink__c;
-				this.expirationOn = isEmpty(this.datetime) ? false : true;
-			})
-			.catch(error => {
-				console.error(error);
-				showToast(
-					this,
-					'Unable to create Public Link',
-					'Please try again later or contact your System Administrator',
-					'error'
-				);
-			})
-			.finally(() => {
-				this.isLoading = false;
-			});
-	}
+    handleDomainSkipChange(event) {
+        this.isDomainSkip = event.target.checked;
+    }
 
-	handlePublicLinkDelete(event) {
-		this.isLoading = true;
-		deleteExistingPublicLink({ localFileVersionId: this.localFileVersionId })
-			.then(result => {
-				this.clearPublicLinkInfo();
-			})
-			.catch(error => {
-				console.error(error);
-				showToast(
-					this,
-					'Unable to delete Public Link',
-					'Please try again later or contact your System Administrator',
-					'error'
-				);
-			})
-			.finally(() => {
-				this.isLoading = false;
-			});
-	}
+    handlePublicLinkCreate(event) {
+        if (!this.isValidExpirationDate()) return;
 
-	loadLocalFileVersion() {
-		retrieveLocalGoogleFileVersionById({ localGoogleFileVersionId: this.localFileVersionId })
-			.then(result => {
-				this.localFileVersionRecord = result;
-				this.datetime = this.localFileVersionRecord.PublicLinkExpirationDate__c;
-				this.publicLink = this.localFileVersionRecord.PublicLink__c;
-				this.expirationOn = isEmpty(this.datetime) ? false : true;
-			})
-			.catch(error => {
-				console.error(error);
-				showToast(
-					this,
-					'Unable to retrieve File Version',
-					'Please try again later or contact your System Administrator',
-					'error'
-				);
-			})
-			.finally(() => {
-				this.isLoading = false;
-			});
-	}
+        this.isLoading = true;
+        createNewPublicLink({
+            localFileVersionId: this.localFileVersionId,
+            expirationDate: this.datetime,
+            isDomainSkip: this.isDomainSkip
+        })
+            .then(result => {
+                this.publicLink = result.PublicLink__c;
+                this.expirationOn = isEmpty(this.datetime) ? false : true;
+            })
+            .catch(error => {
+                console.error(error);
+                showToast(
+                    this,
+                    'Unable to create Public Link',
+                    'Please try again later or contact your System Administrator',
+                    'error'
+                );
+            })
+            .finally(() => {
+                this.isLoading = false;
+            });
+    }
 
-	clearPublicLinkInfo() {
-		this.publicLink = undefined;
-		this.datetime = undefined;
-		this.expirationOn = true;
-		this.localFileVersionRecord.PublicLinkExpirationDate__c = null;
-		this.localFileVersionRecord.PublicLinkPermissionId__c = null;
-		this.localFileVersionRecord.PublicLink__c = null;
-	}
+    handlePublicLinkDelete(event) {
+        this.isLoading = true;
+        deleteExistingPublicLink({ localFileVersionId: this.localFileVersionId })
+            .then(result => {
+                this.clearPublicLinkInfo();
+            })
+            .catch(error => {
+                console.error(error);
+                showToast(
+                    this,
+                    'Unable to delete Public Link',
+                    'Please try again later or contact your System Administrator',
+                    'error'
+                );
+            })
+            .finally(() => {
+                this.isLoading = false;
+            });
+    }
 
-	isValidExpirationDate() {
-		const input = this.refs.expirationDatetime;
-		
-		let inputDate = new Date(this.datetime);
-		const now = new Date();
-		const maxDate = new Date();
-		maxDate.setFullYear(maxDate.getFullYear() + 1);
+    loadLocalFileVersion() {
+        retrieveLocalGoogleFileVersionById({ localGoogleFileVersionId: this.localFileVersionId })
+            .then(result => {
+                this.localFileVersionRecord = result;
+                this.datetime = this.localFileVersionRecord.PublicLinkExpirationDate__c;
+                this.publicLink = this.localFileVersionRecord.PublicLink__c;
+                this.expirationOn = isEmpty(this.datetime) ? false : true;
+            })
+            .catch(error => {
+                console.error(error);
+                showToast(
+                    this,
+                    'Unable to retrieve File Version',
+                    'Please try again later or contact your System Administrator',
+                    'error'
+                );
+            })
+            .finally(() => {
+                this.isLoading = false;
+            });
+    }
 
-		if (inputDate <= now) {
-			input.setCustomValidity('Date/time must be in the future');
-        	input.reportValidity(); 
+    clearPublicLinkInfo() {
+        this.publicLink = undefined;
+        this.datetime = undefined;
+        this.expirationOn = true;
+        this.isDomainSkip = false;
+        this.localFileVersionRecord.PublicLinkExpirationDate__c = null;
+        this.localFileVersionRecord.PublicLinkPermissionId__c = null;
+        this.localFileVersionRecord.PublicLink__c = null;
+    }
 
-			return false;
-		} else if (inputDate > maxDate) {
-			input.setCustomValidity('Date/time must not be more than a year');
-        	input.reportValidity(); 
+    isValidExpirationDate() {
+        if (!this.expirationOn || isEmpty(this.datetime)) {
+            return true;
+        }
 
-			return false;
-		}
+        const input = this.refs.expirationDatetime;
 
-		input.setCustomValidity('');
-        input.reportValidity(); 
-		return true;
-	}
+        let inputDate = new Date(this.datetime);
+        const now = new Date();
+        const maxDate = new Date();
+        maxDate.setFullYear(maxDate.getFullYear() + 1);
+
+        if (inputDate <= now) {
+            input.setCustomValidity('Date/time must be in the future');
+            input.reportValidity();
+            return false;
+        } else if (inputDate > maxDate) {
+            input.setCustomValidity('Date/time must not be more than a year');
+            input.reportValidity();
+            return false;
+        }
+
+        input.setCustomValidity('');
+        input.reportValidity();
+        return true;
+    }
+
+    get showDomainSkipOption() {
+        return this.isDomainSpecified?.data === true;
+    }
 
     get dateTimeDisabled() {
         return !this.expirationOn || this.publicLinkExists;
     }
 
-	get publicLinkExists() {
-		return !isEmpty(this.publicLink);
-	}
+    get publicLinkExists() {
+        return !isEmpty(this.publicLink);
+    }
 }

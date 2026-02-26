@@ -368,4 +368,14 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 			);
 		});
 	}
+
+	get sobjectNameValue() {
+		if (isEmpty(this.recordIdentifierValue)) return 'Unknown';
+
+		return (
+			this.recordIdentifierValue.length > 50
+				? `${this.recordIdentifierValue.slice(0, 47)}...`
+				: this.recordIdentifierValue
+		);
+	}
 }

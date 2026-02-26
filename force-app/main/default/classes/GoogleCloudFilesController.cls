@@ -12,6 +12,12 @@ public with sharing class GoogleCloudFilesController {
 			: localFiles.get(0).UserAccessLevel__c;
 	}
 
+	@AuraEnabled
+	public static List<GoogleFile__c> retrieveAllGoogleFiles() {
+		GoogleLocalFileService recordService = new GoogleLocalFileService();
+		return recordService.retrieveGoogleFiles(UserInfo.getUserId());
+	}
+
     @AuraEnabled
     public static List<GoogleFile__c> retrieveGoogleFiles(Id relatedRecordId, String source, Integer recordsCount) {
 		GoogleFileSelector selector = GoogleFileSelector.query()
@@ -67,9 +73,19 @@ public with sharing class GoogleCloudFilesController {
     }
 
     @AuraEnabled
-    public static String retrieveGoogleFileBase64Preview(Id localFileVersionId) {
-		GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
-		return localVersionService.exportPreviewBase64BodyIfEligible(localFileVersionId);
+    public static String retrieveGoogleFileBase64Preview(Id localFileVersionId) { 
+		try {
+			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
+			return localVersionService.exportPreviewBase64BodyIfEligible(localFileVersionId);
+		} catch (GoogleLocalFileVersionService.GoogleFileVersionException ex) {
+			throw new AuraHandledException(ex.getMessage());
+		} catch (Exception ex) {
+			Logger.error('Retrieve Google File Preview, Id: ' + localFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Retrieve Google File Preview, Message:' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+
+			throw new AuraHandledException('Preview isn’t available for this file. Please download the file instead, or contact your system administrator');
+		}
 	}
 
 	@AuraEnabled
@@ -124,27 +140,59 @@ public with sharing class GoogleCloudFilesController {
 
     @AuraEnabled
     public static GoogleBigFileEntity uploadLargeFilePartial(String fileName, String chunkToUpload, String resumableSessionId, Long startByte, Long totalBytes) {
-        GoogleRemoteFileService removeService = new GoogleRemoteFileService();
-		GoogleBigFileEntity remoteBigFileEntity = removeService.uploadBigFilePartial(fileName, chunkToUpload, resumableSessionId, startByte, totalBytes);
-		return remoteBigFileEntity;
+		try {
+			GoogleBigFileEntity remoteBigFileEntity = new GoogleRemoteFileUploader().uploadBigFilePartial(fileName, chunkToUpload, resumableSessionId, startByte, totalBytes);
+			return remoteBigFileEntity;
+		} catch (Exception ex) {
+			Logger.error('Google Client for Salesforce / Upload Large File, File Name: ' + fileName);
+			Logger.error('Google Client for Salesforce / Upload Large File, Total Bytes: ' + String.valueOf(totalBytes));
+			Logger.error('Google Client for Salesforce / Upload Large File, Message:' + ex.getMessage());
+			Logger.saveLog();
+
+			throw new AuraHandledException('We couldn’t upload the large file. Please try again, or contact your system administrator');
+		}
     }
 
     @AuraEnabled
     public static GoogleFileEntity uploadFile(String fileName, String contentToUpload) {
-		GoogleRemoteFileService removeService = new GoogleRemoteFileService();
-		GoogleFileEntity remoteFileEntity = removeService.uploadFile(fileName, contentToUpload);
-		return remoteFileEntity;
+		try {
+			GoogleFileEntity remoteFileEntity = new GoogleRemoteFileUploader().uploadFile(fileName, contentToUpload);
+			return remoteFileEntity;
+		} catch (Exception ex) {
+			Logger.error('Google Client for Salesforce / Upload File, File Name: ' + fileName);
+			Logger.error('Google Client for Salesforce / Upload File, Message:' + ex.getMessage());
+			Logger.saveLog();
+
+			throw new AuraHandledException('We couldn’t upload the file. Please try again, or contact your system administrator');
+		}
     }
 
 	@AuraEnabled
 	public static String downloadFile(Id localGoogleFileVersionId) {
-		GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
-		return localVersionService.downloadFileBase64Body(localGoogleFileVersionId);
+		try {
+			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
+			return localVersionService.downloadFileBase64Body(localGoogleFileVersionId);
+		} catch (Exception ex) {
+			Logger.error('Google Client for Salesforce / Download File, Id: ' + localGoogleFileVersionId);
+			Logger.error('Google Client for Salesforce / Download File, Message:' + ex.getMessage());
+			Logger.saveLog();
+
+			throw new AuraHandledException('We couldn’t download the file. Please try again, or contact your system administrator');
+		}
 	}
 
 	@AuraEnabled
 	public static String downloadLargeFilePartial(Id localGoogleFileVersionId, Long startByte, Long endByte) {
-		GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
-		return localVersionService.downloadFileBase64Body(localGoogleFileVersionId, startByte, endByte);
+		try {
+			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
+			return localVersionService.downloadFileBase64Body(localGoogleFileVersionId, startByte, endByte);
+		} catch (Exception ex) {
+			Logger.error('Google Client for Salesforce / Download Large File, Id: ' + localGoogleFileVersionId);
+			Logger.error('Google Client for Salesforce / Download Large File, End Byte: ' + String.valueOf(endByte));
+			Logger.error('Google Client for Salesforce / Download Large File, Message:' + ex.getMessage());
+			Logger.saveLog();
+
+			throw new AuraHandledException('We couldn’t download the large file. Please try again, or contact your system administrator');
+		}
 	}
 }

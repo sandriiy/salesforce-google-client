@@ -41,6 +41,8 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.details
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
@@ -58,6 +60,9 @@ nav:
       - Home: index.md
       - Prerequisites: prerequisites.md
       - Architecture: architecture.md
+      - Quality Assurance:
+        - Validation Log: validation/release-validation-log.md
+        - Validation Suites: validation/validation-suites.md
 
   - Setup:
       - Install Dependencies: setup/dependencies.md
@@ -71,8 +76,10 @@ nav:
 
   - Features:
       - Capabilities: features/capabilities.md
+      - File Explorer: features/file-explorer.md
       - Preview: features/preview.md
       - Sharing: features/sharing.md
+      - Folder Structure: features/folder-structure.md
       - Public Links: features/public-links.md
       - Versioning: features/versioning.md
       - Audit & Logging: features/audit.md

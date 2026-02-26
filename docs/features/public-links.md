@@ -20,6 +20,14 @@ Public links:
 
 ![Public Link Window](../assets/images/client_public_link_window.png)
 
+## Organization-Domain Restriction (Optional)
+
+For enterprise usage, you can restrict public links to your **organization’s domain** (for example, `cloudrylabs.com`). When enabled, the link remains shareable, but **only users signed in under that domain** can open it.
+
+This setting is configured in the **Google Client** application and is stored in **Custom Metadata**.
+
+![Org Domain Setting](../assets/images/client_public_link_org_domain.png)
+
 ## Creating a Public Link
 
 1. Open a file
@@ -35,6 +43,7 @@ After creation, you will receive a URL that can be copied and shared immediately
 - Recipients view the file through Google Drive
 - Access can be revoked at any time
 - Expired links delete automatically
+- If **Organization-Domain Restriction** is enabled, recipients outside your domain will be blocked
 
 This feature gives you the flexibility of external sharing **without increasing Salesforce license count**.
 

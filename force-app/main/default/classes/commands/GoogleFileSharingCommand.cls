@@ -58,10 +58,6 @@ public without sharing class GoogleFileSharingCommand {
 			if (String.isBlank(normalized)) {
 				throw new GoogleFileSharingException('ShareType must not be blank when provided');
 			}
-
-			if (normalized != 'Viewer' && normalized != 'Collaborator' && normalized != 'InferredFromRecord') {
-				throw new GoogleFileSharingException('Unsupported ShareType: ' + shareType);
-			}
 		}
 
 		public void validateLinkVisibility(String visibility) {
@@ -69,10 +65,6 @@ public without sharing class GoogleFileSharingCommand {
 
 			if (String.isBlank(normalized)) {
 				throw new GoogleFileSharingException('Visibility must not be blank when provided');
-			}
-
-			if (normalized != 'InternalUsers' && normalized != 'AllUsers') {
-				throw new GoogleFileSharingException('Unsupported Visibility: ' + visibility);
 			}
 		}
 
@@ -213,7 +205,7 @@ public without sharing class GoogleFileSharingCommand {
 			}
 
 			List<User> owner = [
-				SELECT Id, Name
+				SELECT Id, Name, Email
 				FROM User
 				WHERE Id = :localFile.OwnerId
 				LIMIT 1
@@ -298,7 +290,7 @@ public without sharing class GoogleFileSharingCommand {
 				shareAccessLevel
 			);
 
-			Logger.info('File Sharing Create: File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId + '; Access: ' + shareAccessLevel);
+			Logger.info('File Sharing Create: File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId + '; Access: ' + shareAccessLevel).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
 			uowRef.registerNew(shareRecord);
 			uowRef.commitWork(true);
@@ -334,7 +326,7 @@ public without sharing class GoogleFileSharingCommand {
 
 			Boolean isUserOrGroupTarget = support.isUserOrGroup(shareToRecordId);
 
-			Logger.info('File Sharing Delete: File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId + '; Target Type: ' + (isUserOrGroupTarget ? 'UserOrGroup' : 'Record'));
+			Logger.info('File Sharing Delete: File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId + '; Target Type: ' + (isUserOrGroupTarget ? 'UserOrGroup' : 'Record')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
 			if (isUserOrGroupTarget) {
 				deleteUserOrGroupSharing();
@@ -408,7 +400,7 @@ public without sharing class GoogleFileSharingCommand {
 
 			Boolean isUserOrGroupTarget = support.isUserOrGroup(shareToRecordId);
 
-			Logger.info('File Sharing Modify: File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId + '; Target Type: ' + (isUserOrGroupTarget ? 'UserOrGroup' : 'Record'));
+			Logger.info('File Sharing Modify: File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId + '; Target Type: ' + (isUserOrGroupTarget ? 'UserOrGroup' : 'Record')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
 			if (isUserOrGroupTarget) {
 				applyUserOrGroupModification();
@@ -427,7 +419,7 @@ public without sharing class GoogleFileSharingCommand {
 
 			String mappedAccessLevel = support.mapUiAccessLevelToShareAccess(uiAccessLevel);
 
-			Logger.info('File Sharing Modify (User/Group): File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId + '; Access: ' + mappedAccessLevel);
+			Logger.info('File Sharing Modify (User/Group): File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId + '; Access: ' + mappedAccessLevel).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
 			for (GoogleFile__Share shareRecord : sharesToModify) {
 				shareRecord.AccessLevel = mappedAccessLevel;
@@ -454,7 +446,7 @@ public without sharing class GoogleFileSharingCommand {
 			Logger.info('File Sharing Modify (Record Link): File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId +
 				(String.isBlank(uiAccessLevel) ? '' : '; ShareType: ' + uiAccessLevel) +
 				(String.isBlank(linkVisibility) ? '' : '; Visibility: ' + linkVisibility)
-			);
+			).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
 			for (GoogleFileLink__c linkRecord : linksToModify) {
 				applyLinkUpdates(linkRecord, uiAccessLevel, linkVisibility);

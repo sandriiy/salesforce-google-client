@@ -8,70 +8,70 @@ private class GoogleCloudFilesViewControllerTest {
 
 	private static void initMocks() {
 		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleRemoteFileService.authorizerClassNameOverride = 'GoogleCloudFilesViewControllerTest.TestGoogleAuthorizer';
+		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleCloudFilesViewControllerTest.TestGoogleAuthorizer';
 	}
 
 	@IsTest
-	private static void fetchFileHeaderDetailsTestSuccessNullId() {
+	private static void testFetchFileHeaderDetailsPositiveNullId() {
 		initMocks();
 
 		Test.startTest();
-		GoogleFileHeaderInfoDTO out = GoogleCloudFilesViewController.fetchFileHeaderDetails(null);
+		GoogleFileHeaderInfoDTO headerInfo = GoogleCloudFilesViewController.fetchFileHeaderDetails(null);
 		Test.stopTest();
 
-		System.assertNotEquals(null, out);
-		System.assertEquals(null, out.name);
-		System.assertNotEquals(null, out.compactFields);
-		System.assertEquals(0, out.compactFields.size());
+		System.assertNotEquals(null, headerInfo);
+		System.assertEquals(null, headerInfo.name);
+		System.assertNotEquals(null, headerInfo.compactFields);
+		System.assertEquals(0, headerInfo.compactFields.size());
 	}
 
 	@IsTest
-	private static void fetchFileHeaderDetailsTestSuccessMissing() {
+	private static void testFetchFileHeaderDetailsPositiveMissing() {
 		initMocks();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>());
 
 		Test.startTest();
-		GoogleFileHeaderInfoDTO out = GoogleCloudFilesViewController.fetchFileHeaderDetails('a0B000000000001AAA');
+		GoogleFileHeaderInfoDTO headerInfo = GoogleCloudFilesViewController.fetchFileHeaderDetails('a0B000000000001AAA');
 		Test.stopTest();
 
-		System.assertNotEquals(null, out);
-		System.assertEquals(null, out.name);
-		System.assertNotEquals(null, out.compactFields);
-		System.assertEquals(0, out.compactFields.size());
+		System.assertNotEquals(null, headerInfo);
+		System.assertEquals(null, headerInfo.name);
+		System.assertNotEquals(null, headerInfo.compactFields);
+		System.assertEquals(0, headerInfo.compactFields.size());
 	}
 
 	@IsTest
-	private static void fetchFileHeaderDetailsTestSuccessExec() {
+	private static void testFetchFileHeaderDetailsPositive() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file()
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('HDR1')
 			.withDescription('D')
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = f.Id, Name = f.Name, OwnerId = UserInfo.getUserId())
+			new GoogleFile__c(Id = localFile.Id, Name = localFile.Name, OwnerId = UserInfo.getUserId())
 		});
 
 		Test.startTest();
-		GoogleFileHeaderInfoDTO out = GoogleCloudFilesViewController.fetchFileHeaderDetails(f.Id);
+		GoogleFileHeaderInfoDTO headerInfo = GoogleCloudFilesViewController.fetchFileHeaderDetails(localFile.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, out);
+		System.assertNotEquals(null, headerInfo);
 	}
 
 	@IsTest
-	private static void retrieveLocalGoogleFileVersionsTestSuccessList() {
+	private static void testRetrieveLocalGoogleFileVersionsPositive() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file()
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
 			.withName('VER_PARENT')
 			.withDescription('D')
 			.insertRecord();
 
-		GoogleFileVersion__c v = GoogleCloudTestFactory.version()
-			.forFile(f.Id)
+		GoogleFileVersion__c firstVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
 			.withName('V1.pdf')
 			.withType('application/pdf')
 			.withSize(1)
@@ -80,15 +80,15 @@ private class GoogleCloudFilesViewControllerTest {
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFileVersion__c(Id = v.Id, Name = v.Name, GoogleFileId__c = f.Id)
+			new GoogleFileVersion__c(Id = firstVersion.Id, Name = firstVersion.Name, GoogleFileId__c = parentFile.Id)
 		});
 
 		Test.startTest();
-		List<GoogleFileVersion__c> out = GoogleCloudFilesViewController.retrieveLocalGoogleFileVersions(f.Id);
+		List<GoogleFileVersion__c> fileVersions = GoogleCloudFilesViewController.retrieveLocalGoogleFileVersions(parentFile.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, out);
-		System.assertEquals(1, out.size());
-		System.assertEquals(v.Id, out[0].Id);
+		System.assertNotEquals(null, fileVersions);
+		System.assertEquals(1, fileVersions.size());
+		System.assertEquals(firstVersion.Id, fileVersions[0].Id);
 	}
 }

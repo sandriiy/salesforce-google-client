@@ -12,9 +12,9 @@ public with sharing class GoogleCloudConfigController {
 	}
 
 	@AuraEnabled
-    public static void saveMetadataConfig(Map<String, Object> fieldApiToValue) {
+    public static Id saveMetadataConfig(Map<String, Object> fieldApiToValue) {
 		GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
-		metadataService.saveConfig(fieldApiToValue);
+		return metadataService.saveConfig(fieldApiToValue);
     }
 
 	@AuraEnabled(cacheable=true)
@@ -24,9 +24,15 @@ public with sharing class GoogleCloudConfigController {
 	}
 
 	@AuraEnabled
-    public static String validateMetadataConfig(String className) {
-        GoogleRemoteFileService remoteService = new GoogleRemoteFileService();
-		return remoteService.validateCustomGoogleAuthorizerClass(className);
+	public static String validateLatestMetadataDeploy() {
+		GoogleCacheConfigService cacheService = new GoogleCacheConfigService(new GoogleOrgCacheProvider(GoogleCacheConfigService.PARTITION));
+		return cacheService.get(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY);
+	}
+
+	@AuraEnabled
+    public static String validateMetadataConfig() {
+        GoogleDriveApiProvider remoteProvider = new GoogleDriveApiProvider();
+		return remoteProvider.validateCustomGoogleAuthorizerCreds();
     }
 
 	@AuraEnabled

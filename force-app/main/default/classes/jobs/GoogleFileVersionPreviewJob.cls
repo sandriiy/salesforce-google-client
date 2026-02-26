@@ -9,7 +9,7 @@ public with sharing class GoogleFileVersionPreviewJob implements Queueable, Data
     }
 
     public void execute(QueueableContext qc) {
-		Logger.info('Queueable Job to generate Google Docs previews for: ' + String.join(versionIds, ', '));
+		Logger.info('Queueable Job to generate Google Docs previews for: ' + String.join(versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
         if (versionIds.isEmpty()) return;
 
 		List<GoogleFileVersion__c> localFileVersions = (List<GoogleFileVersion__c>) GoogleFileVersionSelector.query()
@@ -21,11 +21,14 @@ public with sharing class GoogleFileVersionPreviewJob implements Queueable, Data
         for (GoogleFileVersion__c localFileVersion : localFileVersions) {
             if (String.isNotBlank(localFileVersion.GoogleDocsFileId__c)) continue;
 
-			GoogleRemoteFileService remoteFileService = new GoogleRemoteFileService();
-			GoogleFileEntity clonedFile = remoteFileService.cloneFileToPreviewableFormat(
-				localFileVersion.Name,
-				localFileVersion.GoogleDriveFileId__c
-			);
+			GoogleDriveApiProvider remoteFileService = new GoogleDriveApiProvider();
+			GoogleDrive removeGoogleDrive = remoteFileService.retrieveGoogleDriveClient();
+			GoogleFileEntity clonedFile = removeGoogleDrive.files().clone(localFileVersion.GoogleDriveFileId__c)
+				.setFields('id')
+				.setFileName(localFileVersion.Name)
+				.setSupportsAllDrives(true)
+				.setMimeType('application/vnd.google-apps.document')
+				.execute();
 
 			localFileVersion.GoogleDocsFileId__c  = clonedFile.id;
 			toUpdate.add(localFileVersion);
@@ -36,7 +39,7 @@ public with sharing class GoogleFileVersionPreviewJob implements Queueable, Data
 			try {
 				update toUpdate;
 			} catch (Exception ex) {
-				Logger.error('Google File Version update failed (Local): ' + ex.getMessage());
+				Logger.error('Google File Version update failed (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 				Logger.saveLog();
 			} finally {
 				GTriggerHandler.clearAllBypasses();

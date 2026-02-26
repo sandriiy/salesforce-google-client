@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>GoogleDocsFileId__c</fullName>
+    <deprecated>false</deprecated>
     <description>Converted the original document to a Google Workspace type to enable exporting this type in another format.</description>
-    <encryptionScheme>None</encryptionScheme>
     <externalId>false</externalId>
     <label>Google Docs File Id</label>
     <length>255</length>

@@ -7,6 +7,8 @@ import modifySharingVisibility from '@salesforce/apex/GoogleCloudFilesSharingCon
 import modifySharingAccess from '@salesforce/apex/GoogleCloudFilesSharingController.modifyExistingSharingAccess';
 import deleteSharing from '@salesforce/apex/GoogleCloudFilesSharingController.deleteExistingSharing';
 
+import Id from '@salesforce/user/Id';
+
 export default class GoogleCloudFileSharing extends LightningElement {
 	@api localFileRecordId;
 
@@ -15,6 +17,8 @@ export default class GoogleCloudFileSharing extends LightningElement {
 	@track selectedShareToRecordId;
 	@track sharingDetails;
 	@track isLoading = true;
+
+	@track userId = Id;
 
 	connectedCallback() {
 		this.setDefaultValues();
@@ -104,7 +108,7 @@ export default class GoogleCloudFileSharing extends LightningElement {
 		const row = event.target.closest('[data-target]');
     	const recordId = row?.dataset.target;
 		if (!isEmpty(recordId)) {
-			await deleteSharing({ 
+			await deleteSharing({
 				localFileRecordId: this.localFileRecordId,
 				shareToRecordId: recordId
 			}).catch(error => {
@@ -155,7 +159,9 @@ export default class GoogleCloudFileSharing extends LightningElement {
 				displayName: s.UserOrGroup?.Name || s.UserOrGroupId,
 				kindLabel: kind,
 				icon: isUser(s.UserOrGroupId) ? 'standard:user' : 'standard:groups',
-				role: findRoleForAccessType(s.AccessLevel)
+				role: findRoleForAccessType(s.AccessLevel),
+				isSelf: s.UserOrGroupId === this.userId,
+				isNotSelf: s.UserOrGroupId !== this.userId
 			};
 		});
 
@@ -224,6 +230,11 @@ export default class GoogleCloudFileSharing extends LightningElement {
 		this.sharingDetails = updatedDetails;
 	}
 
+	get showOwnerRestrictionMessage() {
+		const ownerId = this.sharingDetails?.owner?.Id;
+		return !isEmpty(this.userId) && !isEmpty(ownerId) && this.userId !== ownerId;
+	}
+
 	get readyToShare() {
 		return (
 			!isEmpty(this.localFileRecordId) &&
@@ -249,6 +260,7 @@ export default class GoogleCloudFileSharing extends LightningElement {
 
 	get shareRecordOptions() {
 		return [
+			{ label: 'None', value: 'None' },
 			{ label: 'Viewer', value: 'Viewer' },
 			{ label: 'Set by Record', value: 'InferredFromRecord' }
 		];

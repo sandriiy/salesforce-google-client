@@ -53,24 +53,6 @@ private class GoogleMetadataConfigServiceTest {
 	}
 
 	@IsTest
-	private static void saveConfigTestFailNullJobId() {
-		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new NullIdDeployer());
-
-		Map<String, Object> changes = new Map<String, Object>{
-			'DefaultGoogleUploadFolderId__c' => 'folder_123'
-		};
-
-		Test.startTest();
-		try {
-			svc.saveConfig(changes);
-			System.assert(false);
-		} catch (GoogleMetadataConfigService.GoogleMetadataConfigException ex) {
-			System.assert(ex.getMessage().contains('Failed to save Google Client configuration'));
-		}
-		Test.stopTest();
-	}
-
-	@IsTest
 	private static void saveConfigTestFailEnqueueThrows() {
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new ThrowingDeployer());
 

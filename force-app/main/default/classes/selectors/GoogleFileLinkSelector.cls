@@ -44,4 +44,14 @@ public inherited sharing class GoogleFileLinkSelector extends GSOQL implements G
 
         return this;
     }
+
+	public GoogleFileLinkSelector orderByCreatedDesc() {
+        orderBy(GoogleFileLink__c.CreatedDate).sortDesc();
+        return this;
+    }
+
+	public GoogleFileLinkSelector limitTo(Integer n) {
+        setLimit(n);
+        return this;
+    }
 }

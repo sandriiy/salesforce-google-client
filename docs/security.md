@@ -52,9 +52,16 @@ The system always looks for the **highest** access level a person has (for examp
 
 ## Files Assigned to Records
 
-Files can be **assigned to records** (for example, a File attached to an Account, Case, Opportunity, etc.).  
+Files can be **assigned to records** (for example, a File attached to an Account, Case, Opportunity, etc.). When this happens, the system creates a **File Link** that connects the File to that record.
 
-In these scenarios, the File can **inherit access** from the record it is assigned to:
+Each File Link includes a **Share Type** that defines what access (if any) this record relationship can grant:
+
+- **Viewer** – grants View access (if the record is visible to the user)  
+- **Collaborator** – grants Edit access (if the record is visible to the user)  
+- **InferredFromRecord** – grants access based on the user’s access to the linked Salesforce record  
+- **None** – grants **no access** through the record relationship; the File remains linked for traceability, but access is limited strictly to the owner and people the owner explicitly shared the File with  
+
+When Share Type is **InferredFromRecord**, the File can **inherit access** from the record it is assigned to:
 
 - If a user has **edit rights** on the record → they may get **Edit** access to the File  
 - If a user has **read-only rights** on the record → they may get **View** access to the File  
@@ -88,7 +95,7 @@ For any given File, the security layer looks at:
 
 - Who owns the File  
 - Whether it has been shared directly with the user (or their groups/queues)  
-- Whether it is assigned to a record the user can access  
+- Whether it is assigned to records via File Links, and what each link’s **Share Type** allows  
 - Whether the File is allowed for internal users only or for all users  
 
 From this, it calculates a final **User Access Level**:

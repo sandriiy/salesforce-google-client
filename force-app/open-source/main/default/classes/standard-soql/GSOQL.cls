@@ -2702,42 +2702,51 @@ public virtual inherited sharing class GSOQL implements Queryable {
 
 	private inherited sharing class InheritedSharing implements DatabaseQuery {
 		public List<SObject> toSObjects(String query, Map<String, Object> binding, AccessLevel accessLevel) {
+			Logger.info('InheritedSharing, toSObjects: ' + query).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return Database.queryWithBinds(query, binding, accessLevel);
 		}
 
 		public Integer toInteger(String query, Map<String, Object> binding, AccessLevel accessLevel) {
+			Logger.info('InheritedSharing, toInteger: ' + query).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return Database.countQueryWithBinds(query, binding, accessLevel);
 		}
 
 		public Database.QueryLocator toQueryLocator(String query, Map<String, Object> binding, AccessLevel accessLevel) {
+			Logger.info('InheritedSharing, toQueryLocator: ' + query).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return Database.getQueryLocatorWithBinds(query, binding, accessLevel);
 		}
 	}
 
 	private without sharing class WithoutSharing implements DatabaseQuery {
 		public List<SObject> toSObjects(String query, Map<String, Object> binding, AccessLevel accessLevel) {
+			Logger.info('WithoutSharing, toSObjects: ' + query).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return Database.queryWithBinds(query, binding, accessLevel);
 		}
 
 		public Integer toInteger(String query, Map<String, Object> binding, AccessLevel accessLevel) {
+			Logger.info('WithoutSharing, toInteger: ' + query).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return Database.countQueryWithBinds(query, binding, accessLevel);
 		}
 
 		public Database.QueryLocator toQueryLocator(String query, Map<String, Object> binding, AccessLevel accessLevel) {
+			Logger.info('WithoutSharing, toQueryLocator: ' + query).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return Database.getQueryLocatorWithBinds(query, binding, accessLevel);
 		}
 	}
 
 	private with sharing class WithSharing implements DatabaseQuery {
 		public List<SObject> toSObjects(String query, Map<String, Object> binding, AccessLevel accessLevel) {
+			Logger.info('WithSharing, toSObjects: ' + query).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return Database.queryWithBinds(query, binding, accessLevel);
 		}
 
 		public Integer toInteger(String query, Map<String, Object> binding, AccessLevel accessLevel) {
+			Logger.info('WithSharing, toInteger: ' + query).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return Database.countQueryWithBinds(query, binding, accessLevel);
 		}
 
 		public Database.QueryLocator toQueryLocator(String query, Map<String, Object> binding, AccessLevel accessLevel) {
+			Logger.info('WithSharing, toQueryLocator: ' + query).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return Database.getQueryLocatorWithBinds(query, binding, accessLevel);
 		}
 	}

@@ -35,6 +35,26 @@
             </div>
         </div>
 
+        <div lwc:if={showDomainSkipOption} class="domain-option-container slds-p-top_small slds-p-bottom_x-small">
+            <div class="slds-grid slds-wrap slds-grid_vertical-align-start domain-option-grid">
+                <div class="slds-col slds-size_auto domain-option-checkbox-col">
+                    <lightning-input
+                        type="checkbox"
+                        variant="label-hidden"
+                        checked={isDomainSkip}
+                        onchange={handleDomainSkipChange}
+                        disabled={publicLinkExists}>
+                    </lightning-input>
+                </div>
+
+                <div class="slds-col slds-size_11-of-12 slds-large-size_11-of-12 domain-option-text-col">
+                    <p class="slds-text-body_small slds-text-color_weak domain-option-text">
+                        This link will be limited to your organization’s domain. To make it publicly accessible, select this checkbox. We recommend leaving it unchecked.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <div class="slds-grid slds-wrap slds-p-top_small">
             <div class="slds-size_3-of-4">
                 <lightning-input

@@ -8,96 +8,139 @@ private class GoogleCloudFilesControllerTest {
 
 	private static void initMocks() {
 		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleRemoteFileService.authorizerClassNameOverride = 'GoogleCloudFilesControllerTest.TestGoogleAuthorizer';
+		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleCloudFilesControllerTest.TestGoogleAuthorizer';
 	}
 
 	@IsTest
-	private static void fetchFileAccessTestSuccessOwner() {
+	private static void testFetchFileAccessPositiveOwner() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file()
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('FA1')
 			.withDescription('D')
 			.insertRecord();
 
 		Test.startTest();
-		String access = GoogleCloudFilesController.fetchFileAccess(f.Id);
+		String accessLevel = GoogleCloudFilesController.fetchFileAccess(localFile.Id);
 		Test.stopTest();
 
-		System.assertEquals('Edit', access);
+		System.assertEquals('Edit', accessLevel);
 	}
 
 	@IsTest
-	private static void retrieveGoogleFilesWithLimitTestSuccessExec() {
+	private static void testRetrieveAllGoogleFilesPositive() {
 		initMocks();
 
-		Account a = new Account(Name = 'RGF1');
-		insert a;
+		Test.startTest();
+		List<GoogleFile__c> allFiles = GoogleCloudFilesController.retrieveAllGoogleFiles();
+		Test.stopTest();
 
-		GoogleFile__c f1 = GoogleCloudTestFactory.file().withName('F1').withDescription('D').withSource('Uploader').forRecord(a.Id).insertRecord();
-		GoogleFile__c f2 = GoogleCloudTestFactory.file().withName('F2').withDescription('D').withSource('Notes & Attachments').forRecord(a.Id).insertRecord();
+		System.assertNotEquals(null, allFiles);
+	}
+
+	@IsTest
+	private static void testRetrieveGoogleFilesWithLimitPositive() {
+		initMocks();
+
+		Account relatedAccount = new Account(Name = 'RGF1');
+		insert relatedAccount;
+
+		GoogleFile__c firstFile = GoogleCloudTestFactory.file()
+			.withName('F1')
+			.withDescription('D')
+			.withSource('Uploader')
+			.forRecord(relatedAccount.Id)
+			.insertRecord();
+
+		GoogleFile__c secondFile = GoogleCloudTestFactory.file()
+			.withName('F2')
+			.withDescription('D')
+			.withSource('Notes & Attachments')
+			.forRecord(relatedAccount.Id)
+			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = f1.Id, Name = f1.Name, OwnerId = UserInfo.getUserId()),
-			new GoogleFile__c(Id = f2.Id, Name = f2.Name, OwnerId = UserInfo.getUserId())
+			new GoogleFile__c(Id = firstFile.Id, Name = firstFile.Name, OwnerId = UserInfo.getUserId()),
+			new GoogleFile__c(Id = secondFile.Id, Name = secondFile.Name, OwnerId = UserInfo.getUserId())
 		});
 
 		Test.startTest();
-		List<GoogleFile__c> out = GoogleCloudFilesController.retrieveGoogleFilesWithLimit(a.Id, 'Uploader', 1);
+		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithLimit(relatedAccount.Id, 'Uploader', 1);
 		Test.stopTest();
 
-		System.assertNotEquals(null, out);
+		System.assertNotEquals(null, files);
 	}
 
 	@IsTest
-	private static void retrieveGoogleFilesWithoutLimitTestSuccessExec() {
+	private static void testRetrieveGoogleFilesWithoutLimitPositive() {
 		initMocks();
 
-		Account a = new Account(Name = 'RGF2');
-		insert a;
+		Account relatedAccount = new Account(Name = 'RGF2');
+		insert relatedAccount;
 
-		GoogleFile__c f1 = GoogleCloudTestFactory.file().withName('F3').withDescription('D').withSource('Uploader').forRecord(a.Id).insertRecord();
+		GoogleFile__c fileRecord = GoogleCloudTestFactory.file()
+			.withName('F3')
+			.withDescription('D')
+			.withSource('Uploader')
+			.forRecord(relatedAccount.Id)
+			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = f1.Id, Name = f1.Name, OwnerId = UserInfo.getUserId())
+			new GoogleFile__c(Id = fileRecord.Id, Name = fileRecord.Name, OwnerId = UserInfo.getUserId())
 		});
 
 		Test.startTest();
-		List<GoogleFile__c> out = GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit(a.Id, null);
+		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit(relatedAccount.Id, null);
 		Test.stopTest();
 
-		System.assertNotEquals(null, out);
-		System.assertEquals(1, out.size());
+		System.assertNotEquals(null, files);
+		System.assertEquals(1, files.size());
 	}
 
 	@IsTest
-	private static void retrieveLocalGoogleFileByIdTestSuccessFound() {
+	private static void testRetrieveLocalGoogleFileByIdPositive() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file()
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('RLF1')
 			.withDescription('D')
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = f.Id, Name = f.Name, OwnerId = UserInfo.getUserId())
+			new GoogleFile__c(Id = localFile.Id, Name = localFile.Name, OwnerId = UserInfo.getUserId())
 		});
 
 		Test.startTest();
-		GoogleFile__c out = GoogleCloudFilesController.retrieveLocalGoogleFileById(f.Id);
+		GoogleFile__c fileRecord = GoogleCloudFilesController.retrieveLocalGoogleFileById(localFile.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, out);
-		System.assertEquals(f.Id, out.Id);
+		System.assertNotEquals(null, fileRecord);
+		System.assertEquals(localFile.Id, fileRecord.Id);
 	}
 
 	@IsTest
-	private static void retrieveLocalGoogleFileVersionByIdTestSuccessFound() {
+	private static void testRetrieveLocalGoogleFileByIdNegativeNoAccess() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('RV1').withDescription('D').insertRecord();
-		GoogleFileVersion__c v = GoogleCloudTestFactory.version()
-			.forFile(f.Id)
+		Id missingFileId = (Id) 'a0B000000000001AAA';
+
+		try {
+			Test.startTest();
+			GoogleCloudFilesController.retrieveLocalGoogleFileById(missingFileId);
+			Test.stopTest();
+			System.assert(false);
+		} catch (Exception ex) {
+			System.assert(String.isNotBlank(ex.getMessage()));
+		}
+	}
+
+	@IsTest
+	private static void testRetrieveLocalGoogleFileVersionByIdPositive() {
+		initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('RV1').withDescription('D').insertRecord();
+		GoogleFileVersion__c fileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
 			.withName('V1.pdf')
 			.withType('application/pdf')
 			.withSize(1)
@@ -106,51 +149,60 @@ private class GoogleCloudFilesControllerTest {
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFileVersion__c(Id = v.Id, Name = v.Name)
+			new GoogleFileVersion__c(Id = fileVersion.Id, Name = fileVersion.Name)
 		});
 
 		Test.startTest();
-		GoogleFileVersion__c out = GoogleCloudFilesController.retrieveLocalGoogleFileVersionById(v.Id);
+		GoogleFileVersion__c outVersion = GoogleCloudFilesController.retrieveLocalGoogleFileVersionById(fileVersion.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, out);
-		System.assertEquals(v.Id, out.Id);
+		System.assertNotEquals(null, outVersion);
+		System.assertEquals(fileVersion.Id, outVersion.Id);
 	}
 
 	@IsTest
-	private static void saveNewGoogleFileTestSuccessExec() {
+	private static void testSaveNewGoogleFilePositive() {
 		initMocks();
 
-		Account a = new Account(Name = 'SNF1');
-		insert a;
+		Account relatedAccount = new Account(Name = 'SNF1');
+		insert relatedAccount;
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ new GoogleFile__c(Name = 'Any') });
 
 		Test.startTest();
-		GoogleFile__c out = GoogleCloudFilesController.saveNewGoogleFile(
-			a.Id, 'My.pdf', 'application/pdf', 123L, 'GD_NEW', 'FOLDER1', 'Notes & Attachments'
+		GoogleCloudFilesController.saveNewGoogleFile(
+			relatedAccount.Id, 'My.pdf', 'application/pdf', 123L, 'GD_NEW', 'FOLDER1', 'Notes & Attachments'
 		);
 		Test.stopTest();
+
+		System.assert(true);
 	}
 
 	@IsTest
-	private static void saveNewGoogleFileVersionTestSuccessExec() {
+	private static void testSaveNewGoogleFileVersionPositive() {
 		initMocks();
 
-		Account a = new Account(Name = 'SNFV1');
-		insert a;
+		Account relatedAccount = new Account(Name = 'SNFV1');
+		insert relatedAccount;
 
-		GoogleFile__c base = GoogleCloudTestFactory.file().withName('Base').withDescription('D').forRecord(a.Id).insertRecord();
-		GoogleCloudTestFactory.version().forFile(base.Id).withName('Old.pdf').withType('application/pdf').withSize(1).withDriveId('GD_OLD').withDocsId('DOCS_OLD').insertRecord();
+		GoogleFile__c baseFile = GoogleCloudTestFactory.file().withName('Base').withDescription('D').forRecord(relatedAccount.Id).insertRecord();
+		GoogleCloudTestFactory.version()
+			.forFile(baseFile.Id)
+			.withName('Old.pdf')
+			.withType('application/pdf')
+			.withSize(1)
+			.withDriveId('GD_OLD')
+			.withDocsId('DOCS_OLD')
+			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = base.Id, Name = 'Base')
+			new GoogleFile__c(Id = baseFile.Id, Name = 'Base')
 		});
 
 		Test.startTest();
-		GoogleFile__c out = GoogleCloudFilesController.saveNewGoogleFileVersion(
-			a.Id,
-			base.Id,
+		GoogleFile__c createdFile = GoogleCloudFilesController.saveNewGoogleFileVersion(
+			relatedAccount.Id,
+			baseFile.Id,
 			'New.docx',
 			'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 			10L,
@@ -160,16 +212,16 @@ private class GoogleCloudFilesControllerTest {
 		);
 		Test.stopTest();
 
-		System.assertNotEquals(null, out);
+		System.assertNotEquals(null, createdFile);
 	}
 
 	@IsTest
-	private static void deleteExistingGoogleFileTestSuccessExec() {
+	private static void testDeleteExistingGoogleFilePositive() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DEL1').withDescription('D').insertRecord();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('DEL1').withDescription('D').insertRecord();
 		GoogleCloudTestFactory.version()
-			.forFile(f.Id)
+			.forFile(localFile.Id)
 			.withName('V1.pdf')
 			.withType('application/pdf')
 			.withSize(1)
@@ -178,36 +230,56 @@ private class GoogleCloudFilesControllerTest {
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
-			[SELECT Id, Name, GoogleDriveFolderId__c, IsLatestFile__c, PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c,
-			        CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c
-			 FROM GoogleFileVersion__c
-			 WHERE GoogleFileId__c = :f.Id]
+			[
+				SELECT Id, Name, GoogleDriveFolderId__c, IsLatestFile__c, PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c,
+					CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c
+				FROM GoogleFileVersion__c
+				WHERE GoogleFileId__c = :localFile.Id
+			]
 		});
 
 		Test.startTest();
-		GoogleCloudFilesController.deleteExistingGoogleFile(f.Id);
+		GoogleCloudFilesController.deleteExistingGoogleFile(localFile.Id);
 		Test.stopTest();
 
-		System.assertEquals(0, [SELECT count() FROM GoogleFile__c WHERE Id = :f.Id]);
+		System.assertEquals(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
 	}
 
 	@IsTest
-	private static void uploadFileTestSuccessExec() {
+	private static void testUploadFilePositive() {
 		initMocks();
 
 		Test.startTest();
-		GoogleFileEntity uploaded = GoogleCloudFilesController.uploadFile('hello.txt', 'aGVsbG8=');
+		GoogleFileEntity uploadedFile = GoogleCloudFilesController.uploadFile('hello.txt', 'aGVsbG8=');
 		Test.stopTest();
-		System.assertNotEquals(null, uploaded);
+
+		System.assertNotEquals(null, uploadedFile);
 	}
 
 	@IsTest
-	private static void retrieveGoogleFileBase64PreviewTestSuccessExec() {
+	private static void testUploadLargeFilePartialPositive() {
 		initMocks();
 
-		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DL1').withDescription('D').insertRecord();
-		GoogleFileVersion__c v = GoogleCloudTestFactory.version()
-			.forFile(f.Id)
+		Test.startTest();
+		GoogleBigFileEntity bigFileResult = GoogleCloudFilesController.uploadLargeFilePartial(
+			'large.bin',
+			'aGVsbG8=',
+			'session1',
+			0L,
+			10L
+		);
+		Test.stopTest();
+
+		System.assertNotEquals(null, bigFileResult);
+	}
+
+	@IsTest
+	private static void testRetrievePreviewDownloadPositive() {
+		initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('DL1').withDescription('D').insertRecord();
+		GoogleFileVersion__c fileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
 			.withName('V1.pdf')
 			.withType('application/pdf')
 			.withSize(1)
@@ -216,14 +288,29 @@ private class GoogleCloudFilesControllerTest {
 			.insertRecord();
 
 		Test.startTest();
-		try {
-			String previewB64 = GoogleCloudFilesController.retrieveGoogleFileBase64Preview(v.Id);
-			String dl = GoogleCloudFilesController.downloadFile(v.Id);
-			String part = GoogleCloudFilesController.downloadLargeFilePartial(v.Id, 0L, 10L);
-			System.assert(true, 'Preview/download methods executed');
-		} catch (Exception e) {
-			System.assertNotEquals(null, e.getMessage());
-		}
+		String previewBase64 = GoogleCloudFilesController.retrieveGoogleFileBase64Preview(fileVersion.Id);
+		String downloadBase64 = GoogleCloudFilesController.downloadFile(fileVersion.Id);
+		String rangeBase64 = GoogleCloudFilesController.downloadLargeFilePartial(fileVersion.Id, 0L, 10L);
 		Test.stopTest();
+
+		System.assert(String.isNotBlank(previewBase64));
+		System.assert(String.isNotBlank(downloadBase64));
+		System.assert(String.isNotBlank(rangeBase64));
+	}
+
+	@IsTest
+	private static void testRetrievePreviewNegativeHandled() {
+		initMocks();
+
+		Id missingVersionId = (Id) 'a0D000000000001AAA';
+
+		try {
+			Test.startTest();
+			GoogleCloudFilesController.retrieveGoogleFileBase64Preview(missingVersionId);
+			Test.stopTest();
+			System.assert(false);
+		} catch (Exception ex) {
+			System.assertNotEquals(null, ex.getMessage());
+		}
 	}
 }

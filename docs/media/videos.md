@@ -1,4 +1,9 @@
-!!! note
-    Official Google Client for Salesforce materials, including articles, videos, and user feedback, will be published upon completion of the Beta testing phase. For more information, please contact: [ansukhetskyi@cloudrylabs.com](mailto:ansukhetskyi@cloudrylabs.com)
+# Videos
+
+## Full Overview of Release v1.1.0
+
+[Watch on YouTube](https://www.youtube.com/watch?v=sdg7v8cvjMY)
+
+Why Google Client for Salesforce is built not only to **save your organization money**, but also to unlock **long-term, enterprise-grade file capabilities** that go beyond what Salesforce Files can offer.
 
 <br>

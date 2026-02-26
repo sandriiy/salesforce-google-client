@@ -189,7 +189,7 @@ private class GoogleCloudFilesSharingControllerTest {
 	}
 
 	@IsTest
-	private static void testCreateDeletePublicLinkPositive() {
+	private static void testCreateNewPublicLinkPositive() {
 		initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('PL1').withDescription('D').insertRecord();
@@ -208,10 +208,56 @@ private class GoogleCloudFilesSharingControllerTest {
 			System.now().addDays(7),
 			false
 		);
+		Test.stopTest();
+
+		GoogleFileVersion__c reloaded = [
+			SELECT PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c, PublicLinkStatus__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :localFileVersion.Id
+			LIMIT 1
+		];
+
+		System.assert(String.isNotBlank(reloaded.PublicLink__c));
+		System.assertNotEquals(null, reloaded.PublicLinkExpirationDate__c);
+		System.assert(String.isNotBlank(reloaded.PublicLinkPermissionId__c));
+		System.assertEquals('Pending Expiration', reloaded.PublicLinkStatus__c);
+	}
+
+	@IsTest
+	private static void testDeleteExistingPublicLinkPositive() {
+		initMocks();
+
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('PL2').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName('V2.pdf')
+			.withType('application/pdf')
+			.withSize(1)
+			.withDriveId('GD2')
+			.withDocsId('DOCS2')
+			.insertRecord();
+
+		localFileVersion.PublicLink__c = 'https://example.test/view';
+		localFileVersion.PublicLinkExpirationDate__c = System.now().addDays(7);
+		localFileVersion.PublicLinkPermissionId__c = 'perm_123';
+		localFileVersion.PublicLinkStatus__c = 'Active';
+		update localFileVersion;
+
+		Test.startTest();
 		GoogleCloudFilesSharingController.deleteExistingPublicLink(localFileVersion.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, updatedVersion);
+		GoogleFileVersion__c reloaded = [
+			SELECT PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c, PublicLinkStatus__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :localFileVersion.Id
+			LIMIT 1
+		];
+
+		System.assertEquals(null, reloaded.PublicLink__c);
+		System.assertEquals(null, reloaded.PublicLinkExpirationDate__c);
+		System.assertEquals(null, reloaded.PublicLinkPermissionId__c);
+		System.assertEquals('None', reloaded.PublicLinkStatus__c);
 	}
 
 	@IsTest

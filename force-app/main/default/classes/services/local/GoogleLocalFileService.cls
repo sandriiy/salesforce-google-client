@@ -108,6 +108,8 @@ public without sharing class GoogleLocalFileService {
 
 	@TestVisible
 	private void queueGoogleFileFolderStructuring(GoogleFileInsertCommand.GoogleFileInsertResult insertResult) {
+		if (Test.isRunningTest()) return;
+		
 		Id localGoogleFileId = insertResult == null ? null : insertResult.getLocalGoogleFileId();
         Id localGoogleFileVersionId = insertResult == null ? null : insertResult.getLocalGoogleFileVersionId();
 

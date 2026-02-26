@@ -1,4 +1,6 @@
 public without sharing class GoogleFileStoreInFolderCommand {
+	public class GoogleFileStoreInFolderCommandException extends Exception {}
+
     private static final String FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
     private static final String APP_PROPERTY_RECORD_ID = 'record-id';
 
@@ -18,16 +20,42 @@ public without sharing class GoogleFileStoreInFolderCommand {
     }
 
     public void placeFile(GoogleFileRelocationRequestDTO request) {
+        if (request == null) {
+            Logger.error('Folder Placement Job Failed --> request is null').addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+            throw new GoogleFileStoreInFolderCommandException('Folder Placement Job Failed, request is empty');
+        }
+
+        if (request.localGoogleFileVersionId == null) {
+            Logger.error('Folder Placement Job Failed --> localGoogleFileVersionId is null').addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+            throw new GoogleFileStoreInFolderCommandException('Folder Placement Job Failed, localGoogleFileVersionId is empty');
+        }
+
         List<String> uploadParentFolderIds = this.metadataService.getTargetFolderResolver().resolveUploadFolderId();
 
         String folderStructure = this.metadataService.getGoogleDriveFolderStructure();
         if (String.isBlank(folderStructure)) return;
 
+        Logger.info(
+            'Folder Placement Job --> Config' +
+            ', FolderStructure=' + String.valueOf(folderStructure) +
+            ', UploadParentFolderIds=' + String.valueOf(uploadParentFolderIds)
+        ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
         String rootFolderId = getFirstFolderId(uploadParentFolderIds);
         if (String.isBlank(rootFolderId)) return;
 
         RemoteFileIds remoteFileIds = loadRemoteFileIds(request.localGoogleFileVersionId);
-        if (remoteFileIds == null || String.isBlank(remoteFileIds.googleDriveFileId)) return;
+
+        Logger.info(
+            'Folder Placement Job --> RemoteIds' +
+            ', GoogleDriveFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleDriveFileId) +
+            ', GoogleDocsFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleDocsFileId)
+        ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+        if (remoteFileIds == null || String.isBlank(remoteFileIds.googleDriveFileId)) {
+            Logger.error('Folder Placement Job Failed --> Remote GoogleDriveFileId is blank' + ', VersionId=' + String.valueOf(request.localGoogleFileVersionId)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			return;
+        }
 
         FolderTargets folderTargets = loadFolderTargets(request);
 
@@ -41,7 +69,32 @@ public without sharing class GoogleFileStoreInFolderCommand {
         );
         if (String.isBlank(destinationFolderId)) return;
 
-        String resultingGoogleDriveFileId = moveRemoteFile(remoteFileIds.googleDriveFileId, uploadParentFolderIds, destinationFolderId);
+        Logger.info(
+            'Folder Placement Job --> Move' +
+            ', SourceFileId=' + String.valueOf(remoteFileIds.googleDriveFileId) +
+            ', DestinationFolderId=' + String.valueOf(destinationFolderId) +
+            ', RemoveParents=' + String.valueOf(uploadParentFolderIds)
+        ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+        GoogleFileEntity movedFile;
+        try {
+            movedFile = this.remoteGoogleDrive.files().modify().metadata(remoteFileIds.googleDriveFileId)
+                .addParentFolders(new List<String>{destinationFolderId})
+                .removeParentFolders(uploadParentFolderIds)
+                .setSupportsAllDrives(true)
+                .execute();
+        } catch (Exception e) {
+            Logger.error(
+                'Folder Placement Job Failed --> Move failed' +
+                ', SourceFileId=' + String.valueOf(remoteFileIds.googleDriveFileId) +
+                ', DestinationFolderId=' + String.valueOf(destinationFolderId) +
+                ', Error=' + e.getMessage()
+            ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+            throw new GoogleFileStoreInFolderCommandException('Folder Placement Job Failed, remote move failed');
+        }
+
+        String resultingGoogleDriveFileId = movedFile == null ? null : movedFile.id;
         if (String.isBlank(resultingGoogleDriveFileId)) return;
 
         if (!String.isBlank(remoteFileIds.googleDocsFileId)) {
@@ -72,6 +125,15 @@ public without sharing class GoogleFileStoreInFolderCommand {
             .withAdvancedFields()
             .byId(localGoogleFileVersionId)
             .toObject();
+
+        if (versionRecord == null) {
+            Logger.error(
+                'Folder Placement Job Failed --> GoogleFileVersion__c not found' +
+                ', VersionId=' + String.valueOf(localGoogleFileVersionId)
+            ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+            throw new GoogleFileStoreInFolderCommandException('Folder Placement Job Failed, Google File Version not found');
+        }
 
         return new RemoteFileIds(
             versionRecord.GoogleDriveFileId__c,

@@ -44,8 +44,6 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 		}
 
 		String googleDomain = this.googleConfig.getGoogleDriveDomain();
-		System.debug(googleDomain);
-		System.debug(isDomainSkip);
 		GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
 
 		for (GoogleFileVersion__c localFileVersion : localFileVersions) {
@@ -59,12 +57,10 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 				.setPrincipalRole('reader');
 
 			if (String.isNotBlank(googleDomain) && isDomainSkip == false) {
-				System.debug('here');
 				createPermissionBuild = createPermissionBuild
 					.setPrincipalType('domain')
 					.setPrincipalDomain(googleDomain);
 			} else {
-				System.debug('here2');
 				createPermissionBuild = createPermissionBuild
 					.setPrincipalType('anyone');
 			}

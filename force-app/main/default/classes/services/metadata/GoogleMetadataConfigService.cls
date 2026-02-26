@@ -100,7 +100,7 @@ public inherited sharing class GoogleMetadataConfigService {
 			cacheService.put(DEFAULT_METADATA_DEPLOY_KEY, 'pending');
 			return deploymentId;
         } catch (Exception ex) {
-            throw new GoogleMetadataConfigException('Failed to save Google Client configuration');
+            throw new GoogleMetadataConfigException('Failed to save Google Client configuration. Ensure the user has “Modify Metadata Through Metadata API Functions” or refer to "Google Client Config" custom metadata directly.');
         }
 	}
 

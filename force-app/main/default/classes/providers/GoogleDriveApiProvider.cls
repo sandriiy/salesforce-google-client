@@ -10,8 +10,12 @@ public with sharing class GoogleDriveApiProvider {
 	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
 	public String validateCustomGoogleAuthorizerCreds() {
+		String authorizerClassName = authorizerClassNameOverride != null
+			? authorizerClassNameOverride
+			: metadataService.getGoogleDriveAuthorizerClassName();
+
 		GoogleCredential testCredential = new GoogleAuthorizationCodeFlow.Builder()
-			.setLocalGoogleAuthorizer(metadataService.getGoogleDriveAuthorizerClassName())
+			.setLocalGoogleAuthorizer(authorizerClassName)
 			.build();
 
 		if (String.isBlank(testCredential.accessToken)) {
@@ -35,16 +39,13 @@ public with sharing class GoogleDriveApiProvider {
 		GoogleAuthorizationCodeFlow.Builder builder = new GoogleAuthorizationCodeFlow.Builder()
 			.setLocalGoogleAuthorizer(authorizerClassName);
 
-		if (cacheService.getSessionPartition() != null) {
-			builder.setLocalPlatformCache(
-				cacheService.getSessionPartition(),
-				DEFAULT_TOKEN_CACHE_NAME
-			);
-		} else {
-			builder.setLocalPlatformCache(
-				cacheService.getOrgPartition(),
-				DEFAULT_TOKEN_CACHE_NAME
-			);
+		Cache.SessionPartition sessionPartition = cacheService.getSessionPartition();
+		Cache.OrgPartition orgPartition = cacheService.getOrgPartition();
+
+		if (sessionPartition != null) {
+			builder.setLocalPlatformCache(sessionPartition, DEFAULT_TOKEN_CACHE_NAME);
+		} else if (orgPartition != null) {
+			builder.setLocalPlatformCache(orgPartition, DEFAULT_TOKEN_CACHE_NAME);
 		}
 
 		return builder.build();

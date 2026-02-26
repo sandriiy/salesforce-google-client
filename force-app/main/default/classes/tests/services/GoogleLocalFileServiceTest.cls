@@ -178,7 +178,7 @@ private class GoogleLocalFileServiceTest {
 		try {
 			new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(missingUserId).strip();
 			System.assert(false);
-		} catch (GoogleFileAccessCheckCommand.GoogleFileAccessCheckException ex) {
+		} catch (GoogleFileAccessResolver.GoogleFileAccessCheckException ex) {
 			System.assert(ex.getMessage().contains('Target user was not found'));
 		}
 	}

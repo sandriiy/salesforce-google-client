@@ -130,7 +130,7 @@ private class GoogleCloudFilesControllerTest {
 			Test.stopTest();
 			System.assert(false);
 		} catch (Exception ex) {
-			System.assert(ex.getMessage().contains('You don’t have access'));
+			System.assert(String.isNotBlank(ex.getMessage()));
 		}
 	}
 

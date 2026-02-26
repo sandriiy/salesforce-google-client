@@ -38,6 +38,10 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Google Cloud Client User</label>
+    <tabSettings>
+        <tab>GoogleClientFileExplorer</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
     <userPermissions>
         <enabled>true</enabled>
         <name>RunFlow</name>

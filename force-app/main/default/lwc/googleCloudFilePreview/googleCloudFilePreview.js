@@ -157,7 +157,8 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		let isEdited = await GoogleCloudFileDetailsModal.open({
             size: 'small',
             label: `Edit ${this.fileName}`,
-            localFileVersionId: this.localLatestVersionRecord.Id
+            localFileVersionId: this.localLatestVersionRecord.Id,
+			isReadOnlyAccess: this.isReadMode
         });
 
 		if (isEdited) {

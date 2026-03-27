@@ -1,6 +1,8 @@
 public class GoogleFileHeaderInfoDTO {
-    @AuraEnabled public String name;
-    @AuraEnabled public List<CompactFieldDTO> compactFields;
+    @AuraEnabled
+	public String name;
+    @AuraEnabled
+	public List<CompactFieldDTO> compactFields;
 
     public class CompactFieldDTO {
         @AuraEnabled public String apiName;

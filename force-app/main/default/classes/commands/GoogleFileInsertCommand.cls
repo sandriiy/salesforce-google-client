@@ -1,7 +1,6 @@
 public without sharing class GoogleFileInsertCommand {
     public class GoogleFileInsertCommandException extends Exception {}
 
-    private final String DEFAULT_FILE_NAME = 'Untitled';
     private final IGoogleUnitOfWork uowRef;
 
     private Id relatedRecordId;
@@ -146,7 +145,7 @@ public without sharing class GoogleFileInsertCommand {
 
     private String buildLocalFileName(Boolean removeExtension) {
         String originalName = String.isBlank(fileName)
-            ? DEFAULT_FILE_NAME
+            ? GoogleCloudConstants.DEFAULT_FILE_NAME
             : fileName.trim();
 
         String namePart = originalName;
@@ -165,7 +164,7 @@ public without sharing class GoogleFileInsertCommand {
         Integer maxNameLength = maxTotalLength - extPart.length();
 
         if (maxNameLength < 1) {
-            String fallback = DEFAULT_FILE_NAME + extPart;
+            String fallback = GoogleCloudConstants.DEFAULT_FILE_NAME + extPart;
             return fallback.length() > maxTotalLength
                 ? fallback.substring(0, maxTotalLength)
                 : fallback;

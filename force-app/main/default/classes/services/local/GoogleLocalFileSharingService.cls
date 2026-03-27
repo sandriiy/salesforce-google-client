@@ -48,7 +48,7 @@ public without sharing class GoogleLocalFileSharingService {
 		} catch (Exception ex) {
 			Logger.error('Create Google File Sharing (Local/Remote): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
-			throw new GoogleLocalFileSharingException('Unable to share the file. Please try again or contact your system administrator');
+			throw new GoogleLocalFileSharingException('Unable to share the file. Please use a public group to share the file with this user');
 		}
 	}
 

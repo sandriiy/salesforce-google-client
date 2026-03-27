@@ -1,36 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Flow xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <apiVersion>66.0</apiVersion>
-    <assignments>
-        <name>AssignPageLayoutValues</name>
-        <label>Assign Page Layout Values</label>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>CommitNewChanges</name>
+        <label>Commit New Changes</label>
         <locationX>0</locationX>
         <locationY>0</locationY>
-        <assignmentItems>
-            <assignToReference>GoogleFile.Name</assignToReference>
-            <operator>Assign</operator>
+        <actionName>GoogleFileEditDetailsAction</actionName>
+        <actionType>apex</actionType>
+        <inputParameters>
+            <name>localFileRecord</name>
             <value>
-                <elementReference>GoogleFileName</elementReference>
+                <elementReference>GoogleFile</elementReference>
             </value>
-        </assignmentItems>
-        <assignmentItems>
-            <assignToReference>GoogleFile.Source__c</assignToReference>
-            <operator>Assign</operator>
+        </inputParameters>
+        <inputParameters>
+            <name>localFileVersionRecord</name>
             <value>
-                <elementReference>File_Source</elementReference>
+                <elementReference>GoogleFileVersion</elementReference>
             </value>
-        </assignmentItems>
-        <assignmentItems>
-            <assignToReference>GoogleFile.Description__c</assignToReference>
-            <operator>Assign</operator>
+        </inputParameters>
+        <inputParameters>
+            <name>newFileDescription</name>
             <value>
                 <elementReference>Description</elementReference>
             </value>
-        </assignmentItems>
-        <connector>
-            <targetReference>UpdatedGoogleFile</targetReference>
-        </connector>
-    </assignments>
+        </inputParameters>
+        <inputParameters>
+            <name>newFileName</name>
+            <value>
+                <elementReference>GoogleFileName</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>newFileVersionName</name>
+            <value>
+                <elementReference>GoogleFileVersionName</elementReference>
+            </value>
+        </inputParameters>
+    </actionCalls>
+    <apiVersion>66.0</apiVersion>
     <decisions>
         <description>When enabled, you can view the content but cannot make any changes.</description>
         <name>EnabledReadOnlyModeCheck</name>
@@ -49,21 +57,13 @@
                 </rightValue>
             </conditions>
             <connector>
-                <targetReference>AssignPageLayoutValues</targetReference>
+                <targetReference>CommitNewChanges</targetReference>
             </connector>
             <label>Is Edit Access?</label>
         </rules>
     </decisions>
-    <dynamicChoiceSets>
-        <name>GoogleFileSourcePicklist</name>
-        <dataType>Picklist</dataType>
-        <displayField xsi:nil="true"/>
-        <object xsi:nil="true"/>
-        <picklistField>Source__c</picklistField>
-        <picklistObject>GoogleFile__c</picklistObject>
-    </dynamicChoiceSets>
-    <interviewLabel>Google File Record Details {!$Flow.CurrentDateTime}</interviewLabel>
-    <label>Google File Record Details</label>
+    <interviewLabel>Google File Edit Details {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Google File Edit Details</label>
     <processMetadataValues>
         <name>BuilderType</name>
         <value>
@@ -97,26 +97,43 @@
             <field>Id</field>
             <operator>EqualTo</operator>
             <value>
-                <elementReference>fileId</elementReference>
+                <elementReference>GoogleFileVersion.GoogleFileId__r.Id</elementReference>
             </value>
         </filters>
         <getFirstRecordOnly>true</getFirstRecordOnly>
         <object>GoogleFile__c</object>
-        <queriedFields>Description__c</queriedFields>
+        <queriedFields>Id</queriedFields>
         <queriedFields>Name</queriedFields>
-        <queriedFields>Source__c</queriedFields>
+        <queriedFields>Description__c</queriedFields>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </recordLookups>
-    <recordUpdates>
-        <name>UpdatedGoogleFile</name>
-        <label>Updated Google File</label>
+    <recordLookups>
+        <name>GoogleFileVersion</name>
+        <label>Google File Version</label>
         <locationX>0</locationX>
         <locationY>0</locationY>
-        <inputReference>GoogleFile</inputReference>
-    </recordUpdates>
+        <assignNullValuesIfNoRecordsFound>false</assignNullValuesIfNoRecordsFound>
+        <connector>
+            <targetReference>GoogleFile</targetReference>
+        </connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>Id</field>
+            <operator>EqualTo</operator>
+            <value>
+                <elementReference>fileVersionId</elementReference>
+            </value>
+        </filters>
+        <getFirstRecordOnly>true</getFirstRecordOnly>
+        <object>GoogleFileVersion__c</object>
+        <queriedFields>Id</queriedFields>
+        <queriedFields>Name</queriedFields>
+        <queriedFields>GoogleFileId__c</queriedFields>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordLookups>
     <runInMode>SystemModeWithoutSharing</runInMode>
     <screens>
-        <description>Google File Record Details Page</description>
+        <description>Google File Record Edit Page</description>
         <name>PageLayout</name>
         <label>Page Layout</label>
         <locationX>0</locationX>
@@ -142,12 +159,31 @@
                     </defaultValue>
                     <fieldText>File Name</fieldText>
                     <fieldType>InputField</fieldType>
+                    <helpText>&lt;p&gt;Main file name for the record that groups all versions of this file.&lt;/p&gt;</helpText>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>true</isRequired>
                     <validationRule>
-                        <errorMessage>&lt;p&gt;Please shorten the file name to 80 characters or fewer&lt;/p&gt;</errorMessage>
+                        <errorMessage>&lt;p&gt;&lt;span style=&quot;background-color: rgb(255, 255, 255);&quot;&gt;Please shorten the file name to 80 characters or fewer&lt;/span&gt;&lt;/p&gt;</errorMessage>
+                        <formulaExpression>IF(LEN({!GoogleFileName}) &gt; 80, FALSE, TRUE)</formulaExpression>
+                    </validationRule>
+                </fields>
+                <fields>
+                    <name>GoogleFileVersionName</name>
+                    <dataType>String</dataType>
+                    <defaultValue>
+                        <elementReference>GoogleFileVersion.Name</elementReference>
+                    </defaultValue>
+                    <fieldText>File Version Name</fieldText>
+                    <fieldType>InputField</fieldType>
+                    <helpText>&lt;p&gt;Name of this specific version of the file, displayed in views across the application.&lt;/p&gt;</helpText>
+                    <isDisabled>
+                        <elementReference>IsReadOnly</elementReference>
+                    </isDisabled>
+                    <isRequired>true</isRequired>
+                    <validationRule>
+                        <errorMessage>&lt;p&gt;&lt;span style=&quot;background-color: rgb(255, 255, 255);&quot;&gt;Please shorten the file name to 80 characters or fewer&lt;/span&gt;&lt;/p&gt;</errorMessage>
                         <formulaExpression>IF(LEN({!GoogleFileName}) &gt; 80, FALSE, TRUE)</formulaExpression>
                     </validationRule>
                 </fields>
@@ -163,28 +199,12 @@
                 <name>PageLayout_Section1_Column2</name>
                 <fieldType>Region</fieldType>
                 <fields>
-                    <name>File_Source</name>
-                    <choiceReferences>GoogleFileSourcePicklist</choiceReferences>
-                    <dataType>String</dataType>
-                    <defaultValue>
-                        <elementReference>GoogleFile.Source__c</elementReference>
-                    </defaultValue>
-                    <fieldText>File Source</fieldText>
-                    <fieldType>DropdownBox</fieldType>
-                    <helpText>&lt;p&gt;Changing the file source may affect its visibility and cause the file to disappear from the section where it was uploaded. Proceed only if you understand the impact.&lt;/p&gt;</helpText>
-                    <isDisabled>
-                        <elementReference>IsReadOnly</elementReference>
-                    </isDisabled>
-                    <isRequired>true</isRequired>
-                </fields>
-                <fields>
                     <name>Description</name>
                     <defaultValue>
                         <stringValue>{!GoogleFile.Description__c}</stringValue>
                     </defaultValue>
                     <fieldText>Description</fieldText>
                     <fieldType>LargeTextArea</fieldType>
-                    <helpText>&lt;p&gt;The file description is version-aware. If a new version is uploaded and a description is added for that version, the file description is updated. If a new version is uploaded without a description, the description from the previous version is retained.&lt;/p&gt;</helpText>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
@@ -211,13 +231,13 @@
         <locationX>0</locationX>
         <locationY>0</locationY>
         <connector>
-            <targetReference>GoogleFile</targetReference>
+            <targetReference>GoogleFileVersion</targetReference>
         </connector>
     </start>
     <status>Active</status>
     <variables>
-        <description>Local Google File ID</description>
-        <name>fileId</name>
+        <description>Local Google File Version ID</description>
+        <name>fileVersionId</name>
         <dataType>String</dataType>
         <isCollection>false</isCollection>
         <isInput>true</isInput>

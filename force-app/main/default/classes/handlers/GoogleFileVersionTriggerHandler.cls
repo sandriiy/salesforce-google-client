@@ -22,10 +22,6 @@ public with sharing class GoogleFileVersionTriggerHandler extends GTriggerHandle
 		this.lifecycleService.markAsLatestVersionIfApplicable(this.newRecords, null);
 	}
 
-	public override void afterUpdate() {
-		this.lifecycleService.syncLatestVersionToMainFile(this.newRecords, this.oldRecordsMap);
-	}
-
 	public override void afterDelete() {
 		this.lifecycleService.markAsLatestVersionIfApplicable(null, this.oldRecords);
 		this.lifecycleService.removeGoogleFiles(this.oldRecords);

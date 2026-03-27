@@ -304,7 +304,7 @@ const normalizeError = (input) => {
 			msg = msg.charAt(0).toUpperCase() + msg.slice(1);
 		}
 
-		return msg || GENERIC_ERROR_MESSAGE;
+		return msg;
 	} catch {
 		return GENERIC_ERROR_MESSAGE;
 	}

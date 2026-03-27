@@ -28,31 +28,6 @@
     background: #003A6B;
 }
 
-/* Owner / collaborator message */
-.owner-message {
-	display: flex;
-	align-items: flex-start;
-	justify-content: center;
-	gap: 0.5rem;
-	padding: 0.6rem 0.75rem;
-	border: 1px solid #e5e5e5;
-	border-radius: 0.5rem;
-	background: #f7f9fb;
-}
-
-.owner-message__icon {
-	margin-top: 0.15rem;
-	flex: 0 0 auto;
-}
-
-.owner-message__text {
-	margin: 0;
-	color: #2e2e2e;
-	font-size: 0.78rem;
-	line-height: 1.15rem;
-	max-width: 60rem;
-}
-
 .share-table-scroll {
 	max-height: 300px;
     overflow-x: auto;

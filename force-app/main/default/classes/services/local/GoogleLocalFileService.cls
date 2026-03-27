@@ -86,6 +86,41 @@ public without sharing class GoogleLocalFileService {
 		return null;
 	}
 
+	public void updateGoogleFileDetails(List<GoogleFileUpdateRequestDTO> requests) {
+		if (requests == null || requests.isEmpty()) return;
+		
+		List<SObject> recordsToUpdate = new List<SObject>();
+		for (GoogleFileUpdateRequestDTO request : requests) {
+			GoogleFileUpdateCommand updateCommand = new GoogleFileUpdateCommand(request.localGoogleFileRecord, request.localGoogleFileVersionRecord);
+			GoogleFileUpdateCommand.GoogleFileUpdateResult updateResult = updateCommand
+				.changeFileNameTo(request.fileName)
+				.changeFileVersionNameTo(request.fileVersionName)
+				.changeFileDescriptionTo(request.fileDescription)
+				.build();
+
+			if (updateResult.localGoogleFileToUpdate != null) {
+				recordsToUpdate.add(updateResult.localGoogleFileToUpdate);
+			}
+
+			if (updateResult.localGoogleFileVersionToUpdate != null) {
+				recordsToUpdate.add(updateResult.localGoogleFileVersionToUpdate);
+			}
+		}
+
+		if (recordsToUpdate.isEmpty()) {
+			return;
+		} else {
+			try {
+				uow.registerDirty(recordsToUpdate);
+				uow.commitWork(true);
+			} catch (DmlException ex) {
+				Logger.error('Update Google File Details (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+				Logger.saveLog();
+				throw new GoogleLocalFileException('Unable to update file details. Please try again or contact your system administrator');
+			}
+		}
+	}
+
     public GoogleFileDeleteCommand deleteGoogleFileRecord() {
         try {
             return new GoogleFileDeleteCommand(uow);

@@ -1,5 +1,5 @@
 import { LightningElement, api, track } from 'lwc';
-import { isEmpty, showToast, findIconForRecordType, findRoleForAccessType } from 'c/googleCloudUtils';
+import { isEmpty, normalizeError, showToast, findIconForRecordType, findRoleForAccessType } from 'c/googleCloudUtils';
 
 import fetchSharingDetails from '@salesforce/apex/GoogleCloudFilesSharingController.fetchSharingDetails';
 import createNewSharing from '@salesforce/apex/GoogleCloudFilesSharingController.createNewSharing';
@@ -46,11 +46,10 @@ export default class GoogleCloudFileSharing extends LightningElement {
 			shareToRecordId: this.selectedShareToRecordId,
 			uiAccessLevel: this.selectForAccessLevel
 		}).catch(error => {
-			console.error(error);
 			showToast(
 				this,
 				'Unable to Share File',
-				'This file couldn’t be shared with this user. If you’re not the owner, please ask the file owner to share it',
+				normalizeError(error) || 'This file couldn’t be shared with this user. Try using a public group or ask the file owner to share the file',
 				'warning'
 			);
 		});
@@ -230,11 +229,6 @@ export default class GoogleCloudFileSharing extends LightningElement {
 		this.sharingDetails = updatedDetails;
 	}
 
-	get showOwnerRestrictionMessage() {
-		const ownerId = this.sharingDetails?.owner?.Id;
-		return !isEmpty(this.userId) && !isEmpty(ownerId) && this.userId !== ownerId;
-	}
-
 	get readyToShare() {
 		return (
 			!isEmpty(this.localFileRecordId) &&
@@ -290,12 +284,17 @@ export default class GoogleCloudFileSharing extends LightningElement {
 						value: true
 					},
 					{
+						fieldPath: 'IsPortalEnabled',
+						operator: 'eq',
+						value: false
+					},
+					{
 						fieldPath: 'Id',
 						operator: 'nin',
 						value: this.userIdsToExclude
 					}
 				],
-				filterLogic: '1 AND 2'
+				filterLogic: '1 AND 2 AND 3'
 			};
 		} else {
 			return {

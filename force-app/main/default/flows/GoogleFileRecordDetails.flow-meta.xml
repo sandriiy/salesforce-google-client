@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <apiVersion>66.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <assignments>
         <name>AssignPageLayoutValues</name>
         <label>Assign Page Layout Values</label>
@@ -62,6 +63,7 @@
         <picklistField>Source__c</picklistField>
         <picklistObject>GoogleFile__c</picklistObject>
     </dynamicChoiceSets>
+    <environments>Default</environments>
     <interviewLabel>Google File Record Details {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Google File Record Details</label>
     <processMetadataValues>
@@ -129,7 +131,6 @@
         </connector>
         <fields>
             <name>PageLayout_Section1</name>
-			<regionContainerType>SectionWithoutHeader</regionContainerType>
             <fieldType>RegionContainer</fieldType>
             <fields>
                 <name>PageLayout_Section1_Column1</name>
@@ -142,10 +143,19 @@
                     </defaultValue>
                     <fieldText>File Name</fieldText>
                     <fieldType>InputField</fieldType>
+                    <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>true</isRequired>
+                    <styleProperties>
+                        <verticalAlignment>
+                            <stringValue>top</stringValue>
+                        </verticalAlignment>
+                        <width>
+                            <stringValue>12</stringValue>
+                        </width>
+                    </styleProperties>
                     <validationRule>
                         <errorMessage>&lt;p&gt;Please shorten the file name to 80 characters or fewer&lt;/p&gt;</errorMessage>
                         <formulaExpression>IF(LEN({!GoogleFileName}) &gt; 80, FALSE, TRUE)</formulaExpression>
@@ -172,10 +182,19 @@
                     <fieldText>File Source</fieldText>
                     <fieldType>DropdownBox</fieldType>
                     <helpText>&lt;p&gt;Changing the file source may affect its visibility and cause the file to disappear from the section where it was uploaded. Proceed only if you understand the impact.&lt;/p&gt;</helpText>
+                    <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>true</isRequired>
+                    <styleProperties>
+                        <verticalAlignment>
+                            <stringValue>top</stringValue>
+                        </verticalAlignment>
+                        <width>
+                            <stringValue>12</stringValue>
+                        </width>
+                    </styleProperties>
                 </fields>
                 <fields>
                     <name>Description</name>
@@ -185,10 +204,19 @@
                     <fieldText>Description</fieldText>
                     <fieldType>LargeTextArea</fieldType>
                     <helpText>&lt;p&gt;The file description is version-aware. If a new version is uploaded and a description is added for that version, the file description is updated. If a new version is uploaded without a description, the description from the previous version is retained.&lt;/p&gt;</helpText>
+                    <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>false</isRequired>
+                    <styleProperties>
+                        <verticalAlignment>
+                            <stringValue>top</stringValue>
+                        </verticalAlignment>
+                        <width>
+                            <stringValue>12</stringValue>
+                        </width>
+                    </styleProperties>
                     <validationRule>
                         <errorMessage>&lt;p&gt;&lt;span style=&quot;background-color: rgb(255, 255, 255);&quot;&gt;Please shorten the file description to 2048 characters or fewer&lt;/span&gt;&lt;/p&gt;</errorMessage>
                         <formulaExpression>IF(LEN({!Description}) &gt; 2048, FALSE, TRUE)</formulaExpression>
@@ -203,7 +231,17 @@
                 <isRequired>false</isRequired>
             </fields>
             <isRequired>false</isRequired>
+            <regionContainerType>SectionWithoutHeader</regionContainerType>
+            <styleProperties>
+                <verticalAlignment>
+                    <stringValue>top</stringValue>
+                </verticalAlignment>
+                <width>
+                    <stringValue>12</stringValue>
+                </width>
+            </styleProperties>
         </fields>
+        <nextOrFinishButtonLabel>Save</nextOrFinishButtonLabel>
         <showFooter>true</showFooter>
         <showHeader>false</showHeader>
     </screens>

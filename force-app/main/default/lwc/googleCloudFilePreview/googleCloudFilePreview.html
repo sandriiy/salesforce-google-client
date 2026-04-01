@@ -13,10 +13,10 @@
                     <lightning-button-icon onclick={handleFileDownload} value="download" icon-name="utility:download" title="Download" class="topbar-icon slds-m-horizontal_x-small"></lightning-button-icon>
                     <lightning-button-icon onclick={handleFileSharing} value="share" icon-name="utility:share" title="Share" class="topbar-icon slds-m-horizontal_x-small" disabled={isReadMode} style={readModeStyles}></lightning-button-icon>
                     <lightning-button-icon onclick={handleFilePublicLink} value="link" icon-name="utility:link" title="Public Link" class="topbar-icon slds-m-horizontal_x-small" disabled={isReadMode} style={readModeStyles}></lightning-button-icon>
-                    <lightning-button-menu class="topbar-dropdown slds-m-left_small" alternative-text="More" icon-name="utility:chevrondown" menu-alignment="right">
+                    <lightning-button-menu variant="bare-inverse" class="slds-m-left_small" alternative-text="More" icon-name="utility:chevrondown" menu-alignment="right">
                         <lightning-menu-item onclick={handleGoogleFileOpen} value="view" label="View File Details" disabled={isOldVersion}></lightning-menu-item>
                         <lightning-menu-item onclick={handleNewVersionUpload} value="upload" label="Upload New Version" disabled={isOldOrReadMode}></lightning-menu-item>
-                        <lightning-menu-item onclick={handleFileDetailsEdit} value="edit" label="Edit File Details" disabled={isOldOrReadMode}></lightning-menu-item>
+                        <lightning-menu-item onclick={handleFileDetailsEdit} value="edit" label="Edit File Details" disabled={isReadMode}></lightning-menu-item>
                         <lightning-menu-item onclick={handleFileDelete} value="delete" label="Delete" disabled={isOldOrReadMode}></lightning-menu-item>
                     </lightning-button-menu>
                 </div>

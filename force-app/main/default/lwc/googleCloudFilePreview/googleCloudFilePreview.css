@@ -36,16 +36,6 @@
 	margin-right: 5%;
 }
 
-.topbar-dropdown {
-	--slds-g-color-neutral-base-100: #000000;
-	--lwc-colorTextDefault: #FFFFFF;
-	--slds-c-dropdown-item-color: #FFFFFF;
-	--slds-c-button-text-color-hover: #ffffff;
-	--slds-c-icon-color-foreground: #dadada;
-	--slds-c-button-text-color-active: #737373;
-	--slds-c-button-shadow-focus: 0 0 0 2px #a6faff;
-}
-
 .stage {
   display: grid;
   place-items: center;

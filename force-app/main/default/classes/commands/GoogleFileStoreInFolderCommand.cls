@@ -49,7 +49,7 @@ public without sharing class GoogleFileStoreInFolderCommand {
         Logger.info(
             'Folder Placement Job --> RemoteIds' +
             ', GoogleDriveFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleDriveFileId) +
-            ', GoogleDocsFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleDocsFileId)
+            ', GoogleWorkspaceFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleWorkspaceFileId)
         ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
         if (remoteFileIds == null || String.isBlank(remoteFileIds.googleDriveFileId)) {
@@ -97,8 +97,8 @@ public without sharing class GoogleFileStoreInFolderCommand {
         String resultingGoogleDriveFileId = movedFile == null ? null : movedFile.id;
         if (String.isBlank(resultingGoogleDriveFileId)) return;
 
-        if (!String.isBlank(remoteFileIds.googleDocsFileId)) {
-            moveRemoteFile(remoteFileIds.googleDocsFileId, uploadParentFolderIds, destinationFolderId);
+        if (!String.isBlank(remoteFileIds.googleWorkspaceFileId)) {
+            moveRemoteFile(remoteFileIds.googleWorkspaceFileId, uploadParentFolderIds, destinationFolderId);
         }
 
         registerLatestVersionFolderUpdate(
@@ -328,11 +328,11 @@ public without sharing class GoogleFileStoreInFolderCommand {
 
     private class RemoteFileIds {
         public String googleDriveFileId;
-        public String googleDocsFileId;
+        public String googleWorkspaceFileId;
 
-        public RemoteFileIds(String googleDriveFileId, String googleDocsFileId) {
+        public RemoteFileIds(String googleDriveFileId, String googleWorkspaceFileId) {
             this.googleDriveFileId = googleDriveFileId;
-            this.googleDocsFileId = googleDocsFileId;
+            this.googleWorkspaceFileId = googleWorkspaceFileId;
         }
     }
 }

@@ -3,13 +3,13 @@ public with sharing class GoogleFileVersionPreviewJob implements Queueable, Data
 
     private final Set<Id> versionIds;
     public GoogleFileVersionPreviewJob(Set<Id> versionIds) {
-        this.versionIds = versionIds == null 
+        this.versionIds = versionIds == null
 			? new Set<Id>()
 			: new Set<Id>(versionIds);
     }
 
     public void execute(QueueableContext qc) {
-		Logger.info('Queueable Job to generate Google Docs previews for: ' + String.join(versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		Logger.info('Queueable Job to generate Google Workspace previews for: ' + String.join(versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
         if (versionIds.isEmpty()) return;
 
 		List<GoogleFileVersion__c> localFileVersions = (List<GoogleFileVersion__c>) GoogleFileVersionSelector.query()
@@ -21,16 +21,19 @@ public with sharing class GoogleFileVersionPreviewJob implements Queueable, Data
         for (GoogleFileVersion__c localFileVersion : localFileVersions) {
             if (String.isNotBlank(localFileVersion.GoogleDocsFileId__c)) continue;
 
+			String targetGoogleWorkspaceType = GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.get(localFileVersion.Type__c);
+			if (String.isBlank(targetGoogleWorkspaceType)) continue;
+
 			GoogleDriveApiProvider remoteFileService = new GoogleDriveApiProvider();
 			GoogleDrive removeGoogleDrive = remoteFileService.retrieveGoogleDriveClient();
 			GoogleFileEntity clonedFile = removeGoogleDrive.files().clone(localFileVersion.GoogleDriveFileId__c)
 				.setFields('id')
 				.setFileName(localFileVersion.Name)
 				.setSupportsAllDrives(true)
-				.setMimeType('application/vnd.google-apps.document')
+				.setMimeType(targetGoogleWorkspaceType)
 				.execute();
 
-			localFileVersion.GoogleDocsFileId__c  = clonedFile.id;
+			localFileVersion.GoogleDocsFileId__c = clonedFile.id;
 			toUpdate.add(localFileVersion);
         }
 

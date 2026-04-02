@@ -10,7 +10,10 @@
   Type__c = &quot;image/png&quot;,
   Type__c = &quot;image/jpeg&quot;,
   Type__c = &quot;image/webp&quot;,
-  Type__c = &quot;image/tiff&quot;
+  Type__c = &quot;image/tiff&quot;,
+  Type__c = &quot;text/csv&quot;,
+  Type__c = &quot;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet&quot;,
+  Type__c = &quot;application/vnd.google-apps.spreadsheet&quot;
 )</formula>
     <label>Is Previewable File?</label>
     <trackTrending>false</trackTrending>

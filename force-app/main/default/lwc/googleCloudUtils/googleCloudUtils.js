@@ -4,6 +4,7 @@ export const DEFAULT_FILE_UPLOAD_FAILURE = 'Verify that the file is not corrupte
 export const DEFAULT_FILE_NOT_ALLOWED_MESSAGE = 'Some files don’t meet the allowed type or size, please check and retry';
 export const DEFAULT_FAILED_RETRIEVE_MESSAGE = 'Unable to load files. Please refresh the page or contact your administrator';
 export const DEFAULT_FAILED_DOWNLOAD_MESSAGE = 'Unable to download the file. Please try again later or contact your system administrator';
+export const DEFAULT_NO_VERSIONS_MESSAGE = 'No versions were found for this file. Please verify that the file still exists';
 export const DEFAULT_ACCESS_RESTRICTED_MESSAGE = 'You can\’t perform this action on this file. Try another file or contact the file owner';
 export const DEFAULT_PREVIEW_UNAVAILABILITY_MESSAGE = 'Preview unavailable. Try downloading instead';
 export const GENERIC_ERROR_MESSAGE = 'Something went wrong. Please try again later or contact your system administrator';

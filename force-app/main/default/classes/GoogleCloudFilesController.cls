@@ -13,6 +13,23 @@ public with sharing class GoogleCloudFilesController {
 	}
 
 	@AuraEnabled
+    public static String validateFilePreview(Id localFileVersionId) {
+		try {
+			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
+			GoogleFilePreviewAction previewAction = localVersionService.validatePreviewEligible(localFileVersionId);
+			return previewAction.toString();
+		} catch (GoogleLocalFileVersionService.GoogleFileVersionException ex) {
+			throw new AuraHandledException(ex.getMessage());
+		} catch (Exception ex) {
+			Logger.error('Validate File Preview, Id: ' + localFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Validate File Preview, Message:' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+
+			throw new AuraHandledException('Preview isn’t available for this file. Please download the file instead, or contact your system administrator');
+		}
+	}
+
+	@AuraEnabled
 	public static List<GoogleFile__c> retrieveAllGoogleFiles() {
 		GoogleLocalFileService recordService = new GoogleLocalFileService();
 		return recordService.retrieveGoogleFiles(UserInfo.getUserId());
@@ -71,22 +88,6 @@ public with sharing class GoogleCloudFilesController {
 			.byId(localGoogleFileVersionId)
 			.toObject();
     }
-
-    @AuraEnabled
-    public static String retrieveGoogleFileBase64Preview(Id localFileVersionId) { 
-		try {
-			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
-			return localVersionService.exportPreviewBase64BodyIfEligible(localFileVersionId);
-		} catch (GoogleLocalFileVersionService.GoogleFileVersionException ex) {
-			throw new AuraHandledException(ex.getMessage());
-		} catch (Exception ex) {
-			Logger.error('Retrieve Google File Preview, Id: ' + localFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			Logger.error('Retrieve Google File Preview, Message:' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			Logger.saveLog();
-
-			throw new AuraHandledException('Preview isn’t available for this file. Please download the file instead, or contact your system administrator');
-		}
-	}
 
 	@AuraEnabled
     public static List<GoogleFile__c> retrieveGoogleFilesWithoutLimit(Id relatedRecordId, String source) {
@@ -175,6 +176,20 @@ public with sharing class GoogleCloudFilesController {
 		} catch (Exception ex) {
 			Logger.error('Google Client for Salesforce / Download File, Id: ' + localGoogleFileVersionId);
 			Logger.error('Google Client for Salesforce / Download File, Message:' + ex.getMessage());
+			Logger.saveLog();
+
+			throw new AuraHandledException('We couldn’t download the file. Please try again, or contact your system administrator');
+		}
+	}
+
+	@AuraEnabled
+	public static String downloadFileAsPdf(Id localGoogleFileVersionId) {
+		try {
+			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
+			return localVersionService.downloadFileBase64BodyAsPdf(localGoogleFileVersionId);
+		} catch (Exception ex) {
+			Logger.error('Google Client for Salesforce / Download File as PDF, Id: ' + localGoogleFileVersionId);
+			Logger.error('Google Client for Salesforce / Download File as PDF, Message:' + ex.getMessage());
 			Logger.saveLog();
 
 			throw new AuraHandledException('We couldn’t download the file. Please try again, or contact your system administrator');

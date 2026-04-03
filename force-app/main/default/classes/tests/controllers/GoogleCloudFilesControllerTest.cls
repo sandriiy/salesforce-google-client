@@ -272,45 +272,4 @@ private class GoogleCloudFilesControllerTest {
 
 		System.assertNotEquals(null, bigFileResult);
 	}
-
-	@IsTest
-	private static void testRetrievePreviewDownloadPositive() {
-		initMocks();
-
-		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('DL1').withDescription('D').insertRecord();
-		GoogleFileVersion__c fileVersion = GoogleCloudTestFactory.version()
-			.forFile(parentFile.Id)
-			.withName('V1.pdf')
-			.withType('application/pdf')
-			.withSize(1)
-			.withDriveId('GD1')
-			.withDocsId('DOCS1')
-			.insertRecord();
-
-		Test.startTest();
-		String previewBase64 = GoogleCloudFilesController.retrieveGoogleFileBase64Preview(fileVersion.Id);
-		String downloadBase64 = GoogleCloudFilesController.downloadFile(fileVersion.Id);
-		String rangeBase64 = GoogleCloudFilesController.downloadLargeFilePartial(fileVersion.Id, 0L, 10L);
-		Test.stopTest();
-
-		System.assert(String.isNotBlank(previewBase64));
-		System.assert(String.isNotBlank(downloadBase64));
-		System.assert(String.isNotBlank(rangeBase64));
-	}
-
-	@IsTest
-	private static void testRetrievePreviewNegativeHandled() {
-		initMocks();
-
-		Id missingVersionId = (Id) 'a0D000000000001AAA';
-
-		try {
-			Test.startTest();
-			GoogleCloudFilesController.retrieveGoogleFileBase64Preview(missingVersionId);
-			Test.stopTest();
-			System.assert(false);
-		} catch (Exception ex) {
-			System.assertNotEquals(null, ex.getMessage());
-		}
-	}
 }

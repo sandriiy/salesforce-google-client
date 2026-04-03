@@ -40,6 +40,7 @@
                             <div class="slds-spinner__dot-b"></div>
                         </div>
                     </template>
+
                     <div lwc:elseif={isUnavailablePreview} class="slds-grid slds-grid_vertical slds-grid_align-center slds-grid_vertical-align-center slds-text-align_center absolute-centered">
                         <div class="slds-text-heading_large slds-m-bottom_small">
                             {unavailablePreviewMessage}
@@ -52,9 +53,23 @@
                             class="slds-m-top_small">
                         </lightning-button>
                     </div>
+
                     <div class="content">
                         <iframe class="pdfjs-iframe" lwc:dom="manual"></iframe>
                     </div>
+
+                    <template lwc:if={isPreviewTakingTooLong}>
+                        <div class="preview-status-banner" role="status" aria-live="polite">
+                            <div class="preview-status-copy">
+                                Preview is taking longer than expected. Abort?
+                            </div>
+                            <lightning-button
+                                label="Abort Preview"
+                                variant="neutral"
+                                onclick={handlePreviewAbort}>
+                            </lightning-button>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>

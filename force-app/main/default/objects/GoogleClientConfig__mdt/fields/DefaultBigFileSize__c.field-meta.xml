@@ -3,11 +3,11 @@
     <fullName>DefaultBigFileSize__c</fullName>
     <defaultValue>2097152</defaultValue>
     <deprecated>false</deprecated>
-    <description>Specifies the maximum file size (in bytes) that will be used for generating a preview. Setting a value that is too high may cause a heap size limit exception. The default value is 2097152 bytes (2 MB).</description>
+    <description>Specifies the maximum file size, in bytes, allowed for preview generation. This setting does not apply to PDF files, as they can be previewed regardless of size. Setting this value too high may result in a heap size limit exception.</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>Specifies the maximum file size (in bytes) that will be used for generating a preview. Setting a value that is too high may cause a heap size limit exception. The default value is 2097152 bytes (2 MB).</inlineHelpText>
-    <label>Default Big File Size</label>
+    <inlineHelpText>Specifies the maximum file size, in bytes, allowed for preview generation. This setting does not apply to PDF files, as they can be previewed regardless of size. Setting this value too high may result in a heap size limit exception.</inlineHelpText>
+    <label>Maximum Preview File Size</label>
     <precision>18</precision>
     <required>false</required>
     <scale>0</scale>

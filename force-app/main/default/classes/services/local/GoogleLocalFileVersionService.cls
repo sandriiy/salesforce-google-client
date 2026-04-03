@@ -1,5 +1,6 @@
 public without sharing class GoogleLocalFileVersionService {
 	public class GoogleFileVersionException extends Exception {}
+	public enum AccessLevel { View, Edit }
 
 	private final GoogleMetadataConfigService googleConfig;
 	private final GoogleDriveApiProvider remoteFileService;
@@ -9,11 +10,13 @@ public without sharing class GoogleLocalFileVersionService {
 		this.remoteFileService = new GoogleDriveApiProvider();
 	}
 
-	public String exportPreviewBase64BodyIfEligible(Id localFileVersionId) {
+	public GoogleFilePreviewAction validatePreviewEligible(Id localFileVersionId) {
 		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
+		return assertPreviewEligible(localFileVersion); // Method will throw exception if not eligible
+	}
 
-		assertPreviewEligible(localFileVersion);
-
+	public String downloadFileBase64BodyAsPdf(Id localFileVersionId) {
+		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
 		GoogleFileEntity fileResult = exportOrDownloadAsPdf(localFileVersion);
 		return EncodingUtil.base64Encode(fileResult.bodyAsBlob);
 	}
@@ -66,9 +69,13 @@ public without sharing class GoogleLocalFileVersionService {
 			.execute();
 	}
 
-	private void assertPreviewEligible(GoogleFileVersion__c localFileVersion) {
+	private GoogleFilePreviewAction assertPreviewEligible(GoogleFileVersion__c localFileVersion) {
 		if (this.googleConfig.isPreviewDisabled() || localFileVersion == null) {
 			throw new GoogleFileVersionException('Preview Unavailable. Please download it to open');
+		}
+
+		if (localFileVersion.Type__c == 'application/pdf') {
+			return GoogleFilePreviewAction.DIRECT;
 		}
 
 		if (localFileVersion.Size__c > this.googleConfig.getBigFileSizeInBytes()) {
@@ -78,6 +85,8 @@ public without sharing class GoogleLocalFileVersionService {
 		} else if (isVersionPreviewDocUnavailable(localFileVersion)) {
 			throw new GoogleFileVersionException('Preview unavailable for the selected file type. Please download the file to open');
 		}
+
+		return GoogleFilePreviewAction.CONVERT;
 	}
 
 	private Boolean isVersionPreviewDocInProgress(GoogleFileVersion__c fileVersion) {

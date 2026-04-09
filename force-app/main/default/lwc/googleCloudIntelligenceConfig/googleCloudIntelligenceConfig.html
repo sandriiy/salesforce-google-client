@@ -1,0 +1,190 @@
+<template>
+    <div class="drive-config-shell">
+        <div class="slds-grid slds-wrap slds-gutters_small">
+            <div class="slds-col slds-size_1-of-1 slds-large-size_8-of-12">
+                <section class="config-card">
+                    <div class="config-padding">
+                        <div class="config-step-bar provider-switch-bar">
+                            <button class={geminiOptionClass} data-provider="gemini" onclick={handleProviderChange} type="button">
+                                <span class="step-indicator"></span>
+                                <span class="provider-option-content">
+                                    <span class="step-label">Gemini Developer API</span>
+                                    <span class="provider-option-description">Fast setup for developer workflows</span>
+                                </span>
+                            </button>
+
+                            <button class={vertexOptionClass} data-provider="vertex" onclick={handleProviderChange} type="button">
+                                <span class="step-indicator"></span>
+                                <span class="provider-option-content">
+                                    <span class="step-label">Vertex AI</span>
+                                    <span class="provider-option-description">Production-ready setup for core use cases</span>
+                                </span>
+                            </button>
+                        </div>
+
+                        <template lwc:if={isGeminiMode}>
+                            <div class="recommendation-panel recommendation-panel-gemini slds-m-top_small">
+                                <div class="recommendation-title">Recommendation</div>
+                                <div class="recommendation-text">Use Gemini Developer API mainly for developer use, internal experimentation, and lighter non-production scenarios. For production and UAT, Vertex AI is the preferred setup.</div>
+                            </div>
+
+                            <div class="config-two-column-grid slds-m-top_small">
+                                <lightning-input
+                                    type="text"
+                                    value={draft.customGeminiApiKey}
+                                    onchange={handleTextChange}
+                                    data-field="customGeminiApiKey"
+                                    label="Gemini API Key"
+                                    field-level-help="API key created in Google AI Studio and used to authenticate requests to the Gemini Developer API."
+                                    placeholder="Paste your Gemini API key"
+                                    required
+                                ></lightning-input>
+
+                                <lightning-input
+                                    type="text"
+                                    value={draft.customModelName}
+                                    onchange={handleTextChange}
+                                    data-field="customModelName"
+                                    label="Model Name"
+                                    field-level-help="Gemini model name used for requests, for example gemini-2.5-flash."
+                                    placeholder="e.g. gemini-2.5-flash"
+                                    required
+                                ></lightning-input>
+                            </div>
+                        </template>
+
+                        <template lwc:if={isVertexMode}>
+                            <div class="recommendation-panel recommendation-panel-vertex slds-m-top_small">
+                                <div class="recommendation-title">Recommendation</div>
+                                <div class="recommendation-text">Use Vertex AI for production and UAT environments. It is a stronger enterprise fit for Google Client for Salesforce and enables enterprise-grade automation.</div>
+                            </div>
+
+                            <div class="config-two-column-grid slds-m-top_small">
+                                <lightning-input
+                                    type="text"
+                                    value={draft.customVertexProjectId}
+                                    onchange={handleTextChange}
+                                    data-field="customVertexProjectId"
+                                    label="Vertex Project ID"
+                                    field-level-help="Google Cloud Project ID that contains your Vertex AI configuration."
+                                    placeholder="e.g. my-google-cloud-project"
+                                    required
+                                ></lightning-input>
+
+                                <lightning-input
+                                    type="text"
+                                    value={draft.customVertexLocation}
+                                    onchange={handleTextChange}
+                                    data-field="customVertexLocation"
+                                    label="Vertex Location"
+                                    field-level-help="Vertex AI location or region where requests will be sent, for example global or us-central1."
+                                    placeholder="e.g. global"
+                                    required
+                                ></lightning-input>
+
+                                <lightning-input
+                                    type="text"
+                                    value={draft.customModelName}
+                                    onchange={handleTextChange}
+                                    data-field="customModelName"
+                                    label="Model Name"
+                                    field-level-help="Gemini model name used for Vertex AI requests, for example gemini-2.5-flash."
+                                    placeholder="e.g. gemini-2.5-flash"
+                                    required
+                                ></lightning-input>
+                            </div>
+                        </template>
+
+                        <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+                            <div class="action-buttons action-buttons-wrap">
+                                <lightning-button
+                                    variant="neutral"
+                                    label="Revert changes"
+                                    onclick={handleRevert}
+                                    disabled={busy}
+                                ></lightning-button>
+
+                                <lightning-button
+                                    class="slds-m-left_x-small"
+                                    variant="brand"
+                                    label={primaryActionLabel}
+                                    onclick={handlePrimaryAction}
+                                    disabled={busy}
+                                ></lightning-button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="slds-col slds-size_1-of-1 slds-large-size_4-of-12">
+                <aside class="config-card config-quick-setup-right">
+                    <div class="config-padding">
+                        <div class="quick-setup-title">{quickSetupTitle}</div>
+
+                        <template lwc:if={isGeminiMode}>
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">1</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Open Google AI Studio</div>
+                                    <div class="quick-setup-step-text">Create or select the project that will be used for your Gemini Developer API requests.</div>
+                                </div>
+                            </div>
+
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">2</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Generate an API key</div>
+                                    <div class="quick-setup-step-text">Create a Gemini API key in Google AI Studio and copy it into the <b>Gemini API Key</b> field.</div>
+                                </div>
+                            </div>
+
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">3</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Choose the model and save</div>
+                                    <div class="quick-setup-step-text">Set the model name, save the metadata record, and validate the configuration.</div>
+                                </div>
+                            </div>
+                        </template>
+                        <template lwc:if={isVertexMode}>
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">1</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Enable Vertex AI</div>
+                                    <div class="quick-setup-step-text">Open the target Google Cloud project, ensure billing is active, and enable Vertex AI for that project.</div>
+                                </div>
+                            </div>
+
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">2</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Reuse the existing Drive service account</div>
+                                    <div class="quick-setup-step-text">Grant <b>Vertex AI User</b> access to the same service account already used for Google Drive in this org. No new service account is required.</div>
+                                </div>
+                            </div>
+
+                            <div class="quick-setup-step">
+                                <div class="quick-setup-step-number">3</div>
+                                <div>
+                                    <div class="quick-setup-step-title">Enter project details</div>
+                                    <div class="quick-setup-step-text">Specify the Project ID, Location, and Model Name here, then save and validate the configuration.</div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div class="content-divider"></div>
+
+                        <div class="quick-setup-button-row">
+                            <lightning-button
+                                variant="neutral"
+                                label={setupGuideButtonLabel}
+                                onclick={handleOpenSelectedGuide}
+                            ></lightning-button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+</template>

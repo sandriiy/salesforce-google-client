@@ -5,7 +5,7 @@ public without sharing class GoogleRemoteFileUploader {
 	private final GoogleDrive remoteGoogleDrive;
 	
 	public GoogleRemoteFileUploader() {
-		GoogleDriveApiProvider remoteFileService = new GoogleDriveApiProvider();
+		GoogleClientApiProvider remoteFileService = new GoogleClientApiProvider();
 		this.remoteGoogleDrive = remoteFileService.retrieveGoogleDriveClient();
 	}
 

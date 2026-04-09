@@ -8,7 +8,7 @@ private class GoogleLocalFileVersionPublicLinkServTest {
 
 	private static void initMocks() {
 		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleLocalFileVersionPublicLinkServTest.TestGoogleAuthorizer';
+		GoogleClientApiProvider.authorizerClassNameOverride = 'GoogleLocalFileVersionPublicLinkServTest.TestGoogleAuthorizer';
 	}
 
 	@IsTest

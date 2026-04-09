@@ -24,7 +24,7 @@ public with sharing class GoogleFileVersionPreviewJob implements Queueable, Data
 			String targetGoogleWorkspaceType = GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.get(localFileVersion.Type__c);
 			if (String.isBlank(targetGoogleWorkspaceType)) continue;
 
-			GoogleDriveApiProvider remoteFileService = new GoogleDriveApiProvider();
+			GoogleClientApiProvider remoteFileService = new GoogleClientApiProvider();
 			GoogleDrive removeGoogleDrive = remoteFileService.retrieveGoogleDriveClient();
 			GoogleFileEntity clonedFile = removeGoogleDrive.files().clone(localFileVersion.GoogleDriveFileId__c)
 				.setFields('id')

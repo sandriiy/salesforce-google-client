@@ -30,7 +30,7 @@ public with sharing class GoogleFileCloudDeleteJob implements Queueable, Databas
         List<String> filesBatch = getSlice(googleFileIds, 0, chunkSize);
 		List<String> filesRemaining = getSlice(googleFileIds, chunkSize, googleFileIds.size());
 
-        GoogleDriveApiProvider remoteFileService = new GoogleDriveApiProvider();
+        GoogleClientApiProvider remoteFileService = new GoogleClientApiProvider();
         for (String googleDriveId : filesBatch) {
 			GoogleDrive removeGoogleDrive = remoteFileService.retrieveGoogleDriveClient();
 			removeGoogleDrive.files().trash(googleDriveId)

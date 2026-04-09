@@ -2,11 +2,11 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 	public class GoogleFileVersionPublicLinkException extends Exception {}
 
 	private final GoogleMetadataConfigService googleConfig;
-	private final GoogleDriveApiProvider remoteFileService;
+	private final GoogleClientApiProvider remoteFileService;
 
 	public GoogleLocalFileVersionPublicLinkService() {
 		this.googleConfig = new GoogleMetadataConfigService();
-		this.remoteFileService = new GoogleDriveApiProvider();
+		this.remoteFileService = new GoogleClientApiProvider();
 	}
 
 	public List<GoogleFileVersion__c> removePublicLinkSharing(Id localFileVersionId) {

@@ -8,7 +8,7 @@ private class GoogleFileCloudDeleteJobTest {
 
 	private static void initMocks() {
 		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleFileCloudDeleteJobTest.TestGoogleAuthorizer';
+		GoogleClientApiProvider.authorizerClassNameOverride = 'GoogleFileCloudDeleteJobTest.TestGoogleAuthorizer';
 	}
 
 	@IsTest

@@ -8,7 +8,7 @@ private class GoogleCloudFilesControllerTest {
 
 	private static void initMocks() {
 		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleCloudFilesControllerTest.TestGoogleAuthorizer';
+		GoogleClientApiProvider.authorizerClassNameOverride = 'GoogleCloudFilesControllerTest.TestGoogleAuthorizer';
 	}
 
 	@IsTest

@@ -32,9 +32,9 @@ public without sharing class GoogleLocalFileService {
     }
 	
 	public List<GoogleFile__c> retrieveGoogleFiles(Id userId) {
-		GoogleFileAccessibilityCommand accesibilityCommands = new GoogleFileAccessibilityCommand();
+		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
 		try {
-			return accesibilityCommands.forUser(userId).fetch();
+			return accessResolver.resolveAccessibleFilesForUser(userId);
 		} catch (Exception ex) {
 			Logger.error('Retrieve Google File Records (Local): ' + userId + ', message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
             Logger.saveLog();

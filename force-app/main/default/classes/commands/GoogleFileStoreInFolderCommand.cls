@@ -14,7 +14,7 @@ public without sharing class GoogleFileStoreInFolderCommand {
     private final IGoogleUnitOfWork uowRef;
 
     public GoogleFileStoreInFolderCommand(IGoogleUnitOfWork uowRef) {
-        this.remoteGoogleDrive = new GoogleDriveApiProvider().retrieveGoogleDriveClient();
+        this.remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
         this.metadataService = new GoogleMetadataConfigService();
         this.uowRef = uowRef;
     }

@@ -1,26 +1,26 @@
 @IsTest
-private class GoogleDriveApiProviderTest {
+private class GoogleClientApiProviderTest {
 	public class TestGoogleAuthorizer implements GoogleAuthorizer {
 		public String retrieveAccessToken() {
 			return 'client.test-access-token';
 		}
 	}
 
-	private static GoogleDriveApiProvider newSut() {
-		return new GoogleDriveApiProvider();
+	private static GoogleClientApiProvider newSut() {
+		return new GoogleClientApiProvider();
 	}
 
 	private static void initMocks() {
 		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleDriveApiProviderTest.TestGoogleAuthorizer';
+		GoogleClientApiProvider.authorizerClassNameOverride = 'GoogleClientApiProviderTest.TestGoogleAuthorizer';
 	}
 
 	@IsTest
-	private static void testValidateCustomGoogleAuthorizerCredsPositive() {
+	private static void testValidateGoogleServiceAccountPositive() {
 		initMocks();
 
 		Test.startTest();
-		String message = newSut().validateCustomGoogleAuthorizerCreds();
+		String message = newSut().validateGoogleServiceAccount();
 		Test.stopTest();
 
 		System.assert(String.isNotBlank(message));

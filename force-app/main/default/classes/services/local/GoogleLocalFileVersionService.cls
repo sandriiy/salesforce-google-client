@@ -3,11 +3,11 @@ public without sharing class GoogleLocalFileVersionService {
 	public enum AccessLevel { View, Edit }
 
 	private final GoogleMetadataConfigService googleConfig;
-	private final GoogleDriveApiProvider remoteFileService;
+	private final GoogleClientApiProvider remoteFileService;
 
 	public GoogleLocalFileVersionService() {
 		this.googleConfig = new GoogleMetadataConfigService();
-		this.remoteFileService = new GoogleDriveApiProvider();
+		this.remoteFileService = new GoogleClientApiProvider();
 	}
 
 	public GoogleFilePreviewAction validatePreviewEligible(Id localFileVersionId) {

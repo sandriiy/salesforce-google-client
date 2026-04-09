@@ -1,4 +1,4 @@
-public with sharing class GoogleDriveApiProvider {
+public with sharing class GoogleClientApiProvider {
 	private final String DETAULT_ERROR_HANDLER = 'GoogleFileWebErrorHandler';
 	private final String DEFAULT_TOKEN_CACHE_NAME = 'accessToken';
 	private final String DEFAULT_AGENT_NAME = 'Apex Client 1/1';
@@ -9,7 +9,7 @@ public with sharing class GoogleDriveApiProvider {
 	private GoogleCacheConfigService cacheService = new GoogleCacheConfigService();
 	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
-	public String validateCustomGoogleAuthorizerCreds() {
+	public Boolean validateGoogleServiceAccount() {
 		String authorizerClassName = authorizerClassNameOverride != null
 			? authorizerClassNameOverride
 			: metadataService.getGoogleDriveAuthorizerClassName();
@@ -18,17 +18,17 @@ public with sharing class GoogleDriveApiProvider {
 			.setLocalGoogleAuthorizer(authorizerClassName)
 			.build();
 
-		if (String.isBlank(testCredential.accessToken)) {
-			return 'Your organization was successfully authenticated, but no access token was returned!';
-		} else {
-			return 'Your organization was successfully authenticated and a valid access token was returned!';
-		}
+		return String.isNotBlank(testCredential.accessToken);
 	}
 
 	public GoogleDrive retrieveGoogleDriveClient() {
 		GoogleCredential googleDriveCredentials = retrieveGoogleCredential();
 		return new GoogleDrive(googleDriveCredentials, DEFAULT_AGENT_NAME)
 			.withFailureStrategy(DETAULT_ERROR_HANDLER);
+	}
+
+	public GoogleCredential retrieveGoogleClientCreds() {
+		return retrieveGoogleCredential();
 	}
 
 	private GoogleCredential retrieveGoogleCredential() {

@@ -6,7 +6,7 @@ public with sharing class DefaultGoogleDriveAuthorizer implements GoogleAuthoriz
         jwt.setAud('https://oauth2.googleapis.com/token');
         jwt.setSub(metadataService.getGoogleDriveServiceAccountEmail());
         jwt.setIss(metadataService.getGoogleDriveServiceAccountEmail());
-        jwt.setAdditionalClaims(new Map<String, Object>{'scope' => 'https://www.googleapis.com/auth/drive'});
+        jwt.setAdditionalClaims(new Map<String, Object>{'scope' => 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/cloud-platform'});
 
         Auth.JWS jws = new Auth.JWS(jwt, metadataService.getGoogleDriveCertificateName());
         Auth.JWTBearerTokenExchange bearer = new Auth.JWTBearerTokenExchange(

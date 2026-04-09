@@ -73,6 +73,22 @@ public inherited sharing class GoogleMetadataConfigService {
         return configRecord.CustomGoogleUploadFolderStructure__c;
     }
 
+	public String getGoogleGeminiKey() {
+        return configRecord.CustomGeminiApiKey__c;
+    }
+
+	public String getGoogleAiModel() {
+        return configRecord.CustomModelName__c;
+    }
+
+	public String getGoogleVertexLocation() {
+        return configRecord.CustomVertexLocation__c;
+    }
+
+	public String getGoogleVertexProjectId() {
+        return configRecord.CustomVertexProjectId__c;
+    }
+
 	public String getGoogleDriveDomain() {
         return configRecord.OrganizationalDomain__c;
     }

@@ -8,7 +8,7 @@ private class GoogleLocalFileServiceTest {
 
 	private static void initMocks() {
 		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleLocalFileServiceTest.TestGoogleAuthorizer';
+		GoogleClientApiProvider.authorizerClassNameOverride = 'GoogleLocalFileServiceTest.TestGoogleAuthorizer';
 	}
 
 	private static void coverFactories() {

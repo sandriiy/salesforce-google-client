@@ -37,14 +37,13 @@ private class GoogleCloudFilesSharingControllerTest {
 			RowCause = Schema.GoogleFile__Share.RowCause.Manual
 		);
 
-		Account linkedAccount = new Account(Name = 'FS1-A');
-		insert linkedAccount;
+		Id linkedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(linkedAccount.Id)
+			.withLinkedRecord(linkedAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
@@ -124,19 +123,18 @@ private class GoogleCloudFilesSharingControllerTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('MV1').withDescription('D').insertRecord();
-		Account linkedAccount = new Account(Name = 'MV1-A');
-		insert linkedAccount;
+		Id linkedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleFileLink__c fileLink = GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(linkedAccount.Id)
+			.withLinkedRecord(linkedAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		Test.startTest();
-		GoogleCloudFilesSharingController.modifyExistingSharingVisibility(localFile.Id, linkedAccount.Id, 'InternalUsers');
+		GoogleCloudFilesSharingController.modifyExistingSharingVisibility(localFile.Id, linkedAccountId, 'InternalUsers');
 		Test.stopTest();
 
 		GoogleFileLink__c updatedLink = [
@@ -178,19 +176,18 @@ private class GoogleCloudFilesSharingControllerTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('DS2').withDescription('D').insertRecord();
-		Account linkedAccount = new Account(Name = 'DS2-A');
-		insert linkedAccount;
+		Id linkedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleFileLink__c fileLink = GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(linkedAccount.Id)
+			.withLinkedRecord(linkedAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		Test.startTest();
-		GoogleCloudFilesSharingController.deleteExistingSharing(localFile.Id, linkedAccount.Id);
+		GoogleCloudFilesSharingController.deleteExistingSharing(localFile.Id, linkedAccountId);
 		Test.stopTest();
 
 		System.assertEquals(0, [

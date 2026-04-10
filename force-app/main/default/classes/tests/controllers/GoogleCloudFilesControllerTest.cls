@@ -54,21 +54,18 @@ private class GoogleCloudFilesControllerTest {
 	private static void testRetrieveGoogleFilesWithLimitPositive() {
 		GoogleCloudTestFactory.initMocks();
 
-		Account relatedAccount = new Account(Name = 'RGF1');
-		insert relatedAccount;
+		Id relatedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleFile__c firstFile = GoogleCloudTestFactory.file()
 			.withName('F1')
 			.withDescription('D')
 			.withSource('Uploader')
-			.forRecord(relatedAccount.Id)
 			.insertRecord();
 
 		GoogleFile__c secondFile = GoogleCloudTestFactory.file()
 			.withName('F2')
 			.withDescription('D')
 			.withSource('Notes & Attachments')
-			.forRecord(relatedAccount.Id)
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
@@ -77,7 +74,7 @@ private class GoogleCloudFilesControllerTest {
 		});
 
 		Test.startTest();
-		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithLimit(relatedAccount.Id, 'Uploader', 1);
+		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithLimit(relatedAccountId, 'Uploader', 1);
 		Test.stopTest();
 
 		System.assertNotEquals(null, files);
@@ -87,14 +84,12 @@ private class GoogleCloudFilesControllerTest {
 	private static void testRetrieveGoogleFilesWithoutLimitPositive() {
 		GoogleCloudTestFactory.initMocks();
 
-		Account relatedAccount = new Account(Name = 'RGF2');
-		insert relatedAccount;
+		Id relatedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleFile__c fileRecord = GoogleCloudTestFactory.file()
 			.withName('F3')
 			.withDescription('D')
 			.withSource('Uploader')
-			.forRecord(relatedAccount.Id)
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
@@ -102,7 +97,7 @@ private class GoogleCloudFilesControllerTest {
 		});
 
 		Test.startTest();
-		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit(relatedAccount.Id, null);
+		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit(relatedAccountId, null);
 		Test.stopTest();
 
 		System.assertNotEquals(null, files);
@@ -175,15 +170,15 @@ private class GoogleCloudFilesControllerTest {
 	@IsTest
 	private static void testSaveNewGoogleFilePositive() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudFolderJob.skipExecution = true;
 
-		Account relatedAccount = new Account(Name = 'SNF1');
-		insert relatedAccount;
+		Id relatedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ new GoogleFile__c(Name = 'Any') });
 
 		Test.startTest();
 		GoogleCloudFilesController.saveNewGoogleFile(
-			relatedAccount.Id, 'My.pdf', 'application/pdf', 123L, 'GD_NEW', 'FOLDER1', 'Notes & Attachments'
+			relatedAccountId, 'My.pdf', 'application/pdf', 123L, 'GD_NEW', 'FOLDER1', 'Notes & Attachments'
 		);
 		Test.stopTest();
 
@@ -193,11 +188,9 @@ private class GoogleCloudFilesControllerTest {
 	@IsTest
 	private static void testSaveNewGoogleFileVersionPositive() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudFolderJob.skipExecution = true;
 
-		Account relatedAccount = new Account(Name = 'SNFV1');
-		insert relatedAccount;
-
-		GoogleFile__c baseFile = GoogleCloudTestFactory.file().withName('Base').withDescription('D').forRecord(relatedAccount.Id).insertRecord();
+		GoogleFile__c baseFile = GoogleCloudTestFactory.file().withName('Base').withDescription('D').insertRecord();
 		GoogleCloudTestFactory.version()
 			.forFile(baseFile.Id)
 			.withName('Old.pdf')
@@ -211,9 +204,11 @@ private class GoogleCloudFilesControllerTest {
 			new GoogleFile__c(Id = baseFile.Id, Name = 'Base')
 		});
 
+		Id relatedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+
 		Test.startTest();
 		GoogleFile__c createdFile = GoogleCloudFilesController.saveNewGoogleFileVersion(
-			relatedAccount.Id,
+			relatedAccountId,
 			baseFile.Id,
 			'New.docx',
 			'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -230,6 +225,7 @@ private class GoogleCloudFilesControllerTest {
 	@IsTest
 	private static void testDeleteExistingGoogleFilePositive() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudDeleteJob.skipExecution = true;
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('DEL1').withDescription('D').insertRecord();
 		GoogleCloudTestFactory.version()

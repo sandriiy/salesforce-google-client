@@ -24,6 +24,9 @@
 public with sharing class GoogleFileVersionPreviewJob implements Queueable, Database.AllowsCallouts {
 	public class GoogleFilePreviewJobException extends Exception {}
 
+	@TestVisible
+	private static Boolean skipExecution = false;
+
     private final Set<Id> versionIds;
     public GoogleFileVersionPreviewJob(Set<Id> versionIds) {
         this.versionIds = versionIds == null
@@ -32,6 +35,7 @@ public with sharing class GoogleFileVersionPreviewJob implements Queueable, Data
     }
 
     public void execute(QueueableContext qc) {
+		if (skipExecution) return;
 		Logger.info('Queueable Job to generate Google Workspace previews for: ' + String.join(versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
         if (versionIds.isEmpty()) return;
 

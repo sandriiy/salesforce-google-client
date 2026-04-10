@@ -24,6 +24,9 @@
 public with sharing class GoogleFileCloudFolderJob implements Queueable, Database.AllowsCallouts {
     public class GoogleFileCloudFolderJobException extends Exception {}
 
+    @TestVisible
+    private static Boolean skipExecution = false;
+
     private final GoogleFileRelocationRequestDTO request;
 
     public GoogleFileCloudFolderJob(GoogleFileRelocationRequestDTO request) {
@@ -31,6 +34,7 @@ public with sharing class GoogleFileCloudFolderJob implements Queueable, Databas
     }
 
     public void execute(QueueableContext context) {
+        if (skipExecution) return;
         if (this.request == null) return;
 
         IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(new List<SObjectType>{

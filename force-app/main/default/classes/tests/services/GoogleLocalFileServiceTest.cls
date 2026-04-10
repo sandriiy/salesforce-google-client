@@ -231,6 +231,7 @@ private class GoogleLocalFileServiceTest {
 	@IsTest
 	private static void testDeletePositiveWithCloud() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudDeleteJob.skipExecution = true;
 		coverFactories();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('Del2').withDescription('D').insertRecord();
@@ -264,15 +265,15 @@ private class GoogleLocalFileServiceTest {
 	@IsTest
 	private static void testCreatePositiveNew() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudFolderJob.skipExecution = true;
 		coverFactories();
 
-		Account parentRecord = new Account(Name = 'R1');
-		insert parentRecord;
+		Id parentRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ new GoogleFile__c(Name = 'Any') });
 
 		GoogleFileCreateRequestDTO request = new GoogleFileCreateRequestDTO();
-		request.recordId = parentRecord.Id;
+		request.recordId = parentRecordId;
 		request.googleDriveId = 'GD_NEW';
 		request.fileName = 'MyVeryLongName_' + String.valueOf(Crypto.getRandomLong()) + '.pdf';
 		request.fileType = 'application/pdf';
@@ -291,6 +292,7 @@ private class GoogleLocalFileServiceTest {
 	@IsTest
 	private static void testCreatePositiveVersion() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudFolderJob.skipExecution = true;
 		coverFactories();
 
 		GoogleFile__c existingFile = GoogleCloudTestFactory.file().withName('Base').withDescription('D').insertRecord();

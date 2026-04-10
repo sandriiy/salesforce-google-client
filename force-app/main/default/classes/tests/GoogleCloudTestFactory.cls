@@ -24,6 +24,14 @@
 @isTest
 public class GoogleCloudTestFactory {
 	private static final String TEST_AUTHORIZER_CLASS_NAME = 'GoogleCloudTestFactory.TestGoogleAuthorizer';
+	private static Integer fakeIdCounter = 0;
+
+	public static Id fakeId(SObjectType sot) {
+		fakeIdCounter++;
+		String keyPrefix = sot.getDescribe().getKeyPrefix();
+		String idx = String.valueOf(fakeIdCounter);
+		return (Id)(keyPrefix + '0'.repeat(12 - idx.length()) + idx);
+	}
 
 	public static void initMocks() {
 		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
@@ -174,9 +182,7 @@ public class GoogleCloudTestFactory {
 			if (String.isBlank(r.Visibility__c)) r.Visibility__c = 'AllUsers';
 			if (String.isBlank(r.LinkedObjectType__c)) r.LinkedObjectType__c = 'Account';
 			if (String.isBlank(r.LinkedObjectId__c)) {
-				Account a = new Account(Name = 'Test Linked Record');
-				insert a;
-				r.LinkedObjectId__c = String.valueOf(a.Id);
+				r.LinkedObjectId__c = String.valueOf(fakeId(Account.SObjectType));
 			}
 			return r;
 		}

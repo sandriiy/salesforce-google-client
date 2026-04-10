@@ -23,9 +23,16 @@
  */
 @IsTest
 private class GoogleFileCloudDeleteJobTest {
+	private static GoogleClientConfig__mdt buildDeleteConfig() {
+		return new GoogleClientConfig__mdt(
+			MaxDeleteChainSize__c = 10
+		);
+	}
+
 	@IsTest
 	private static void testExecutePositiveEmptyList() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		Test.startTest();
 		new GoogleFileCloudDeleteJob(new List<String>()).execute(null);
@@ -37,6 +44,7 @@ private class GoogleFileCloudDeleteJobTest {
 	@IsTest
 	private static void testExecutePositiveSingleId() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		List<String> googleDriveIds = new List<String>{ 'GD_1' };
 
@@ -50,6 +58,7 @@ private class GoogleFileCloudDeleteJobTest {
 	@IsTest
 	private static void testExecutePositiveFromVersions() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('DJ1').insertRecord();
 		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
@@ -74,6 +83,7 @@ private class GoogleFileCloudDeleteJobTest {
 	@IsTest
 	private static void testExecutePositiveFromIdSet() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		Set<String> googleDriveIds = new Set<String>{ 'GD_SET_1', 'GD_SET_2' };
 
@@ -87,6 +97,7 @@ private class GoogleFileCloudDeleteJobTest {
 	@IsTest
 	private static void testExecutePositiveNullInputs() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		Test.startTest();
 		new GoogleFileCloudDeleteJob((List<GoogleFileVersion__c>) null).execute(null);

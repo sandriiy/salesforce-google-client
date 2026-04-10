@@ -60,14 +60,13 @@ private class GoogleLocalFileSharingServiceTest {
 		);
 		insert sh;
 
-		Account a = new Account(Name = 'RS2-A');
-		insert a;
+		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(a.Id)
+			.withLinkedRecord(fakeAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
@@ -86,7 +85,7 @@ private class GoogleLocalFileSharingServiceTest {
 
 		System.assertNotEquals(null, dto.recordsSharedTo);
 		System.assertEquals(1, dto.recordsSharedTo.size());
-		System.assertEquals(String.valueOf(a.Id), dto.recordsSharedTo[0].LinkedObjectId__c);
+		System.assertEquals(String.valueOf(fakeAccountId), dto.recordsSharedTo[0].LinkedObjectId__c);
 	}
 
 	@IsTest
@@ -252,20 +251,19 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS3').withDescription('D').insertRecord();
-		Account a = new Account(Name = 'DS3-A');
-		insert a;
+		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(a.Id)
+			.withLinkedRecord(fakeAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		Test.startTest();
 		new GoogleLocalFileSharingService()
-			.deleteExistingSharing(f.Id, a.Id);
+			.deleteExistingSharing(f.Id, fakeAccountId);
 		Test.stopTest();
 
 		System.assertEquals(0, [
@@ -280,12 +278,11 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS4').withDescription('D').insertRecord();
-		Account a = new Account(Name = 'DS4-A');
-		insert a;
+		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		try {
 			new GoogleLocalFileSharingService()
-				.deleteExistingSharing(f.Id, a.Id);
+				.deleteExistingSharing(f.Id, fakeAccountId);
 			System.assert(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
 			System.assertEquals(true, ex.getMessage().contains('Unable to remove sharing'));
@@ -366,21 +363,20 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML1').withDescription('D').insertRecord();
-		Account a = new Account(Name = 'ML1-A');
-		insert a;
+		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(a.Id)
+			.withLinkedRecord(fakeAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		Test.startTest();
 		GoogleLocalFileSharingService service = new GoogleLocalFileSharingService();
-		service.modifyExistingSharingAccess(f.Id, a.Id, 'Collaborator');
-		service.modifyExistingSharingVisibility(f.Id, a.Id, 'InternalUsers');
+		service.modifyExistingSharingAccess(f.Id, fakeAccountId, 'Collaborator');
+		service.modifyExistingSharingVisibility(f.Id, fakeAccountId, 'InternalUsers');
 		Test.stopTest();
 
 		GoogleFileLink__c updated = [
@@ -398,21 +394,20 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML2').withDescription('D').insertRecord();
-		Account a = new Account(Name = 'ML2-A');
-		insert a;
+		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(a.Id)
+			.withLinkedRecord(fakeAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		try {
 			GoogleLocalFileSharingService service = new GoogleLocalFileSharingService();
-			service.modifyExistingSharingAccess(f.Id, a.Id, ' ');
-			service.modifyExistingSharingVisibility(f.Id, a.Id, null);
+			service.modifyExistingSharingAccess(f.Id, fakeAccountId, ' ');
+			service.modifyExistingSharingVisibility(f.Id, fakeAccountId, null);
 			System.assert(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
 			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
@@ -424,12 +419,11 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML3').withDescription('D').insertRecord();
-		Account a = new Account(Name = 'ML3-A');
-		insert a;
+		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		try {
 			new GoogleLocalFileSharingService()
-				.modifyExistingSharingAccess(f.Id, a.Id, 'Viewer');
+				.modifyExistingSharingAccess(f.Id, fakeAccountId, 'Viewer');
 			System.assert(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
 			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
@@ -441,20 +435,19 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML4').withDescription('D').insertRecord();
-		Account a = new Account(Name = 'ML4-A');
-		insert a;
+		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(a.Id)
+			.withLinkedRecord(fakeAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		try {
 			new GoogleLocalFileSharingService()
-				.modifyExistingSharingAccess(f.Id, a.Id, 'NotARealType');
+				.modifyExistingSharingAccess(f.Id, fakeAccountId, 'NotARealType');
 			System.assert(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
 			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
@@ -466,20 +459,19 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML5').withDescription('D').insertRecord();
-		Account a = new Account(Name = 'ML5-A');
-		insert a;
+		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(a.Id)
+			.withLinkedRecord(fakeAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		try {
 			new GoogleLocalFileSharingService()
-				.modifyExistingSharingVisibility(f.Id, a.Id, 'Public');
+				.modifyExistingSharingVisibility(f.Id, fakeAccountId, 'Public');
 			System.assert(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
 			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));

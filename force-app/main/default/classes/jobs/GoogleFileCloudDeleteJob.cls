@@ -25,6 +25,9 @@ public with sharing class GoogleFileCloudDeleteJob implements Queueable, Databas
 	private final Integer MAX_CALLS_PER_JOB;
     private final List<String> googleFileIds;
 
+	@TestVisible
+	private static Boolean skipExecution = false;
+
 	public GoogleFileCloudDeleteJob(List<GoogleFileVersion__c> fileVersions) {
 		this.MAX_CALLS_PER_JOB = new GoogleMetadataConfigService().getDeleteChainSize();
         this.googleFileIds = fileVersions == null 
@@ -47,6 +50,7 @@ public with sharing class GoogleFileCloudDeleteJob implements Queueable, Databas
     }
 
     public void execute(QueueableContext qc) {
+        if (skipExecution) return;
         if (googleFileIds.isEmpty()) return;
 
         Integer chunkSize = Math.min(MAX_CALLS_PER_JOB, googleFileIds.size());

@@ -1,20 +1,31 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 @IsTest
 private class GoogleLocalFileSharingServiceTest {
-	public class TestGoogleAuthorizer implements GoogleAuthorizer {
-		public String retrieveAccessToken() {
-			return 'client.test-access-token';
-		}
-	}
-
-	private static void initMocks() {
-		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleClientApiProvider.authorizerClassNameOverride = 'GoogleLocalFileSharingServiceTest.TestGoogleAuthorizer';
-	}
-
-
 	@IsTest
-	private static void fetchSharingDetailsTestSuccessEmpty() {
-		initMocks();
+	private static void testFetchSharingDetailsPositiveEmpty() {
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file()
 			.withName('RS_Empty')
@@ -35,8 +46,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void fetchSharingDetailsTestSuccessIncludeAll() {
-		initMocks();
+	private static void testFetchSharingDetailsPositiveIncludeAll() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('RS2').withDescription('D').insertRecord();
@@ -79,8 +90,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void createSharingTestSuccessViewer() {
-		initMocks();
+	private static void testCreateSharingPositiveViewer() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS1').withDescription('D').insertRecord();
@@ -109,8 +120,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void createSharingTestSuccessCollaborator() {
-		initMocks();
+	private static void testCreateSharingPositiveCollaborator() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS2').withDescription('D').insertRecord();
@@ -132,8 +143,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void createSharingTestFailNullFileId() {
-		initMocks();
+	private static void testCreateSharingNegativeNullFileId() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 
@@ -147,8 +158,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void createSharingTestFailNullShareTo() {
-		initMocks();
+	private static void testCreateSharingNegativeNullShareTo() {
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS3').withDescription('D').insertRecord();
 
@@ -162,8 +173,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void createSharingTestFailBlankAccess() {
-		initMocks();
+	private static void testCreateSharingNegativeBlankAccess() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS4').withDescription('D').insertRecord();
@@ -178,8 +189,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void createSharingTestFailBadAccess() {
-		initMocks();
+	private static void testCreateSharingNegativeBadAccess() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS5').withDescription('D').insertRecord();
@@ -194,8 +205,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void deleteSharingTestSuccessUser() {
-		initMocks();
+	private static void testDeleteSharingPositiveUser() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS1').withDescription('D').insertRecord();
@@ -221,8 +232,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void deleteSharingTestFailUserShareMissing() {
-		initMocks();
+	private static void testDeleteSharingNegativeUserShareMissing() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS2').withDescription('D').insertRecord();
@@ -237,8 +248,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void deleteSharingTestSuccessLink() {
-		initMocks();
+	private static void testDeleteSharingPositiveLink() {
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS3').withDescription('D').insertRecord();
 		Account a = new Account(Name = 'DS3-A');
@@ -265,8 +276,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void deleteSharingTestFailLinkMissing() {
-		initMocks();
+	private static void testDeleteSharingNegativeLinkMissing() {
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS4').withDescription('D').insertRecord();
 		Account a = new Account(Name = 'DS4-A');
@@ -282,8 +293,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void modifySharingTestSuccessUser() {
-		initMocks();
+	private static void testModifySharingPositiveUser() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('MS1').withDescription('D').insertRecord();
@@ -311,8 +322,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void modifySharingTestFailMissingAccess() {
-		initMocks();
+	private static void testModifySharingNegativeMissingAccess() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('MS2').withDescription('D').insertRecord();
@@ -335,8 +346,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void modifySharingTestFailUserShareMissing() {
-		initMocks();
+	private static void testModifySharingNegativeUserShareMissing() {
+		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('MS3').withDescription('D').insertRecord();
@@ -351,8 +362,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void modifySharingTestSuccessLink() {
-		initMocks();
+	private static void testModifySharingPositiveLink() {
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML1').withDescription('D').insertRecord();
 		Account a = new Account(Name = 'ML1-A');
@@ -383,8 +394,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void modifySharingTestFailNoInput() {
-		initMocks();
+	private static void testModifySharingNegativeNoInput() {
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML2').withDescription('D').insertRecord();
 		Account a = new Account(Name = 'ML2-A');
@@ -409,8 +420,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void modifySharingTestFailLinkMissing() {
-		initMocks();
+	private static void testModifySharingNegativeLinkMissing() {
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML3').withDescription('D').insertRecord();
 		Account a = new Account(Name = 'ML3-A');
@@ -426,8 +437,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void modifySharingTestFailBadShareType() {
-		initMocks();
+	private static void testModifySharingNegativeBadShareType() {
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML4').withDescription('D').insertRecord();
 		Account a = new Account(Name = 'ML4-A');
@@ -451,8 +462,8 @@ private class GoogleLocalFileSharingServiceTest {
 	}
 
 	@IsTest
-	private static void modifySharingTestFailBadVisibility() {
-		initMocks();
+	private static void testModifySharingNegativeBadVisibility() {
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML5').withDescription('D').insertRecord();
 		Account a = new Account(Name = 'ML5-A');

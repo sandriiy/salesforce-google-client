@@ -1,3 +1,26 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 @IsTest
 private class GoogleCloudConfigControllerTest {
 	@IsTest
@@ -6,8 +29,8 @@ private class GoogleCloudConfigControllerTest {
 		String generatedConfigId = GoogleCloudConfigController.generateConfigId();
 		Test.stopTest();
 
-		System.assertNotEquals(null, generatedConfigId);
-		System.assert(generatedConfigId.startsWith('cfg_'));
+		Assert.isNotNull(generatedConfigId);
+		Assert.isTrue(generatedConfigId.startsWith('cfg_'));
 	}
 
 	@IsTest
@@ -22,46 +45,46 @@ private class GoogleCloudConfigControllerTest {
 		String afterRemovePayload = GoogleCloudConfigController.pullConfig(generatedConfigId);
 		Test.stopTest();
 
-		System.assertEquals(payloadJson, pulledPayload);
-		System.assertEquals(null, afterRemovePayload);
+		Assert.areEqual(payloadJson, pulledPayload);
+		Assert.isNull(afterRemovePayload);
 	}
 
 	@IsTest
-	private static void testPullConfigNegativeFormat() {
+	private static void testPullConfigNegativeInvalidFormat() {
 		String invalidConfigId = GoogleCloudConfigController.generateConfigId() + '_notfound';
 
-		Test.startTest();
 		try {
+			Test.startTest();
 			GoogleCloudConfigController.pullConfig(invalidConfigId);
-			System.assert(false);
+			Test.stopTest();
+			Assert.isTrue(false);
 		} catch (Exception ex) {
-			System.assert(ex.getMessage().contains('Invalid configId format'));
+			Assert.isTrue(ex.getMessage().contains('Invalid configId format'));
 		}
-		Test.stopTest();
 	}
 
 	@IsTest
-	private static void testPushConfigNegativeFormat() {
-		Test.startTest();
+	private static void testPushConfigNegativeInvalidFormat() {
 		try {
+			Test.startTest();
 			GoogleCloudConfigController.pushConfig('bad', '{}');
-			System.assert(false);
+			Test.stopTest();
+			Assert.isTrue(false);
 		} catch (Exception ex) {
-			System.assert(String.isNotBlank(ex.getMessage()));
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
 		}
-		Test.stopTest();
 	}
 
 	@IsTest
-	private static void testRemoveConfigNegativeFormat() {
-		Test.startTest();
+	private static void testRemoveConfigNegativeInvalidFormat() {
 		try {
+			Test.startTest();
 			GoogleCloudConfigController.removeConfig('bad');
-			System.assert(false);
+			Test.stopTest();
+			Assert.isTrue(false);
 		} catch (Exception ex) {
-			System.assert(String.isNotBlank(ex.getMessage()));
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
 		}
-		Test.stopTest();
 	}
 
 	@IsTest
@@ -73,31 +96,54 @@ private class GoogleCloudConfigControllerTest {
 		Test.startTest();
 		try {
 			GoogleCloudConfigController.saveMetadataConfig(fieldApiToValue);
-			System.assert(true);
+			Assert.isTrue(true);
 		} catch (Exception ex) {
-			System.assert(String.isNotBlank(ex.getMessage()));
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
 		}
 		Test.stopTest();
 	}
 
 	@IsTest
-	private static void testValidateMetadataConfigPositive() {
+	private static void testSaveMetadataConfigNegativeNull() {
 		Test.startTest();
-		try {
-			String validationResult = GoogleCloudConfigController.validateMetadataConfig();
-			System.assertNotEquals(null, validationResult);
-		} catch (Exception ex) {
-			System.assert(String.isNotBlank(ex.getMessage()));
-		}
+		Id result = GoogleCloudConfigController.saveMetadataConfig(null);
 		Test.stopTest();
+
+		Assert.isNull(result);
 	}
 
 	@IsTest
 	private static void testValidateLatestMetadataDeployPositive() {
 		Test.startTest();
-		String latestDeployValidationValue = GoogleCloudConfigController.validateLatestMetadataDeploy();
+		String result = GoogleCloudConfigController.validateLatestMetadataDeploy();
 		Test.stopTest();
 
-		System.assert(true);
+		Assert.isTrue(true);
+	}
+
+	@IsTest
+	private static void testValidateDriveMetadataConfigPositive() {
+		GoogleCloudTestFactory.initMocks();
+
+		Test.startTest();
+		String result = GoogleCloudConfigController.validateDriveMetadataConfig();
+		Test.stopTest();
+
+		Assert.isNotNull(result);
+	}
+
+	@IsTest
+	private static void testValidateIntelligenceMetadataConfigPositive() {
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
+		GoogleClientApiProvider.authorizerClassNameOverride = 'GoogleCloudTestFactory.TestGoogleAuthorizer';
+
+		Test.startTest();
+		try {
+			String result = GoogleCloudConfigController.validateIntelligenceMetadataConfig();
+			Assert.isNotNull(result);
+		} catch (Exception ex) {
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
+		}
+		Test.stopTest();
 	}
 }

@@ -1,19 +1,31 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 @IsTest
 private class GoogleCloudFilesControllerTest {
-	public class TestGoogleAuthorizer implements GoogleAuthorizer {
-		public String retrieveAccessToken() {
-			return 'client.test-access-token';
-		}
-	}
-
-	private static void initMocks() {
-		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleClientApiProvider.authorizerClassNameOverride = 'GoogleCloudFilesControllerTest.TestGoogleAuthorizer';
-	}
-
 	@IsTest
 	private static void testFetchFileAccessPositiveOwner() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('FA1')
@@ -29,7 +41,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testRetrieveAllGoogleFilesPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
 		List<GoogleFile__c> allFiles = GoogleCloudFilesController.retrieveAllGoogleFiles();
@@ -40,7 +52,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testRetrieveGoogleFilesWithLimitPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		Account relatedAccount = new Account(Name = 'RGF1');
 		insert relatedAccount;
@@ -73,7 +85,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testRetrieveGoogleFilesWithoutLimitPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		Account relatedAccount = new Account(Name = 'RGF2');
 		insert relatedAccount;
@@ -99,7 +111,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testRetrieveLocalGoogleFileByIdPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('RLF1')
@@ -120,7 +132,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testRetrieveLocalGoogleFileByIdNegativeNoAccess() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		Id missingFileId = (Id) 'a0B000000000001AAA';
 
@@ -136,7 +148,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testRetrieveLocalGoogleFileVersionByIdPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('RV1').withDescription('D').insertRecord();
 		GoogleFileVersion__c fileVersion = GoogleCloudTestFactory.version()
@@ -162,7 +174,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testSaveNewGoogleFilePositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		Account relatedAccount = new Account(Name = 'SNF1');
 		insert relatedAccount;
@@ -180,7 +192,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testSaveNewGoogleFileVersionPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		Account relatedAccount = new Account(Name = 'SNFV1');
 		insert relatedAccount;
@@ -217,7 +229,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testDeleteExistingGoogleFilePositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('DEL1').withDescription('D').insertRecord();
 		GoogleCloudTestFactory.version()
@@ -247,7 +259,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testUploadFilePositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
 		GoogleFileEntity uploadedFile = GoogleCloudFilesController.uploadFile('hello.txt', 'aGVsbG8=');
@@ -258,7 +270,7 @@ private class GoogleCloudFilesControllerTest {
 
 	@IsTest
 	private static void testUploadLargeFilePartialPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
 		GoogleBigFileEntity bigFileResult = GoogleCloudFilesController.uploadLargeFilePartial(

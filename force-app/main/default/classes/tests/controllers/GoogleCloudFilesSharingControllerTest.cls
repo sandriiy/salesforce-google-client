@@ -1,19 +1,31 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 @IsTest
 private class GoogleCloudFilesSharingControllerTest {
-	public class TestGoogleAuthorizer implements GoogleAuthorizer {
-		public String retrieveAccessToken() {
-			return 'client.test-access-token';
-		}
-	}
-
-	private static void initMocks() {
-		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleCloudFilesSharingControllerTest.TestGoogleAuthorizer';
-	}
-
 	@IsTest
 	private static void testFetchSharingDetailsPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		User sharedUser = GoogleCloudTestFactory.newUser();
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('FS1').withDescription('D').insertRecord();
@@ -25,14 +37,13 @@ private class GoogleCloudFilesSharingControllerTest {
 			RowCause = Schema.GoogleFile__Share.RowCause.Manual
 		);
 
-		Account linkedAccount = new Account(Name = 'FS1-A');
-		insert linkedAccount;
+		Id linkedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(linkedAccount.Id)
+			.withLinkedRecord(linkedAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
@@ -50,7 +61,7 @@ private class GoogleCloudFilesSharingControllerTest {
 
 	@IsTest
 	private static void testCreateNewSharingPositiveViewer() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		User targetUser = GoogleCloudTestFactory.newUser();
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('CS1').withDescription('D').insertRecord();
@@ -81,7 +92,7 @@ private class GoogleCloudFilesSharingControllerTest {
 
 	@IsTest
 	private static void testModifyExistingSharingAccessPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		User targetUser = GoogleCloudTestFactory.newUser();
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('MS1').withDescription('D').insertRecord();
@@ -109,22 +120,21 @@ private class GoogleCloudFilesSharingControllerTest {
 
 	@IsTest
 	private static void testModifyExistingSharingVisibilityPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('MV1').withDescription('D').insertRecord();
-		Account linkedAccount = new Account(Name = 'MV1-A');
-		insert linkedAccount;
+		Id linkedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleFileLink__c fileLink = GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(linkedAccount.Id)
+			.withLinkedRecord(linkedAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		Test.startTest();
-		GoogleCloudFilesSharingController.modifyExistingSharingVisibility(localFile.Id, linkedAccount.Id, 'InternalUsers');
+		GoogleCloudFilesSharingController.modifyExistingSharingVisibility(localFile.Id, linkedAccountId, 'InternalUsers');
 		Test.stopTest();
 
 		GoogleFileLink__c updatedLink = [
@@ -138,7 +148,7 @@ private class GoogleCloudFilesSharingControllerTest {
 
 	@IsTest
 	private static void testDeleteExistingSharingPositiveUser() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		User targetUser = GoogleCloudTestFactory.newUser();
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('DS1').withDescription('D').insertRecord();
@@ -163,22 +173,21 @@ private class GoogleCloudFilesSharingControllerTest {
 
 	@IsTest
 	private static void testDeleteExistingSharingPositiveLink() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('DS2').withDescription('D').insertRecord();
-		Account linkedAccount = new Account(Name = 'DS2-A');
-		insert linkedAccount;
+		Id linkedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GoogleFileLink__c fileLink = GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(linkedAccount.Id)
+			.withLinkedRecord(linkedAccountId)
 			.withLinkedType('Account')
 			.insertRecord();
 
 		Test.startTest();
-		GoogleCloudFilesSharingController.deleteExistingSharing(localFile.Id, linkedAccount.Id);
+		GoogleCloudFilesSharingController.deleteExistingSharing(localFile.Id, linkedAccountId);
 		Test.stopTest();
 
 		System.assertEquals(0, [
@@ -190,7 +199,7 @@ private class GoogleCloudFilesSharingControllerTest {
 
 	@IsTest
 	private static void testCreateNewPublicLinkPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('PL1').withDescription('D').insertRecord();
 		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
@@ -225,7 +234,7 @@ private class GoogleCloudFilesSharingControllerTest {
 
 	@IsTest
 	private static void testDeleteExistingPublicLinkPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('PL2').withDescription('D').insertRecord();
 		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()

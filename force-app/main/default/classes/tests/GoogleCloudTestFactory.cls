@@ -1,7 +1,83 @@
-public with sharing class GoogleCloudTestFactory {
-	public static FileBuilder file() { return new FileBuilder(); }
-	public static VersionBuilder version() { return new VersionBuilder(); }
-	public static LinkBuilder link() { return new LinkBuilder(); }
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+@isTest
+public class GoogleCloudTestFactory {
+	private static final String TEST_AUTHORIZER_CLASS_NAME = 'GoogleCloudTestFactory.TestGoogleAuthorizer';
+	private static Integer fakeIdCounter = 0;
+
+	public static Id fakeId(SObjectType sot) {
+		fakeIdCounter++;
+		String keyPrefix = sot.getDescribe().getKeyPrefix();
+		String idx = String.valueOf(fakeIdCounter);
+		return (Id)(keyPrefix + '0'.repeat(12 - idx.length()) + idx);
+	}
+
+	public static void initMocks() {
+		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
+		GoogleClientApiProvider.authorizerClassNameOverride = TEST_AUTHORIZER_CLASS_NAME;
+	}
+
+	public static void initMocks(HttpCalloutMock httpMock) {
+		Test.setMock(HttpCalloutMock.class, httpMock);
+		GoogleClientApiProvider.authorizerClassNameOverride = TEST_AUTHORIZER_CLASS_NAME;
+	}
+
+	public static User newUser() {
+		Profile p = [SELECT Id FROM Profile WHERE Id = :UserInfo.getProfileId() LIMIT 1];
+		User u = new User(
+			ProfileId = p.Id,
+			Alias = 'tuser',
+			Email = 'tuser+' + String.valueOf(Crypto.getRandomLong()) + '@example.com',
+			EmailEncodingKey = 'UTF-8',
+			LastName = 'TestUser',
+			LanguageLocaleKey = 'en_US',
+			LocaleSidKey = 'en_US',
+			TimeZoneSidKey = 'America/New_York',
+			UserName = 'tuser+' + String.valueOf(Crypto.getRandomLong()) + '@example.com'
+		);
+		
+		insert u;
+		return u;
+	}
+
+	public static FileBuilder file() {
+		return new FileBuilder();
+	}
+
+	public static VersionBuilder version() {
+		return new VersionBuilder();
+	}
+
+	public static LinkBuilder link() {
+		return new LinkBuilder();
+	}
+
+	public class TestGoogleAuthorizer implements GoogleAuthorizer {
+		public String retrieveAccessToken() {
+			return 'client.test-access-token';
+		}
+	}
 
 	public class FileBuilder {
 		private GoogleFile__c r = new GoogleFile__c();
@@ -106,9 +182,7 @@ public with sharing class GoogleCloudTestFactory {
 			if (String.isBlank(r.Visibility__c)) r.Visibility__c = 'AllUsers';
 			if (String.isBlank(r.LinkedObjectType__c)) r.LinkedObjectType__c = 'Account';
 			if (String.isBlank(r.LinkedObjectId__c)) {
-				Account a = new Account(Name = 'Test Linked Record');
-				insert a;
-				r.LinkedObjectId__c = String.valueOf(a.Id);
+				r.LinkedObjectId__c = String.valueOf(fakeId(Account.SObjectType));
 			}
 			return r;
 		}
@@ -118,23 +192,5 @@ public with sharing class GoogleCloudTestFactory {
 			insert out;
 			return out;
 		}
-	}
-
-	public static User newUser() {
-		Profile p = [SELECT Id FROM Profile WHERE Id = :UserInfo.getProfileId() LIMIT 1];
-		User u = new User(
-			ProfileId = p.Id,
-			Alias = 'tuser',
-			Email = 'tuser+' + String.valueOf(Crypto.getRandomLong()) + '@example.com',
-			EmailEncodingKey = 'UTF-8',
-			LastName = 'TestUser',
-			LanguageLocaleKey = 'en_US',
-			LocaleSidKey = 'en_US',
-			TimeZoneSidKey = 'America/New_York',
-			UserName = 'tuser+' + String.valueOf(Crypto.getRandomLong()) + '@example.com'
-		);
-		
-		insert u;
-		return u;
 	}
 }

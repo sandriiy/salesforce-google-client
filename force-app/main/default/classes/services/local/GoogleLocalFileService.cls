@@ -1,3 +1,26 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 public without sharing class GoogleLocalFileService {
     public class GoogleLocalFileException extends Exception {}
 
@@ -32,9 +55,9 @@ public without sharing class GoogleLocalFileService {
     }
 	
 	public List<GoogleFile__c> retrieveGoogleFiles(Id userId) {
-		GoogleFileAccessibilityCommand accesibilityCommands = new GoogleFileAccessibilityCommand();
+		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
 		try {
-			return accesibilityCommands.forUser(userId).fetch();
+			return accessResolver.resolveAccessibleFilesForUser(userId);
 		} catch (Exception ex) {
 			Logger.error('Retrieve Google File Records (Local): ' + userId + ', message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
             Logger.saveLog();
@@ -143,8 +166,6 @@ public without sharing class GoogleLocalFileService {
 
 	@TestVisible
 	private void queueGoogleFileFolderStructuring(GoogleFileInsertCommand.GoogleFileInsertResult insertResult) {
-		if (Test.isRunningTest()) return;
-		
 		Id localGoogleFileId = insertResult == null ? null : insertResult.getLocalGoogleFileId();
         Id localGoogleFileVersionId = insertResult == null ? null : insertResult.getLocalGoogleFileVersionId();
 

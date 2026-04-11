@@ -1,16 +1,28 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 @IsTest
 private class GoogleLocalFileServiceTest {
-	public class TestGoogleAuthorizer implements GoogleAuthorizer {
-		public String retrieveAccessToken() {
-			return 'client.test-access-token';
-		}
-	}
-
-	private static void initMocks() {
-		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleLocalFileServiceTest.TestGoogleAuthorizer';
-	}
-
 	private static void coverFactories() {
 		GoogleLocalFileService localFileService = new GoogleLocalFileService();
 		System.assertNotEquals(null, localFileService.deleteGoogleFileRecord());
@@ -20,7 +32,7 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testStripPositiveOwner() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F1').withDescription('D').insertRecord();
@@ -32,7 +44,7 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testStripPositiveShareView() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
 		User targetUser = GoogleCloudTestFactory.newUser();
@@ -57,7 +69,7 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testStripPositiveShareEdit() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
 		User targetUser = GoogleCloudTestFactory.newUser();
@@ -79,7 +91,7 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testStripPositiveLinkView() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
 		User targetUser = GoogleCloudTestFactory.newUser();
@@ -102,7 +114,7 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testStripPositiveLinkEdit() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
 		User targetUser = GoogleCloudTestFactory.newUser();
@@ -128,7 +140,7 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testStripPositiveInferred() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
 		User targetUser = GoogleCloudTestFactory.newUser();
@@ -160,7 +172,7 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testStripPositiveEmpty() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFiles(new List<GoogleFile__c>()).strip();
@@ -169,7 +181,7 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testStripNegativeUserMissing() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F8').withDescription('D').insertRecord();
@@ -185,7 +197,7 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testDeletePositiveLocalOnly() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('Del1').withDescription('D').insertRecord();
@@ -218,7 +230,8 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testDeletePositiveWithCloud() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudDeleteJob.skipExecution = true;
 		coverFactories();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('Del2').withDescription('D').insertRecord();
@@ -251,16 +264,16 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testCreatePositiveNew() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudFolderJob.skipExecution = true;
 		coverFactories();
 
-		Account parentRecord = new Account(Name = 'R1');
-		insert parentRecord;
+		Id parentRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ new GoogleFile__c(Name = 'Any') });
 
 		GoogleFileCreateRequestDTO request = new GoogleFileCreateRequestDTO();
-		request.recordId = parentRecord.Id;
+		request.recordId = parentRecordId;
 		request.googleDriveId = 'GD_NEW';
 		request.fileName = 'MyVeryLongName_' + String.valueOf(Crypto.getRandomLong()) + '.pdf';
 		request.fileType = 'application/pdf';
@@ -278,7 +291,8 @@ private class GoogleLocalFileServiceTest {
 
 	@IsTest
 	private static void testCreatePositiveVersion() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudFolderJob.skipExecution = true;
 		coverFactories();
 
 		GoogleFile__c existingFile = GoogleCloudTestFactory.file().withName('Base').withDescription('D').insertRecord();

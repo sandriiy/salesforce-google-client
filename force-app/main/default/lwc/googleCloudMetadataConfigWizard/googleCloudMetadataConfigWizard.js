@@ -3,7 +3,8 @@ import { gql, graphql } from 'lightning/uiGraphQLApi';
 import { isEmpty, showToast, normalizeError, extractGraphValue } from 'c/googleCloudUtils';
 
 import checkConfig from '@salesforce/apex/GoogleCloudConfigController.validateLatestMetadataDeploy';
-import validateConfig from '@salesforce/apex/GoogleCloudConfigController.validateMetadataConfig';
+import validateDriveConfig from '@salesforce/apex/GoogleCloudConfigController.validateDriveMetadataConfig';
+import validateIntelligenceConfig from '@salesforce/apex/GoogleCloudConfigController.validateIntelligenceMetadataConfig';
 import saveConfig from '@salesforce/apex/GoogleCloudConfigController.saveMetadataConfig';
 
 const CONFIG_DEV_NAME = 'GoogleClient';
@@ -13,7 +14,16 @@ const CONFIG_SECTIONS = [
         label: 'Google Drive',
         icon: 'doctype:gdocs',
         description: 'Configure Google Drive authentication and file organization for this org.',
-        importer: () => import('c/googleCloudDriveConfig')
+        importer: () => import('c/googleCloudDriveConfig'),
+        validator: validateDriveConfig
+    },
+    {
+        key: 'ai',
+        label: 'Gemini & Vertex AI',
+        icon: 'utility:magicwand',
+        description: 'Configure Gemini Developer API or Vertex AI for file analysis in Google Client.',
+        importer: () => import('c/googleCloudIntelligenceConfig'),
+        validator: validateIntelligenceConfig
     }
 ];
 
@@ -33,10 +43,15 @@ const QUERY = gql`
 
                             DefaultGoogleUploadFolderId__c { value }
                             DefaultBigFileSize__c { value }
-							OrganizationalDomain__c { value }
+                            OrganizationalDomain__c { value }
                             IsFilePreviewDisabled__c { value }
                             MaxDeleteChainSize__c { value }
                             CustomGoogleUploadFolderStructure__c { value }
+
+                            CustomGeminiApiKey__c { value }
+                            CustomModelName__c { value }
+                            CustomVertexLocation__c { value }
+                            CustomVertexProjectId__c { value }
                         }
                     }
                 }
@@ -61,10 +76,14 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         customGoogleCertificate: '',
         defaultGoogleUploadFolderId: '',
         customGoogleUploadFolderStructure: '',
-		organizationalDomain: '',
+        organizationalDomain: '',
         defaultBigFileSize: null,
         isFilePreviewDisabled: false,
-        maxDeleteChainSize: null
+        maxDeleteChainSize: null,
+        customGeminiApiKey: '',
+        customModelName: '',
+        customVertexLocation: '',
+        customVertexProjectId: ''
     };
 
     errorMessage = '';
@@ -89,12 +108,14 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.errorMessage = '';
 
         if (errors?.length) {
-            this.errorMessage = errors.map((e) => e.message).join(', ');
+            this.errorMessage = errors.map((errorItem) => errorItem.message).join(', ');
             this.isLoading = false;
             return;
         }
 
-        if (!data) return;
+        if (!data) {
+            return;
+        }
 
         try {
             const edges = data?.uiapi?.query?.GoogleClientConfig__mdt?.edges || [];
@@ -108,8 +129,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             const serverSnapshot = this.toServerSnapshot(recordNode);
             this.server = serverSnapshot;
             this.draft = this.toDraft(serverSnapshot);
-        } catch (e) {
-            this.errorMessage = e?.message || 'Unknown error parsing configuration record';
+        } catch (error) {
+            this.errorMessage = error?.message || 'Unknown error parsing configuration record';
         } finally {
             this.isLoading = false;
         }
@@ -121,10 +142,14 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     }
 
     handleWindowClick(event) {
-        if (!this.isConfigMenuOpen) return;
+        if (!this.isConfigMenuOpen) {
+            return;
+        }
 
         const selectorRoot = this.template.querySelector('[data-role="selectorRoot"]');
-        if (selectorRoot && selectorRoot.contains(event.target)) return;
+        if (selectorRoot && selectorRoot.contains(event.target)) {
+            return;
+        }
 
         this.isConfigMenuOpen = false;
     }
@@ -149,8 +174,14 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     handleFieldChange(event) {
         const { field, value } = event.detail || {};
-        if (!field) return;
-        this.draft = { ...this.draft, [field]: extractGraphValue(value) };
+        if (!field) {
+            return;
+        }
+
+        this.draft = {
+            ...this.draft,
+            [field]: extractGraphValue(value)
+        };
     }
 
     handleStepError() {
@@ -159,22 +190,26 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     handleChangeNumber(event) {
         const fieldName = event.target.dataset.field;
-        this.draft = { ...this.draft, [fieldName]: this.toNumberOrNull(event.target.value) };
+        this.draft = {
+            ...this.draft,
+            [fieldName]: this.toNumberOrNull(event.target.value)
+        };
     }
 
-	handleChangeText(event) {
-		const field = event.target.dataset.field;
-		const value = event.target.value;
-
-		this.draft = {
-			...this.draft,
-			[field]: value
-		};
-	}
+    handleChangeText(event) {
+        const fieldName = event.target.dataset.field;
+        this.draft = {
+            ...this.draft,
+            [fieldName]: event.target.value
+        };
+    }
 
     handleToggle(event) {
         const fieldName = event.target.dataset.field;
-        this.draft = { ...this.draft, [fieldName]: event.target.checked };
+        this.draft = {
+            ...this.draft,
+            [fieldName]: event.target.checked
+        };
     }
 
     async handleSave() {
@@ -192,7 +227,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     async saveInternal({ alsoValidate }) {
         this.busy = true;
         try {
-            if (!this.validateInputsBeforeSave()) return;
+            if (!this.validateInputsBeforeSave()) {
+                return;
+            }
 
             const changedFieldApiToValue = this.buildChangedFieldMap();
             if (!this.hasChanges(changedFieldApiToValue)) {
@@ -203,19 +240,24 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             showToast(this, 'Saving Configuration...', 'This may take a moment — we’ll also validate authentication if needed. Please stay on this page.', 'info');
             const deployId = await this.saveMetadata(changedFieldApiToValue);
 
-            this.server = { ...this.server, ...this.applyDraftToSnapshot(this.draft) };
+            this.server = {
+                ...this.server,
+                ...this.applyDraftToSnapshot(this.draft)
+            };
 
             const deployStatus = await this.waitForDeployResult(deployId);
             const shouldContinue = await this.handleDeployOutcome(deployStatus);
-            if (!shouldContinue) return;
+            if (!shouldContinue) {
+                return;
+            }
 
             if (alsoValidate) {
                 await this.runValidation();
             } else {
                 showToast(this, 'Configuration Saved', 'Configuration was saved successfully', 'success');
             }
-        } catch (e) {
-            showToast(this, 'Action Failed', normalizeError(e), 'error');
+        } catch (error) {
+            showToast(this, 'Action Failed', normalizeError(error), 'error');
         } finally {
             this.busy = false;
         }
@@ -250,9 +292,13 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     async waitForDeployResult() {
         for (let attempt = 0; attempt < MAX_DEPLOY_STATUS_CHECKS; attempt++) {
             const status = await checkConfig();
-            if (status !== 'pending') return status;
+            if (status !== 'pending') {
+                return status;
+            }
+
             await new Promise((resolve) => setTimeout(resolve, DEPLOY_STATUS_DELAY_MS));
         }
+
         return 'pending';
     }
 
@@ -273,17 +319,21 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     async runValidation() {
         this.busy = true;
         try {
+            const validateConfig = this.activeValidator;
             const result = await validateConfig();
             showToast(this, 'Validation Successful', result, 'success');
-        } catch (e) {
-            showToast(this, 'Validation Failed', normalizeError(e), 'error');
+        } catch (error) {
+            showToast(this, 'Validation Failed', normalizeError(error), 'error');
         } finally {
             this.busy = false;
         }
     }
 
     async handleRevert() {
-        if (!this.server) return;
+        if (!this.server) {
+            return;
+        }
+
         this.draft = this.toDraft(this.server);
         showToast(this, 'Reverted', 'Draft values were restored to the last saved configuration', 'info');
     }
@@ -297,8 +347,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         for (const edge of edges) {
             const recordNode = edge?.node;
             const recordName = this.normalizeDeveloperName(recordNode?.DeveloperName?.value);
-            if (recordName === targetName) return recordNode;
+            if (recordName === targetName) {
+                return recordNode;
+            }
         }
+
         return null;
     }
 
@@ -306,17 +359,19 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return {
             developerName: extractGraphValue(recordNode?.DeveloperName),
             masterLabel: extractGraphValue(recordNode?.MasterLabel),
-
             customGoogleAuthorizerClass: extractGraphValue(recordNode?.CustomGoogleAuthorizerClass__c),
             customGoogleServiceAccount: extractGraphValue(recordNode?.CustomGoogleServiceAccount__c),
             customGoogleCertificate: extractGraphValue(recordNode?.CustomGoogleCertificate__c),
-
             defaultGoogleUploadFolderId: extractGraphValue(recordNode?.DefaultGoogleUploadFolderId__c),
             customGoogleUploadFolderStructure: extractGraphValue(recordNode?.CustomGoogleUploadFolderStructure__c) || '',
-			organizationalDomain: extractGraphValue(recordNode?.OrganizationalDomain__c) || '',
+            organizationalDomain: extractGraphValue(recordNode?.OrganizationalDomain__c) || '',
             defaultBigFileSize: this.toNumberOrNull(extractGraphValue(recordNode?.DefaultBigFileSize__c)),
             isFilePreviewDisabled: !!extractGraphValue(recordNode?.IsFilePreviewDisabled__c),
-            maxDeleteChainSize: this.toNumberOrNull(extractGraphValue(recordNode?.MaxDeleteChainSize__c))
+            maxDeleteChainSize: this.toNumberOrNull(extractGraphValue(recordNode?.MaxDeleteChainSize__c)),
+            customGeminiApiKey: extractGraphValue(recordNode?.CustomGeminiApiKey__c) || '',
+            customModelName: extractGraphValue(recordNode?.CustomModelName__c) || '',
+            customVertexLocation: extractGraphValue(recordNode?.CustomVertexLocation__c) || '',
+            customVertexProjectId: extractGraphValue(recordNode?.CustomVertexProjectId__c) || ''
         };
     }
 
@@ -330,16 +385,23 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             defaultGoogleUploadFolderId: serverSnapshot.defaultGoogleUploadFolderId || '',
             customGoogleUploadFolderStructure: serverSnapshot.customGoogleUploadFolderStructure || '',
             organizationalDomain: serverSnapshot.organizationalDomain || '',
-			defaultBigFileSize: serverSnapshot.defaultBigFileSize,
+            defaultBigFileSize: serverSnapshot.defaultBigFileSize,
             isFilePreviewDisabled: !!serverSnapshot.isFilePreviewDisabled,
-            maxDeleteChainSize: serverSnapshot.maxDeleteChainSize
+            maxDeleteChainSize: serverSnapshot.maxDeleteChainSize,
+            customGeminiApiKey: serverSnapshot.customGeminiApiKey || '',
+            customModelName: serverSnapshot.customModelName || '',
+            customVertexLocation: serverSnapshot.customVertexLocation || '',
+            customVertexProjectId: serverSnapshot.customVertexProjectId || ''
         };
     }
 
     inferAuthMode(serverSnapshot) {
         const hasDeveloperSetup = !isEmpty(serverSnapshot?.customGoogleAuthorizerClass);
         const hasAdminSetup = !isEmpty(serverSnapshot?.customGoogleServiceAccount) || !isEmpty(serverSnapshot?.customGoogleCertificate);
-        if (hasDeveloperSetup && !hasAdminSetup) return 'developer';
+        if (hasDeveloperSetup && !hasAdminSetup) {
+            return 'developer';
+        }
+
         return 'admin';
     }
 
@@ -353,10 +415,14 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'CustomGoogleCertificate__c', serverState.customGoogleCertificate, draftState.customGoogleCertificate);
         this.putIfChanged(changed, 'DefaultGoogleUploadFolderId__c', serverState.defaultGoogleUploadFolderId, draftState.defaultGoogleUploadFolderId);
         this.putIfChanged(changed, 'OrganizationalDomain__c', serverState.organizationalDomain, draftState.organizationalDomain);
-		this.putIfChanged(changed, 'DefaultBigFileSize__c', serverState.defaultBigFileSize, draftState.defaultBigFileSize);
+        this.putIfChanged(changed, 'DefaultBigFileSize__c', serverState.defaultBigFileSize, draftState.defaultBigFileSize);
         this.putIfChanged(changed, 'IsFilePreviewDisabled__c', !!serverState.isFilePreviewDisabled, !!draftState.isFilePreviewDisabled);
         this.putIfChanged(changed, 'MaxDeleteChainSize__c', serverState.maxDeleteChainSize, draftState.maxDeleteChainSize);
         this.putIfChanged(changed, 'CustomGoogleUploadFolderStructure__c', serverState.customGoogleUploadFolderStructure, draftState.customGoogleUploadFolderStructure);
+        this.putIfChanged(changed, 'CustomGeminiApiKey__c', serverState.customGeminiApiKey, draftState.customGeminiApiKey);
+        this.putIfChanged(changed, 'CustomModelName__c', serverState.customModelName, draftState.customModelName);
+        this.putIfChanged(changed, 'CustomVertexLocation__c', serverState.customVertexLocation, draftState.customVertexLocation);
+        this.putIfChanged(changed, 'CustomVertexProjectId__c', serverState.customVertexProjectId, draftState.customVertexProjectId);
 
         return changed;
     }
@@ -368,10 +434,14 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGoogleCertificate: draftState.customGoogleCertificate || '',
             defaultGoogleUploadFolderId: draftState.defaultGoogleUploadFolderId || '',
             customGoogleUploadFolderStructure: draftState.customGoogleUploadFolderStructure || '',
-			organizationalDomain: draftState.organizationalDomain || '',
+            organizationalDomain: draftState.organizationalDomain || '',
             defaultBigFileSize: draftState.defaultBigFileSize,
             isFilePreviewDisabled: !!draftState.isFilePreviewDisabled,
-            maxDeleteChainSize: draftState.maxDeleteChainSize
+            maxDeleteChainSize: draftState.maxDeleteChainSize,
+            customGeminiApiKey: draftState.customGeminiApiKey || '',
+            customModelName: draftState.customModelName || '',
+            customVertexLocation: draftState.customVertexLocation || '',
+            customVertexProjectId: draftState.customVertexProjectId || ''
         };
     }
 
@@ -387,38 +457,51 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             .then(({ default: ctor }) => {
                 this.configComponentConstructor = ctor;
             })
-            .catch((e) => {
+            .catch((error) => {
                 this.configComponentConstructor = null;
-                showToast(this, 'Component Load Failed', normalizeError(e), 'error');
+                showToast(this, 'Component Load Failed', normalizeError(error), 'error');
             });
     }
 
     putIfChanged(map, apiName, oldVal, newVal) {
         const previousValue = extractGraphValue(oldVal) ?? null;
         const nextValue = extractGraphValue(newVal) ?? null;
-        if (previousValue !== nextValue) map[apiName] = nextValue;
+        if (previousValue !== nextValue) {
+            map[apiName] = nextValue;
+        }
     }
 
     toNumberOrNull(value) {
-        if (value === null || value === undefined || String(value).trim() === '') return null;
+        if (value === null || value === undefined || String(value).trim() === '') {
+            return null;
+        }
+
         const numberValue = Number(value);
         return Number.isFinite(numberValue) ? numberValue : null;
     }
 
     hasInputErrors(selector, toastTitle = 'Invalid Fields', toastMessage = 'Please review the highlighted fields and try again') {
         const inputs = Array.from(this.template.querySelectorAll(selector));
-        if (!inputs.length) return false;
+        if (!inputs.length) {
+            return false;
+        }
 
         let hasErrors = false;
         inputs.forEach((input) => {
-            if (typeof input.reportValidity === 'function') input.reportValidity();
-            if (typeof input.checkValidity === 'function' && !input.checkValidity()) hasErrors = true;
+            if (typeof input.reportValidity === 'function') {
+                input.reportValidity();
+            }
+
+            if (typeof input.checkValidity === 'function' && !input.checkValidity()) {
+                hasErrors = true;
+            }
         });
 
         if (hasErrors) {
             showToast(this, toastTitle, toastMessage, 'error');
             return true;
         }
+
         return false;
     }
 
@@ -443,16 +526,20 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     get selectedConfig() {
         const registry = this.safeConfigRegistry;
-        const match = registry.find((cfg) => cfg.key === this.selectedConfigKey);
+        const match = registry.find((configItem) => configItem.key === this.selectedConfigKey);
         return match || this.fallbackConfig;
+    }
+
+    get activeValidator() {
+        return this.selectedConfig?.validator || null;
     }
 
     get configMenuItems() {
         const selectedKey = this.selectedConfigKey;
-        return this.safeConfigRegistry.map((cfg) => ({
-            ...cfg,
-            isSelected: cfg.key === selectedKey,
-            className: cfg.key === selectedKey ? 'config-menu-item is-selected' : 'config-menu-item'
+        return this.safeConfigRegistry.map((configItem) => ({
+            ...configItem,
+            isSelected: configItem.key === selectedKey,
+            className: configItem.key === selectedKey ? 'config-menu-item is-selected' : 'config-menu-item'
         }));
     }
 
@@ -473,7 +560,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     }
 
     get isDirty() {
-        if (!this.server) return false;
+        if (!this.server) {
+            return false;
+        }
 
         const serverState = this.server;
         const draftState = this.draft;
@@ -484,10 +573,14 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.customGoogleCertificate || '') !== (draftState.customGoogleCertificate || '') ||
             (serverState.defaultGoogleUploadFolderId || '') !== (draftState.defaultGoogleUploadFolderId || '') ||
             (serverState.customGoogleUploadFolderStructure || '') !== (draftState.customGoogleUploadFolderStructure || '') ||
-			(serverState.organizationalDomain || '') !== (draftState.organizationalDomain || '') ||
+            (serverState.organizationalDomain || '') !== (draftState.organizationalDomain || '') ||
             (serverState.defaultBigFileSize ?? null) !== (draftState.defaultBigFileSize ?? null) ||
             !!serverState.isFilePreviewDisabled !== !!draftState.isFilePreviewDisabled ||
-            (serverState.maxDeleteChainSize ?? null) !== (draftState.maxDeleteChainSize ?? null)
+            (serverState.maxDeleteChainSize ?? null) !== (draftState.maxDeleteChainSize ?? null) ||
+            (serverState.customGeminiApiKey || '') !== (draftState.customGeminiApiKey || '') ||
+            (serverState.customModelName || '') !== (draftState.customModelName || '') ||
+            (serverState.customVertexLocation || '') !== (draftState.customVertexLocation || '') ||
+            (serverState.customVertexProjectId || '') !== (draftState.customVertexProjectId || '')
         );
     }
 

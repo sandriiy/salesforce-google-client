@@ -1,0 +1,443 @@
+<template>
+  <article class="slds-card gc-chatter-card">
+    <template lwc:if={hasRecordContext}>
+      <template lwc:if={canShowPublisher}>
+        <section class="slds-card__body gc-publisher">
+          <div class="slds-tabs_scoped">
+            <ul
+              class="slds-tabs_scoped__nav"
+              role="tablist"
+              aria-label="Publisher"
+            >
+              <template lwc:if={showPostTab}>
+                <li class={postTabClass} role="presentation">
+                  <button
+                    class="slds-tabs_scoped__link"
+                    type="button"
+                    role="tab"
+                    data-type="POST"
+                    onclick={handleTabClick}
+                  >
+                    Post
+                  </button>
+                </li>
+              </template>
+              <template lwc:if={showPollTab}>
+                <li class={pollTabClass} role="presentation">
+                  <button
+                    class="slds-tabs_scoped__link"
+                    type="button"
+                    role="tab"
+                    data-type="POLL"
+                    onclick={handleTabClick}
+                  >
+                    Poll
+                  </button>
+                </li>
+              </template>
+              <template lwc:if={showQuestionTab}>
+                <li class={questionTabClass} role="presentation">
+                  <button
+                    class="slds-tabs_scoped__link"
+                    type="button"
+                    role="tab"
+                    data-type="QUESTION"
+                    onclick={handleTabClick}
+                  >
+                    Question
+                  </button>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <div class="gc-publisher-body">
+            <template lwc:if={isPublisherExpanded}>
+              <template lwc:if={isPostMode}>
+                <lightning-input-rich-text
+                  value={postBody}
+                  placeholder="Share an update..."
+                  formats={richTextFormats}
+                  onchange={handlePostBodyChange}
+                >
+                </lightning-input-rich-text>
+              </template>
+
+              <template lwc:elseif={isPollMode}>
+                <div class="gc-poll-grid">
+                  <lightning-input
+                    label="Question"
+                    value={pollQuestion}
+                    placeholder="What would you like to ask?"
+                    onchange={handlePollQuestionChange}
+                  >
+                  </lightning-input>
+
+                  <template for:each={pollChoices} for:item="choice">
+                    <div key={choice.id} class="gc-poll-choice-row">
+                      <lightning-input
+                        data-choice-id={choice.id}
+                        label="Choice"
+                        value={choice.value}
+                        onchange={handlePollChoiceChange}
+                      >
+                      </lightning-input>
+                      <lightning-button-icon
+                        icon-name="utility:close"
+                        alternative-text="Remove choice"
+                        title="Remove choice"
+                        data-choice-id={choice.id}
+                        onclick={handleRemovePollChoice}
+                      >
+                      </lightning-button-icon>
+                    </div>
+                  </template>
+
+                  <lightning-button
+                    label="Add choice"
+                    icon-name="utility:add"
+                    variant="neutral"
+                    onclick={handleAddPollChoice}
+                  >
+                  </lightning-button>
+                </div>
+              </template>
+
+              <template lwc:else>
+                <lightning-textarea
+                  label="Question"
+                  value={questionBody}
+                  placeholder="What would you like to ask?"
+                  onchange={handleQuestionBodyChange}
+                >
+                </lightning-textarea>
+              </template>
+
+              <input
+                lwc:if={isExperienceSite}
+                lwc:ref="experienceUploadInput"
+                class="slds-hide"
+                type="file"
+                multiple
+                onchange={handleExperienceFileSelected}
+                onclick={handleExperienceFileInputReset}
+              />
+
+              <template lwc:if={hasSelectedFiles}>
+                <div class="gc-selected-files slds-p-top_x-small">
+                  <template
+                    for:each={selectedGoogleFiles}
+                    for:item="fileRecord"
+                  >
+                    <span
+                      key={fileRecord.localId}
+                      class="slds-pill gc-selected-file-pill"
+                    >
+                      <lightning-icon
+                        icon-name={fileRecord.icon}
+                        size="x-small"
+                      ></lightning-icon>
+                      <button
+                        type="button"
+                        class="slds-button slds-button_reset gc-selected-file-name"
+                        data-file-id={fileRecord.localId}
+                        onclick={handlePreviewSelectedFile}
+                      >
+                        {fileRecord.fileName}
+                      </button>
+                      <lightning-button-icon
+                        icon-name="utility:close"
+                        variant="bare"
+                        alternative-text="Remove file"
+                        title="Remove file"
+                        data-file-id={fileRecord.localId}
+                        onclick={handleRemoveSelectedFile}
+                      >
+                      </lightning-button-icon>
+                    </span>
+                  </template>
+                </div>
+              </template>
+
+              <div class="gc-publisher-actions slds-p-top_small">
+                <div class="gc-publisher-actions-leading">
+                  <lightning-button-icon
+                    icon-name={attachmentIconName}
+                    alternative-text={attachmentActionLabel}
+                    title={attachmentActionLabel}
+                    onclick={handleAttachGoogleFile}
+                    disabled={isAttachActionDisabled}
+                  >
+                  </lightning-button-icon>
+                  <template lwc:if={hasAudienceOptions}>
+                    <lightning-combobox
+                      variant="label-inline"
+                      label="To"
+                      value={selectedAudienceValue}
+                      options={audienceOptions}
+                      onchange={handleAudienceChange}
+                      disabled={isPublishing}
+                    >
+                    </lightning-combobox>
+                  </template>
+                  <template lwc:else>
+                    <span class="slds-text-body_small gc-audience-label"
+                      >To {audienceLabel}</span
+                    >
+                  </template>
+                </div>
+                <div class="gc-publisher-actions-trailing">
+                  <lightning-button-icon
+                    icon-name="utility:contract_alt"
+                    alternative-text="Collapse publisher"
+                    title="Collapse publisher"
+                    onclick={handleCollapsePublisher}
+                  >
+                  </lightning-button-icon>
+                  <lightning-button
+                    label={publishButtonLabel}
+                    variant="brand"
+                    onclick={handlePublish}
+                    disabled={isPublishDisabled}
+                  >
+                  </lightning-button>
+                </div>
+              </div>
+            </template>
+
+            <template lwc:else>
+              <div class="gc-compact-row">
+                <button
+                  type="button"
+                  class="slds-input gc-compact-trigger"
+                  onclick={handleExpandPublisher}
+                >
+                  {publisherPlaceholder}
+                </button>
+                <lightning-button
+                  label={publishButtonLabel}
+                  variant="brand"
+                  onclick={handleExpandPublisher}
+                >
+                </lightning-button>
+              </div>
+            </template>
+          </div>
+        </section>
+      </template>
+
+      <section class="slds-card__body slds-card__body_inner">
+        <div
+          class="slds-grid slds-grid_vertical-align-center slds-gutters_small slds-p-bottom_small"
+        >
+          <div class="slds-col slds-shrink-none">
+            <lightning-button
+              icon-name="utility:sort"
+              label={sortLabel}
+              variant="neutral"
+              onclick={handleSortToggle}
+            >
+            </lightning-button>
+          </div>
+          <div class="slds-col slds-grow">
+            <lightning-input
+              type="search"
+              variant="label-hidden"
+              label="Search feed"
+              placeholder="Search this feed..."
+              onchange={handleSearchInput}
+            >
+            </lightning-input>
+          </div>
+          <div class="slds-col slds-shrink-none">
+            <lightning-button-icon
+              icon-name="utility:refresh"
+              variant="border"
+              alternative-text="Refresh feed"
+              title="Refresh feed"
+              onclick={handleRefreshFeed}
+            >
+            </lightning-button-icon>
+          </div>
+        </div>
+
+        <template lwc:if={errorMessage}>
+          <div
+            class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+            role="alert"
+          >
+            <span class="slds-assistive-text">Error</span>
+            <h2>{errorMessage}</h2>
+          </div>
+        </template>
+
+        <template lwc:if={hasFeedItems}>
+          <ul class="slds-has-dividers_top-space">
+            <template for:each={filteredFeedItems} for:item="feedItem">
+              <li key={feedItem.id} class="slds-item slds-p-vertical_medium">
+                <article>
+                  <header class="slds-media slds-m-bottom_x-small">
+                    <div class="slds-media__figure">
+                      <lightning-avatar
+                        src={feedItem.authorPhotoUrl}
+                        initials={feedItem.authorInitials}
+                        fallback-icon-name="standard:user"
+                        size="small"
+                      >
+                      </lightning-avatar>
+                    </div>
+                    <div class="slds-media__body">
+                      <p class="slds-text-title_bold">{feedItem.authorName}</p>
+                      <p class="slds-text-body_small">
+                        {feedItem.createdDateLabel}
+                      </p>
+                    </div>
+                  </header>
+
+                  <template lwc:if={feedItem.title}>
+                    <h3 class="slds-text-heading_small slds-m-bottom_x-small">
+                      {feedItem.title}
+                    </h3>
+                  </template>
+
+                  <lightning-formatted-rich-text
+                    value={feedItem.body}
+                  ></lightning-formatted-rich-text>
+
+                  <template lwc:if={feedItem.hasPollChoices}>
+                    <div class="gc-poll-result-list slds-m-top_small">
+                      <template
+                        for:each={feedItem.pollChoices}
+                        for:item="choice"
+                      >
+                        <div key={choice.id} class="gc-poll-result-item">
+                          <span>{choice.choiceBody}</span>
+                          <span lwc:if={choice.hasVoteCount}
+                            >{choice.voteCountLabel}</span
+                          >
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+
+                  <template lwc:if={feedItem.hasGoogleFiles}>
+                    <div class="slds-m-top_small">
+                      <template
+                        for:each={feedItem.googleFiles}
+                        for:item="fileRecord"
+                      >
+                        <button
+                          key={fileRecord.localId}
+                          type="button"
+                          class="slds-button slds-button_neutral gc-feed-file-button"
+                          data-file-id={fileRecord.localId}
+                          onclick={handleFeedFilePreview}
+                        >
+                          <lightning-icon
+                            icon-name={fileRecord.icon}
+                            size="x-small"
+                          ></lightning-icon>
+                          <span class="gc-feed-file-copy"
+                            >{fileRecord.fileName}</span
+                          >
+                        </button>
+                      </template>
+                    </div>
+                  </template>
+
+                  <div class="slds-text-body_small slds-m-top_small">
+                    {feedItem.commentSummary}
+                  </div>
+
+                  <template lwc:if={feedItem.hasComments}>
+                    <div class="slds-m-top_small">
+                      <template for:each={feedItem.comments} for:item="comment">
+                        <article
+                          key={comment.id}
+                          class="gc-comment-card slds-m-bottom_x-small"
+                        >
+                          <div class="slds-media">
+                            <div class="slds-media__figure">
+                              <lightning-avatar
+                                src={comment.authorPhotoUrl}
+                                initials={comment.authorInitials}
+                                fallback-icon-name="standard:user"
+                                size="x-small"
+                              >
+                              </lightning-avatar>
+                            </div>
+                            <div class="slds-media__body">
+                              <div class="slds-text-title_bold">
+                                {comment.authorName}
+                              </div>
+                              <div class="slds-text-body_small">
+                                {comment.createdDateLabel}
+                              </div>
+                            </div>
+                          </div>
+                          <lightning-formatted-rich-text
+                            value={comment.commentBody}
+                          ></lightning-formatted-rich-text>
+                        </article>
+                      </template>
+                    </div>
+                  </template>
+
+                  <template lwc:if={canComment}>
+                    <div class="slds-m-top_small">
+                      <lightning-textarea
+                        data-feed-item-id={feedItem.id}
+                        variant="label-hidden"
+                        placeholder="Write a comment..."
+                        value={feedItem.pendingComment}
+                        onchange={handleCommentChange}
+                      >
+                      </lightning-textarea>
+                      <div class="slds-text-align_right slds-m-top_x-small">
+                        <lightning-button
+                          label="Comment"
+                          variant="neutral"
+                          data-feed-item-id={feedItem.id}
+                          onclick={handleCommentSubmit}
+                          disabled={feedItem.isCommentSubmitDisabled}
+                        >
+                        </lightning-button>
+                      </div>
+                    </div>
+                  </template>
+                </article>
+              </li>
+            </template>
+          </ul>
+        </template>
+
+        <template lwc:if={showFeedEmptyState}>
+          <div class="gc-empty-state">
+            <h2 class="slds-text-heading_small">No posts yet</h2>
+            <p class="slds-text-body_small">
+              No feed items match the current filters.
+            </p>
+          </div>
+        </template>
+      </section>
+    </template>
+
+    <template lwc:else>
+      <section class="slds-card__body slds-card__body_inner gc-empty-state">
+        <h2 class="slds-text-heading_small">Record context required</h2>
+        <p class="slds-text-body_small">
+          Place this component on a record page to render the Chatter feed.
+        </p>
+      </section>
+    </template>
+
+    <lightning-spinner
+      lwc:if={isLoading}
+      alternative-text="Loading feed"
+      size="medium"
+    ></lightning-spinner>
+  </article>
+
+  <c-google-cloud-file-preview
+    lwc:ref="filePreviewModal"
+  ></c-google-cloud-file-preview>
+</template>

@@ -1,0 +1,130 @@
+<template>
+  <lightning-modal-header label="Select Google Files">
+    <div slot="description" class="gc-picker-subtitle">
+      Owned files only. You can attach up to {effectiveMaxSelection} files.
+    </div>
+  </lightning-modal-header>
+
+  <lightning-modal-body>
+    <div class="gc-picker-toolbar slds-m-bottom_small">
+      <lightning-input
+        type="search"
+        variant="label-hidden"
+        label="Search files"
+        placeholder="Search owned files..."
+        value={searchTerm}
+        onchange={handleSearchChange}
+      >
+      </lightning-input>
+      <lightning-button-icon
+        icon-name="utility:refresh"
+        variant="border"
+        alternative-text="Refresh files"
+        title="Refresh files"
+        onclick={loadOwnedFiles}
+        disabled={isLoading}
+      >
+      </lightning-button-icon>
+    </div>
+
+    <template lwc:if={errorMessage}>
+      <div
+        class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+        role="alert"
+      >
+        <span class="slds-assistive-text">Error</span>
+        <h2>{errorMessage}</h2>
+      </div>
+    </template>
+
+    <template lwc:if={hasSelectionMessage}>
+      <div
+        class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_small"
+        role="alert"
+      >
+        <span class="slds-assistive-text">Warning</span>
+        <h2>{selectionMessage}</h2>
+      </div>
+    </template>
+
+    <div class="gc-picker-meta slds-m-bottom_small">
+      <span>{selectedCount} selected</span>
+      <span>{filteredRows.length} visible</span>
+    </div>
+
+    <div class="gc-picker-list-wrap">
+      <template lwc:if={hasFilteredRows}>
+        <ul class="gc-picker-list">
+          <template for:each={filteredRows} for:item="row">
+            <li key={row.localId} class="gc-picker-item">
+              <lightning-input
+                type="checkbox"
+                variant="label-hidden"
+                label="Select file"
+                data-file-id={row.localId}
+                checked={row.isSelected}
+                onchange={handleSelectionChange}
+              >
+              </lightning-input>
+
+              <lightning-icon
+                icon-name={row.icon}
+                size="small"
+              ></lightning-icon>
+
+              <div class="gc-picker-item-copy">
+                <span class="gc-picker-file-name">{row.fileName}</span>
+                <div class="gc-picker-file-info">{row.ownerName}</div>
+                <div class="gc-picker-file-info">{row.info}</div>
+              </div>
+            </li>
+          </template>
+        </ul>
+      </template>
+
+      <template lwc:else>
+        <div class="gc-picker-empty slds-text-body_regular">
+          <template lwc:if={hasRows}>No files match your search.</template>
+          <template lwc:else>No owned Google files are available.</template>
+        </div>
+      </template>
+    </div>
+
+    <lightning-spinner
+      lwc:if={isLoading}
+      alternative-text="Loading files"
+      size="medium"
+    ></lightning-spinner>
+
+    <input
+      lwc:ref="uploadInput"
+      class="slds-hide"
+      type="file"
+      multiple
+      onchange={handleUploadInputChange}
+      onclick={handleUploadInputReset}
+    />
+  </lightning-modal-body>
+
+  <lightning-modal-footer>
+    <div class="gc-picker-footer">
+      <lightning-button
+        label="Upload new file"
+        icon-name="utility:upload"
+        onclick={handleUploadClick}
+      ></lightning-button>
+      <div class="gc-picker-footer-actions">
+        <lightning-button
+          label="Cancel"
+          onclick={handleCancel}
+        ></lightning-button>
+        <lightning-button
+          variant="brand"
+          label={applyButtonLabel}
+          onclick={handleApply}
+          disabled={isApplyDisabled}
+        ></lightning-button>
+      </div>
+    </div>
+  </lightning-modal-footer>
+</template>

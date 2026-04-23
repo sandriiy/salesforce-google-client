@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>65.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Google Cloud Chatter</masterLabel>
+    <targets>
+        <target>lightning__RecordPage</target>
+        <target>lightning__AppPage</target>
+        <target>lightning__HomePage</target>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig
+      targets="lightning__RecordPage,lightning__AppPage,lightning__HomePage"
+    >
+            <property
+        name="publisherTabs"
+        type="String"
+        label="Publisher Tabs"
+        default="POST_POLL_QUESTION"
+        description="POST_ONLY, POST_POLL, POST_POLL_QUESTION, or comma-separated values like POST,POLL,QUESTION."
+      />
+            <property
+        name="readOnly"
+        type="Boolean"
+        label="Read-only mode"
+        default="false"
+        description="When enabled, this component instance hides publisher/comment actions and enforces read-only publishing behavior server-side."
+      />
+        </targetConfig>
+        <targetConfig targets="lightningCommunity__Default">
+            <property
+        name="publisherTabs"
+        type="String"
+        label="Publisher Tabs"
+        default="POST_POLL_QUESTION"
+        description="POST_ONLY, POST_POLL, POST_POLL_QUESTION, or comma-separated values like POST,POLL,QUESTION."
+      />
+            <property
+        name="readOnly"
+        type="Boolean"
+        label="Read-only mode"
+        default="false"
+        description="When enabled, this component instance hides publisher/comment actions and enforces read-only publishing behavior server-side."
+      />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

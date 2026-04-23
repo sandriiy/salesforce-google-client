@@ -1,0 +1,141 @@
+:host {
+  display: block;
+}
+
+.gc-chatter-card {
+  position: relative;
+}
+
+/* Publisher section — zero padding so SLDS tab nav sits flush at card edges */
+.gc-publisher {
+  padding: 0;
+}
+
+.gc-publisher.slds-card__body {
+  padding: 0;
+}
+
+/* Content area below the tab nav — same padding as slds-card__body_inner */
+.gc-publisher-body {
+  padding: 0.75rem;
+}
+
+/* Single bottom row: attachment icon + audience on left, collapse + share on right */
+.gc-publisher-actions {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.gc-publisher-actions-leading {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.gc-publisher-actions-trailing {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.gc-audience-label {
+  color: #444;
+}
+
+/* Compact "Share an update" row */
+.gc-compact-row {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.gc-poll-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.gc-poll-choice-row {
+  align-items: end;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr auto;
+}
+
+.gc-selected-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.gc-selected-file-pill {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+.gc-selected-file-name {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gc-compact-trigger {
+  cursor: pointer;
+  flex: 1;
+  text-align: left;
+}
+
+.gc-poll-result-list {
+  border: 1px solid #d8dde6;
+  border-radius: 0.25rem;
+}
+
+.gc-poll-result-item {
+  align-items: center;
+  border-bottom: 1px solid #eef1f6;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.55rem 0.7rem;
+}
+
+.gc-poll-result-item:last-child {
+  border-bottom: 0;
+}
+
+.gc-feed-file-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+  margin: 0 0.45rem 0.45rem 0;
+}
+
+.gc-feed-file-copy {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gc-comment-card {
+  background: #f7f9fb;
+  border: 1px solid #d8dde6;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.65rem;
+}
+
+.gc-empty-state {
+  padding: 1rem 0.25rem;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .gc-publisher-submit {
+    text-align: left;
+  }
+}

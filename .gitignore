@@ -27,6 +27,9 @@ node_modules/
 # Eslint cache
 .eslintcache
 
+# NPM lockfile (not tracked in this project)
+package-lock.json
+
 # MacOS system files
 .DS_Store
 

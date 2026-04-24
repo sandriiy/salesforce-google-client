@@ -36,6 +36,9 @@ ehthumbs.db
 [Dd]esktop.ini
 $RECYCLE.BIN/
 
+# NPM
+package-lock.json
+
 # Local environment variables
 .env
 

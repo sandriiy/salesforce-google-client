@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <applicationVisibilities>
         <application>GoogleClient</application>
@@ -12,7 +12,8 @@
         <enabled>true</enabled>
         <name>GoogleClientConfig__mdt</name>
     </customMetadataTypeAccesses>
-    <description>Provides access to Google Cloud file management functionality, including the application, file metadata, and all related system integration and configuration settings.</description>
+    <description
+  >Provides access to Google Cloud file management functionality, including the application, file metadata, and all related system integration and configuration settings.</description>
     <fieldPermissions>
         <editable>true</editable>
         <field>GoogleFileVersion__c.Description__c</field>
@@ -75,6 +76,10 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Google Cloud Client Admin</label>
+    <tabSettings>
+        <tab>GoogleClientAnalytics</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
     <userPermissions>
         <enabled>true</enabled>
         <name>ModifyMetadata</name>

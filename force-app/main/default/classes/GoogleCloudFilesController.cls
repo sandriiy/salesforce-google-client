@@ -145,9 +145,9 @@ public with sharing class GoogleCloudFilesController {
 			GoogleBigFileEntity remoteBigFileEntity = new GoogleRemoteFileUploader().uploadBigFilePartial(fileName, chunkToUpload, resumableSessionId, startByte, totalBytes);
 			return remoteBigFileEntity;
 		} catch (Exception ex) {
-			Logger.error('Google Client for Salesforce / Upload Large File, File Name: ' + fileName);
-			Logger.error('Google Client for Salesforce / Upload Large File, Total Bytes: ' + String.valueOf(totalBytes));
-			Logger.error('Google Client for Salesforce / Upload Large File, Message:' + ex.getMessage());
+			Logger.error('Upload Large File, File Name: ' + fileName).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Upload Large File, Total Bytes: ' + String.valueOf(totalBytes)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Upload Large File, Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 
 			throw new AuraHandledException('We couldn’t upload the large file. Please try again, or contact your system administrator');
@@ -160,8 +160,8 @@ public with sharing class GoogleCloudFilesController {
 			GoogleFileEntity remoteFileEntity = new GoogleRemoteFileUploader().uploadFile(fileName, contentToUpload);
 			return remoteFileEntity;
 		} catch (Exception ex) {
-			Logger.error('Google Client for Salesforce / Upload File, File Name: ' + fileName);
-			Logger.error('Google Client for Salesforce / Upload File, Message:' + ex.getMessage());
+			Logger.error('Upload File, File Name: ' + fileName).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Upload File, Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 
 			throw new AuraHandledException('We couldn’t upload the file. Please try again, or contact your system administrator');
@@ -174,8 +174,8 @@ public with sharing class GoogleCloudFilesController {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
 			return localVersionService.downloadFileBase64Body(localGoogleFileVersionId);
 		} catch (Exception ex) {
-			Logger.error('Google Client for Salesforce / Download File, Id: ' + localGoogleFileVersionId);
-			Logger.error('Google Client for Salesforce / Download File, Message:' + ex.getMessage());
+			Logger.error('Download File, Id: ' + localGoogleFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Download File, Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 
 			throw new AuraHandledException('We couldn’t download the file. Please try again, or contact your system administrator');
@@ -188,8 +188,8 @@ public with sharing class GoogleCloudFilesController {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
 			return localVersionService.downloadFileBase64BodyAsPdf(localGoogleFileVersionId);
 		} catch (Exception ex) {
-			Logger.error('Google Client for Salesforce / Download File as PDF, Id: ' + localGoogleFileVersionId);
-			Logger.error('Google Client for Salesforce / Download File as PDF, Message:' + ex.getMessage());
+			Logger.error('Download File as PDF, Id: ' + localGoogleFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Download File as PDF, Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 
 			throw new AuraHandledException('We couldn’t download the file. Please try again, or contact your system administrator');
@@ -202,9 +202,9 @@ public with sharing class GoogleCloudFilesController {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
 			return localVersionService.downloadFileBase64Body(localGoogleFileVersionId, startByte, endByte);
 		} catch (Exception ex) {
-			Logger.error('Google Client for Salesforce / Download Large File, Id: ' + localGoogleFileVersionId);
-			Logger.error('Google Client for Salesforce / Download Large File, End Byte: ' + String.valueOf(endByte));
-			Logger.error('Google Client for Salesforce / Download Large File, Message:' + ex.getMessage());
+			Logger.error('Download Large File, Id: ' + localGoogleFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Download Large File, End Byte: ' + String.valueOf(endByte)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Download Large File, Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 
 			throw new AuraHandledException('We couldn’t download the large file. Please try again, or contact your system administrator');

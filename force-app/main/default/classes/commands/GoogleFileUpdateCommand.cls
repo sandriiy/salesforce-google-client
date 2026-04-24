@@ -56,6 +56,7 @@ public without sharing class GoogleFileUpdateCommand {
     }
 
     public GoogleFileUpdateResult build() {
+        Logger.info('File Update --> FileId=' + String.valueOf(localGoogleFileRecord.Id) + ', VersionId=' + String.valueOf(localGoogleFileVersionRecord.Id) + ', NewFileName=' + String.valueOf(fileName) + ', NewVersionName=' + String.valueOf(fileVersionName) + ', NewDescription=' + String.valueOf(fileDescription)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
         GoogleFileUpdateResult result = new GoogleFileUpdateResult();
         result.localGoogleFileToUpdate = buildFileUpdate();
         result.localGoogleFileVersionToUpdate = buildFileVersionUpdate();

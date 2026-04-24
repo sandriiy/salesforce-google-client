@@ -40,33 +40,50 @@ public without sharing class GoogleLocalFileVersionService {
 
 	public String downloadFileBase64BodyAsPdf(Id localFileVersionId) {
 		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
-		GoogleFileEntity fileResult = exportOrDownloadAsPdf(localFileVersion);
-		return EncodingUtil.base64Encode(fileResult.bodyAsBlob);
+		Logger.info('File Download As PDF --> VersionId=' + String.valueOf(localFileVersionId) + ', GoogleDriveFileId=' + String.valueOf(localFileVersion == null ? null : localFileVersion.GoogleDriveFileId__c)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		try {
+			GoogleFileEntity fileResult = exportOrDownloadAsPdf(localFileVersion);
+			return EncodingUtil.base64Encode(fileResult.bodyAsBlob);
+		} catch (Exception ex) {
+			Logger.error('File Download As PDF Failed --> VersionId=' + String.valueOf(localFileVersionId) + ', Message=' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw ex;
+		}
 	}
 
 	public String downloadFileBase64Body(Id localFileVersionId) {
 		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
-
-		GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
-		GoogleFileEntity remoteFileEntity = removeGoogleDrive.files().retrieve().download(localFileVersion.GoogleDriveFileId__c)
-			.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.CONTENT)
-			.setSearchOnAllDrives(true)
-			.execute();
-
-		return EncodingUtil.base64Encode(remoteFileEntity.bodyAsBlob);
+		Logger.info('File Download --> VersionId=' + String.valueOf(localFileVersionId) + ', GoogleDriveFileId=' + String.valueOf(localFileVersion == null ? null : localFileVersion.GoogleDriveFileId__c)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		try {
+			GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
+			GoogleFileEntity remoteFileEntity = removeGoogleDrive.files().retrieve().download(localFileVersion.GoogleDriveFileId__c)
+				.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.CONTENT)
+				.setSearchOnAllDrives(true)
+				.execute();
+			return EncodingUtil.base64Encode(remoteFileEntity.bodyAsBlob);
+		} catch (Exception ex) {
+			Logger.error('File Download Failed --> VersionId=' + String.valueOf(localFileVersionId) + ', Message=' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw ex;
+		}
 	}
 
 	public String downloadFileBase64Body(Id localFileVersionId, Long startByte, Long endByte) {
 		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
-
-		GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
-		GoogleFileEntity remoteFileEntity = removeGoogleDrive.files().retrieve().download(localFileVersion.GoogleDriveFileId__c)
-			.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.CONTENT)
-			.setPartialRange(startByte, endByte)
-			.setSearchOnAllDrives(true)
-			.execute();
-
-		return EncodingUtil.base64Encode(remoteFileEntity.bodyAsBlob);
+		Logger.info('File Download Partial --> VersionId=' + String.valueOf(localFileVersionId) + ', StartByte=' + String.valueOf(startByte) + ', EndByte=' + String.valueOf(endByte)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		try {
+			GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
+			GoogleFileEntity remoteFileEntity = removeGoogleDrive.files().retrieve().download(localFileVersion.GoogleDriveFileId__c)
+				.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.CONTENT)
+				.setPartialRange(startByte, endByte)
+				.setSearchOnAllDrives(true)
+				.execute();
+			return EncodingUtil.base64Encode(remoteFileEntity.bodyAsBlob);
+		} catch (Exception ex) {
+			Logger.error('File Download Partial Failed --> VersionId=' + String.valueOf(localFileVersionId) + ', Message=' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw ex;
+		}
 	}
 
 	private GoogleFileVersion__c queryLocalFileVersion(Id localFileVersionId) {

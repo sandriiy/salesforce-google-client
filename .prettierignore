@@ -9,3 +9,7 @@
 .vscode
 
 coverage/
+
+# Apex — formatted manually, do not auto-format
+**/*.cls
+**/*.trigger

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
     <labels>
         <fullName>GoogleClientGithubLink</fullName>
@@ -6,7 +6,8 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientGithubLink</shortDescription>
-        <value>https://github.com/sandriiy/salesforce-google-drive-client</value>
+        <value
+    >https://github.com/sandriiy/salesforce-google-drive-client</value>
     </labels>
     <labels>
         <fullName>GoogleClientQuickSetupLink</fullName>
@@ -14,7 +15,8 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientQuickSetupLink</shortDescription>
-        <value>https://github.com/sandriiy/salesforce-google-drive-library/wiki/Quick-Setup-Guide</value>
+        <value
+    >https://github.com/sandriiy/salesforce-google-drive-library/wiki/Quick-Setup-Guide</value>
     </labels>
     <labels>
         <fullName>GoogleClientReleaseNotesLink</fullName>
@@ -22,7 +24,8 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientReleaseNotesLink</shortDescription>
-        <value>https://github.com/sandriiy/salesforce-google-drive-client/releases</value>
+        <value
+    >https://github.com/sandriiy/salesforce-google-drive-client/releases</value>
     </labels>
     <labels>
         <fullName>GoogleClientReleaseTitle</fullName>
@@ -30,7 +33,7 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientReleaseTitle</shortDescription>
-        <value>Google Client v.1.2.0</value>
+        <value>Google Client v.1.3.0</value>
     </labels>
     <labels>
         <fullName>GoogleClientSupportEmail</fullName>
@@ -38,6 +41,6 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientSupportEmail</shortDescription>
-        <value>opensupport@cloudrylabs.com</value>
+        <value>ansukhetskyi@cloudrylabs.com</value>
     </labels>
 </CustomLabels>

@@ -1,25 +1,44 @@
 # Known Issues & Fixes
 
-Google Client for Salesforce is currently in open beta and will remain so until **March 2026**. If you encounter issues or have questions, please open a [GitHub](https://github.com/sandriiy/salesforce-google-client) issue or start a discussion. For help with customization or implementation, you may also contact **ansukhetskyi@cloudrylabs.com**, who is offering free consulting support during the beta period.
+If you run into something unexpected, check the list below. If your issue isn't covered, feel free to open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ target="_blank" rel="noopener noreferrer" } or reach out directly at [ansukhetskyi@cloudrylabs.com](mailto:ansukhetskyi@cloudrylabs.com).
 
-## "View All" Attachments Page Opens and Immediately Closes
+---
 
-In some sandbox environments, when clicking **"View All"** on the **Google Client: Attachments** component, the page may open briefly and then close itself automatically.
+??? info ""View All" Attachments page opens and immediately closes"
 
-### **Root Cause**
+    **When does it happen?**
 
-This behavior may occur when **Platform Cache** is unavailable. During installation, the package creates a Platform Cache Partition named: **GoogleCloudClient**. If your Sandbox has **0 cache storage** provisioned, certain screens relying on Platform Cache may fail to load correctly.
+    In some sandbox environments, clicking **"View All"** on the **Google Client: Attachments** component causes the page to open briefly and close itself automatically.
 
-### **Fix**
+    **Root Cause**
 
-To resolve:
+    This happens when **Platform Cache** is unavailable. During installation, the package creates a Platform Cache Partition named **GoogleCloudClient**. If your sandbox has **0 cache storage** provisioned, screens that rely on Platform Cache may fail to load.
 
-1. Go to **Setup**
-2. Search for **Platform Cache**
-3. Click into the cache partition named **GoogleCloudClient**
-4. Click **Edit**
-5. Under the **Provider Free** category, ensure your org has available cache
-6. Set: **Session Cache** = `1` and **Org Cache** = `1`
-7. Save changes
+    **Fix**
 
-This will allocate minimal cache resources and fix the behavior.
+    1. Go to **Setup**
+    2. Search for **Platform Cache**
+    3. Click into the partition named **GoogleCloudClient**
+    4. Click **Edit**
+    5. Under **Provider Free**, set: **Session Cache** = `1` and **Org Cache** = `1`
+    6. Save
+
+    This allocates minimal cache and resolves the issue.
+
+??? info ""Google Client Config" record shows a deprecation warning after upgrading to v1.3.0"
+
+    **When does it happen?**
+
+    After upgrading to v1.3.0, opening the `GoogleClientConfig__mdt` record in Setup (Custom Metadata Types → Google Client Config → Manage Records) may display the following banner:
+
+    > *This Google Client Config has been marked deprecated. You might lose any changes you make to the component if you later upgrade to a package version that restores it.*
+
+    **Why does this happen?**
+
+    In previous versions, the package shipped a pre-built `GoogleClient` metadata record. On every upgrade, Salesforce re-deployed it as a full overwrite — silently wiping any values you had manually configured (certificate name, service account email, API keys, etc.).
+
+    To prevent this data loss, the record was removed from the package in v1.3.0. Salesforce marks it as deprecated because it no longer belongs to any package version — which is exactly the intent.
+
+    **Is anything broken?**
+
+    No. Your configuration data is intact, the app continues to work exactly as before, and no action is required. The warning is purely informational.

@@ -1,19 +1,31 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 @IsTest
 private class GoogleCloudFilesViewControllerTest {
-	public class TestGoogleAuthorizer implements GoogleAuthorizer {
-		public String retrieveAccessToken() {
-			return 'client.test-access-token';
-		}
-	}
-
-	private static void initMocks() {
-		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleDriveApiProvider.authorizerClassNameOverride = 'GoogleCloudFilesViewControllerTest.TestGoogleAuthorizer';
-	}
-
 	@IsTest
 	private static void testFetchFileHeaderDetailsPositiveNullId() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
 		GoogleFileHeaderInfoDTO headerInfo = GoogleCloudFilesViewController.fetchFileHeaderDetails(null);
@@ -27,7 +39,7 @@ private class GoogleCloudFilesViewControllerTest {
 
 	@IsTest
 	private static void testFetchFileHeaderDetailsPositiveMissing() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>());
 
@@ -43,7 +55,7 @@ private class GoogleCloudFilesViewControllerTest {
 
 	@IsTest
 	private static void testFetchFileHeaderDetailsPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('HDR1')
@@ -63,7 +75,7 @@ private class GoogleCloudFilesViewControllerTest {
 
 	@IsTest
 	private static void testRetrieveLocalGoogleFileVersionsPositive() {
-		initMocks();
+		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
 			.withName('VER_PARENT')

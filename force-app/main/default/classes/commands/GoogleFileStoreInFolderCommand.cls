@@ -1,3 +1,26 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 public without sharing class GoogleFileStoreInFolderCommand {
 	public class GoogleFileStoreInFolderCommandException extends Exception {}
 
@@ -14,7 +37,7 @@ public without sharing class GoogleFileStoreInFolderCommand {
     private final IGoogleUnitOfWork uowRef;
 
     public GoogleFileStoreInFolderCommand(IGoogleUnitOfWork uowRef) {
-        this.remoteGoogleDrive = new GoogleDriveApiProvider().retrieveGoogleDriveClient();
+        this.remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
         this.metadataService = new GoogleMetadataConfigService();
         this.uowRef = uowRef;
     }
@@ -49,7 +72,7 @@ public without sharing class GoogleFileStoreInFolderCommand {
         Logger.info(
             'Folder Placement Job --> RemoteIds' +
             ', GoogleDriveFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleDriveFileId) +
-            ', GoogleDocsFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleDocsFileId)
+            ', GoogleWorkspaceFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleWorkspaceFileId)
         ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
         if (remoteFileIds == null || String.isBlank(remoteFileIds.googleDriveFileId)) {
@@ -97,8 +120,8 @@ public without sharing class GoogleFileStoreInFolderCommand {
         String resultingGoogleDriveFileId = movedFile == null ? null : movedFile.id;
         if (String.isBlank(resultingGoogleDriveFileId)) return;
 
-        if (!String.isBlank(remoteFileIds.googleDocsFileId)) {
-            moveRemoteFile(remoteFileIds.googleDocsFileId, uploadParentFolderIds, destinationFolderId);
+        if (!String.isBlank(remoteFileIds.googleWorkspaceFileId)) {
+            moveRemoteFile(remoteFileIds.googleWorkspaceFileId, uploadParentFolderIds, destinationFolderId);
         }
 
         registerLatestVersionFolderUpdate(
@@ -328,11 +351,11 @@ public without sharing class GoogleFileStoreInFolderCommand {
 
     private class RemoteFileIds {
         public String googleDriveFileId;
-        public String googleDocsFileId;
+        public String googleWorkspaceFileId;
 
-        public RemoteFileIds(String googleDriveFileId, String googleDocsFileId) {
+        public RemoteFileIds(String googleDriveFileId, String googleWorkspaceFileId) {
             this.googleDriveFileId = googleDriveFileId;
-            this.googleDocsFileId = googleDocsFileId;
+            this.googleWorkspaceFileId = googleWorkspaceFileId;
         }
     }
 }

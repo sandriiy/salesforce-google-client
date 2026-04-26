@@ -3,10 +3,11 @@ import { NavigationMixin } from 'lightning/navigation';
 
 import { isEmpty, showToast, normalizeError, getFileIcon } from 'c/googleCloudUtils';
 import { BIG_FILE_SIZE } from 'c/googleCloudDownloadUtils';
-import { download, downloadInChunks } from 'c/googleCloudDownloadUtils';
+import { download, downloadInChunks, createOperationControl, abortOperation, isOperationAbortedError } from 'c/googleCloudDownloadUtils';
 import { 
 	DEFAULT_PREVIEW_UNAVAILABILITY_MESSAGE, 
 	DEFAULT_FAILED_DOWNLOAD_MESSAGE,
+	DEFAULT_NO_VERSIONS_MESSAGE,
 	DEFAULT_ACCESS_RESTRICTED_MESSAGE,
 	DEFAULT_FILE_NAME,
 	DEFAULT_FILE_ICON_TYPE 
@@ -24,7 +25,10 @@ import { navigateToByAttributes, isExperienceCloudContext } from 'c/googleCloudC
 import { INT_VIEW_FILE_DETAILS_PAGE_NAME, EXT_VIEW_FILE_DETAILS_PAGE_NAME } from 'c/googleCloudCrossPlatformUtils';
 
 import retrieveLocalGoogleFileById from '@salesforce/apex/GoogleCloudFilesController.retrieveLocalGoogleFileById';
-import retrieveRemoteGoogleFilePreview from '@salesforce/apex/GoogleCloudFilesController.retrieveGoogleFileBase64Preview';
+import validateFilePreview from '@salesforce/apex/GoogleCloudFilesController.validateFilePreview';
+import downloadFileAsPdf from '@salesforce/apex/GoogleCloudFilesController.downloadFileAsPdf';
+
+const PREVIEW_SLOW_THRESHOLD_MS = 5000;
 
 export default class GoogleCloudFilePreview extends NavigationMixin(LightningElement) {
 	@api localGoogleRecordId;
@@ -39,6 +43,10 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	@track isOldVersion = false;
 	@track isLoading = true;
 	@track isOpen = false;
+	@track isPreviewTakingTooLong = false;
+
+	previewOperation;
+	previewBlobUrl;
 
 	@api async open(localGoogleDriveId) {
 		this.initialization();
@@ -98,6 +106,8 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	}
 
 	@api close() {
+		this.abortPreviewOperation(false, false);
+		this.cleanupPreviewBlobUrl();
 		this.resolvePreviewClosing();
 		this.isOpen = false; 
 	}
@@ -107,12 +117,19 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	}
 
 	initialization() {
+		this.abortPreviewOperation(false, false);
+		this.cleanupPreviewBlobUrl();
 		this.isUnavailablePreview = false;
 		this.isLoading = true;
+		this.isPreviewTakingTooLong = false;
 		this.localGoogleRecordId = undefined;
 		this.localGoogleRecord = undefined;
 		this.localLatestVersionRecord = undefined;
 		this.resetAllStyles();
+	}
+
+	handlePreviewAbort(event) {
+		this.abortPreviewOperation();
 	}
 
 	handlePreviewModalClose(event) {
@@ -120,7 +137,9 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	}
 
 	async handleFileDownload(event) {
+		this.isLoading = true;
 		await this.downloadFile();
+		this.isLoading = false;
 	}
 
 	async handleFileSharing(event) {
@@ -157,7 +176,8 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		let isEdited = await GoogleCloudFileDetailsModal.open({
             size: 'small',
             label: `Edit ${this.fileName}`,
-            localFileVersionId: this.localLatestVersionRecord.Id
+            localFileVersionId: this.localLatestVersionRecord.Id,
+			isReadOnlyAccess: this.isReadMode
         });
 
 		if (isEdited) {
@@ -196,17 +216,31 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	}
 
 	async resolveFilePreview() {
+		const previewOperation = this.startPreviewOperation();
+
 		try {
 			await this.getLocalGoogleDriveFile();
+			this.assertPreviewOperationActive(previewOperation);
+
 			this.localLatestVersionRecord = this.getLatestFileVersion(this.localGoogleRecord);
-			await this.getGoogleFileBlob(this.localLatestVersionRecord.Id);
+			this.assertPreviewOperationActive(previewOperation);
+
+			await this.getGoogleFileBlob(this.localLatestVersionRecord.Id, previewOperation);
+			this.assertPreviewOperationActive(previewOperation);
 		} catch (e) {
+			if (isOperationAbortedError(e) || !this.isPreviewOperationActive(previewOperation)) {
+				return;
+			}
+
 			this.unavailablePreviewMessage = normalizeError(e);
 			this.isUnavailablePreview = true;
 			this.applyPdfStageHiddenStyles();
+		} finally {
+			if (this.previewOperation === previewOperation) {
+				this.finishPreviewOperation(previewOperation);
+				this.isLoading = false;
+			}
 		}
-
-		this.isLoading = false;
 	}
 
 	resolvePreviewClosing() {
@@ -223,55 +257,89 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		this.accessLevel = this.localGoogleRecord.UserAccessLevel__c || 'View';
 	}
 
-	async getGoogleFileBlob(localGoogleVersionId) {
-		const base64 = await retrieveRemoteGoogleFilePreview({
-			localFileVersionId: localGoogleVersionId,
-		});
+	async getGoogleFileBlob(localGoogleVersionId, previewOperation) {
+		// Will throw if preview is not eligible
+		const previewAction = await validateFilePreview({ localFileVersionId: localGoogleVersionId });
+		this.assertPreviewOperationActive(previewOperation);
 
-		if (isEmpty(base64)) {
+		let previewBlob;
+		if (previewAction === 'DIRECT') {
+			previewBlob = await this.downloadFile({
+				downloadImmediately: false,
+				returnBlob: true,
+				operationControl: previewOperation
+			});
+
+			this.assertPreviewOperationActive(previewOperation);
+		} else if (previewAction === 'CONVERT') {
+			const base64 = await downloadFileAsPdf({ localGoogleFileVersionId: localGoogleVersionId });
+			this.assertPreviewOperationActive(previewOperation);
+
+			if (isEmpty(base64)) {
+				this.isUnavailablePreview = true;
+				this.applyPdfStageHiddenStyles();
+				return;
+			}
+
+			previewBlob = this.base64ToBlob(base64, 'application/pdf');
+		}
+
+		if (!previewBlob || previewBlob.size === 0) {
 			this.isUnavailablePreview = true;
 			this.applyPdfStageHiddenStyles();
 		} else {
-			const binaryString = window.atob(base64);
-			const bytes = new Uint8Array(binaryString.length);
-			for (let i = 0; i < binaryString.length; i++) {
-				bytes[i] = binaryString.charCodeAt(i);
+			const blobUrl = URL.createObjectURL(previewBlob);
+
+			if (!this.isPreviewOperationActive(previewOperation)) {
+				URL.revokeObjectURL(blobUrl);
+				this.assertPreviewOperationActive(previewOperation);
 			}
 
-			const blob = new Blob([bytes], { type: 'application/pdf' });
-			const blobUrl = URL.createObjectURL(blob);
 			this.renderViewer(blobUrl);
 			this.applyMainStageStyles();
 		}
 	}
 
-	async downloadFile() {
+	async downloadFile({
+		downloadImmediately = true,
+		returnBase64 = false,
+		returnBlob = false,
+		operationControl = null
+	} = {}) {
 		let googleVersion = this.localLatestVersionRecord;
 		try {
 			if (googleVersion.Size__c <= BIG_FILE_SIZE) {
-				this.isLoading = true;
-
-				await download(googleVersion.Id, {
+				return await download(googleVersion.Id, {
 					fileName: googleVersion.Name,
-					mimeType: googleVersion.Type__c
+					mimeType: googleVersion.Type__c,
+					returnBase64,
+					returnBlob,
+					control: operationControl
 				});
-
-				this.isLoading = false;
 			} else {
-				this.isLoading = true;
-
-				await downloadInChunks(googleVersion.Id, {
+				return await downloadInChunks(googleVersion.Id, {
 					size: googleVersion.Size__c,
 					fileName: googleVersion.Name,
 					mimeType: googleVersion.Type__c,
+					returnBase64,
+					returnBlob,
+					control: operationControl,
 					onError: (err) => {
-						throw new Error(err?.message || err);
+						console.error(err);
+						showToast(
+							this,
+							'Unable to download File Version',
+							DEFAULT_FAILED_DOWNLOAD_MESSAGE,
+							'error'
+						);
 					}
 				});
-
-				this.isLoading = false;
 			}
 		} catch (error) {
+			if (isOperationAbortedError(error)) {
+				throw error;
+			}
+
 			showToast(
 				this,
 				'Unable to download File Version',
@@ -279,28 +347,38 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 				'error'
 			);
 		}
+
+		if (downloadImmediately) {
+			return;
+		}
 	}
 
 	getLatestFileVersion(record) {
 		if (!record || !Array.isArray(record.GoogleFileVersions__r) || record.GoogleFileVersions__r.length === 0) {
-			throw new Error('No versions were found for this file. Please verify that the file still exists');
-		}
-
-		if (this.isOldVersion === true) {
-			const found = record.GoogleFileVersions__r.find(
-				(v) => v.Id === this.localVersionRecordId
+			showToast(
+				this,
+				'Unable to find File Version',
+				DEFAULT_NO_VERSIONS_MESSAGE,
+				'error'
 			);
+		} else {
+			if (this.isOldVersion === true) {
+				const found = record.GoogleFileVersions__r.find(
+					(v) => v.Id === this.localVersionRecordId
+				);
 
-			if (found) return found;
+				if (found) return found;
+			}
+
+			return record.GoogleFileVersions__r[0];
 		}
-
-		return record.GoogleFileVersions__r[0];
 	}
 
 	renderViewer(blobUrl) {
         const iframe = this.template.querySelector('.pdfjs-iframe');
+		this.cleanupPreviewBlobUrl();
+		this.previewBlobUrl = blobUrl;
 
-        // Compose the viewer.html URL with the Blob URL as the file param
         const viewerUrl = `${pdfjs}/web/viewer.html?file=${encodeURIComponent(blobUrl)}`;
         iframe.src = viewerUrl;
     }
@@ -383,6 +461,93 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		}
 
 		return false;
+	}
+
+	startPreviewOperation() {
+		this.abortPreviewOperation(false, false);
+		this.cleanupPreviewBlobUrl();
+
+		const previewOperation = createOperationControl();
+		previewOperation.slowTimerId = setTimeout(() => {
+			if (!this.isPreviewOperationActive(previewOperation)) {
+				return;
+			}
+
+			this.isPreviewTakingTooLong = true;
+		}, PREVIEW_SLOW_THRESHOLD_MS);
+
+		this.previewOperation = previewOperation;
+		this.isPreviewTakingTooLong = false;
+
+		return previewOperation;
+	}
+
+	finishPreviewOperation(previewOperation) {
+		if (!previewOperation) {
+			return;
+		}
+
+		if (previewOperation.slowTimerId) {
+			clearTimeout(previewOperation.slowTimerId);
+			previewOperation.slowTimerId = undefined;
+		}
+
+		if (this.previewOperation === previewOperation) {
+			this.previewOperation = undefined;
+			this.isPreviewTakingTooLong = false;
+		}
+	}
+
+	abortPreviewOperation(showUnavailablePreview = true, stopLoading = true) {
+		if (this.previewOperation) {
+			abortOperation(this.previewOperation);
+			this.finishPreviewOperation(this.previewOperation);
+
+			if (showUnavailablePreview) {
+				this.cleanupPreviewBlobUrl();
+				this.isUnavailablePreview = true;
+				this.applyPdfStageHiddenStyles();
+			}
+		}
+
+		if (stopLoading) {
+			this.isLoading = false;
+		}
+	}
+
+	isPreviewOperationActive(previewOperation) {
+		return this.previewOperation === previewOperation && previewOperation?.isAborted !== true;
+	}
+
+	assertPreviewOperationActive(previewOperation) {
+		if (!this.isPreviewOperationActive(previewOperation)) {
+			const error = new Error('Preview aborted');
+			error.name = 'GoogleCloudDownloadAbortError';
+			throw error;
+		}
+	}
+
+	base64ToBlob(base64, mimeType) {
+		const binaryString = window.atob(base64);
+		const bytes = new Uint8Array(binaryString.length);
+
+		for (let i = 0; i < binaryString.length; i++) {
+			bytes[i] = binaryString.charCodeAt(i);
+		}
+
+		return new Blob([bytes], { type: mimeType });
+	}
+
+	cleanupPreviewBlobUrl() {
+		const iframe = this.template.querySelector('.pdfjs-iframe');
+		if (iframe) {
+			iframe.src = 'about:blank';
+		}
+
+		if (this.previewBlobUrl) {
+			URL.revokeObjectURL(this.previewBlobUrl);
+			this.previewBlobUrl = undefined;
+		}
 	}
 
 	get isOldOrReadMode() {

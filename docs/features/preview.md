@@ -6,13 +6,16 @@ The preview window is the central interface for file interaction inside Salesfor
 
 ## Supported File Types
 
-Supported preview formats include:
+The preview window supports the following file types:
 
-- PDF documents
+- PDF documents (any size, see note below)
 - Microsoft Word (`.docx`, `.doc`)
 - Images (`.png`, `.jpg`, `.gif`)
+- Spreadsheets (`.xlsx`, `.csv`)
 
-If a file cannot be previewed, the window still opens with a message and available actions.
+**A note on file size:** PDF files are always previewable, regardless of how large they are. For all other supported types, preview is available up to the **Maximum Preview File Size** limit configured in the Google Client settings. Files above that limit can still be downloaded, but will not render an inline preview.
+
+If a file type is not supported, the window still opens with a message and all available actions.
 
 ## Available Actions
 

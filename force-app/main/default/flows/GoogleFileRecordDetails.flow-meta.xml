@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <apiVersion>65.0</apiVersion>
+    <apiVersion>66.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <assignments>
         <name>AssignPageLayoutValues</name>
         <label>Assign Page Layout Values</label>
@@ -140,13 +141,21 @@
                     <defaultValue>
                         <elementReference>GoogleFile.Name</elementReference>
                     </defaultValue>
-                    <fieldText>Google File Name</fieldText>
+                    <fieldText>File Name</fieldText>
                     <fieldType>InputField</fieldType>
                     <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>true</isRequired>
+                    <styleProperties>
+                        <verticalAlignment>
+                            <stringValue>top</stringValue>
+                        </verticalAlignment>
+                        <width>
+                            <stringValue>12</stringValue>
+                        </width>
+                    </styleProperties>
                     <validationRule>
                         <errorMessage>&lt;p&gt;Please shorten the file name to 80 characters or fewer&lt;/p&gt;</errorMessage>
                         <formulaExpression>IF(LEN({!GoogleFileName}) &gt; 80, FALSE, TRUE)</formulaExpression>
@@ -178,6 +187,14 @@
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>true</isRequired>
+                    <styleProperties>
+                        <verticalAlignment>
+                            <stringValue>top</stringValue>
+                        </verticalAlignment>
+                        <width>
+                            <stringValue>12</stringValue>
+                        </width>
+                    </styleProperties>
                 </fields>
                 <fields>
                     <name>Description</name>
@@ -192,6 +209,14 @@
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>false</isRequired>
+                    <styleProperties>
+                        <verticalAlignment>
+                            <stringValue>top</stringValue>
+                        </verticalAlignment>
+                        <width>
+                            <stringValue>12</stringValue>
+                        </width>
+                    </styleProperties>
                     <validationRule>
                         <errorMessage>&lt;p&gt;&lt;span style=&quot;background-color: rgb(255, 255, 255);&quot;&gt;Please shorten the file description to 2048 characters or fewer&lt;/span&gt;&lt;/p&gt;</errorMessage>
                         <formulaExpression>IF(LEN({!Description}) &gt; 2048, FALSE, TRUE)</formulaExpression>
@@ -207,6 +232,14 @@
             </fields>
             <isRequired>false</isRequired>
             <regionContainerType>SectionWithoutHeader</regionContainerType>
+            <styleProperties>
+                <verticalAlignment>
+                    <stringValue>top</stringValue>
+                </verticalAlignment>
+                <width>
+                    <stringValue>12</stringValue>
+                </width>
+            </styleProperties>
         </fields>
         <nextOrFinishButtonLabel>Save</nextOrFinishButtonLabel>
         <showFooter>true</showFooter>
@@ -221,7 +254,7 @@
     </start>
     <status>Active</status>
     <variables>
-        <description>Google File ID</description>
+        <description>Local Google File ID</description>
         <name>fileId</name>
         <dataType>String</dataType>
         <isCollection>false</isCollection>

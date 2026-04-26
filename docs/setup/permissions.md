@@ -1,7 +1,7 @@
 # Permissions
 
 <p>
-Access to Google Drive functionality and configuration is controlled through permission sets.
+Access to Google Workspace functionality and configuration is controlled through permission sets.
 Assign permissions based on the user’s role and responsibilities.
 </p>
 
@@ -10,7 +10,7 @@ Assign permissions based on the user’s role and responsibilities.
 <ul>
   <li>
     <strong>Google Cloud Client User</strong><br>
-    Grants access to all operational features. Only users with this permission can actively operate on Google Drive files.
+    Grants access to all operational features. Only users with this permission can actively work with Google Workspace files.
   </li>
 
   <li>
@@ -22,7 +22,7 @@ Assign permissions based on the user’s role and responsibilities.
     <strong>Google Cloud Client User &amp; Admin</strong> (Permission Group)<br>
     A combined permission group for users who need:
     <ul>
-      <li>Full operational access to Google Drive files</li>
+      <li>Full operational access to Google Workspace files</li>
       <li>Full administrative access to configuration and integration settings</li>
     </ul>
     <p>
@@ -51,3 +51,4 @@ Assign permissions based on the user’s role and responsibilities.
     </ul>
   </li>
 </ol>
+<br>

@@ -4,7 +4,7 @@
     <deprecated>false</deprecated>
     <description>Converted the original document to a Google Workspace type to enable exporting this type in another format.</description>
     <externalId>false</externalId>
-    <label>Google Docs File Id</label>
+    <label>Google Workspace File Id</label>
     <length>255</length>
     <required>false</required>
     <trackTrending>false</trackTrending>

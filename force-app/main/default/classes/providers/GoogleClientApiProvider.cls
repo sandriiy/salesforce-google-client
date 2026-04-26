@@ -1,4 +1,27 @@
-public with sharing class GoogleDriveApiProvider {
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+public with sharing class GoogleClientApiProvider {
 	private final String DETAULT_ERROR_HANDLER = 'GoogleFileWebErrorHandler';
 	private final String DEFAULT_TOKEN_CACHE_NAME = 'accessToken';
 	private final String DEFAULT_AGENT_NAME = 'Apex Client 1/1';
@@ -9,7 +32,7 @@ public with sharing class GoogleDriveApiProvider {
 	private GoogleCacheConfigService cacheService = new GoogleCacheConfigService();
 	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
-	public String validateCustomGoogleAuthorizerCreds() {
+	public Boolean validateGoogleServiceAccount() {
 		String authorizerClassName = authorizerClassNameOverride != null
 			? authorizerClassNameOverride
 			: metadataService.getGoogleDriveAuthorizerClassName();
@@ -18,17 +41,17 @@ public with sharing class GoogleDriveApiProvider {
 			.setLocalGoogleAuthorizer(authorizerClassName)
 			.build();
 
-		if (String.isBlank(testCredential.accessToken)) {
-			return 'Your organization was successfully authenticated, but no access token was returned!';
-		} else {
-			return 'Your organization was successfully authenticated and a valid access token was returned!';
-		}
+		return String.isNotBlank(testCredential.accessToken);
 	}
 
 	public GoogleDrive retrieveGoogleDriveClient() {
 		GoogleCredential googleDriveCredentials = retrieveGoogleCredential();
 		return new GoogleDrive(googleDriveCredentials, DEFAULT_AGENT_NAME)
 			.withFailureStrategy(DETAULT_ERROR_HANDLER);
+	}
+
+	public GoogleCredential retrieveGoogleClientCreds() {
+		return retrieveGoogleCredential();
 	}
 
 	private GoogleCredential retrieveGoogleCredential() {

@@ -5,7 +5,7 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
-  logo: null
+  logo: assets/logo/logo_no_background.png
 
   palette:
     - scheme: slate
@@ -65,9 +65,11 @@ nav:
         - Validation Suites: validation/validation-suites.md
 
   - Setup:
-      - Install Dependencies: setup/dependencies.md
-      - Google Cloud Setup: setup/google-cloud.md
-      - Install & Configure: setup/install-and-configure.md
+      - Install: setup/install-and-dependencies.md
+      - Set Up Service Account: setup/setup-service-account.md
+      - Configure Certificate: setup/configure-certificate.md
+      - Configure Google Workspace: setup/configure-drive.md
+      - Configure AI & Intelligence: setup/configure-intelligence.md
       - Permissions: setup/permissions.md
 
   - Usage:
@@ -75,7 +77,6 @@ nav:
       - Add Components (Experience Cloud): usage/experience-cloud.md
 
   - Features:
-      - Capabilities: features/capabilities.md
       - File Explorer: features/file-explorer.md
       - Preview: features/preview.md
       - Sharing: features/sharing.md
@@ -83,6 +84,10 @@ nav:
       - Public Links: features/public-links.md
       - Versioning: features/versioning.md
       - Audit & Logging: features/audit.md
+      - Flows & Automation:
+          - Uploader in Screen Flows: features/flows-automation/uploader-screen-flows.md
+      - Artificial Intelligence:
+          - Overview: features/artificial-intelligence/overview.md
 
   - Media:
       - Videos: media/videos.md

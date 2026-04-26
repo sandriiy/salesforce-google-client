@@ -4,6 +4,7 @@ export const DEFAULT_FILE_UPLOAD_FAILURE = 'Verify that the file is not corrupte
 export const DEFAULT_FILE_NOT_ALLOWED_MESSAGE = 'Some files don’t meet the allowed type or size, please check and retry';
 export const DEFAULT_FAILED_RETRIEVE_MESSAGE = 'Unable to load files. Please refresh the page or contact your administrator';
 export const DEFAULT_FAILED_DOWNLOAD_MESSAGE = 'Unable to download the file. Please try again later or contact your system administrator';
+export const DEFAULT_NO_VERSIONS_MESSAGE = 'No versions were found for this file. Please verify that the file still exists';
 export const DEFAULT_ACCESS_RESTRICTED_MESSAGE = 'You can\’t perform this action on this file. Try another file or contact the file owner';
 export const DEFAULT_PREVIEW_UNAVAILABILITY_MESSAGE = 'Preview unavailable. Try downloading instead';
 export const GENERIC_ERROR_MESSAGE = 'Something went wrong. Please try again later or contact your system administrator';
@@ -255,60 +256,162 @@ const normalizeAllowedTypes = (fileTypes) => {
 }
 
 const normalizeError = (input) => {
-	try {
-		let messages = [];
+	const MAX_FALLBACK_LENGTH = 255;
 
-		const pickFromOne = (one) => {
-			if (typeof one === 'string') return [one];
+	const truncate = (value, max = MAX_FALLBACK_LENGTH) => {
+		const text = String(value || '').trim();
+		return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+	};
 
-			if (one && typeof one === 'object') {
-				if (Array.isArray(one.body)) {
-				return one.body
-					.map((e) => (e && typeof e === 'object' && typeof e.message === 'string' ? e.message : ''))
-					.filter(Boolean);
-				}
+	const normalizeWhitespace = (value) =>
+		String(value || '')
+			.replace(/\\"/g, '"')
+			.replace(/\\n/g, ' ')
+			.replace(/\\r/g, ' ')
+			.replace(/\\t/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
 
-				if (one.body && typeof one.body === 'object' && typeof one.body.message === 'string') {
-					return [one.body.message];
-				}
-			}
+	const cleanMessage = (value) => {
+		let message = normalizeWhitespace(value);
 
-			return [];
-		};
+		// Remove common technical prefixes/suffixes.
+		message = message.replace(/^[A-Z0-9_]{3,}\s*:\s*/g, '');
+		message = message.replace(/^[\w$.]+(?:Exception|Error)\s*:\s*/g, '');
+		message = message.replace(/\s*\(([A-Z0-9_]{3,})\)\s*$/g, '');
 
-		if (Array.isArray(input)) {
-			input.forEach((it) => (messages = messages.concat(pickFromOne(it))));
-		} else if (typeof input === 'string') {
-			messages = [input];
-		} else {
-			messages = pickFromOne(input);
-		}
-
-		const unique = Array.from(new Set(messages.map((m) => (m || '').trim()).filter(Boolean)));
-		if (unique.length !== 1) return GENERIC_ERROR_MESSAGE;
-
-		let msg = unique[0];
-		msg = msg.replace(/^[A-Z0-9_]{3,}\s*:\s*/g, '');
-		msg = msg.replace(/\s*\(([A-Z0-9_]{3,})\)\s*$/g, '');
-		msg = msg.replace(
+		// Preserve existing friendly translation.
+		message = message.replace(
 			/No such column\s+'([^']+)'\s+on entity\s+'([^']+)'/i,
-			(m, col, obj) => `Field "${col}" isn’t available on "${obj}".`
+			(_, fieldName, objectName) => `Field "${fieldName}" isn’t available on "${objectName}".`
 		);
-		msg = msg
-			.replace(/\b([A-Za-z0-9_]+)__(?:c|r)\b/g, (_, base) => base)
+
+		// Preserve your current custom field normalization.
+		message = message
+			.replace(/\b([A-Za-z0-9_]+)__(?:c|r)\b/g, (_, baseName) => baseName)
 			.replace(/_/g, ' ')
 			.replace(/\s{2,}/g, ' ')
 			.trim();
 
-		if (msg && msg[0] === msg[0].toLowerCase()) {
-			msg = msg.charAt(0).toUpperCase() + msg.slice(1);
+		// Ignore garbage-only results such as "} }" or similar.
+		if (!message || /^[{}\],:"'\s]+$/.test(message)) {
+			return '';
 		}
 
-		return msg || GENERIC_ERROR_MESSAGE;
+		if (/^[a-z]/.test(message)) {
+			message = message.charAt(0).toUpperCase() + message.slice(1);
+		}
+
+		return message;
+	};
+
+	const extractMessagesFromString = (value) => {
+		const text = String(value || '').trim();
+		if (!text) return [];
+
+		// Handles raw serialized payloads/logs like:
+		// "message": "Request had insufficient authentication scopes."
+		const quotedJsonMessages = [...text.matchAll(/"message"\s*:\s*"((?:\\.|[^"\\])*)"/g)]
+			.map((match) => normalizeWhitespace(match[1]))
+			.filter(Boolean);
+
+		if (quotedJsonMessages.length) {
+			return quotedJsonMessages;
+		}
+
+		// Handles looser shapes like:
+		// message: Something went wrong
+		const inlineMessages = [...text.matchAll(/\bmessage\b\s*[:=]\s*["']?([^"'\n,]+)["']?/gi)]
+			.map((match) => normalizeWhitespace(match[1]))
+			.filter(Boolean);
+
+		if (inlineMessages.length) {
+			return inlineMessages;
+		}
+
+		// Plain string error.
+		return [text];
+	};
+
+	const collectMessages = (value, seen = new Set()) => {
+		if (value == null) return [];
+		if (typeof value === 'string') return extractMessagesFromString(value);
+		if (typeof value !== 'object') return [String(value)];
+
+		if (seen.has(value)) return [];
+		seen.add(value);
+
+		let messages = [];
+
+		const visit = (next) => {
+			messages = messages.concat(collectMessages(next, seen));
+		};
+
+		// JS Error
+		if (value instanceof Error && value.message) {
+			messages.push(value.message);
+		}
+
+		if (typeof value.message === 'string') messages.push(value.message);
+
+		if (Array.isArray(value.body)) {
+			value.body.forEach(visit);
+		} else if (value.body != null) {
+			visit(value.body);
+		}
+
+		if (Array.isArray(value.pageErrors)) value.pageErrors.forEach(visit);
+		if (Array.isArray(value.errors)) value.errors.forEach(visit);
+		if (Array.isArray(value.details)) value.details.forEach(visit);
+
+		if (value.output != null) visit(value.output);
+		if (value.error != null) visit(value.error);
+
+		[value.fieldErrors, value.output?.fieldErrors].forEach((fieldErrors) => {
+			if (fieldErrors && typeof fieldErrors === 'object') {
+				Object.values(fieldErrors).forEach(visit);
+			}
+		});
+
+		return messages;
+	};
+
+	const fallbackToRawError = (value) => {
+		let rawText = '';
+
+		if (typeof value === 'string') {
+			rawText = value;
+		} else if (value instanceof Error) {
+			rawText = value.stack || value.message || String(value);
+		} else {
+			try {
+				rawText = JSON.stringify(value);
+			} catch {
+				rawText = String(value);
+			}
+		}
+
+		rawText = normalizeWhitespace(rawText).replace(/^[{}\],:"'\s]+|[{}\],:"'\s]+$/g, '');
+
+		return rawText ? truncate(rawText) : GENERIC_ERROR_MESSAGE;
+	};
+
+	try {
+		const uniqueMessages = [...new Set(collectMessages(input).map(cleanMessage).filter(Boolean))];
+
+		if (uniqueMessages.length === 1) {
+			return uniqueMessages[0];
+		}
+
+		if (uniqueMessages.length > 1) {
+			return GENERIC_ERROR_MESSAGE;
+		}
+
+		return fallbackToRawError(input);
 	} catch {
 		return GENERIC_ERROR_MESSAGE;
 	}
-}
+};
 
 const findIconForRecordType = (sobjectType) => {
 	switch (sobjectType) {

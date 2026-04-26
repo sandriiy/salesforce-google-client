@@ -1,24 +1,24 @@
 # Prerequisites
 
-To get started with Salesforce Google Client, you’ll need access to the **Google Cloud Console** and a small set of local tools to generate a JKS certificate. The [Setup](setup/dependencies.md) page then guides you through all required configuration steps. Prior experience with Google Cloud is helpful for designing a secure Google Workspace architecture. If you need assistance or security consulting, contact [opensupport@cloudrylabs.com](mailto:opensupport@cloudrylabs.com)
-
 ## Before you begin
 
 You’ll need:
 
 - A Salesforce org where you can install unlocked packages
-- Access to a Google Cloud project / admin who can create a Service Account
-- Basic command-line tools for certificate generation (includes: [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html), [Java JDK](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html), [jq](https://jqlang.org/download/))
+- Access to your own Google Cloud project and an administrator who can create a service account and activate the APIs.
+- Basic command-line tools for certificate generation (includes: [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html){ target="_blank" rel="noopener noreferrer" }, [Java JDK](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html){ target="_blank" rel="noopener noreferrer" }, [jq](https://jqlang.org/download/){ target="_blank" rel="noopener noreferrer" })
 
 ## What you’ll set up
 
-1. Install the required dependency packages ([click here](setup/dependencies.md))
-2. Configure Google Cloud Console and create a Service Account certificate ([click here](setup/google-cloud.md))
-3. Install this package ([click here](setup/install-and-configure.md))
-4. Assign the **Google Cloud Client Admin** permission set ([click here](setup/install-and-configure.md))
-5. Open the **Google Client** app ([click here](setup/install-and-configure.md))
-6. Configure Salesforce authentication (Apex-based authorization flow) ([click here](setup/install-and-configure.md))
+1. Install the required dependency packages and the Google Client package ([click here](setup/install-and-dependencies.md))
+2. Create a Google Cloud Service Account and enable the necessary APIs ([click here](setup/setup-service-account.md))
+3. Generate a JKS certificate and upload it to Salesforce ([click here](setup/configure-certificate.md))
+4. Assign the **Google Cloud Client Admin** permission set ([click here](setup/configure-drive.md))
+5. Open the **Google Client** app ([click here](setup/configure-drive.md))
+6. Configure Google Workspace connection — make sure **Google Drive** is selected ([click here](setup/configure-drive.md))
 7. Assign the **Google Cloud Client User** permission set to users ([click here](setup/permissions.md))
+8. **Optional:** Connect Gemini API or Agent Platform to enable analytics, policy checks, smart labeling, and more ([click here](setup/configure-intelligence.md))
 
 <br>
 Once configuration is complete, refer to the [Usage](usage/core-clouds.md) section to understand which features are available in the Lightning Experience and Experience Cloud. Any additional manual steps required for Experience Cloud are also mentioned there.
+<br>

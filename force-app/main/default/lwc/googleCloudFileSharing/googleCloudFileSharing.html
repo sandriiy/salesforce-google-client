@@ -6,13 +6,6 @@
     </template>
     <template lwc:else>
         <div class="share-container">
-            <div lwc:if={showOwnerRestrictionMessage} class="owner-message slds-m-bottom_small" role="status" aria-live="polite">
-                <p class="owner-message__text">
-                    You have collaborator access to this file, so you may run into limitations when creating or updating sharing settings.
-                    If that happens, please contact the file owner and ask them to perform the change on your behalf.
-                </p>
-            </div>
-            
             <div class="sharebar">
                 <div class="slds-grid">
                     <div class="slds-col slds-size_2-of-12 slds-m-right_x-small">
@@ -87,7 +80,9 @@
                                                         alternative-text="Owner">
                                                     </lightning-avatar>
                                                     <div class="info">
-                                                        <div class="title">{sharingDetails.owner.Name}</div>
+                                                        <div class="title" title={sharingDetails.owner.Name}>
+                                                            {sharingDetails.owner.Name}
+                                                        </div>
                                                         <div class="meta">Owner</div>
                                                     </div>
                                                 </div>
@@ -117,7 +112,9 @@
                                                         alternative-text={principal.kindLabel}>
                                                     </lightning-avatar>
                                                     <div class="info">
-                                                        <div class="title">{principal.displayName}</div>
+                                                        <div class="title" title={principal.displayName}>
+                                                            {principal.displayName}
+                                                        </div>
                                                         <div class="meta">{principal.kindLabel}</div>
                                                     </div>
                                                     </div>
@@ -162,7 +159,9 @@
                                                             alternative-text={recordLink.kindLabel}>
                                                         </lightning-avatar>
                                                         <div class="info">
-                                                            <div class="title">{recordLink.displayName}</div>
+                                                            <div class="title" title={recordLink.displayName}>
+                                                                {recordLink.displayName}
+                                                            </div>
                                                             <div class="meta">{recordLink.kindLabel}</div>
                                                         </div>
                                                     </div>

@@ -30,9 +30,27 @@ public with sharing class GoogleCloudConfigController {
 	}
 
 	@AuraEnabled
-    public static String validateMetadataConfig() {
-        GoogleDriveApiProvider remoteProvider = new GoogleDriveApiProvider();
-		return remoteProvider.validateCustomGoogleAuthorizerCreds();
+    public static String validateDriveMetadataConfig() {
+        GoogleClientApiProvider remoteProvider = new GoogleClientApiProvider();
+		Boolean isValid = remoteProvider.validateGoogleServiceAccount();
+
+		if (isValid) {
+			return 'Your organization was successfully authenticated and a valid access token was returned!';
+		} else {
+			return 'Your organization was successfully authenticated, but no access token was returned!';
+		}
+    }
+
+	@AuraEnabled
+    public static String validateIntelligenceMetadataConfig() {
+        GoogleFileIntelligenceFactory aiFactory = new GoogleFileIntelligenceFactory();
+		Boolean isValid = aiFactory.create().validate();
+
+		if (isValid) {
+			return 'The Intelligence configuration is valid and a successful response was returned!';
+		} else {
+			return 'The Intelligence request was successful submitted, but a successful response was not returned!';
+		}
     }
 
 	@AuraEnabled

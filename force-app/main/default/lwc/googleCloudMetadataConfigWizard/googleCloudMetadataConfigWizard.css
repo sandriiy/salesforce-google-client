@@ -165,7 +165,6 @@
     background: #fff;
     box-shadow: 0 18px 34px rgba(0, 0, 0, 0.16);
     overflow: hidden;
-
     opacity: 0;
     transform: translateY(-6px);
     pointer-events: none;

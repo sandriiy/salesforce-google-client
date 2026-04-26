@@ -1,3 +1,26 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 public with sharing class GoogleLocalFileVersionLifecycleService {
     public class GoogleFileVersionLifecycleException extends Exception {}
 
@@ -20,26 +43,6 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
                 GoogleFileVersion__c.SObjectType
             })
             : injectedUow;
-    }
-
-    public void syncLatestVersionToMainFile(List<GoogleFileVersion__c> newFileVersions, Map<Id, GoogleFileVersion__c> oldFileVersions) {
-        List<GoogleFileVersion__c> versionsToSync = resolveVersionsToSync(newFileVersions, oldFileVersions);
-        if (versionsToSync.isEmpty()) return;
-
-        Set<Id> parentFileIds = collectParentFileIds(versionsToSync);
-        if (parentFileIds.isEmpty()) return;
-
-        Logger.info('Sync Latest Version To Main File --> ' + joinIds(parentFileIds)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-
-        Map<Id, GoogleFile__c> parentFilesById = (Map<Id, GoogleFile__c>) GoogleFileSelector.query()
-            .byRecordIds(new List<Id>(parentFileIds))
-            .withAllFields()
-            .toMap();
-
-        List<GoogleFile__c> localFilesToUpdate = buildParentFileDescriptionUpdates(versionsToSync, parentFilesById);
-        if (localFilesToUpdate.isEmpty()) return;
-
-        commitUpdatesWithBypass('GoogleFileTriggerHandler', localFilesToUpdate);
     }
 
     public void applyPreviewStateIfEligible(List<GoogleFileVersion__c> newFileVersions) {
@@ -73,18 +76,6 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
 		System.enqueueJob(new GoogleFileCloudDeleteJob(localFileVersions));
 	}
 
-    private List<GoogleFileVersion__c> resolveVersionsToSync(List<GoogleFileVersion__c> newFileVersions, Map<Id, GoogleFileVersion__c> oldFileVersions) {
-        if (newFileVersions == null || newFileVersions.isEmpty()) {
-            return new List<GoogleFileVersion__c>();
-        }
-
-        if (oldFileVersions != null && !oldFileVersions.isEmpty()) {
-            return GTriggerHandler.getChangedRecords(newFileVersions, oldFileVersions, new Set<String>{ 'Description__c' });
-        }
-
-        return newFileVersions;
-    }
-
     private Set<Id> collectParentFileIds(List<GoogleFileVersion__c> fileVersions) {
         Set<Id> parentFileIds = new Set<Id>();
         if (fileVersions == null) return parentFileIds;
@@ -103,31 +94,6 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
         parentFileIds.addAll(collectParentFileIds(newFileVersions));
         parentFileIds.addAll(collectParentFileIds(oldFileVersions));
         return parentFileIds;
-    }
-
-    private List<GoogleFile__c> buildParentFileDescriptionUpdates(List<GoogleFileVersion__c> versionsToSync, Map<Id, GoogleFile__c> parentFilesById) {
-        List<GoogleFile__c> localFilesToUpdate = new List<GoogleFile__c>();
-        Set<Id> parentFilesAlreadyAdded = new Set<Id>();
-
-        for (GoogleFileVersion__c fileVersion : versionsToSync) {
-            if (fileVersion == null || fileVersion.GoogleFileId__c == null) continue;
-            if (!fileVersion.IsLatestFile__c) continue;
-
-            GoogleFile__c parentFile = parentFilesById.get(fileVersion.GoogleFileId__c);
-            if (parentFile == null) continue;
-
-            if (parentFile.Description__c == fileVersion.Description__c) continue;
-            if (parentFilesAlreadyAdded.contains(parentFile.Id)) continue;
-
-            localFilesToUpdate.add(new GoogleFile__c(
-                Id = parentFile.Id,
-                Description__c = fileVersion.Description__c
-            ));
-
-            parentFilesAlreadyAdded.add(parentFile.Id);
-        }
-
-        return localFilesToUpdate;
     }
 
     private List<GoogleFileVersion__c> buildLatestFlagUpdates(List<GoogleFile__c> parentFiles) {

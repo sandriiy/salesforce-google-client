@@ -1,13 +1,40 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 public inherited sharing class GoogleMetadataConfigService {
 	public class GoogleMetadataConfigException extends Exception {}
 
 	private static GoogleOrgCacheProvider orgWideProvider = new GoogleOrgCacheProvider(GoogleCacheConfigService.PARTITION);
 	private static GoogleCacheConfigService cacheService = new GoogleCacheConfigService(orgWideProvider);
 
-	@TestVisible
 	public static final String DEFAULT_METADATA_DEPLOY_KEY = 'DefaultGoogleMetadataDeployerKey';
-	@TestVisible
 	public static final String DEFAULT_AUTH_CLASS_NAME = 'DefaultGoogleDriveAuthorizer';
+
+	private static final String DEFAULT_RECORD_DEVELOPER_NAME = 'GoogleClient';
+	private static final String DEFAULT_RECORD_LABEL = 'Google Client';
+
+	@TestVisible
+	private static GoogleClientConfig__mdt configRecordOverride;
 
 	private GoogleClientConfig__mdt configRecord;
 	private IGoogleMetadataDeployer metadataDeployer;
@@ -17,11 +44,16 @@ public inherited sharing class GoogleMetadataConfigService {
     }
 
 	public GoogleMetadataConfigService(IGoogleMetadataDeployer deployer) {
-		Map<String, GoogleClientConfig__mdt> all = GoogleClientConfig__mdt.getAll();
 		this.metadataDeployer = deployer;
-		this.configRecord = (all != null && !all.isEmpty())
-			? all.values()[0]
-			: new GoogleClientConfig__mdt();
+
+		if (configRecordOverride != null) {
+			this.configRecord = configRecordOverride;
+		} else {
+			Map<String, GoogleClientConfig__mdt> all = GoogleClientConfig__mdt.getAll();
+			this.configRecord = (all != null && !all.isEmpty())
+				? all.values()[0]
+				: new GoogleClientConfig__mdt();
+		}
     }
 
     public Id saveConfig(Map<String, Object> fieldApiToValue) {
@@ -73,6 +105,22 @@ public inherited sharing class GoogleMetadataConfigService {
         return configRecord.CustomGoogleUploadFolderStructure__c;
     }
 
+	public String getGoogleGeminiKey() {
+        return configRecord.CustomGeminiApiKey__c;
+    }
+
+	public String getGoogleAiModel() {
+        return configRecord.CustomModelName__c;
+    }
+
+	public String getGoogleAgentLocation() {
+        return configRecord.CustomAgentLocation__c;
+    }
+
+	public String getGoogleAgentProjectId() {
+        return configRecord.CustomAgentProjectId__c;
+    }
+
 	public String getGoogleDriveDomain() {
         return configRecord.OrganizationalDomain__c;
     }
@@ -82,8 +130,8 @@ public inherited sharing class GoogleMetadataConfigService {
             Metadata.DeployContainer container = new Metadata.DeployContainer();
 
             Metadata.CustomMetadata cmdt = new Metadata.CustomMetadata();
-            cmdt.fullName = 'GoogleClientConfig__mdt.' + configRecord.DeveloperName;
-            cmdt.label = configRecord.MasterLabel;
+            cmdt.fullName = 'GoogleClientConfig__mdt.' + (String.isNotBlank(configRecord.DeveloperName) ? configRecord.DeveloperName : DEFAULT_RECORD_DEVELOPER_NAME);
+            cmdt.label = String.isNotBlank(configRecord.MasterLabel) ? configRecord.MasterLabel : DEFAULT_RECORD_LABEL;
 
             cmdt.values = new List<Metadata.CustomMetadataValue>();
 

@@ -1,15 +1,42 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 public with sharing class GoogleFileVersionPreviewJob implements Queueable, Database.AllowsCallouts {
 	public class GoogleFilePreviewJobException extends Exception {}
 
+	@TestVisible
+	private static Boolean skipExecution = false;
+
     private final Set<Id> versionIds;
     public GoogleFileVersionPreviewJob(Set<Id> versionIds) {
-        this.versionIds = versionIds == null 
+        this.versionIds = versionIds == null
 			? new Set<Id>()
 			: new Set<Id>(versionIds);
     }
 
     public void execute(QueueableContext qc) {
-		Logger.info('Queueable Job to generate Google Docs previews for: ' + String.join(versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		if (skipExecution) return;
+		Logger.info('Queueable Job to generate Google Workspace previews for: ' + String.join(versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
         if (versionIds.isEmpty()) return;
 
 		List<GoogleFileVersion__c> localFileVersions = (List<GoogleFileVersion__c>) GoogleFileVersionSelector.query()
@@ -21,16 +48,19 @@ public with sharing class GoogleFileVersionPreviewJob implements Queueable, Data
         for (GoogleFileVersion__c localFileVersion : localFileVersions) {
             if (String.isNotBlank(localFileVersion.GoogleDocsFileId__c)) continue;
 
-			GoogleDriveApiProvider remoteFileService = new GoogleDriveApiProvider();
+			String targetGoogleWorkspaceType = GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.get(localFileVersion.Type__c);
+			if (String.isBlank(targetGoogleWorkspaceType)) continue;
+
+			GoogleClientApiProvider remoteFileService = new GoogleClientApiProvider();
 			GoogleDrive removeGoogleDrive = remoteFileService.retrieveGoogleDriveClient();
 			GoogleFileEntity clonedFile = removeGoogleDrive.files().clone(localFileVersion.GoogleDriveFileId__c)
 				.setFields('id')
 				.setFileName(localFileVersion.Name)
 				.setSupportsAllDrives(true)
-				.setMimeType('application/vnd.google-apps.document')
+				.setMimeType(targetGoogleWorkspaceType)
 				.execute();
 
-			localFileVersion.GoogleDocsFileId__c  = clonedFile.id;
+			localFileVersion.GoogleDocsFileId__c = clonedFile.id;
 			toUpdate.add(localFileVersion);
         }
 

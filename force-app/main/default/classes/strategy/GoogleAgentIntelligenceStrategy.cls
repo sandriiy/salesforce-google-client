@@ -21,8 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-public with sharing class GoogleVertexIntelligenceStrategy implements IGoogleFileIntelligenceStrategy {
-    public class GoogleVertexConfigurationException extends Exception {}
+public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFileIntelligenceStrategy {
+    public class GoogleAgentConfigurationException extends Exception {}
 
 	private static final String GENERATE_CONTENT_ENDPOINT_TEMPLATE = 'https://aiplatform.googleapis.com/v1/projects/{0}/locations/{1}/publishers/google/models/{2}:generateContent';
     private static final String HTTP_METHOD_POST = 'POST';
@@ -38,20 +38,20 @@ public with sharing class GoogleVertexIntelligenceStrategy implements IGoogleFil
 	private GoogleCredential googleCredential;
     private GoogleMetadataConfigService metadataService;
 
-    public GoogleVertexIntelligenceStrategy() {
+    public GoogleAgentIntelligenceStrategy() {
         this.metadataService = new GoogleMetadataConfigService();
         this.googleApiProvider = new GoogleClientApiProvider();
 		this.googleCredential = googleApiProvider.retrieveGoogleClientCreds();
     }
 
 	public Boolean validate() {
-       	validateVertexConfiguration();
+       	validateAgentConfiguration();
 
         try {
             HttpResponse response = sendValidationRequest();
             return isSuccessfulValidationResponse(response);
         } catch (Exception ex) {
-			throw new GoogleVertexConfigurationException(ex.getMessage());
+			throw new GoogleAgentConfigurationException(ex.getMessage());
         }
 	}
 
@@ -63,33 +63,33 @@ public with sharing class GoogleVertexIntelligenceStrategy implements IGoogleFil
 		return null;
 	}
 
-    private void validateVertexConfiguration() {
-        String projectId = metadataService.getGoogleVertexProjectId();
-        String location = metadataService.getGoogleVertexLocation();
+    private void validateAgentConfiguration() {
+        String projectId = metadataService.getGoogleAgentProjectId();
+        String location = metadataService.getGoogleAgentLocation();
         String modelName = metadataService.getGoogleAiModel();
 
         if (String.isBlank(projectId)) {
-			throw new GoogleVertexConfigurationException(
-				'Unable to locate the Vertex project ID. Please verify the Vertex configuration is set correctly'
+			throw new GoogleAgentConfigurationException(
+				'Unable to locate the Agent Platform project ID. Please verify the Agent Platform configuration is set correctly'
 			);
 		}
 
 		if (String.isBlank(location)) {
-			throw new GoogleVertexConfigurationException(
-				'Unable to locate the Vertex location. Please verify the Vertex configuration is set correctly'
+			throw new GoogleAgentConfigurationException(
+				'Unable to locate the Agent Platform location. Please verify the Agent Platform configuration is set correctly'
 			);
 		}
 
 		if (String.isBlank(modelName)) {
-			throw new GoogleVertexConfigurationException(
-				'Unable to locate the Vertex model name. Please verify the Vertex configuration is set correctly'
+			throw new GoogleAgentConfigurationException(
+				'Unable to locate the Agent Platform model name. Please verify the Agent Platform configuration is set correctly'
 			);
 		}
     }
 
     private HttpResponse sendValidationRequest() {
-		String projectId = metadataService.getGoogleVertexProjectId();
-        String location = metadataService.getGoogleVertexLocation();
+		String projectId = metadataService.getGoogleAgentProjectId();
+        String location = metadataService.getGoogleAgentLocation();
         String modelName = metadataService.getGoogleAiModel();
 
         HttpRequest request = new HttpRequest();
@@ -104,8 +104,8 @@ public with sharing class GoogleVertexIntelligenceStrategy implements IGoogleFil
     }
 
     private String buildGenerateContentEndpoint() {
-		String projectId = metadataService.getGoogleVertexProjectId();
-        String location = metadataService.getGoogleVertexLocation();
+		String projectId = metadataService.getGoogleAgentProjectId();
+        String location = metadataService.getGoogleAgentLocation();
         String modelName = metadataService.getGoogleAiModel();
 
         return String.format(
@@ -149,7 +149,7 @@ public with sharing class GoogleVertexIntelligenceStrategy implements IGoogleFil
 
     private Boolean isSuccessfulValidationResponse(HttpResponse response) {
         if (response == null || response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
-			throw new GoogleVertexConfigurationException(response.getBody());
+			throw new GoogleAgentConfigurationException(response.getBody());
         }
 
         if (String.isBlank(response.getBody())) {

@@ -18,11 +18,34 @@
 	border-radius: 12px;
 }
 
+@font-face {
+  font-family: 'Glacial Indifference';
+  src: url('../assets/fonts/GlacialIndifference-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Glacial Indifference';
+  src: url('../assets/fonts/GlacialIndifference-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Tighten gap between logo and site name */
+.md-header__button.md-logo {
+  margin-right: 0;
+  padding-right: 0;
+}
+
 .md-header__title {
+  margin-left: 0.8rem !important;
+  font-family: 'Glacial Indifference', sans-serif !important;
   font-weight: 400 !important;
 }
 
 .md-header__topic {
+  font-family: 'Glacial Indifference', sans-serif !important;
   font-weight: 400 !important;
 }
 

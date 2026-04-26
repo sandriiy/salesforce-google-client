@@ -39,6 +39,9 @@ $RECYCLE.BIN/
 # NPM
 package-lock.json
 
+# MkDocs build output
+site/
+
 # Local environment variables
 .env
 

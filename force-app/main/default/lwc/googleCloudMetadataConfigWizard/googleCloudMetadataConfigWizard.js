@@ -19,9 +19,9 @@ const CONFIG_SECTIONS = [
     },
     {
         key: 'ai',
-        label: 'Gemini & Vertex AI',
+        label: 'Gemini & Agent Platform',
         icon: 'utility:magicwand',
-        description: 'Configure Gemini Developer API or Vertex AI for file analysis in Google Client.',
+        description: 'Configure Gemini Developer API or Agent Platform (ex-Vertex AI) for file analysis in Google Client.',
         importer: () => import('c/googleCloudIntelligenceConfig'),
         validator: validateIntelligenceConfig
     }
@@ -50,8 +50,8 @@ const QUERY = gql`
 
                             CustomGeminiApiKey__c { value }
                             CustomModelName__c { value }
-                            CustomVertexLocation__c { value }
-                            CustomVertexProjectId__c { value }
+                            CustomAgentLocation__c { value }
+                            CustomAgentProjectId__c { value }
                         }
                     }
                 }
@@ -62,6 +62,8 @@ const QUERY = gql`
 
 const MAX_DEPLOY_STATUS_CHECKS = 10;
 const DEPLOY_STATUS_DELAY_MS = 1000;
+const DEFAULT_BIG_FILE_SIZE = 2097152;
+const DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 
 export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     configComponentConstructor;
@@ -77,13 +79,13 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         defaultGoogleUploadFolderId: '',
         customGoogleUploadFolderStructure: '',
         organizationalDomain: '',
-        defaultBigFileSize: null,
+        defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
         isFilePreviewDisabled: false,
-        maxDeleteChainSize: null,
+        maxDeleteChainSize: DEFAULT_MAX_DELETE_CHAIN_SIZE,
         customGeminiApiKey: '',
         customModelName: '',
-        customVertexLocation: '',
-        customVertexProjectId: ''
+        customAgentLocation: '',
+        customAgentProjectId: ''
     };
 
     errorMessage = '';
@@ -122,7 +124,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             const recordNode = this.findRecordByDeveloperName(edges, CONFIG_DEV_NAME);
 
             if (!recordNode) {
-                this.errorMessage = `No GoogleClientConfig__mdt record found for DeveloperName "${CONFIG_DEV_NAME}". Confirm the record exists in this org (Setup → Custom Metadata Types → GoogleClientConfig → Manage Records).`;
+                const defaultSnapshot = this.buildDefaultServerSnapshot();
+                this.server = defaultSnapshot;
+                this.draft = this.toDraft(defaultSnapshot);
                 return;
             }
 
@@ -355,6 +359,26 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return null;
     }
 
+    buildDefaultServerSnapshot() {
+        return {
+            developerName: CONFIG_DEV_NAME,
+            masterLabel: 'Google Client',
+            customGoogleAuthorizerClass: null,
+            customGoogleServiceAccount: null,
+            customGoogleCertificate: null,
+            defaultGoogleUploadFolderId: null,
+            customGoogleUploadFolderStructure: '',
+            organizationalDomain: '',
+            defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
+            isFilePreviewDisabled: false,
+            maxDeleteChainSize: DEFAULT_MAX_DELETE_CHAIN_SIZE,
+            customGeminiApiKey: '',
+            customModelName: '',
+            customAgentLocation: '',
+            customAgentProjectId: ''
+        };
+    }
+
     toServerSnapshot(recordNode) {
         return {
             developerName: extractGraphValue(recordNode?.DeveloperName),
@@ -370,8 +394,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             maxDeleteChainSize: this.toNumberOrNull(extractGraphValue(recordNode?.MaxDeleteChainSize__c)),
             customGeminiApiKey: extractGraphValue(recordNode?.CustomGeminiApiKey__c) || '',
             customModelName: extractGraphValue(recordNode?.CustomModelName__c) || '',
-            customVertexLocation: extractGraphValue(recordNode?.CustomVertexLocation__c) || '',
-            customVertexProjectId: extractGraphValue(recordNode?.CustomVertexProjectId__c) || ''
+            customAgentLocation: extractGraphValue(recordNode?.CustomAgentLocation__c) || '',
+            customAgentProjectId: extractGraphValue(recordNode?.CustomAgentProjectId__c) || ''
         };
     }
 
@@ -390,8 +414,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             maxDeleteChainSize: serverSnapshot.maxDeleteChainSize,
             customGeminiApiKey: serverSnapshot.customGeminiApiKey || '',
             customModelName: serverSnapshot.customModelName || '',
-            customVertexLocation: serverSnapshot.customVertexLocation || '',
-            customVertexProjectId: serverSnapshot.customVertexProjectId || ''
+            customAgentLocation: serverSnapshot.customAgentLocation || '',
+            customAgentProjectId: serverSnapshot.customAgentProjectId || ''
         };
     }
 
@@ -421,8 +445,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'CustomGoogleUploadFolderStructure__c', serverState.customGoogleUploadFolderStructure, draftState.customGoogleUploadFolderStructure);
         this.putIfChanged(changed, 'CustomGeminiApiKey__c', serverState.customGeminiApiKey, draftState.customGeminiApiKey);
         this.putIfChanged(changed, 'CustomModelName__c', serverState.customModelName, draftState.customModelName);
-        this.putIfChanged(changed, 'CustomVertexLocation__c', serverState.customVertexLocation, draftState.customVertexLocation);
-        this.putIfChanged(changed, 'CustomVertexProjectId__c', serverState.customVertexProjectId, draftState.customVertexProjectId);
+        this.putIfChanged(changed, 'CustomAgentLocation__c', serverState.customAgentLocation, draftState.customAgentLocation);
+        this.putIfChanged(changed, 'CustomAgentProjectId__c', serverState.customAgentProjectId, draftState.customAgentProjectId);
 
         return changed;
     }
@@ -440,8 +464,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             maxDeleteChainSize: draftState.maxDeleteChainSize,
             customGeminiApiKey: draftState.customGeminiApiKey || '',
             customModelName: draftState.customModelName || '',
-            customVertexLocation: draftState.customVertexLocation || '',
-            customVertexProjectId: draftState.customVertexProjectId || ''
+            customAgentLocation: draftState.customAgentLocation || '',
+            customAgentProjectId: draftState.customAgentProjectId || ''
         };
     }
 
@@ -579,8 +603,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.maxDeleteChainSize ?? null) !== (draftState.maxDeleteChainSize ?? null) ||
             (serverState.customGeminiApiKey || '') !== (draftState.customGeminiApiKey || '') ||
             (serverState.customModelName || '') !== (draftState.customModelName || '') ||
-            (serverState.customVertexLocation || '') !== (draftState.customVertexLocation || '') ||
-            (serverState.customVertexProjectId || '') !== (draftState.customVertexProjectId || '')
+            (serverState.customAgentLocation || '') !== (draftState.customAgentLocation || '') ||
+            (serverState.customAgentProjectId || '') !== (draftState.customAgentProjectId || '')
         );
     }
 

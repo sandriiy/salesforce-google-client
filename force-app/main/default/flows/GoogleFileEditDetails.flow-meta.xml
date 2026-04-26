@@ -7,6 +7,7 @@
         <locationY>0</locationY>
         <actionName>GoogleFileEditDetailsAction</actionName>
         <actionType>apex</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
         <inputParameters>
             <name>localFileRecord</name>
             <value>
@@ -37,8 +38,11 @@
                 <elementReference>GoogleFileVersionName</elementReference>
             </value>
         </inputParameters>
+        <nameSegment>GoogleFileEditDetailsAction</nameSegment>
+        <offset>0</offset>
     </actionCalls>
     <apiVersion>66.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <decisions>
         <description>When enabled, you can view the content but cannot make any changes.</description>
         <name>EnabledReadOnlyModeCheck</name>
@@ -146,7 +150,6 @@
         </connector>
         <fields>
             <name>PageLayout_Section1</name>
-			<regionContainerType>SectionWithoutHeader</regionContainerType>
             <fieldType>RegionContainer</fieldType>
             <fields>
                 <name>PageLayout_Section1_Column1</name>
@@ -160,10 +163,19 @@
                     <fieldText>File Name</fieldText>
                     <fieldType>InputField</fieldType>
                     <helpText>&lt;p&gt;Main file name for the record that groups all versions of this file.&lt;/p&gt;</helpText>
+                    <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>true</isRequired>
+                    <styleProperties>
+                        <verticalAlignment>
+                            <stringValue>top</stringValue>
+                        </verticalAlignment>
+                        <width>
+                            <stringValue>12</stringValue>
+                        </width>
+                    </styleProperties>
                     <validationRule>
                         <errorMessage>&lt;p&gt;&lt;span style=&quot;background-color: rgb(255, 255, 255);&quot;&gt;Please shorten the file name to 80 characters or fewer&lt;/span&gt;&lt;/p&gt;</errorMessage>
                         <formulaExpression>IF(LEN({!GoogleFileName}) &gt; 80, FALSE, TRUE)</formulaExpression>
@@ -178,10 +190,19 @@
                     <fieldText>File Version Name</fieldText>
                     <fieldType>InputField</fieldType>
                     <helpText>&lt;p&gt;Name of this specific version of the file, displayed in views across the application.&lt;/p&gt;</helpText>
+                    <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>true</isRequired>
+                    <styleProperties>
+                        <verticalAlignment>
+                            <stringValue>top</stringValue>
+                        </verticalAlignment>
+                        <width>
+                            <stringValue>12</stringValue>
+                        </width>
+                    </styleProperties>
                     <validationRule>
                         <errorMessage>&lt;p&gt;&lt;span style=&quot;background-color: rgb(255, 255, 255);&quot;&gt;Please shorten the file name to 80 characters or fewer&lt;/span&gt;&lt;/p&gt;</errorMessage>
                         <formulaExpression>IF(LEN({!GoogleFileName}) &gt; 80, FALSE, TRUE)</formulaExpression>
@@ -205,10 +226,19 @@
                     </defaultValue>
                     <fieldText>Description</fieldText>
                     <fieldType>LargeTextArea</fieldType>
+                    <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>
                     </isDisabled>
                     <isRequired>false</isRequired>
+                    <styleProperties>
+                        <verticalAlignment>
+                            <stringValue>top</stringValue>
+                        </verticalAlignment>
+                        <width>
+                            <stringValue>12</stringValue>
+                        </width>
+                    </styleProperties>
                     <validationRule>
                         <errorMessage>&lt;p&gt;&lt;span style=&quot;background-color: rgb(255, 255, 255);&quot;&gt;Please shorten the file description to 2048 characters or fewer&lt;/span&gt;&lt;/p&gt;</errorMessage>
                         <formulaExpression>IF(LEN({!Description}) &gt; 2048, FALSE, TRUE)</formulaExpression>
@@ -223,7 +253,17 @@
                 <isRequired>false</isRequired>
             </fields>
             <isRequired>false</isRequired>
+            <regionContainerType>SectionWithoutHeader</regionContainerType>
+            <styleProperties>
+                <verticalAlignment>
+                    <stringValue>top</stringValue>
+                </verticalAlignment>
+                <width>
+                    <stringValue>12</stringValue>
+                </width>
+            </styleProperties>
         </fields>
+        <nextOrFinishButtonLabel>Save</nextOrFinishButtonLabel>
         <showFooter>true</showFooter>
         <showHeader>false</showHeader>
     </screens>

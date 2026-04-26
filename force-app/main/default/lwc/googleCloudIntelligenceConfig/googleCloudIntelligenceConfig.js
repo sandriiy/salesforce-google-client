@@ -4,11 +4,11 @@ import { asString } from 'c/googleCloudUtils';
 
 const PROVIDER = {
     GEMINI: 'gemini',
-    VERTEX: 'vertex'
+    AGENT: 'agent'
 };
 
 const GEMINI_SETUP_URL = 'https://ai.google.dev/gemini-api/docs/api-key';
-const VERTEX_SETUP_URL = 'https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start';
+const AGENT_SETUP_URL = 'https://cloud.google.com/vertex-ai/generative-ai/docs/start';
 
 export default class GoogleCloudIntelligenceConfig extends LightningElement {
     @api draft;
@@ -52,8 +52,8 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         this.currentProvider = provider;
 
         if (provider === PROVIDER.GEMINI) {
-            this.dispatchFieldChange('customVertexProjectId', '');
-            this.dispatchFieldChange('customVertexLocation', '');
+            this.dispatchFieldChange('customAgentProjectId', '');
+            this.dispatchFieldChange('customAgentLocation', '');
             return;
         }
 
@@ -96,61 +96,61 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
     }
 
     inferProviderFromDraft() {
-        const hasVertexSetup =
-            !!asString(this.draft?.customVertexProjectId).trim() ||
-            !!asString(this.draft?.customVertexLocation).trim();
+        const hasAgentSetup =
+            !!asString(this.draft?.customAgentProjectId).trim() ||
+            !!asString(this.draft?.customAgentLocation).trim();
         const hasGeminiSetup = !!asString(this.draft?.customGeminiApiKey).trim();
 
-        if (hasVertexSetup) {
-            return PROVIDER.VERTEX;
+        if (hasAgentSetup) {
+            return PROVIDER.AGENT;
         }
 
         if (hasGeminiSetup) {
             return PROVIDER.GEMINI;
         }
 
-        return PROVIDER.VERTEX;
+        return PROVIDER.AGENT;
     }
 
     get provider() {
         const hasAnyConfiguredValue =
             !!asString(this.draft?.customGeminiApiKey).trim() ||
-            !!asString(this.draft?.customVertexProjectId).trim() ||
-            !!asString(this.draft?.customVertexLocation).trim();
+            !!asString(this.draft?.customAgentProjectId).trim() ||
+            !!asString(this.draft?.customAgentLocation).trim();
 
         if (hasAnyConfiguredValue) {
             return this.inferProviderFromDraft();
         }
 
-        return this.currentProvider || PROVIDER.VERTEX;
+        return this.currentProvider || PROVIDER.AGENT;
     }
 
     get isGeminiMode() {
         return this.provider === PROVIDER.GEMINI;
     }
 
-    get isVertexMode() {
-        return this.provider === PROVIDER.VERTEX;
+    get isAgentMode() {
+        return this.provider === PROVIDER.AGENT;
     }
 
     get geminiOptionClass() {
         return `step-button provider-option ${this.isGeminiMode ? 'is-active' : ''}`;
     }
 
-    get vertexOptionClass() {
-        return `step-button provider-option ${this.isVertexMode ? 'is-active' : ''}`;
+    get agentOptionClass() {
+        return `step-button provider-option ${this.isAgentMode ? 'is-active' : ''}`;
     }
 
     get selectedGuideUrl() {
-        return this.isGeminiMode ? GEMINI_SETUP_URL : VERTEX_SETUP_URL;
+        return this.isGeminiMode ? GEMINI_SETUP_URL : AGENT_SETUP_URL;
     }
 
     get setupGuideButtonLabel() {
-        return this.isGeminiMode ? 'Open Gemini Setup Guide' : 'Open Vertex Setup Guide';
+        return this.isGeminiMode ? 'Open Gemini Setup Guide' : 'Open Agent Platform Setup Guide';
     }
 
     get quickSetupTitle() {
-        return this.isGeminiMode ? 'Gemini Quick Setup' : 'Vertex Quick Setup';
+        return this.isGeminiMode ? 'Gemini Quick Setup' : 'Agent Platform Quick Setup';
     }
 
     get primaryActionLabel() {
@@ -160,19 +160,19 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
     get isConfigDirty() {
         const serverGeminiApiKey = asString(this.server?.customGeminiApiKey).trim();
         const serverModelName = asString(this.server?.customModelName).trim();
-        const serverVertexLocation = asString(this.server?.customVertexLocation).trim();
-        const serverVertexProjectId = asString(this.server?.customVertexProjectId).trim();
+        const serverAgentLocation = asString(this.server?.customAgentLocation).trim();
+        const serverAgentProjectId = asString(this.server?.customAgentProjectId).trim();
 
         const draftGeminiApiKey = asString(this.draft?.customGeminiApiKey).trim();
         const draftModelName = asString(this.draft?.customModelName).trim();
-        const draftVertexLocation = asString(this.draft?.customVertexLocation).trim();
-        const draftVertexProjectId = asString(this.draft?.customVertexProjectId).trim();
+        const draftAgentLocation = asString(this.draft?.customAgentLocation).trim();
+        const draftAgentProjectId = asString(this.draft?.customAgentProjectId).trim();
 
         return (
             serverGeminiApiKey !== draftGeminiApiKey ||
             serverModelName !== draftModelName ||
-            serverVertexLocation !== draftVertexLocation ||
-            serverVertexProjectId !== draftVertexProjectId
+            serverAgentLocation !== draftAgentLocation ||
+            serverAgentProjectId !== draftAgentProjectId
         );
     }
 }

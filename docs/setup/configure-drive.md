@@ -1,19 +1,16 @@
-# Install & Configure
+# Configure Google Workspace
 
-Once dependencies are installed and auth is ready, install **Salesforce Google Client**.
+This guide walks through configuring the **Google Workspace (Drive)** connection inside the Google Client app. This is the minimum required integration, it enables all file management features: upload, preview, sharing, versioning, and folder structure automation.
 
-## Install
+!!! note
+    Haven't installed the package yet? Start here: [Install](install-and-dependencies.md)
 
-Package install command:
-```bash
-sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MKfIAM
-```
-
-## Configure in the Google Client App
+## Before you begin
 
 Before configuring the application, the administrator must grant themselves access to the app.
 
 ### Step 1: Assign Admin Permissions
+
 
 1. Assign the **Google Cloud Client Admin** permission set to your user.
 2. This permission grants access to the **Google Client** application and configuration features.
@@ -35,10 +32,10 @@ After permissions are assigned:
 
 Google Client supports two authentication setup options:
 
-1. **Admin setup (recommended for most orgs)** — no Apex coding required  
-2. **Developer setup (custom authorizer class)** — for advanced or fully custom scenarios  
+1. **Admin setup (recommended for most orgs)**, no Apex coding required
+2. **Developer setup (custom authorizer class)**, for advanced or fully custom scenarios
 
-Both options require that you already uploaded a **Salesforce certificate** (JKS) as described on the previous page, and that you know your **Service Account email**.
+Both options require that you already uploaded a **Salesforce certificate** (JKS) as described on the [Configure Certificate](configure-certificate.md) page, and that you know your **Service Account email**.
 
 #### Option A: Admin Setup (No Code)
 
@@ -62,9 +59,9 @@ Use this option if you need a custom token strategy or want to fully control aut
 
 ![Developer Setup](../assets/images/config_auth_developer.png)
 
-📘 Reference documentation: [Library Authorization Flow](https://github.com/sandriiy/salesforce-google-drive-library/wiki/Library-Authorization-Flow)
+📘 Reference documentation: [Library Authorization Flow](https://github.com/sandriiy/salesforce-google-drive-library/wiki/Library-Authorization-Flow){ target="_blank" rel="noopener noreferrer" }
 
-📘 Certificate setup (use the certificate created earlier): [Service Account Setup](google-cloud.md)
+📘 Certificate setup (use the certificate created earlier): [Configure Certificate](configure-certificate.md)
 
 ### Step 4: Complete Application Configuration
 
@@ -77,5 +74,8 @@ After authentication is configured:
 
 - Use a **Shared Drive** for centralized, team-managed access.
 - Maintain a dedicated root folder per environment (**Dev / UAT / Prod**).
+
+!!! note
+    Google Workspace is now configured. If you'd like to take things further — AI analytics, policy checks, smart labeling, and more — you can also set up the AI & Intelligence layer: [Configure AI & Intelligence](configure-intelligence.md)
 
 <br>

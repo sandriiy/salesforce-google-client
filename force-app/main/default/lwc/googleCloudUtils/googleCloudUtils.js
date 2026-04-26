@@ -352,11 +352,8 @@ const normalizeError = (input) => {
 			messages.push(value.message);
 		}
 
-		// Common message fields
 		if (typeof value.message === 'string') messages.push(value.message);
-		if (typeof value.statusText === 'string') messages.push(value.statusText);
 
-		// Common LWC / Apex / UI API shapes
 		if (Array.isArray(value.body)) {
 			value.body.forEach(visit);
 		} else if (value.body != null) {

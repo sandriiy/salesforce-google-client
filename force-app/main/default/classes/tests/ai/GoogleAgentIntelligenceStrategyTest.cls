@@ -22,11 +22,11 @@
  * SOFTWARE.
  */
 @IsTest
-private class GoogleVertexIntelligenceStrategyTest {
-	private static GoogleClientConfig__mdt buildVertexConfig(String projectId, String location, String modelName) {
+private class GoogleAgentIntelligenceStrategyTest {
+	private static GoogleClientConfig__mdt buildAgentConfig(String projectId, String location, String modelName) {
 		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
-		config.CustomVertexProjectId__c = projectId;
-		config.CustomVertexLocation__c = location;
+		config.CustomAgentProjectId__c = projectId;
+		config.CustomAgentLocation__c = location;
 		config.CustomModelName__c = modelName;
 		return config;
 	}
@@ -39,10 +39,10 @@ private class GoogleVertexIntelligenceStrategyTest {
 
 		Test.startTest();
 		try {
-			new GoogleVertexIntelligenceStrategy().validate();
+			new GoogleAgentIntelligenceStrategy().validate();
 			Assert.isTrue(false);
-		} catch (GoogleVertexIntelligenceStrategy.GoogleVertexConfigurationException ex) {
-			Assert.isTrue(ex.getMessage().contains('Unable to locate the Vertex'));
+		} catch (GoogleAgentIntelligenceStrategy.GoogleAgentConfigurationException ex) {
+			Assert.isTrue(ex.getMessage().contains('Unable to locate the Agent Platform'));
 		}
 		Test.stopTest();
 	}
@@ -50,11 +50,11 @@ private class GoogleVertexIntelligenceStrategyTest {
 	@IsTest
 	private static void testValidatePositive() {
 		GoogleCloudTestFactory.initMocks();
-		GoogleMetadataConfigService.configRecordOverride = buildVertexConfig('project-1', 'us-central1', 'gemini-2.0-flash');
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'us-central1', 'gemini-2.0-flash');
 		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
 
 		Test.startTest();
-		Boolean isValid = new GoogleVertexIntelligenceStrategy().validate();
+		Boolean isValid = new GoogleAgentIntelligenceStrategy().validate();
 		Test.stopTest();
 
 		Assert.isTrue(isValid);
@@ -63,11 +63,11 @@ private class GoogleVertexIntelligenceStrategyTest {
 	@IsTest
 	private static void testValidatePositiveEmptyBody() {
 		GoogleCloudTestFactory.initMocks();
-		GoogleMetadataConfigService.configRecordOverride = buildVertexConfig('project-1', 'us-central1', 'gemini-2.0-flash');
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'us-central1', 'gemini-2.0-flash');
 		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock().withEmptyBody());
 
 		Test.startTest();
-		Boolean isValid = new GoogleVertexIntelligenceStrategy().validate();
+		Boolean isValid = new GoogleAgentIntelligenceStrategy().validate();
 		Test.stopTest();
 
 		Assert.isFalse(isValid);
@@ -76,15 +76,15 @@ private class GoogleVertexIntelligenceStrategyTest {
 	@IsTest
 	private static void testValidateNegativeNoModel() {
 		GoogleCloudTestFactory.initMocks();
-		GoogleMetadataConfigService.configRecordOverride = buildVertexConfig('project-1', 'us-central1', null);
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'us-central1', null);
 		Test.setMock(HttpCalloutMock.class, new GoogleCompositeHttpMock());
 
 		Test.startTest();
 		try {
-			new GoogleVertexIntelligenceStrategy().validate();
+			new GoogleAgentIntelligenceStrategy().validate();
 			Assert.isTrue(false);
-		} catch (GoogleVertexIntelligenceStrategy.GoogleVertexConfigurationException ex) {
-			Assert.isTrue(ex.getMessage().contains('Unable to locate the Vertex model name'));
+		} catch (GoogleAgentIntelligenceStrategy.GoogleAgentConfigurationException ex) {
+			Assert.isTrue(ex.getMessage().contains('Unable to locate the Agent Platform model name'));
 		}
 		Test.stopTest();
 	}
@@ -92,15 +92,15 @@ private class GoogleVertexIntelligenceStrategyTest {
 	@IsTest
 	private static void testValidateNegativeHttpError() {
 		GoogleCloudTestFactory.initMocks();
-		GoogleMetadataConfigService.configRecordOverride = buildVertexConfig('project-1', 'us-central1', 'gemini-2.0-flash');
-		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock().withErrorResponse(403, 'Vertex permission denied'));
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'us-central1', 'gemini-2.0-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock().withErrorResponse(403, 'Agent permission denied'));
 
 		Test.startTest();
 		try {
-			new GoogleVertexIntelligenceStrategy().validate();
+			new GoogleAgentIntelligenceStrategy().validate();
 			Assert.isTrue(false);
-		} catch (GoogleVertexIntelligenceStrategy.GoogleVertexConfigurationException ex) {
-			Assert.isTrue(ex.getMessage().contains('Vertex permission denied'));
+		} catch (GoogleAgentIntelligenceStrategy.GoogleAgentConfigurationException ex) {
+			Assert.isTrue(ex.getMessage().contains('Agent permission denied'));
 		}
 		Test.stopTest();
 	}
@@ -110,7 +110,7 @@ private class GoogleVertexIntelligenceStrategyTest {
 		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
-		GoogleFileAnalysisResultDTO result = new GoogleVertexIntelligenceStrategy().summarize(null);
+		GoogleFileAnalysisResultDTO result = new GoogleAgentIntelligenceStrategy().summarize(null);
 		Test.stopTest();
 
 		Assert.areEqual(null, result);
@@ -121,7 +121,7 @@ private class GoogleVertexIntelligenceStrategyTest {
 		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
-		GoogleFileAnalysisResultDTO result = new GoogleVertexIntelligenceStrategy().answerQuestion(null, null);
+		GoogleFileAnalysisResultDTO result = new GoogleAgentIntelligenceStrategy().answerQuestion(null, null);
 		Test.stopTest();
 
 		Assert.areEqual(null, result);

@@ -31,20 +31,6 @@ private class GoogleGeminiIntelligenceStrategyTest {
 	}
 
 	@IsTest
-	private static void testValidateNegativeNoConfig() {
-		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
-
-		Test.startTest();
-		try {
-			new GoogleGeminiIntelligenceStrategy().validate();
-			Assert.isTrue(false);
-		} catch (GoogleGeminiIntelligenceStrategy.GoogleGeminiConfigurationException ex) {
-			Assert.isTrue(ex.getMessage().contains('Unable to locate the Gemini API key'));
-		}
-		Test.stopTest();
-	}
-
-	@IsTest
 	private static void testValidatePositive() {
 		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
 		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());

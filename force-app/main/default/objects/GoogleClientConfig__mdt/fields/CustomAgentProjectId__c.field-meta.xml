@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CustomAgentProjectId__c</fullName>
+    <description>The Google Cloud Project ID that contains your Agent Platform (ex-Vertex AI) configuration.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>The Google Cloud Project ID that contains your Agent Platform (ex-Vertex AI) configuration.</inlineHelpText>
+    <label>Custom Agent Project ID</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

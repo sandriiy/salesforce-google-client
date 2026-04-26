@@ -14,19 +14,21 @@
 
 ## <span id="getting-started">Getting Started</span>
 > [!NOTE]
-> This open-source project can be backed by an enterprise support plan for production use, including hands-on setup, security guidance, troubleshooting, and prioritized feature extensions delivered in an upgrade-safe way. Contact [opensupport@cloudrylabs.com](mailto:opensupport@cloudrylabs.com) for details.
+> Have an idea, want to collaborate, or just need a hand with something? Please reach out at [ansukhetskyi@cloudrylabs.com](mailto:ansukhetskyi@cloudrylabs.com).
 
-**Salesforce Google Client** is an intelligent, server-to-server solution between Salesforce and Google Cloud, designed to simplify file management, reduce Salesforce storage costs, and make Google Drive files behave like native Salesforce files.
+**Salesforce Google Client** is a lightweight, server-to-server connector between Salesforce and Google Cloud, built to simplify file management, eliminate unnecessary storage costs, and bring the full power of Google Drive into your Salesforce environment without disrupting existing workflows.
 
-At its core, this project allows you to connect Salesforce to Google Drive and work with files **exactly as if they were standard Salesforce Files** — upload, preview, details, share, generate public links  — while the actual files live securely inside Google Workspace. From a user perspective, there is no visible difference: files feel fully native to Salesforce, even though they are powered by Google Cloud.
+It works as a transparent layer — files live in Google Drive and appear inside Salesforce exactly like native attachments. Your team can upload, preview, share, manage versions, and generate public links without ever leaving Salesforce, while the actual files remain securely in Google Workspace. There is no visible difference for end users, and no changes to how files move through your business.
 
-Beyond cost optimization, the client addresses long-standing limitations of Salesforce Files:
-- True document previews (not image-based rendering)
-- Full document interaction (signing, text selection, printing, copying)
+For organizations looking to modernize their document experience, the client delivers:
+- True document previews with full interaction (text selection, printing, signing)
+- File versioning and folder structure management
+- Sharing controls and secure public link generation
+- Automated upload workflows via Screen Flows
 - Built-in Google Cloud virus scanning
-- Enterprise-grade security and auditing
-- Detailed usage and access reporting on the Google Cloud side
-- Secure public link generation
+- Enterprise-grade audit trails and access reporting
+- AI-powered file processing through Gemini integration
+- End-to-end security aligned with Google Cloud standards
 
 ## Installation
 
@@ -38,14 +40,14 @@ This client depends on two required packages, which **must be installed first**:
 
 Once both dependencies are installed, you can install the Salesforce Google Client package:
 
-`sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MKfIAM`
+`sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MVaIAM`
 
 <br>
 <div align="center" style="display: flex; justify-content: space-between;">
-  <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MKfIAM">
+  <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MVaIAM">
     <img src="https://img.shields.io/badge/Install%20In%20Sandbox-blue?style=for-the-badge&logo=salesforce" alt="Install the Unlocked Package in Sandbox">
   </a>
-  <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MKfIAM">
+  <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MVaIAM">
     <img src="https://img.shields.io/badge/Install%20In%20Production-blue?style=for-the-badge&logo=salesforce" alt="Install the Unlocked Package in Production">
   </a>
 </div>

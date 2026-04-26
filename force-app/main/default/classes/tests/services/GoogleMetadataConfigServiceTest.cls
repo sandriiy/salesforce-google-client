@@ -94,7 +94,30 @@ private class GoogleMetadataConfigServiceTest {
 	}
 
 	@IsTest
+	private static void testSaveConfigPositiveCreatesRecordWhenNotExists() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new SuccessDeployer());
+
+		Map<String, Object> changes = new Map<String, Object>{
+			'CustomGoogleCertificate__c' => 'MyCert',
+			'CustomGoogleServiceAccount__c' => 'sa@project.iam.gserviceaccount.com'
+		};
+
+		Test.startTest();
+		Id result = svc.saveConfig(changes);
+		Test.stopTest();
+
+		System.assertNotEquals(null, result, 'Should return a deployment Id when creating a new record');
+	}
+
+	@IsTest
 	private static void testGettersPositiveValues() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			IsFilePreviewDisabled__c = false,
+			DefaultBigFileSize__c = 2097152,
+			MaxDeleteChainSize__c = 3
+		);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
 		System.assertNotEquals(null, svc.isPreviewDisabled());
 		System.assertNotEquals(null, svc.getBigFileSizeInBytes());

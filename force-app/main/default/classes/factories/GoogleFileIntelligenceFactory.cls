@@ -31,15 +31,15 @@ public with sharing class GoogleFileIntelligenceFactory {
 
     public IGoogleFileIntelligenceStrategy create() {
 		String geminiKey = metadataConfig.getGoogleGeminiKey();
-		String vertexLocation = metadataConfig.getGoogleVertexLocation();
-		String vertexProjectId = metadataConfig.getGoogleVertexProjectId();
+		String agentLocation = metadataConfig.getGoogleAgentLocation();
+		String agentProjectId = metadataConfig.getGoogleAgentProjectId();
 
 		if (String.isNotBlank(geminiKey)) {
 			return new GoogleGeminiIntelligenceStrategy();
-		} else if (String.isNotBlank(vertexLocation) && String.isNotBlank(vertexProjectId)) {
-			return new GoogleVertexIntelligenceStrategy();
+		} else if (String.isNotBlank(agentLocation) && String.isNotBlank(agentProjectId)) {
+			return new GoogleAgentIntelligenceStrategy();
 		} else {
-			throw new GoogleFileIntelligenceFactoryException('Unable to determine which Google AI Strategy to use. Please verify the configuration for Gemini or Vertex AI is set correctly');
+			throw new GoogleFileIntelligenceFactoryException('Unable to determine which Google AI Strategy to use. Please verify the configuration for Gemini or Agent Platform (ex-Vertex AI) is set correctly');
 		}
     }
 }

@@ -30,6 +30,9 @@ public inherited sharing class GoogleMetadataConfigService {
 	public static final String DEFAULT_METADATA_DEPLOY_KEY = 'DefaultGoogleMetadataDeployerKey';
 	public static final String DEFAULT_AUTH_CLASS_NAME = 'DefaultGoogleDriveAuthorizer';
 
+	private static final String DEFAULT_RECORD_DEVELOPER_NAME = 'GoogleClient';
+	private static final String DEFAULT_RECORD_LABEL = 'Google Client';
+
 	@TestVisible
 	private static GoogleClientConfig__mdt configRecordOverride;
 
@@ -110,12 +113,12 @@ public inherited sharing class GoogleMetadataConfigService {
         return configRecord.CustomModelName__c;
     }
 
-	public String getGoogleVertexLocation() {
-        return configRecord.CustomVertexLocation__c;
+	public String getGoogleAgentLocation() {
+        return configRecord.CustomAgentLocation__c;
     }
 
-	public String getGoogleVertexProjectId() {
-        return configRecord.CustomVertexProjectId__c;
+	public String getGoogleAgentProjectId() {
+        return configRecord.CustomAgentProjectId__c;
     }
 
 	public String getGoogleDriveDomain() {
@@ -127,8 +130,8 @@ public inherited sharing class GoogleMetadataConfigService {
             Metadata.DeployContainer container = new Metadata.DeployContainer();
 
             Metadata.CustomMetadata cmdt = new Metadata.CustomMetadata();
-            cmdt.fullName = 'GoogleClientConfig__mdt.' + configRecord.DeveloperName;
-            cmdt.label = configRecord.MasterLabel;
+            cmdt.fullName = 'GoogleClientConfig__mdt.' + (String.isNotBlank(configRecord.DeveloperName) ? configRecord.DeveloperName : DEFAULT_RECORD_DEVELOPER_NAME);
+            cmdt.label = String.isNotBlank(configRecord.MasterLabel) ? configRecord.MasterLabel : DEFAULT_RECORD_LABEL;
 
             cmdt.values = new List<Metadata.CustomMetadataValue>();
 

@@ -26,7 +26,8 @@
                             placeholder={selectFromObjectPlaceholder}
                             object-api-name={selectFromObjectApiName}
                             filter={selectFromObjectFilters}
-                            onchange={handleShareRecordChange}>
+                            onchange={handleShareRecordChange}
+                            onerror={handleRecordPickerError}>
                         </lightning-record-picker>
                     </div>
                     <div class="slds-col slds-grow">

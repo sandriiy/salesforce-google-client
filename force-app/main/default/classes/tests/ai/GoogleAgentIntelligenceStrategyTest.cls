@@ -23,6 +23,12 @@
  */
 @IsTest
 private class GoogleAgentIntelligenceStrategyTest {
+	private class AccessTokenProviderStub implements IGenAiAccessTokenProvider {
+		public GenAiAccessToken token() {
+			return new GenAiAccessToken('Bearer', 'custom-access-token');
+		}
+	}
+
 	private static GoogleClientConfig__mdt buildAgentConfig(String projectId, String location, String modelName) {
 		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
 		config.CustomAgentProjectId__c = projectId;
@@ -55,6 +61,18 @@ private class GoogleAgentIntelligenceStrategyTest {
 
 		Test.startTest();
 		Boolean isValid = new GoogleAgentIntelligenceStrategy().validate();
+		Test.stopTest();
+
+		Assert.isTrue(isValid);
+	}
+
+	@IsTest
+	private static void testValidatePositiveWithCustomTokenProvider() {
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'us-central1', 'gemini-2.0-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
+
+		Test.startTest();
+		Boolean isValid = new GoogleAgentIntelligenceStrategy(new AccessTokenProviderStub()).validate();
 		Test.stopTest();
 
 		Assert.isTrue(isValid);

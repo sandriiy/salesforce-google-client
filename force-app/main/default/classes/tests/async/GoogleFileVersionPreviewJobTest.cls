@@ -50,10 +50,50 @@ private class GoogleFileVersionPreviewJobTest {
 		});
 
 		Test.startTest();
-		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).execute(null);
+		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).work();
 		Test.stopTest();
 
 		Assert.isTrue(true);
+	}
+
+	@IsTest
+	private static void testExecutePositiveWithPreviewablePdfVersion() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('PJPDF')
+			.withDescription('D')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('VPDF.pdf')
+			.withType('application/pdf')
+			.withSize(1)
+			.withDriveId('GD_PJ_PDF')
+			.insertRecord();
+
+		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
+			[
+				SELECT Id, Name, GoogleDriveFolderId__c, IsLatestFile__c, PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c,
+					CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c
+				FROM GoogleFileVersion__c
+				WHERE Id = :version.Id
+			]
+		});
+
+		Test.startTest();
+		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).work();
+		Test.stopTest();
+
+		GoogleFileVersion__c refreshedVersion = [
+			SELECT GoogleDocsFileId__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :version.Id
+			LIMIT 1
+		];
+
+		Assert.isTrue(String.isNotBlank(refreshedVersion.GoogleDocsFileId__c));
 	}
 
 	@IsTest
@@ -61,7 +101,7 @@ private class GoogleFileVersionPreviewJobTest {
 		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
-		new GoogleFileVersionPreviewJob(new Set<Id>()).execute(null);
+		new GoogleFileVersionPreviewJob(new Set<Id>()).work();
 		Test.stopTest();
 
 		Assert.isTrue(true);
@@ -72,7 +112,7 @@ private class GoogleFileVersionPreviewJobTest {
 		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
-		new GoogleFileVersionPreviewJob(null).execute(null);
+		new GoogleFileVersionPreviewJob(null).work();
 		Test.stopTest();
 
 		Assert.isTrue(true);
@@ -106,7 +146,7 @@ private class GoogleFileVersionPreviewJobTest {
 		});
 
 		Test.startTest();
-		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).execute(null);
+		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).work();
 		Test.stopTest();
 
 		Assert.isTrue(true);

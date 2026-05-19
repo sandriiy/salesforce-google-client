@@ -26,7 +26,7 @@ private class GoogleFileCloudFolderJobTest {
 	@IsTest
 	private static void testExecutePositiveNullRequest() {
 		Test.startTest();
-		new GoogleFileCloudFolderJob(null).execute(null);
+		new GoogleFileCloudFolderJob((List<GoogleFileRelocationRequestDTO>) null).work();
 		Test.stopTest();
 
 		Assert.isTrue(true);
@@ -65,7 +65,7 @@ private class GoogleFileCloudFolderJobTest {
 		);
 
 		Test.startTest();
-		new GoogleFileCloudFolderJob(relocationRequest).execute(null);
+		new GoogleFileCloudFolderJob(relocationRequest).work();
 		Test.stopTest();
 
 		Assert.isTrue(true);
@@ -84,7 +84,7 @@ private class GoogleFileCloudFolderJobTest {
 
 		try {
 			Test.startTest();
-			new GoogleFileCloudFolderJob(relocationRequest).execute(null);
+			new GoogleFileCloudFolderJob(relocationRequest).work();
 			Test.stopTest();
 			Assert.isTrue(false);
 		} catch (GoogleFileCloudFolderJob.GoogleFileCloudFolderJobException ex) {

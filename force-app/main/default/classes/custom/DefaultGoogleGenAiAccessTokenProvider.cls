@@ -21,24 +21,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-@IsTest
-private class GoogleLocalFileVersionLifecycleServTest {
-	@IsTest
-	private static void testMarkAsLatestVersionIfApplicablePositiveNoInput() {
-		Test.startTest();
-		new GoogleLocalFileVersionLifecycleService().markAsLatestVersionIfApplicable(
-			new List<GoogleFileVersion__c>(),
-			new List<GoogleFileVersion__c>()
-		);
-		Test.stopTest();
-		Assert.isTrue(true);
-	}
+public with sharing class DefaultGoogleGenAiAccessTokenProvider implements IGenAiAccessTokenProvider {
+    private GoogleClientApiProvider googleApiProvider;
 
-	@IsTest
-	private static void testApplyPreviewStateIfEligiblePositiveNoInput() {
-		Test.startTest();
-		new GoogleLocalFileVersionLifecycleService().applyPreviewStateIfEligible(null);
-		Test.stopTest();
-		Assert.isTrue(true);
-	}
+    public DefaultGoogleGenAiAccessTokenProvider() {
+        this(new GoogleClientApiProvider());
+    }
+
+    @TestVisible
+    private DefaultGoogleGenAiAccessTokenProvider(GoogleClientApiProvider googleApiProvider) {
+        this.googleApiProvider = googleApiProvider;
+    }
+
+    public GenAiAccessToken token() {
+        GoogleCredential googleCredential = googleApiProvider.retrieveGoogleClientCreds();
+        if (googleCredential == null) {
+            return null;
+        }
+
+        return new GenAiAccessToken(googleCredential.tokenType, googleCredential.accessToken);
+    }
 }

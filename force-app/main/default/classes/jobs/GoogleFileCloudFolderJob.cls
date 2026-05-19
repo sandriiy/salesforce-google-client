@@ -21,21 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-public with sharing class GoogleFileCloudFolderJob implements Queueable, Database.AllowsCallouts {
+public with sharing class GoogleFileCloudFolderJob extends GQueueableJob.AllowsCallouts {
     public class GoogleFileCloudFolderJobException extends Exception {}
 
     @TestVisible
     private static Boolean skipExecution = false;
 
-    private final GoogleFileRelocationRequestDTO request;
+    private final List<GoogleFileRelocationRequestDTO> requests;
 
     public GoogleFileCloudFolderJob(GoogleFileRelocationRequestDTO request) {
-        this.request = request;
+        this.requests = request == null
+            ? new List<GoogleFileRelocationRequestDTO>()
+            : new List<GoogleFileRelocationRequestDTO>{ request };
     }
 
-    public void execute(QueueableContext context) {
+    public GoogleFileCloudFolderJob(List<GoogleFileRelocationRequestDTO> requests) {
+        this.requests = requests == null
+            ? new List<GoogleFileRelocationRequestDTO>()
+            : new List<GoogleFileRelocationRequestDTO>(requests);
+    }
+
+    public override void work() {
         if (skipExecution) return;
-        if (this.request == null) return;
+        if (this.requests.isEmpty()) return;
 
         IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
             GoogleFile__c.SObjectType,
@@ -44,13 +52,18 @@ public with sharing class GoogleFileCloudFolderJob implements Queueable, Databas
         });
 
         try {
-            Logger.info(
-                'Folder Placement Job --> FileId=' + String.valueOf(this.request.localGoogleFileId) +
-                ', VersionId=' + String.valueOf(this.request.localGoogleFileVersionId) +
-                ', LinkId=' + String.valueOf(this.request.linkLocalGoogleFileId)
-            ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+            for (GoogleFileRelocationRequestDTO request : this.requests) {
+                if (request == null) continue;
 
-            new GoogleFileStoreInFolderCommand(uow).placeFile(this.request);
+                Logger.info(
+                    'Folder Placement Job --> FileId=' + String.valueOf(request.localGoogleFileId) +
+                    ', VersionId=' + String.valueOf(request.localGoogleFileVersionId) +
+                    ', LinkId=' + String.valueOf(request.linkLocalGoogleFileId)
+                ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+                new GoogleFileStoreInFolderCommand(uow).placeFile(request);
+            }
+
             uow.commitWork(true);
         } catch (Exception ex) {
             Logger.error('Folder Placement Job Failed --> ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);

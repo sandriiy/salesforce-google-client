@@ -23,6 +23,12 @@
  */
 @IsTest
 private class GoogleGeminiIntelligenceStrategyTest {
+	private class ApiKeyProviderStub implements IGenAiApiKeyProvider {
+		public GenAiApiKey apiKey() {
+			return new GenAiApiKey('custom-api-key');
+		}
+	}
+
 	private static GoogleClientConfig__mdt buildGeminiConfig(String apiKey, String modelName) {
 		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
 		config.CustomGeminiApiKey__c = apiKey;
@@ -37,6 +43,18 @@ private class GoogleGeminiIntelligenceStrategyTest {
 
 		Test.startTest();
 		Boolean isValid = new GoogleGeminiIntelligenceStrategy().validate();
+		Test.stopTest();
+
+		Assert.isTrue(isValid);
+	}
+
+	@IsTest
+	private static void testValidatePositiveWithCustomApiKeyProvider() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig(null, 'gemini-2.0-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
+
+		Test.startTest();
+		Boolean isValid = new GoogleGeminiIntelligenceStrategy(new ApiKeyProviderStub()).validate();
 		Test.stopTest();
 
 		Assert.isTrue(isValid);

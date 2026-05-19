@@ -57,7 +57,7 @@ This client depends on two required packages, which **must be installed first**:
 <p>Use this option to test Google Client for Salesforce before installing it in production.</p>
 
 <p>
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MVaIAM" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Sandbox-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Sandbox" height="52"></a>
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MVpIAM" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Sandbox-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Sandbox" height="52"></a>
 </p>
 
 <br />
@@ -67,7 +67,7 @@ This client depends on two required packages, which **must be installed first**:
 <p>Use this option when you are ready to install the package in your production org.</p>
 
 <p>
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MVaIAM" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Production-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Production" height="52"></a>
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MVpIAM" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Production-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Production" height="52"></a>
 </p>
 
 </div>
@@ -77,7 +77,7 @@ This client depends on two required packages, which **must be installed first**:
 ### CLI Installation
 
 ```bash
-sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MVaIAM
+sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MVpIAM
 ```
 
 <br />

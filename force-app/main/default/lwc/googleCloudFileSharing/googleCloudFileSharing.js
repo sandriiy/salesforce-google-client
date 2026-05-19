@@ -19,6 +19,7 @@ export default class GoogleCloudFileSharing extends LightningElement {
 	@track isLoading = true;
 
 	@track userId = Id;
+	@track isPortalFilterSupported = true;
 
 	connectedCallback() {
 		this.setDefaultValues();
@@ -35,6 +36,12 @@ export default class GoogleCloudFileSharing extends LightningElement {
 
 	handleShareRecordChange(event) {
 		this.selectedShareToRecordId = event.detail.recordId;
+	}
+
+	handleRecordPickerError(event) {
+		if (event.detail?.error?.errorCode === 'ERR_RP005' || event.detail?.error?.errorCode === 'ERR_RP008') {
+			this.isPortalFilterSupported = false;
+		}
 	}
 
 	async handleNewSharingClick(event) {
@@ -276,6 +283,28 @@ export default class GoogleCloudFileSharing extends LightningElement {
 
 	get selectFromObjectFilters() {
 		if (this.selectFromObjectApiName === 'User') {
+			if (this.isPortalFilterSupported) {
+				return {
+					criteria: [
+						{
+							fieldPath: 'IsActive',
+							operator: 'eq',
+							value: true
+						},
+						{
+							fieldPath: 'IsPortalEnabled',
+							operator: 'eq',
+							value: false
+						},
+						{
+							fieldPath: 'Id',
+							operator: 'nin',
+							value: this.userIdsToExclude
+						}
+					],
+					filterLogic: '1 AND 2 AND 3'
+				};
+			}
 			return {
 				criteria: [
 					{
@@ -284,17 +313,12 @@ export default class GoogleCloudFileSharing extends LightningElement {
 						value: true
 					},
 					{
-						fieldPath: 'IsPortalEnabled',
-						operator: 'eq',
-						value: false
-					},
-					{
 						fieldPath: 'Id',
 						operator: 'nin',
 						value: this.userIdsToExclude
 					}
 				],
-				filterLogic: '1 AND 2 AND 3'
+				filterLogic: '1 AND 2'
 			};
 		} else {
 			return {

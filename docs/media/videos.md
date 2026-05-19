@@ -5,4 +5,9 @@
 
     [Watch on YouTube](https://www.youtube.com/watch?v=sdg7v8cvjMY){ target="_blank" rel="noopener noreferrer" }
 
+???+ video "Quick Overview of Release v1.3.0"
+    How Google Client for Salesforce is moving beyond file storage replacement and becoming a smarter, more secure, and more observable file management layer for Salesforce.
+
+    [Watch on YouTube](https://www.youtube.com/watch?v=cyVFIoocE4I){ target="_blank" rel="noopener noreferrer" }
+
 <br>

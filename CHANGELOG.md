@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-04-27
+
+### Fixed
+
+- Organizations with Experience Cloud fully disabled could not share files because the isPortalEnabled field was not accessible.
+- Non-admin users without View All Data, but assigned the Google Cloud Client Admin permission set, could not run reports and therefore could not view the Analytics dashboard.
+
 ## [1.3.0] - 2026-04-26
 
 ### Added

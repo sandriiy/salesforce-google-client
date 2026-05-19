@@ -2,6 +2,29 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
+???+ example "Hotfix v1.3.1"
+
+    ### Validation Suite Used
+    - [ ] Full Validation Suite
+    - [ ] Quick Regression Suite
+    - [X] Targeted Regression Suite
+
+    ### Release Changes
+    - [X] Fixed 1: Create a new organization where Experience Cloud is fully disabled under Digital Experiences → Settings. Upload a new file and verify that it can be shared without errors.
+    - [X] Fixed 2: Create a new user with the Salesforce license and Standard User profile, then assign the Google Cloud Client Admin permission set. Open the Google Client application and verify that the user can access the Analytics tab and view the dashboard inside it.
+
+    ### Boring Changes
+    - [X] Version number assigned to all hard-coded labels
+    - [X] Version ID is assigned to all installation guides.
+
+    ### Smoke Checks
+    - [X] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [X] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [X] Admin can open Google Client app and browse configuration tabs without errors
+
+    ### Notes
+    - When promoting a new package version, if the installation fails, unassign the Google Cloud Client Admin permission set from all users, then try the installation again.
+
 ???+ example "Release v1.3.0"
 
     ### Validation Suite Used

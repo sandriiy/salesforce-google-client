@@ -1,0 +1,56 @@
+<template>
+	<template lwc:if={showTrigger}>
+		<div class="intelligence-trigger-wrap">
+			<button
+				type="button"
+				class="intelligence-trigger"
+				onclick={handleOpen}
+				title="Analytics"
+				aria-label="Open Analytics">
+				<lightning-icon
+					icon-name="utility:info_alt"
+					size="x-small"
+					alternative-text="Open Analytics"
+					class="intelligence-trigger__icon">
+				</lightning-icon>
+			</button>
+		</div>
+	</template>
+
+	<template lwc:if={showPanel}>
+		<aside class="intelligence-panel" aria-label="File analytics panel">
+			<div class="intelligence-panel__header">
+				<div class="intelligence-panel__eyebrow">File Analytics</div>
+				<lightning-button-icon
+					icon-name="utility:close"
+					variant="bare-inverse"
+					alternative-text="Hide File Analytics"
+					title="Hide File Analytics"
+					class="intelligence-panel__close"
+					onclick={handleClose}>
+				</lightning-button-icon>
+			</div>
+
+			<section class="intelligence-block">
+				<template lwc:if={isLoading}>
+					<div class="intelligence-loading">
+						<lightning-spinner size="small" alternative-text="Loading file analytics"></lightning-spinner>
+					</div>
+				</template>
+				<p lwc:else class={summaryCopyClass}>{summaryCopy}</p>
+			</section>
+
+			<section class="intelligence-block">
+				<div class="intelligence-question-shell">
+					<lightning-icon
+						icon-name="utility:engage"
+						size="x-small"
+						alternative-text="Q/A"
+						class="intelligence-question-shell__icon">
+					</lightning-icon>
+					<input class="intelligence-question-input" type="text" placeholder="Ask a question about this file...">
+				</div>
+			</section>
+		</aside>
+	</template>
+</template>

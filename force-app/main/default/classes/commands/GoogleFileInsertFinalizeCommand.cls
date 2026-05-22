@@ -57,6 +57,12 @@ public with sharing class GoogleFileInsertFinalizeCommand {
                 hasJobs = true;
             }
 
+			Set<Id> summaryCandidateVersionIds = this.versionContextResolver.collectSummaryCandidateVersionIds(versionChunk);
+			if (!summaryCandidateVersionIds.isEmpty()) {
+				jobsChainer.chain(new GoogleFileVersionSummaryJob(summaryCandidateVersionIds)).deepClone();
+				hasJobs = true;
+			}
+
             if (folderPlacementEnabled) {
                 List<GoogleFileRelocationRequestDTO> relocationRequests = this.versionContextResolver.buildRelocationRequests(versionChunk, linkIdsByFileId);
                 if (!relocationRequests.isEmpty()) {

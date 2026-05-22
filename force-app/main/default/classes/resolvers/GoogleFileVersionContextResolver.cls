@@ -73,6 +73,19 @@ public with sharing class GoogleFileVersionContextResolver {
         return googleWorkspaceVersionIds;
     }
 
+    public Set<Id> collectSummaryCandidateVersionIds(List<GoogleFileVersion__c> fileVersions) {
+        Set<Id> summaryCandidateVersionIds = new Set<Id>();
+        if (fileVersions == null) return summaryCandidateVersionIds;
+
+        for (GoogleFileVersion__c fileVersion : fileVersions) {
+            if (supportsSummary(fileVersion)) {
+                summaryCandidateVersionIds.add(fileVersion.Id);
+            }
+        }
+
+        return summaryCandidateVersionIds;
+    }
+
     public List<GoogleFileRelocationRequestDTO> buildRelocationRequests(List<GoogleFileVersion__c> fileVersions, Map<Id, Id> linkIdsByFileId) {
         List<GoogleFileRelocationRequestDTO> relocationRequests = new List<GoogleFileRelocationRequestDTO>();
         if (fileVersions == null) return relocationRequests;
@@ -123,5 +136,16 @@ public with sharing class GoogleFileVersionContextResolver {
             && !String.isBlank(fileVersion.GoogleDriveFileId__c)
             && String.isBlank(fileVersion.GoogleDocsFileId__c)
             && GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.containsKey(fileVersion.Type__c);
+    }
+
+    public Boolean supportsSummary(GoogleFileVersion__c fileVersion) {
+        return fileVersion != null && 
+			fileVersion.Id != null && 
+			fileVersion.Size__c != null && 
+			fileVersion.Size__c <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES 
+			&& (
+				String.isNotBlank(fileVersion.GoogleDocsFileId__c) || 
+				requiresGoogleWorkspaceFile(fileVersion)
+			);
     }
 }

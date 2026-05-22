@@ -27,7 +27,9 @@ private class GoogleFileVersionLifecycleServiceTest {
 		return new GoogleClientConfig__mdt(
 			IsFilePreviewDisabled__c = false,
 			CustomGoogleUploadFolderStructure__c = '{User}',
-			MaxDeleteChainSize__c = 10
+			MaxDeleteChainSize__c = 10,
+			CustomGeminiApiKey__c = 'api-key-1',
+			CustomModelName__c = 'gemini-2.0-flash'
 		);
 	}
 
@@ -52,9 +54,10 @@ private class GoogleFileVersionLifecycleServiceTest {
 
 	@IsTest
 	private static void testProcessFileInsertFinalizerChainsPdfPreviewBeforeFolderPlacement() {
-		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
 		GoogleMetadataConfigService.configRecordOverride = buildLifecycleConfig();
 		GoogleFileVersionPreviewJob.skipExecution = false;
+		GoogleFileVersionSummaryJob.skipExecution = false;
 		GoogleFileCloudFolderJob.skipExecution = true;
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
@@ -70,26 +73,18 @@ private class GoogleFileVersionLifecycleServiceTest {
 			.withDriveId('GD_CHAIN_1')
 			.insertRecord();
 
-		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
-			[
-				SELECT Id, Name, GoogleDriveFolderId__c, IsLatestFile__c, PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c,
-					CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c
-				FROM GoogleFileVersion__c
-				WHERE Id = :version.Id
-			]
-		});
-
 		Test.startTest();
 		new GoogleLocalFileVersionLifecycleService().processFileInsertFinalizer(new List<GoogleFileVersion__c>{ version });
 		Test.stopTest();
 
 		GoogleFileVersion__c refreshedVersion = [
-			SELECT GoogleDocsFileId__c
+			SELECT GoogleDocsFileId__c, Summary__c
 			FROM GoogleFileVersion__c
 			WHERE Id = :version.Id
 			LIMIT 1
 		];
 
 		Assert.isTrue(String.isNotBlank(refreshedVersion.GoogleDocsFileId__c));
+		Assert.areEqual(null, refreshedVersion.Summary__c);
 	}
 }

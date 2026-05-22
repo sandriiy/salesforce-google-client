@@ -280,4 +280,5 @@ private class GoogleLocalFileVersionServiceTest {
 		}
 		Test.stopTest();
 	}
+
 }

@@ -25,10 +25,12 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
     public class GoogleAgentConfigurationException extends Exception {}
 
     private static final String VALIDATION_PROMPT = 'Reply with OK.';
-    private static final Integer VALIDATION_OUTPUT_TOKENS = 20;
+    private static final Integer VALIDATION_OUTPUT_TOKENS = 4;
+    private static final Integer VALIDATION_THINKING_BUDGET = 0;
 
     private GoogleMetadataConfigService metadataService;
     private IGenAiAccessTokenProvider tokenProvider;
+	private GoogleFileSummarizeCommand summarizeCommand;
 	private IGenAiClient genAiClient;
 
     public GoogleAgentIntelligenceStrategy() {
@@ -41,8 +43,14 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 
     @TestVisible
     private GoogleAgentIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiAccessTokenProvider tokenProvider) {
+        this(metadataService, tokenProvider, new GoogleFileSummarizeCommand());
+    }
+
+    @TestVisible
+    private GoogleAgentIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiAccessTokenProvider tokenProvider, GoogleFileSummarizeCommand summarizeCommand) {
         this.metadataService = metadataService;
         this.tokenProvider = tokenProvider;
+		this.summarizeCommand = summarizeCommand == null ? new GoogleFileSummarizeCommand() : summarizeCommand;
 		this.genAiClient = new GenAiClientFactory().google(
             new GenAiGoogleAgentPlatformConfig(
                 metadataService.getGoogleAgentProjectId(),
@@ -53,18 +61,17 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
     }
 
 	public Boolean validate() {
-       	validateAgentConfiguration();
+        validateAgentConfiguration(true);
 
         try {
 			GenAiRequest validationRequest = new GenAiRequestBuilder(metadataService.getGoogleAiModel())
 				.addUserText(VALIDATION_PROMPT)
 				.withTemperature(0.0)
 				.withMaxTokens(VALIDATION_OUTPUT_TOKENS)
+                .withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(VALIDATION_THINKING_BUDGET))
 				.build();
 			
             GenAiResponse response = genAiClient.generate(validationRequest);
-			System.debug('REPLY');
-			System.debug(response.firstText());
             return response != null && response.hasCandidates();
         } catch (Exception ex) {
 			throw new GoogleAgentConfigurationException(ex.getMessage());
@@ -72,18 +79,32 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 	}
 
     public GoogleFileAnalysisResultDTO summarize(Id localGoogleFileVersionId) {
-		return null;
+        if (localGoogleFileVersionId == null) {
+            return null;
+        }
+
+        try {
+	        validateAgentConfiguration(false);
+        } catch (Exception ex) {
+            return buildBlockedResult(ex.getMessage());
+        }
+
+        return this.summarizeCommand.summarize(
+			localGoogleFileVersionId, 
+			'Agent Platform', 
+			this.metadataService.getGoogleAiModel(), 
+			this.genAiClient
+		);
 	}
 
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localGoogleFileVersionId, String question) {
 		return null;
 	}
 
-    private void validateAgentConfiguration() {
+    private void validateAgentConfiguration(Boolean resolveAccessToken) {
         String projectId = metadataService.getGoogleAgentProjectId();
         String location = metadataService.getGoogleAgentLocation();
         String modelName = metadataService.getGoogleAiModel();
-        GenAiAccessToken accessToken = tokenProvider == null ? null : tokenProvider.token();
 
         if (String.isBlank(projectId)) {
 			throw new GoogleAgentConfigurationException(
@@ -103,10 +124,30 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 			);
 		}
 
+		if (tokenProvider == null) {
+			throw new GoogleAgentConfigurationException(
+				'Unable to locate the Agent Platform access token. Please verify the Google service account configuration is set correctly'
+			);
+		}
+
+		if (!resolveAccessToken) {
+			return;
+		}
+
+        GenAiAccessToken accessToken = tokenProvider.token();
         if (accessToken == null || String.isBlank(accessToken.headerValue())) {
             throw new GoogleAgentConfigurationException(
                 'Unable to locate the Agent Platform access token. Please verify the Google service account configuration is set correctly'
             );
         }
+    }
+
+    private GoogleFileAnalysisResultDTO buildBlockedResult(String errorMessage) {
+        GoogleFileAnalysisResultDTO result = new GoogleFileAnalysisResultDTO();
+        result.blocked = true;
+        result.provider = 'Agent Platform';
+        result.operationType = 'SUMMARY';
+        result.errorMessage = errorMessage;
+        return result;
     }
 }

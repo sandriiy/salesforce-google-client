@@ -61,3 +61,20 @@
 .sortable-column.active {
     background-color: #f4f6f9;
 }
+
+.file-title-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.file-title-cell__link-wrap {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.file-title-cell__icon {
+    flex-shrink: 0;
+    --slds-c-icon-color-foreground-default: #6e6e6e;
+}

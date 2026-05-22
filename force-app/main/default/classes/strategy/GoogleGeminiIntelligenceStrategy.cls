@@ -25,10 +25,12 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
     public class GoogleGeminiConfigurationException extends Exception {}
 
     private static final String VALIDATION_PROMPT = 'Reply with OK.';
-    private static final Integer VALIDATION_OUTPUT_TOKENS = 8;
+	private static final Integer VALIDATION_OUTPUT_TOKENS = 4;
+	private static final Integer VALIDATION_THINKING_BUDGET = 0;
 
     private GoogleMetadataConfigService metadataService;
     private IGenAiApiKeyProvider apiKeyProvider;
+	private GoogleFileSummarizeCommand summarizeCommand;
 	private IGenAiClient genAiClient;
 
 	public GoogleGeminiIntelligenceStrategy() {
@@ -40,9 +42,15 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
     }
 
     @TestVisible
-    private GoogleGeminiIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiApiKeyProvider apiKeyProvider) {
+	private GoogleGeminiIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiApiKeyProvider apiKeyProvider) {
+		this(metadataService, apiKeyProvider, new GoogleFileSummarizeCommand());
+	}
+
+	@TestVisible
+	private GoogleGeminiIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiApiKeyProvider apiKeyProvider, GoogleFileSummarizeCommand summarizeCommand) {
         this.metadataService = metadataService;
         this.apiKeyProvider = apiKeyProvider;
+		this.summarizeCommand = summarizeCommand == null ? new GoogleFileSummarizeCommand() : summarizeCommand;
 		this.genAiClient = new GenAiClientFactory().google(new GenAiGoogleDeveloperConfig(apiKeyProvider));
     }
 
@@ -54,11 +62,10 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 				.addUserText(VALIDATION_PROMPT)
 				.withTemperature(0.0)
 				.withMaxTokens(VALIDATION_OUTPUT_TOKENS)
+				.withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(VALIDATION_THINKING_BUDGET))
 				.build();
 				
             GenAiResponse response = genAiClient.generate(validationRequest);
-			System.debug('REPLY');
-			System.debug(response.firstText());
             return response != null && response.hasCandidates();
         } catch (Exception ex) {
 			throw new GoogleGeminiConfigurationException(ex.getMessage());
@@ -66,7 +73,17 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 	}
 
 	public GoogleFileAnalysisResultDTO summarize(Id localGoogleFileVersionId) {
-		return null;
+		if (localGoogleFileVersionId == null) {
+			return null;
+		}
+
+		try {
+			validateGeminiConfiguration();
+		} catch (Exception ex) {
+			return buildBlockedResult(ex.getMessage());
+		}
+
+		return this.summarizeCommand.summarize(localGoogleFileVersionId, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localGoogleFileVersionId, String question) {
@@ -89,4 +106,13 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 			);
 		}
     }
+
+	private GoogleFileAnalysisResultDTO buildBlockedResult(String errorMessage) {
+		GoogleFileAnalysisResultDTO result = new GoogleFileAnalysisResultDTO();
+		result.blocked = true;
+		result.provider = 'Gemini';
+		result.operationType = 'SUMMARY';
+		result.errorMessage = errorMessage;
+		return result;
+	}
 }

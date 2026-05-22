@@ -1,6 +1,8 @@
 public class GoogleCloudConstants {
 	public static final String DEFAULT_FILE_NAME = 'Unknown';
     public static final String DEFAULT_LOGGER_TAG = 'Google Client for Salesforce';
+	public static final Integer MAX_SUMMARY_CHARACTERS = 255;
+	public static final Long MAX_SUMMARY_FILE_SIZE_BYTES = 5242880L;
 	public static final Map<String, String> FILE_EXTENSION_TO_PREVIEW_TYPE = new Map<String, String>{
 		'application/pdf' => 'application/vnd.google-apps.document',
 		'application/msword' => 'application/vnd.google-apps.document',

@@ -98,6 +98,12 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 .toHttpResponse(req);
         }
 
+		if (method == 'GET' && endpointLower.contains('mimetype=text/plain')) {
+			return new BinaryResponses()
+				.downloadSuccess(Blob.valueOf('Quarterly budget review covering revenue planning, staffing updates, and milestone approvals.'), 'text/plain')
+				.toHttpResponse(req);
+		}
+
         if (method == 'GET' &&
             (endpointLower.contains('/export') ||
              endpointLower.contains('export?') ||

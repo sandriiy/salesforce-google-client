@@ -120,7 +120,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 					inputFiles: allowedFiles
 				}).then((result) => {
 					if (!isEmpty(result)) {
-						this.files = [...this.formatFilesInfo(result), ...this.files];
+						this.handleDataRefresh();
 					}
 				});
 			}
@@ -288,7 +288,8 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 		retrieveGoogleFiles({ relatedRecordId: this.recordId, source: this.source })
 			.then((data) => {
-				this.files = this.formatFilesInfo(formatExistingLocalFiles(data));
+				const formattedFiles = this.formatFilesInfo(formatExistingLocalFiles(data));
+				this.files = formattedFiles;
 				this.sortRecords(this.sortedBy);
 			})
 			.catch((error) => {

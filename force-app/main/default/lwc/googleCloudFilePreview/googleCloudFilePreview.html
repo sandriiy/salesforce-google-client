@@ -31,8 +31,8 @@
                 </div>
             </header>
 
-            <div class="stage">
-                <div class="doc" aria-label="Document canvas">
+            <div class={stageClass}>
+                <div class={docClass} aria-label="Document canvas">
                     <template lwc:if={isLoading}>
                         <div class="slds-spinner slds-spinner_medium" role="status">
                             <span class="slds-assistive-text">Loading...</span>
@@ -45,9 +45,9 @@
                         <div class="slds-text-heading_large slds-m-bottom_small">
                             {unavailablePreviewMessage}
                         </div>
-                        <lightning-button 
-                            label="Download" 
-                            onclick={handleFileDownload} 
+                        <lightning-button
+                            label="Download"
+                            onclick={handleFileDownload}
                             variant="brand"
                             icon-name="utility:download"
                             class="slds-m-top_small">
@@ -70,6 +70,15 @@
                             </lightning-button>
                         </div>
                     </template>
+                </div>
+
+                <div class={intelligenceRailClass}>
+                    <c-google-cloud-file-intelligence
+                        lwc:if={intelligenceVersionId}
+                        lwc:ref="fileIntelligence"
+                        version-id={intelligenceVersionId}
+                        onstatechange={handleIntelligenceStateChange}>
+                    </c-google-cloud-file-intelligence>
                 </div>
             </div>
         </div>

@@ -281,11 +281,11 @@ export default class GoogleCloudUploader extends LightningElement {
 
     saveGoogleFileLocally(fileToUpload) {
         saveGoogleFileLocally(this.recordId, fileToUpload, UPLOAD_SOURCE)
-            .then(result => {
+            .then(async result => {
 				let formattedExistingFiles = formatExistingLocalFiles([result]);
 				let fileUpdated = formattedExistingFiles[0];
 				let fileIndex = this.files.findIndex(file => file.id === fileToUpload.id);
-				this.files[fileIndex] = formattedExistingFiles[0];
+				this.files[fileIndex] = fileUpdated;
 
 				const eventDetail = {
 					fileName: fileUpdated.name,

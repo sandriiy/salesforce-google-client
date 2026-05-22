@@ -65,16 +65,18 @@
                                         <template for:each={displayedFiles} for:item="file">
                                             <tr key={file.id} data-id={file.localId}>
                                                 <th scope="row">
-                                                    <div class="slds-truncate" title={file.name}>
-                                                        <a href="javascript:void(0)" onclick={handleFilePreview}>
-                                                            <lightning-icon
-                                                            icon-name={file.icon}
-                                                            size="x-small"
-                                                            class="slds-m-right_x-small"
-                                                            alternative-text="">
-                                                            </lightning-icon>
-                                                            {file.name}
-                                                        </a>
+                                                    <div class="file-title-cell" title={file.hoverSummaryText}>
+                                                        <div class="slds-truncate file-title-cell__link-wrap" title={file.hoverSummaryText}>
+                                                            <a href="javascript:void(0)" onclick={handleFilePreview} title={file.hoverSummaryText}>
+                                                                <lightning-icon
+                                                                icon-name={file.icon}
+                                                                size="x-small"
+                                                                class="slds-m-right_x-small"
+                                                                alternative-text="">
+                                                                </lightning-icon>
+                                                                {file.name}
+                                                            </a>
+                                                        </div>
                                                     </div>
                                                 </th>
                                                 <td>

@@ -1,4 +1,9 @@
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import {
+	DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE,
+	createDefaultFileIntelligenceState,
+	resolveFileHoverText
+} from 'c/googleCloudFileIntelligenceUtils';
 
 export const DEFAULT_FILE_UPLOAD_FAILURE = 'Verify that the file is not corrupted, then try again. If the problem continues, please reach out to your System Administrator';
 export const DEFAULT_FILE_NOT_ALLOWED_MESSAGE = 'Some files don’t meet the allowed type or size, please check and retry';
@@ -10,6 +15,7 @@ export const DEFAULT_PREVIEW_UNAVAILABILITY_MESSAGE = 'Preview unavailable. Try 
 export const GENERIC_ERROR_MESSAGE = 'Something went wrong. Please try again later or contact your system administrator';
 export const DEFAULT_FILE_ICON_TYPE = 'doctype:unknown';
 export const DEFAULT_FILE_NAME = 'Untitled';
+export const DEFAULT_FILE_SUMMARY_UNAVAILABLE_MESSAGE = DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE;
 
 export const FILE_ICON_MAP = {
     doc:  'doctype:word',
@@ -135,10 +141,47 @@ const formatExistingLocalFiles = (localGoogleFiles) => {
             icon: getFileIcon(latestVersion.Name || ''),
 			isEditAccess: fileRecord.UserAccessLevel__c === 'Edit',
 			isReadAccess: fileRecord.UserAccessLevel__c !== 'Edit',
+			summary: latestVersion.Summary__c || '',
+			hoverSummaryText: resolveFileHoverText(latestVersion.Summary__c, latestVersion.Name, DEFAULT_FILE_NAME),
+			hasSummary: Boolean(latestVersion.Summary__c),
         });
     });
 
     return formattedFiles;
+}
+
+const applyFileIntelligenceStates = (files, intelligenceStates) => {
+	if (!Array.isArray(files) || files.length === 0) {
+		return [];
+	}
+
+	const statesByVersionId = new Map(
+		(Array.isArray(intelligenceStates) ? intelligenceStates : [])
+			.filter(state => state && state.versionId)
+			.map(state => [state.versionId, state])
+	);
+
+	return files.map(file => {
+		const intelligenceState = statesByVersionId.get(file.id) || createDefaultFileIntelligenceState(file.id);
+		const summary = typeof intelligenceState.summary === 'string'
+			? intelligenceState.summary.trim()
+			: (typeof file.summary === 'string' ? file.summary.trim() : '');
+		const hasSummary = intelligenceState.hasSummary === true || Boolean(summary);
+		const isIntelligenceEligible = intelligenceState.isIntelligenceEligible === true;
+		const hoverSummaryText = resolveFileHoverText(summary, file.name, DEFAULT_FILE_NAME);
+
+		return {
+			...file,
+			summary,
+			hoverSummaryText,
+			hasSummary,
+			isIntelligenceEligible,
+			showSummaryStatusIcon: isIntelligenceEligible && !hasSummary,
+			summaryStatusTooltip: isIntelligenceEligible && !hasSummary
+				? DEFAULT_FILE_SUMMARY_UNAVAILABLE_MESSAGE
+				: ''
+		};
+	});
 }
 
 const formatDateAsDayMonthYear = (dateValue) => {
@@ -189,6 +232,9 @@ const createNewFilePlaceholder = (inputFile) => {
         lastModifiedDate: getLocalOffsetDateTime(),
         progress: 0,
         icon: getFileIcon(inputFile.name),
+		summary: '',
+		hoverSummaryText: resolveFileHoverText('', inputFile.name, DEFAULT_FILE_NAME),
+		hasSummary: false,
     };
 }
 
@@ -454,4 +500,4 @@ const asString = (value) => {
 	return String(extracted);
 };
 
-export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };

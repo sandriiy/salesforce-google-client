@@ -2,7 +2,7 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
-???+ example "Release v1.3.0"
+???+ example "Release v2.0.0"
 
     ### Validation Suite Used
     - [X] Full Validation Suite
@@ -19,7 +19,7 @@ This document tracks **test coverage, validation scenarios, and release checks**
     - [ ] Change 7:
 
     ### Boring Changes
-    - [ ] Version number assigned to all hard-coded labels
+    - [X] Version number assigned to all hard-coded labels
     - [ ] Version ID is assigned to all installation guides.
 
     ### Smoke Checks

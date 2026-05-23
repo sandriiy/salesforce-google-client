@@ -25,10 +25,12 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
     public class GoogleFileVersionLifecycleException extends Exception {}
 
     private final GoogleMetadataConfigService googleConfig;
+    private final GoogleFileVersionContextResolver versionContextResolver;
     private final IGoogleUnitOfWork uow;
 
     public GoogleLocalFileVersionLifecycleService() {
         this.googleConfig = new GoogleMetadataConfigService();
+        this.versionContextResolver = new GoogleFileVersionContextResolver();
         this.uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
             GoogleFile__c.SObjectType,
             GoogleFileVersion__c.SObjectType
@@ -37,6 +39,7 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
 
     public GoogleLocalFileVersionLifecycleService(IGoogleUnitOfWork injectedUow) {
         this.googleConfig = new GoogleMetadataConfigService();
+        this.versionContextResolver = new GoogleFileVersionContextResolver();
         this.uow = injectedUow == null
             ? new GoogleCloudUnitOfWork(new List<SObjectType>{
                 GoogleFile__c.SObjectType,
@@ -45,18 +48,12 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
             : injectedUow;
     }
 
-    public void applyPreviewStateIfEligible(List<GoogleFileVersion__c> newFileVersions) {
-        if (newFileVersions == null || newFileVersions.isEmpty()) return;
-        if (this.googleConfig.isPreviewDisabled()) return;
-
-        Set<Id> previewableFileVersionIds = collectPreviewableVersionIds(newFileVersions);
-        if (previewableFileVersionIds.isEmpty()) return;
-
-        System.enqueueJob(new GoogleFileVersionPreviewJob(previewableFileVersionIds));
-    }
+	public void processFileInsertFinalizer(List<GoogleFileVersion__c> newFileVersions) {
+		new GoogleFileInsertFinalizeCommand(this.googleConfig, this.versionContextResolver).execute(newFileVersions);
+	}
 
     public void markAsLatestVersionIfApplicable(List<GoogleFileVersion__c> newFileVersions, List<GoogleFileVersion__c> oldFileVersions) {
-        Set<Id> parentFileIds = collectParentFileIds(newFileVersions, oldFileVersions);
+        Set<Id> parentFileIds = this.versionContextResolver.collectParentFileIds(newFileVersions, oldFileVersions);
         if (parentFileIds.isEmpty()) return;
 
         Logger.info('Mark As Latest Version If Applicable --> ' + joinIds(parentFileIds)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
@@ -75,26 +72,6 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
 	public void removeGoogleFiles(List<GoogleFileVersion__c> localFileVersions) {
 		System.enqueueJob(new GoogleFileCloudDeleteJob(localFileVersions));
 	}
-
-    private Set<Id> collectParentFileIds(List<GoogleFileVersion__c> fileVersions) {
-        Set<Id> parentFileIds = new Set<Id>();
-        if (fileVersions == null) return parentFileIds;
-
-        for (GoogleFileVersion__c fileVersion : fileVersions) {
-            if (fileVersion != null && fileVersion.GoogleFileId__c != null) {
-                parentFileIds.add(fileVersion.GoogleFileId__c);
-            }
-        }
-
-        return parentFileIds;
-    }
-
-    private Set<Id> collectParentFileIds(List<GoogleFileVersion__c> newFileVersions, List<GoogleFileVersion__c> oldFileVersions) {
-        Set<Id> parentFileIds = new Set<Id>();
-        parentFileIds.addAll(collectParentFileIds(newFileVersions));
-        parentFileIds.addAll(collectParentFileIds(oldFileVersions));
-        return parentFileIds;
-    }
 
     private List<GoogleFileVersion__c> buildLatestFlagUpdates(List<GoogleFile__c> parentFiles) {
         List<GoogleFileVersion__c> latestVersionsToUpdate = new List<GoogleFileVersion__c>();
@@ -117,29 +94,6 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
         }
 
         return latestVersionsToUpdate;
-    }
-
-    private Set<Id> collectPreviewableVersionIds(List<GoogleFileVersion__c> newFileVersions) {
-        Set<Id> previewableFileVersionIds = new Set<Id>();
-
-        for (GoogleFileVersion__c newFileVersion : newFileVersions) {
-            if (newFileVersion == null || newFileVersion.Id == null) continue;
-
-            if (isVersionPreviewDocRequired(newFileVersion)) {
-                previewableFileVersionIds.add(newFileVersion.Id);
-            }
-        }
-
-        return previewableFileVersionIds;
-    }
-
-    private Boolean isVersionPreviewDocRequired(GoogleFileVersion__c fileVersion) {
-        return (
-            fileVersion.IsPreviewableFile__c &&
-            fileVersion.Type__c != 'application/pdf' &&
-            !String.isBlank(fileVersion.GoogleDriveFileId__c) &&
-            String.isBlank(fileVersion.GoogleDocsFileId__c)
-        );
     }
 
     private void commitUpdatesWithBypass(String handlerNameToBypass, List<SObject> recordsToUpdate) {

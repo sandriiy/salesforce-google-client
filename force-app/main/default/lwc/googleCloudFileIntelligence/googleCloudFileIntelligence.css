@@ -1,0 +1,169 @@
+:host {
+	display: block;
+	min-width: 0;
+	--intelligence-trigger-size: clamp(48px, 2.8vw, 62px);
+	--intelligence-trigger-radius: clamp(16px, 1vw, 20px);
+	--intelligence-panel-padding-block: clamp(22px, 1.6vw, 30px);
+	--intelligence-panel-padding-inline: clamp(20px, 1.7vw, 28px);
+	--intelligence-panel-radius: clamp(20px, 1.4vw, 24px);
+	--intelligence-panel-gap: clamp(18px, 1.4vw, 24px);
+	--intelligence-eyebrow-size: clamp(0.72rem, 0.52rem + 0.35vw, 0.86rem);
+	--intelligence-title-size: clamp(0.95rem, 0.78rem + 0.4vw, 1.12rem);
+	--intelligence-copy-size: clamp(0.92rem, 0.76rem + 0.38vw, 1.08rem);
+	--intelligence-input-size: clamp(0.92rem, 0.76rem + 0.38vw, 1.04rem);
+	--intelligence-shell-padding-block: clamp(12px, 1vw, 16px);
+	--intelligence-shell-padding-inline: clamp(14px, 1.2vw, 18px);
+}
+
+.intelligence-trigger-wrap {
+	display: flex;
+	justify-content: flex-end;
+	margin: 0;
+	overflow: visible;
+}
+
+.intelligence-trigger {
+	width: var(--intelligence-trigger-size);
+	height: var(--intelligence-trigger-size);
+	display: grid;
+	place-items: center;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	padding: 0;
+	border-radius: var(--intelligence-trigger-radius);
+	background: rgba(18, 18, 18, 0.84);
+	box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+	backdrop-filter: blur(16px);
+	color: #f4f4f4;
+	cursor: pointer;
+	transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.intelligence-trigger:hover,
+.intelligence-trigger:focus-visible {
+	transform: translateY(-1px);
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.32);
+	background: rgba(25, 25, 25, 0.9);
+	outline: none;
+}
+
+.intelligence-trigger__icon {
+	--slds-c-icon-color-foreground-default: #a6faff;
+	--slds-c-icon-size: clamp(1.05rem, 0.88rem + 0.42vw, 1.35rem);
+	flex-shrink: 0;
+}
+
+.intelligence-panel {
+	position: sticky;
+	top: clamp(16px, 1.6vw, 24px);
+	margin: 0 0 32px;
+	padding: var(--intelligence-panel-padding-block) var(--intelligence-panel-padding-inline);
+	border-radius: var(--intelligence-panel-radius);
+	background: rgba(18, 18, 18, 0.78);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+	backdrop-filter: blur(16px);
+	color: #f4f4f4;
+	animation: intelligence-panel-enter 180ms ease;
+}
+
+.intelligence-panel__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: var(--intelligence-panel-gap);
+}
+
+.intelligence-panel__close {
+	flex-shrink: 0;
+	--slds-c-icon-color-foreground: #dadada;
+	--slds-c-button-shadow-focus: 0 0 0 2px #a6faff;
+	--slds-c-button-text-color-hover: #ffffff;
+}
+
+.intelligence-panel__eyebrow {
+	font-size: var(--intelligence-eyebrow-size);
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: rgba(255, 255, 255, 0.62);
+}
+
+.intelligence-block + .intelligence-block {
+	margin-top: var(--intelligence-panel-gap);
+	padding-top: var(--intelligence-panel-gap);
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.intelligence-block__title {
+	margin: 0 0 10px;
+	font-size: var(--intelligence-title-size);
+	font-weight: 600;
+	color: #ffffff;
+}
+
+.intelligence-summary-copy {
+	margin: 0;
+	font-size: var(--intelligence-copy-size);
+	line-height: 1.6;
+	color: rgba(255, 255, 255, 0.92);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.intelligence-summary-copy--placeholder {
+	color: rgba(255, 255, 255, 0.68);
+}
+
+.intelligence-loading {
+	min-height: 72px;
+	display: grid;
+	place-items: center;
+}
+
+.intelligence-question-shell {
+	display: flex;
+	align-items: center;
+	gap: clamp(10px, 0.8vw, 14px);
+	padding: var(--intelligence-shell-padding-block) var(--intelligence-shell-padding-inline);
+	border-radius: clamp(14px, 1vw, 18px);
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.intelligence-question-shell__icon {
+	--slds-c-icon-color-foreground-default: rgba(255, 255, 255, 0.6);
+	flex-shrink: 0;
+}
+
+.intelligence-question-input {
+	width: 100%;
+	border: none;
+	padding: 0;
+	background: transparent;
+	font-size: var(--intelligence-input-size);
+	color: rgba(255, 255, 255, 0.92);
+	outline: none;
+}
+
+.intelligence-question-input::placeholder {
+	color: rgba(255, 255, 255, 0.56);
+}
+
+.intelligence-question-input:disabled {
+	cursor: not-allowed;
+	opacity: 1;
+	-webkit-text-fill-color: rgba(255, 255, 255, 0.92);
+}
+
+@keyframes intelligence-panel-enter {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}

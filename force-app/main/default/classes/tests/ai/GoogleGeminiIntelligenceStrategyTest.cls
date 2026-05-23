@@ -23,6 +23,12 @@
  */
 @IsTest
 private class GoogleGeminiIntelligenceStrategyTest {
+	private class ApiKeyProviderStub implements IGenAiApiKeyProvider {
+		public GenAiApiKey apiKey() {
+			return new GenAiApiKey('custom-api-key');
+		}
+	}
+
 	private static GoogleClientConfig__mdt buildGeminiConfig(String apiKey, String modelName) {
 		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
 		config.CustomGeminiApiKey__c = apiKey;
@@ -37,6 +43,18 @@ private class GoogleGeminiIntelligenceStrategyTest {
 
 		Test.startTest();
 		Boolean isValid = new GoogleGeminiIntelligenceStrategy().validate();
+		Test.stopTest();
+
+		Assert.isTrue(isValid);
+	}
+
+	@IsTest
+	private static void testValidatePositiveWithCustomApiKeyProvider() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig(null, 'gemini-2.0-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
+
+		Test.startTest();
+		Boolean isValid = new GoogleGeminiIntelligenceStrategy(new ApiKeyProviderStub()).validate();
 		Test.stopTest();
 
 		Assert.isTrue(isValid);
@@ -91,6 +109,33 @@ private class GoogleGeminiIntelligenceStrategyTest {
 		Test.stopTest();
 
 		Assert.areEqual(null, result);
+	}
+
+	@IsTest
+	private static void testSummarizePositive() {
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('GEMSUM')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('GEMSUM.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDocsId('DOCS_GEM_SUM')
+			.insertRecord();
+
+		Test.startTest();
+		GoogleFileAnalysisResultDTO result = new GoogleGeminiIntelligenceStrategy().summarize(version.Id);
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual('Gemini', result.provider);
+		Assert.areEqual('SUMMARY', result.operationType);
+		Assert.areEqual('OK', result.text);
 	}
 
 	@IsTest

@@ -2,7 +2,39 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
-???+ example "Hotfix v1.3.1"
+???+ example "Release v2.0.0"
+
+    ### Validation Suite Used
+    - [X] Full Validation Suite
+    - [ ] Quick Regression Suite
+    - [X] Targeted Regression Suite
+
+    ### Release Changes
+    - [ ] Change 1:
+    - [ ] Change 2:
+    - [ ] Change 3:
+    - [ ] Change 4:
+    - [ ] Change 5:
+    - [ ] Change 6:
+    - [ ] Change 7:
+
+    ### Boring Changes
+    - [X] Version number assigned to all hard-coded labels
+    - [ ] Version ID is assigned to all installation guides.
+
+    ### Smoke Checks
+    - [ ] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [ ] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [ ] Admin can open Google Client app and browse configuration tabs without errors
+
+    ### Suite Execution (only for Full or Quick)
+    - [ ] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
+
+    ### Notes
+    - Check google docs conversion + folder structure (chaining change). Also check delete queueable job, and check all of them in different combination.
+	- Check the "latestVersion" for the FileVersion is set correctly, as I did some refactoring.
+
+??? example "Hotfix v1.3.1"
 
     ### Validation Suite Used
     - [ ] Full Validation Suite
@@ -25,7 +57,7 @@ This document tracks **test coverage, validation scenarios, and release checks**
     ### Notes
     - When promoting a new package version, if the installation fails, unassign the Google Cloud Client Admin permission set from all users, then try the installation again.
 
-???+ example "Release v1.3.0"
+??? example "Release v1.3.0"
 
     ### Validation Suite Used
     - [ ] Full Validation Suite

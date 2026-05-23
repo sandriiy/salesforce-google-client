@@ -44,6 +44,8 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	@track isLoading = true;
 	@track isOpen = false;
 	@track isPreviewTakingTooLong = false;
+	@track isIntelligenceAvailable = false;
+	@track isIntelligencePanelOpen = false;
 
 	previewOperation;
 	previewBlobUrl;
@@ -76,10 +78,15 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 
 	@api async refreshMetadata() {
 		this.isLoading = true;
+		const currentVersionId = this.intelligenceVersionId;
 
 		try {
 			await this.getLocalGoogleDriveFile();
 			this.localLatestVersionRecord = this.getLatestFileVersion(this.localGoogleRecord);
+
+			if (currentVersionId === this.intelligenceVersionId) {
+				await this.refs.fileIntelligence?.refresh?.();
+			}
 		} catch (e) {
 			this.unavailablePreviewMessage = normalizeError(e);
 			this.isUnavailablePreview = true;
@@ -125,6 +132,8 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		this.localGoogleRecordId = undefined;
 		this.localGoogleRecord = undefined;
 		this.localLatestVersionRecord = undefined;
+		this.isIntelligenceAvailable = false;
+		this.isIntelligencePanelOpen = false;
 		this.resetAllStyles();
 	}
 
@@ -134,6 +143,11 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 
 	handlePreviewModalClose(event) {
 		this.close();
+	}
+
+	handleIntelligenceStateChange(event) {
+		this.isIntelligenceAvailable = event.detail?.isEligible === true;
+		this.isIntelligencePanelOpen = event.detail?.isOpen === true;
 	}
 
 	async handleFileDownload(event) {
@@ -580,6 +594,30 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		}
 
 		return getFileIcon(this.localLatestVersionRecord.Name);
+	}
+
+	get stageClass() {
+		return this.isIntelligencePanelOpen
+			? 'stage stage--with-sidebar'
+			: 'stage';
+	}
+
+	get docClass() {
+		return this.isIntelligencePanelOpen
+			? 'doc doc--with-sidebar'
+			: 'doc';
+	}
+
+	get intelligenceRailClass() {
+		return this.isIntelligencePanelOpen
+			? 'intelligence-rail intelligence-rail--expanded'
+			: this.isIntelligenceAvailable
+				? 'intelligence-rail intelligence-rail--collapsed'
+				: 'intelligence-rail intelligence-rail--hidden';
+	}
+
+	get intelligenceVersionId() {
+		return this.localLatestVersionRecord?.Id;
 	}
 
 	get viewDetailsReferenceName() {

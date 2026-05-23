@@ -17,7 +17,7 @@
         <nameSegment>GoogleFileVersionExpireLinkAction</nameSegment>
         <offset>0</offset>
     </actionCalls>
-    <apiVersion>65.0</apiVersion>
+    <apiVersion>66.0</apiVersion>
     <description>Expire public link for Google File Version according to the set expiration date (if set).</description>
     <environments>Default</environments>
     <interviewLabel>Google File Version Expire Public Link {!$Flow.CurrentDateTime}</interviewLabel>

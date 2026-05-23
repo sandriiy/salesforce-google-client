@@ -89,8 +89,6 @@ public without sharing class GoogleLocalFileService {
 			throw new GoogleLocalFileException('Unable to create the file record. Please try again or contact your system administrator');
 		}
 
-		queueGoogleFileFolderStructuring(insertResult);
-
 		GoogleFile__c createdFile = (GoogleFile__c) GoogleFileSelector.query()
 			.byRecordId(insertResult.getLocalGoogleFileId())
 			.withLatestVersionSubquery()
@@ -164,31 +162,4 @@ public without sharing class GoogleLocalFileService {
         }
     }
 
-	@TestVisible
-	private void queueGoogleFileFolderStructuring(GoogleFileInsertCommand.GoogleFileInsertResult insertResult) {
-		Id localGoogleFileId = insertResult == null ? null : insertResult.getLocalGoogleFileId();
-        Id localGoogleFileVersionId = insertResult == null ? null : insertResult.getLocalGoogleFileVersionId();
-
-        Id localGoogleFileLinkId = insertResult == null ? null : insertResult.getLocalGoogleFileLinkId();
-        if (localGoogleFileLinkId == null && localGoogleFileId != null) {
-            localGoogleFileLinkId = GoogleFileLinkSelector.query()
-				.withBaseFields()
-				.byParentId(localGoogleFileId)
-				.orderByCreatedDesc()
-				.limitTo(1)
-				.toId();
-        }
-
-        if (localGoogleFileId != null && localGoogleFileVersionId != null) {
-            GoogleFileRelocationRequestDTO relocationRequest = new GoogleFileRelocationRequestDTO(
-                UserInfo.getUserId(),
-                localGoogleFileId,
-                localGoogleFileVersionId,
-                localGoogleFileLinkId
-            );
-
-			Integer delayInMinutes = 1;
-            System.enqueueJob(new GoogleFileCloudFolderJob(relocationRequest), delayInMinutes);
-        }
-	}
 }

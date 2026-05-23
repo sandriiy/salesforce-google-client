@@ -42,7 +42,7 @@ export default class GoogleCloudAttachments extends NavigationMixin(LightningEle
         const { data, error } = result;
 
         if (data) {
-            this.files = this.formatFilesInfo(formatExistingLocalFiles(data));
+			this.files = this.formatFilesInfo(formatExistingLocalFiles(data));
 			this.isLoading = false;
         } else if (error) {
 			if (isPermissionMissing(error)) {

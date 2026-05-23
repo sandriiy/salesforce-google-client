@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-public with sharing class GoogleFileVersionPreviewJob implements Queueable, Database.AllowsCallouts {
+public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFilePreviewJobException extends Exception {}
 
 	@TestVisible
@@ -34,7 +34,7 @@ public with sharing class GoogleFileVersionPreviewJob implements Queueable, Data
 			: new Set<Id>(versionIds);
     }
 
-    public void execute(QueueableContext qc) {
+	public override void work() {
 		if (skipExecution) return;
 		Logger.info('Queueable Job to generate Google Workspace previews for: ' + String.join(versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
         if (versionIds.isEmpty()) return;

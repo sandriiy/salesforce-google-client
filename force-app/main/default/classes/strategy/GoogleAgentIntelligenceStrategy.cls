@@ -24,46 +24,84 @@
 public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFileIntelligenceStrategy {
     public class GoogleAgentConfigurationException extends Exception {}
 
-	private static final String GENERATE_CONTENT_ENDPOINT_TEMPLATE = 'https://aiplatform.googleapis.com/v1/projects/{0}/locations/{1}/publishers/google/models/{2}:generateContent';
-    private static final String HTTP_METHOD_POST = 'POST';
-    private static final String HEADER_AUTHORIZATION = 'Authorization';
-    private static final String HEADER_CONTENT_TYPE = 'Content-Type';
-    private static final String CONTENT_TYPE_JSON = 'application/json';
-    private static final String DEFAULT_TOKEN_TYPE = 'Bearer';
     private static final String VALIDATION_PROMPT = 'Reply with OK.';
-    private static final Integer REQUEST_TIMEOUT_MS = 20000;
-    private static final Integer MAX_OUTPUT_TOKENS = 8;
+    private static final Integer VALIDATION_OUTPUT_TOKENS = 4;
+    private static final Integer VALIDATION_THINKING_BUDGET = 0;
 
-	private GoogleClientApiProvider googleApiProvider;
-	private GoogleCredential googleCredential;
     private GoogleMetadataConfigService metadataService;
+    private IGenAiAccessTokenProvider tokenProvider;
+	private GoogleFileSummarizeCommand summarizeCommand;
+	private IGenAiClient genAiClient;
 
     public GoogleAgentIntelligenceStrategy() {
-        this.metadataService = new GoogleMetadataConfigService();
-        this.googleApiProvider = new GoogleClientApiProvider();
-		this.googleCredential = googleApiProvider.retrieveGoogleClientCreds();
+        this(new GoogleMetadataConfigService(), new DefaultGoogleGenAiAccessTokenProvider());
+    }
+
+    public GoogleAgentIntelligenceStrategy(IGenAiAccessTokenProvider tokenProvider) {
+        this(new GoogleMetadataConfigService(), tokenProvider);
+    }
+
+    @TestVisible
+    private GoogleAgentIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiAccessTokenProvider tokenProvider) {
+        this(metadataService, tokenProvider, new GoogleFileSummarizeCommand());
+    }
+
+    @TestVisible
+    private GoogleAgentIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiAccessTokenProvider tokenProvider, GoogleFileSummarizeCommand summarizeCommand) {
+        this.metadataService = metadataService;
+        this.tokenProvider = tokenProvider;
+		this.summarizeCommand = summarizeCommand == null ? new GoogleFileSummarizeCommand() : summarizeCommand;
+		this.genAiClient = new GenAiClientFactory().google(
+            new GenAiGoogleAgentPlatformConfig(
+                metadataService.getGoogleAgentProjectId(),
+                metadataService.getGoogleAgentLocation(),
+                tokenProvider
+            )
+        );
     }
 
 	public Boolean validate() {
-       	validateAgentConfiguration();
+        validateAgentConfiguration(true);
 
         try {
-            HttpResponse response = sendValidationRequest();
-            return isSuccessfulValidationResponse(response);
+			GenAiRequest validationRequest = new GenAiRequestBuilder(metadataService.getGoogleAiModel())
+				.addUserText(VALIDATION_PROMPT)
+				.withTemperature(0.0)
+				.withMaxTokens(VALIDATION_OUTPUT_TOKENS)
+                .withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(VALIDATION_THINKING_BUDGET))
+				.build();
+			
+            GenAiResponse response = genAiClient.generate(validationRequest);
+            return response != null && response.hasCandidates();
         } catch (Exception ex) {
 			throw new GoogleAgentConfigurationException(ex.getMessage());
         }
 	}
 
     public GoogleFileAnalysisResultDTO summarize(Id localGoogleFileVersionId) {
-		return null;
+        if (localGoogleFileVersionId == null) {
+            return null;
+        }
+
+        try {
+	        validateAgentConfiguration(false);
+        } catch (Exception ex) {
+            return buildBlockedResult(ex.getMessage());
+        }
+
+        return this.summarizeCommand.summarize(
+			localGoogleFileVersionId, 
+			'Agent Platform', 
+			this.metadataService.getGoogleAiModel(), 
+			this.genAiClient
+		);
 	}
 
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localGoogleFileVersionId, String question) {
 		return null;
 	}
 
-    private void validateAgentConfiguration() {
+    private void validateAgentConfiguration(Boolean resolveAccessToken) {
         String projectId = metadataService.getGoogleAgentProjectId();
         String location = metadataService.getGoogleAgentLocation();
         String modelName = metadataService.getGoogleAiModel();
@@ -85,80 +123,31 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 				'Unable to locate the Agent Platform model name. Please verify the Agent Platform configuration is set correctly'
 			);
 		}
-    }
 
-    private HttpResponse sendValidationRequest() {
-		String projectId = metadataService.getGoogleAgentProjectId();
-        String location = metadataService.getGoogleAgentLocation();
-        String modelName = metadataService.getGoogleAiModel();
+		if (tokenProvider == null) {
+			throw new GoogleAgentConfigurationException(
+				'Unable to locate the Agent Platform access token. Please verify the Google service account configuration is set correctly'
+			);
+		}
 
-        HttpRequest request = new HttpRequest();
-        request.setEndpoint(buildGenerateContentEndpoint());
-        request.setMethod(HTTP_METHOD_POST);
-        request.setHeader(HEADER_AUTHORIZATION, buildAuthorizationHeader());
-        request.setHeader(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON);
-        request.setTimeout(REQUEST_TIMEOUT_MS);
-        request.setBody(buildValidationRequestBody());
+		if (!resolveAccessToken) {
+			return;
+		}
 
-        return new Http().send(request);
-    }
-
-    private String buildGenerateContentEndpoint() {
-		String projectId = metadataService.getGoogleAgentProjectId();
-        String location = metadataService.getGoogleAgentLocation();
-        String modelName = metadataService.getGoogleAiModel();
-
-        return String.format(
-            GENERATE_CONTENT_ENDPOINT_TEMPLATE,
-            new List<String>{
-                EncodingUtil.urlEncode(projectId, 'UTF-8'),
-                EncodingUtil.urlEncode(location, 'UTF-8'),
-                EncodingUtil.urlEncode(modelName, 'UTF-8')
-            }
-        );
-    }
-
-    private String buildAuthorizationHeader() {
-        String tokenType = String.isBlank(googleCredential.tokenType)
-            ? DEFAULT_TOKEN_TYPE
-            : googleCredential.tokenType.trim();
-
-        return tokenType + ' ' + googleCredential.accessToken.trim();
-    }
-
-    private String buildValidationRequestBody() {
-        Map<String, Object> requestBody = new Map<String, Object>{
-            'contents' => new List<Object>{
-                new Map<String, Object>{
-                    'role' => 'user',
-                    'parts' => new List<Object>{
-                        new Map<String, Object>{
-                            'text' => VALIDATION_PROMPT
-                        }
-                    }
-                }
-            },
-            'generationConfig' => new Map<String, Object>{
-                'temperature' => 0,
-                'maxOutputTokens' => MAX_OUTPUT_TOKENS
-            }
-        };
-
-        return JSON.serialize(requestBody);
-    }
-
-    private Boolean isSuccessfulValidationResponse(HttpResponse response) {
-        if (response == null || response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
-			throw new GoogleAgentConfigurationException(response.getBody());
+        GenAiAccessToken accessToken = tokenProvider.token();
+        if (accessToken == null || String.isBlank(accessToken.headerValue())) {
+            throw new GoogleAgentConfigurationException(
+                'Unable to locate the Agent Platform access token. Please verify the Google service account configuration is set correctly'
+            );
         }
+    }
 
-        if (String.isBlank(response.getBody())) {
-            return false;
-        }
-
-        Map<String, Object> responseBody = (Map<String, Object>) JSON.deserializeUntyped(response.getBody());
-        List<Object> candidates = (List<Object>) responseBody.get('candidates');
-
-        return candidates != null && !candidates.isEmpty();
+    private GoogleFileAnalysisResultDTO buildBlockedResult(String errorMessage) {
+        GoogleFileAnalysisResultDTO result = new GoogleFileAnalysisResultDTO();
+        result.blocked = true;
+        result.provider = 'Agent Platform';
+        result.operationType = 'SUMMARY';
+        result.errorMessage = errorMessage;
+        return result;
     }
 }

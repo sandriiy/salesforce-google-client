@@ -44,7 +44,7 @@
             </div>
 
             <template for:each={files} for:item="file" for:index="index">
-                <article key={file.id} data-id={file.id} class="file-card slds-p-around_medium slds-theme_default slds-rounded_medium" onclick={handleFilePreview}>
+                <article key={file.id} data-id={file.id} class="file-card slds-p-around_medium slds-theme_default slds-rounded_medium" onclick={handleFilePreview} title={file.hoverSummaryText}>
                     <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
                         <div class="slds-grid slds-grow" style="min-width: 0;">
                             <span class="file-card__icon slds-m-right_medium">
@@ -55,10 +55,12 @@
                             </span>
 
                             <div class="slds-truncate slds-grow">
-                                <p class="slds-text-body_regular slds-truncate" title={file.name}>
-                                    {file.name}
-                                </p>
-                                <p class="file-meta slds-text-color_weak slds-truncate" title={file.name}>
+                                <div class="file-name-row">
+                                    <p class="slds-text-body_regular slds-truncate file-name-row__label" title={file.hoverSummaryText}>
+                                        {file.name}
+                                    </p>
+                                </div>
+                                <p class="file-meta slds-text-color_weak slds-truncate" title={file.hoverSummaryText}>
                                     {file.size} • {file.type}
                                 </p>
                             </div>

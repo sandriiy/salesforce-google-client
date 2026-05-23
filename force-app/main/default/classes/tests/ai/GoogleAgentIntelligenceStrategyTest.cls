@@ -23,6 +23,12 @@
  */
 @IsTest
 private class GoogleAgentIntelligenceStrategyTest {
+	private class AccessTokenProviderStub implements IGenAiAccessTokenProvider {
+		public GenAiAccessToken token() {
+			return new GenAiAccessToken('Bearer', 'custom-access-token');
+		}
+	}
+
 	private static GoogleClientConfig__mdt buildAgentConfig(String projectId, String location, String modelName) {
 		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
 		config.CustomAgentProjectId__c = projectId;
@@ -55,6 +61,18 @@ private class GoogleAgentIntelligenceStrategyTest {
 
 		Test.startTest();
 		Boolean isValid = new GoogleAgentIntelligenceStrategy().validate();
+		Test.stopTest();
+
+		Assert.isTrue(isValid);
+	}
+
+	@IsTest
+	private static void testValidatePositiveWithCustomTokenProvider() {
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'us-central1', 'gemini-2.0-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
+
+		Test.startTest();
+		Boolean isValid = new GoogleAgentIntelligenceStrategy(new AccessTokenProviderStub()).validate();
 		Test.stopTest();
 
 		Assert.isTrue(isValid);
@@ -114,6 +132,33 @@ private class GoogleAgentIntelligenceStrategyTest {
 		Test.stopTest();
 
 		Assert.areEqual(null, result);
+	}
+
+	@IsTest
+	private static void testSummarizePositive() {
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'us-central1', 'gemini-2.0-flash');
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('AGTSUM')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('AGTSUM.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDocsId('DOCS_AGENT_SUM')
+			.insertRecord();
+
+		Test.startTest();
+		GoogleFileAnalysisResultDTO result = new GoogleAgentIntelligenceStrategy().summarize(version.Id);
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual('Agent Platform', result.provider);
+		Assert.areEqual('SUMMARY', result.operationType);
+		Assert.areEqual('OK', result.text);
 	}
 
 	@IsTest

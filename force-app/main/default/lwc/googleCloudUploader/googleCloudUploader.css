@@ -103,6 +103,23 @@
     color: var(--slds-g-color-neutral-base-50, #6e6e6e);
 }
 
+.file-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.file-name-row__label {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.file-name-row__icon {
+    flex-shrink: 0;
+    --slds-c-icon-color-foreground-default: #6e6e6e;
+}
+
 .file-percent {
     font-weight: 600;
 }

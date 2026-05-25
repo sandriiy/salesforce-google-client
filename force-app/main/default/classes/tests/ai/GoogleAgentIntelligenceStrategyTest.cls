@@ -171,4 +171,31 @@ private class GoogleAgentIntelligenceStrategyTest {
 
 		Assert.areEqual(null, result);
 	}
+
+	@IsTest
+	private static void testAnswerQuestionPositive() {
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'us-central1', 'gemini-2.0-flash');
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('AGTQ')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('AGTQ.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDocsId('DOCS_AGENT_Q')
+			.insertRecord();
+
+		Test.startTest();
+		GoogleFileAnalysisResultDTO result = new GoogleAgentIntelligenceStrategy().answerQuestion(version.Id, 'What does this file cover?');
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual('Agent Platform', result.provider);
+		Assert.areEqual('QUESTION', result.operationType);
+		Assert.areEqual('OK', result.text);
+	}
 }

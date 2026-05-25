@@ -146,4 +146,31 @@ private class GoogleGeminiIntelligenceStrategyTest {
 
 		Assert.areEqual(null, result);
 	}
+
+	@IsTest
+	private static void testAnswerQuestionPositive() {
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('GEMQ')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('GEMQ.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDocsId('DOCS_GEM_Q')
+			.insertRecord();
+
+		Test.startTest();
+		GoogleFileAnalysisResultDTO result = new GoogleGeminiIntelligenceStrategy().answerQuestion(version.Id, 'What does this file cover?');
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual('Gemini', result.provider);
+		Assert.areEqual('QUESTION', result.operationType);
+		Assert.areEqual('OK', result.text);
+	}
 }

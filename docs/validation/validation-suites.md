@@ -4,17 +4,17 @@ This page defines the reusable validation suites for Google Client for Salesforc
 
 ## Common Test Data Setup
 
-- [X] Create a test record (any supported object) for Core Cloud testing
-- [X] Create a test record/page for Experience Cloud testing
-- [X] Create test users:
-  	- [X] Internal user A (has "Google Cloud Client User")
-  	- [X] Internal user B (has "Google Cloud Client User")
-  	- [X] External user E (Experience Cloud, has "Google Cloud Client User")
-  	- [X] Admin user (has "Google Cloud Client Admin" or the combined Permission Group)
-- [X] Ensure at least two files exist on the record:
-  	- [X] File F1 created/owned by internal user A
-  	- [X] File F2 created/owned by internal user B
-- [X] Ensure at least one file type that previews and one that does not preview are available
+- [ ] Create a test record (any supported object) for Core Cloud testing
+- [ ] Create a test record/page for Experience Cloud testing
+- [ ] Create test users:
+  	- [ ] Internal user A (has "Google Cloud Client User")
+  	- [ ] Internal user B (has "Google Cloud Client User")
+  	- [ ] External user E (Experience Cloud, has "Google Cloud Client User")
+  	- [ ] Admin user (has "Google Cloud Client Admin" or the combined Permission Group)
+- [ ] Ensure at least two files exist on the record:
+  	- [ ] File F1 created/owned by internal user A
+  	- [ ] File F2 created/owned by internal user B
+- [ ] Ensure at least one file type that previews and one that does not preview are available
 
 ## Full Validation Suite
 
@@ -142,21 +142,24 @@ Use this when changes are small and isolated, but you still want confidence acro
 
 ### Core Flow (Happy Path)
 
-- [X] Upload a file and confirm it appears in the list
-- [X] Open Preview and confirm download works
-- [X] Create a new version and confirm it becomes active
-- [X] Share with an internal user as Viewer and confirm read-only behavior
+- [ ] Upload a file and confirm it appears in the list
+- [ ] Open Preview and confirm download works
+- [ ] Create a new version and confirm it becomes active
+- [ ] Share with an internal user as Viewer and confirm read-only behavior
+- [ ] Confirm functionality works without configuring new features
 
 ### External Visibility Sanity
 
-- [X] Confirm external user does not see files by default
-- [X] Enable external visibility via Share modal toggle and confirm external user can see the file
-- [X] Confirm Viewer behavior for external user
+- [ ] Confirm external user does not see files by default
+- [ ] Enable external visibility via Share modal toggle and confirm external user can see the file
+- [ ] Confirm Viewer behavior for external user
+- [ ] Confirm functionality works without configuring new features
 
 ### Admin Configuration Sanity (if release touched config)
 
-- [X] Admin can open configuration pages
-- [X] Admin can save a configuration change
+- [ ] Admin can open configuration pages
+- [ ] Admin can save a configuration changes
+- [ ] Admin can activate & configure new features
 
 ## Targeted Regression Suite
 

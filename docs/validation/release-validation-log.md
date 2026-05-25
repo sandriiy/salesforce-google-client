@@ -31,8 +31,8 @@ This document tracks **test coverage, validation scenarios, and release checks**
     - [ ] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
 
     ### Notes
-    - Check google docs conversion + folder structure (chaining change). Also check delete queueable job, and check all of them in different combination.
-	- Check the "latestVersion" for the FileVersion is set correctly, as I did some refactoring.
+    - Check google docs conversion + folder structure (chaining change). Also check delete queueable job, and check all of them in a different combination.
+	- Check the "latestVersion" for the FileVersion is set correctly. I did some refactoring.
 
 ??? example "Hotfix v1.3.1"
 

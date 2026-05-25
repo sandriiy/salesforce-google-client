@@ -30,7 +30,8 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 
     private GoogleMetadataConfigService metadataService;
     private IGenAiAccessTokenProvider tokenProvider;
-	private GoogleFileSummarizeCommand summarizeCommand;
+	private GoogleFileSummarizeCommand summarizeCommand = new GoogleFileSummarizeCommand();
+    private GoogleFileQuestionCommand questionCommand = new GoogleFileQuestionCommand();
 	private IGenAiClient genAiClient;
 
     public GoogleAgentIntelligenceStrategy() {
@@ -43,14 +44,8 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 
     @TestVisible
     private GoogleAgentIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiAccessTokenProvider tokenProvider) {
-        this(metadataService, tokenProvider, new GoogleFileSummarizeCommand());
-    }
-
-    @TestVisible
-    private GoogleAgentIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiAccessTokenProvider tokenProvider, GoogleFileSummarizeCommand summarizeCommand) {
         this.metadataService = metadataService;
         this.tokenProvider = tokenProvider;
-		this.summarizeCommand = summarizeCommand == null ? new GoogleFileSummarizeCommand() : summarizeCommand;
 		this.genAiClient = new GenAiClientFactory().google(
             new GenAiGoogleAgentPlatformConfig(
                 metadataService.getGoogleAgentProjectId(),
@@ -86,7 +81,7 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
         try {
 	        validateAgentConfiguration(false);
         } catch (Exception ex) {
-            return buildBlockedResult(ex.getMessage());
+            return buildBlockedResult(ex.getMessage(), 'SUMMARY');
         }
 
         return this.summarizeCommand.summarize(
@@ -98,7 +93,17 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 	}
 
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localGoogleFileVersionId, String question) {
-		return null;
+        if (localGoogleFileVersionId == null) {
+            return null;
+        }
+
+        try {
+            validateAgentConfiguration(false);
+        } catch (Exception ex) {
+            return buildBlockedResult(ex.getMessage(), 'QUESTION');
+        }
+
+        return this.questionCommand.answerQuestion(localGoogleFileVersionId, question, 'Agent Platform', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
     private void validateAgentConfiguration(Boolean resolveAccessToken) {
@@ -142,11 +147,11 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
         }
     }
 
-    private GoogleFileAnalysisResultDTO buildBlockedResult(String errorMessage) {
+    private GoogleFileAnalysisResultDTO buildBlockedResult(String errorMessage, String operationType) {
         GoogleFileAnalysisResultDTO result = new GoogleFileAnalysisResultDTO();
         result.blocked = true;
         result.provider = 'Agent Platform';
-        result.operationType = 'SUMMARY';
+        result.operationType = operationType;
         result.errorMessage = errorMessage;
         return result;
     }

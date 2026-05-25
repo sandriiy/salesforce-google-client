@@ -1,8 +1,16 @@
 @IsTest
 private class GoogleLocalFileIntelligenceServiceTest {
+	private static GoogleClientConfig__mdt buildGeminiConfig() {
+		return new GoogleClientConfig__mdt(
+			CustomGeminiApiKey__c = 'api-key-1',
+			CustomModelName__c = 'gemini-2.0-flash'
+		);
+	}
+
 	@IsTest
 	private static void testRetrieveIntelligenceStatesPositiveEligibleWithSummary() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INT1').withDescription('D').insertRecord();
 		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
@@ -31,6 +39,7 @@ private class GoogleLocalFileIntelligenceServiceTest {
 	@IsTest
 	private static void testRetrieveIntelligenceStatesNegativeTooLarge() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INT2').withDescription('D').insertRecord();
 		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
@@ -51,6 +60,30 @@ private class GoogleLocalFileIntelligenceServiceTest {
 		Assert.areEqual(localFileVersion.Id, states[0].versionId);
 		Assert.areEqual(null, states[0].summary);
 		Assert.isFalse(states[0].hasSummary);
+		Assert.isFalse(states[0].isIntelligenceEligible);
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesNegativeNoConfiguration() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INT3').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('INT3.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId('GD_INT_3')
+			.withDocsId('DOCS_INT_3')
+			.insertRecord();
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(1, states.size());
 		Assert.isFalse(states[0].isIntelligenceEligible);
 	}
 }

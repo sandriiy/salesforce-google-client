@@ -40,20 +40,43 @@ public without sharing class GoogleLocalFileIntelligenceService {
 		);
 
 		GoogleFileVersionContextResolver contextResolver = new GoogleFileVersionContextResolver();
+		Boolean isIntelligenceConfigured = new GoogleFileIntelligenceFactory().isConfigured();
 		for (Id versionId : localFileVersionIds) {
 			if (versionId == null) continue;
-			intelligenceStates.add(buildIntelligenceState(versionId, versionsById.get(versionId), contextResolver));
+			intelligenceStates.add(buildIntelligenceState(versionId, versionsById.get(versionId), contextResolver, isIntelligenceConfigured));
 		}
 
 		return intelligenceStates;
 	}
 
-	private GoogleFileIntelligenceStateDTO buildIntelligenceState(Id versionId, GoogleFileVersion__c localFileVersion, GoogleFileVersionContextResolver contextResolver) {
+	public GoogleFileAnalysisResultDTO answerQuestion(Id localFileVersionId, String question) {
+		if (localFileVersionId == null) {
+			return null;
+		}
+
+		try {
+			return new GoogleFileIntelligenceFactory().create().answerQuestion(localFileVersionId, question);
+		} catch (GoogleFileIntelligenceFactory.GoogleFileIntelligenceFactoryException ex) {
+			return buildBlockedQuestionResult(ex.getMessage());
+		}
+	}
+
+	private GoogleFileIntelligenceStateDTO buildIntelligenceState(Id versionId, GoogleFileVersion__c localFileVersion, GoogleFileVersionContextResolver contextResolver, Boolean isIntelligenceConfigured) {
 		GoogleFileIntelligenceStateDTO intelligenceState = createDefaultState(versionId);
 		intelligenceState.summary = localFileVersion == null ? null : localFileVersion.Summary__c;
 		intelligenceState.hasSummary = localFileVersion != null && String.isNotBlank(localFileVersion.Summary__c);
-		intelligenceState.isIntelligenceEligible = localFileVersion != null && contextResolver.supportsSummary(localFileVersion);
+		intelligenceState.isIntelligenceEligible = isIntelligenceConfigured == true
+			&& localFileVersion != null
+			&& contextResolver.supportsInteractiveIntelligence(localFileVersion);
 		return intelligenceState;
+	}
+
+	private GoogleFileAnalysisResultDTO buildBlockedQuestionResult(String errorMessage) {
+		GoogleFileAnalysisResultDTO result = new GoogleFileAnalysisResultDTO();
+		result.blocked = true;
+		result.operationType = 'QUESTION';
+		result.errorMessage = errorMessage;
+		return result;
 	}
 
 	private GoogleFileIntelligenceStateDTO createDefaultState(Id versionId) {

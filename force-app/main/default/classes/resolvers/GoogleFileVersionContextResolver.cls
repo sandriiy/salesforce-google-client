@@ -138,14 +138,22 @@ public with sharing class GoogleFileVersionContextResolver {
             && GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.containsKey(fileVersion.Type__c);
     }
 
+    public Boolean supportsInteractiveIntelligence(GoogleFileVersion__c fileVersion) {
+        return fileVersion != null
+            && fileVersion.Id != null
+            && fileVersion.Size__c != null
+            && fileVersion.Size__c <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES
+            && String.isNotBlank(fileVersion.GoogleDocsFileId__c);
+    }
+
     public Boolean supportsSummary(GoogleFileVersion__c fileVersion) {
-        return fileVersion != null && 
-			fileVersion.Id != null && 
-			fileVersion.Size__c != null && 
-			fileVersion.Size__c <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES 
-			&& (
-				String.isNotBlank(fileVersion.GoogleDocsFileId__c) || 
-				requiresGoogleWorkspaceFile(fileVersion)
-			);
+        return fileVersion != null
+            && fileVersion.Id != null
+            && fileVersion.Size__c != null
+            && fileVersion.Size__c <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES
+            && (
+                supportsInteractiveIntelligence(fileVersion)
+                || requiresGoogleWorkspaceFile(fileVersion)
+            );
     }
 }

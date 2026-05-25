@@ -30,7 +30,8 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 
     private GoogleMetadataConfigService metadataService;
     private IGenAiApiKeyProvider apiKeyProvider;
-	private GoogleFileSummarizeCommand summarizeCommand;
+	private GoogleFileSummarizeCommand summarizeCommand = new GoogleFileSummarizeCommand();
+	private GoogleFileQuestionCommand questionCommand = new GoogleFileQuestionCommand();
 	private IGenAiClient genAiClient;
 
 	public GoogleGeminiIntelligenceStrategy() {
@@ -43,14 +44,8 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 
     @TestVisible
 	private GoogleGeminiIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiApiKeyProvider apiKeyProvider) {
-		this(metadataService, apiKeyProvider, new GoogleFileSummarizeCommand());
-	}
-
-	@TestVisible
-	private GoogleGeminiIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiApiKeyProvider apiKeyProvider, GoogleFileSummarizeCommand summarizeCommand) {
         this.metadataService = metadataService;
         this.apiKeyProvider = apiKeyProvider;
-		this.summarizeCommand = summarizeCommand == null ? new GoogleFileSummarizeCommand() : summarizeCommand;
 		this.genAiClient = new GenAiClientFactory().google(new GenAiGoogleDeveloperConfig(apiKeyProvider));
     }
 
@@ -80,14 +75,24 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 		try {
 			validateGeminiConfiguration();
 		} catch (Exception ex) {
-			return buildBlockedResult(ex.getMessage());
+			return buildBlockedResult(ex.getMessage(), 'SUMMARY');
 		}
 
 		return this.summarizeCommand.summarize(localGoogleFileVersionId, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localGoogleFileVersionId, String question) {
-		return null;
+		if (localGoogleFileVersionId == null) {
+			return null;
+		}
+
+		try {
+			validateGeminiConfiguration();
+		} catch (Exception ex) {
+			return buildBlockedResult(ex.getMessage(), 'QUESTION');
+		}
+
+		return this.questionCommand.answerQuestion(localGoogleFileVersionId, question, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
     private void validateGeminiConfiguration() {
@@ -107,11 +112,11 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 		}
     }
 
-	private GoogleFileAnalysisResultDTO buildBlockedResult(String errorMessage) {
+	private GoogleFileAnalysisResultDTO buildBlockedResult(String errorMessage, String operationType) {
 		GoogleFileAnalysisResultDTO result = new GoogleFileAnalysisResultDTO();
 		result.blocked = true;
 		result.provider = 'Gemini';
-		result.operationType = 'SUMMARY';
+		result.operationType = operationType;
 		result.errorMessage = errorMessage;
 		return result;
 	}

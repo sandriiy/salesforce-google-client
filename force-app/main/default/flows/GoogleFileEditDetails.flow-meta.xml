@@ -66,6 +66,8 @@
             <label>Is Edit Access?</label>
         </rules>
     </decisions>
+    <description>Opens a screen to edit file details, including the file name, version name, and description.</description>
+    <environments>Default</environments>
     <interviewLabel>Google File Edit Details {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Google File Edit Details</label>
     <processMetadataValues>
@@ -142,9 +144,10 @@
         <label>Page Layout</label>
         <locationX>0</locationX>
         <locationY>0</locationY>
-        <allowBack>false</allowBack>
+        <allowBack>true</allowBack>
         <allowFinish>true</allowFinish>
         <allowPause>false</allowPause>
+        <backButtonLabel>Cancel</backButtonLabel>
         <connector>
             <targetReference>EnabledReadOnlyModeCheck</targetReference>
         </connector>

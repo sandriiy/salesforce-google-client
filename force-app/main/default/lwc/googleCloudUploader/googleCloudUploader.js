@@ -1,15 +1,14 @@
 import { LightningElement, api, track, wire } from 'lwc';
 import { saveGoogleFileLocally, uploadInChunks, upload } from 'c/googleCloudUploadUtils';
 import { BIG_FILE_SIZE } from 'c/googleCloudUploadUtils';
-import { DEFAULT_FILE_UPLOAD_FAILURE, DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
+import { DEFAULT_OOPS_MESSAGE, DEFAULT_FILE_UPLOAD_FAILURE, DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
 import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension } from 'c/googleCloudUtils';
 import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
 
 import GoogleCloudFileDeleteModal from 'c/googleCloudFileDeleteModal';
+import GoogleCloudExistingFileAttachModal from 'c/googleCloudExistingFileAttachModal';
 import retrieveGoogleFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveGoogleFiles';
 
-const UNABLE_TO_UPLOAD_MESSAGE = 'Unable to upload file(s)';
-const UNABLE_TO_RETRIEVE_FILES = 'Unable to retrieve file(s)';
 const UPLOAD_SOURCE = 'Uploader';
 export default class GoogleCloudUploader extends LightningElement {
     @api recordId;
@@ -20,6 +19,7 @@ export default class GoogleCloudUploader extends LightningElement {
 
 	@track isAccessible = true; // false when the user does not have permission
 	@track isNewFileVersionUpload = false;
+	@track isDropzoneActive = false;
 	@track isLoading = true;
     @track files = [];
 
@@ -28,7 +28,11 @@ export default class GoogleCloudUploader extends LightningElement {
 	}
 
     async handleFileSelected(event) {
-        const selectedFiles = [...event.target.files];
+		const selectedFiles = [...(event.target.files || [])];
+		await this.processSelectedFiles(selectedFiles);
+	}
+
+	async processSelectedFiles(selectedFiles) {
 		const allowedFiles = this.retrieveAllowedFiles(selectedFiles);
 		let isNotAllowed = this.validateAllowedFileAmount(allowedFiles);
 		if (isNotAllowed) return;
@@ -50,6 +54,41 @@ export default class GoogleCloudUploader extends LightningElement {
 			}
         }
     }
+
+	handleDropZoneDragEnter(event) {
+		this.updateDropzoneState(event, true);
+	}
+
+	handleDropZoneDragOver(event) {
+		this.updateDropzoneState(event, true);
+	}
+
+	handleDropZoneDragLeave(event) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		const nextTarget = event.relatedTarget;
+		if (nextTarget && event.currentTarget.contains(nextTarget)) {
+			return;
+		}
+
+		this.isDropzoneActive = false;
+	}
+
+	async handleDropZoneDrop(event) {
+		event.preventDefault();
+		event.stopPropagation();
+		this.isDropzoneActive = false;
+
+		const droppedFiles = [...(event.dataTransfer?.files || [])];
+		await this.processSelectedFiles(droppedFiles);
+	}
+
+	updateDropzoneState(event, isActive) {
+		event.preventDefault();
+		event.stopPropagation();
+		this.isDropzoneActive = isActive;
+	}
 
 	handleFileReset(event) {
 		const input = event.target;
@@ -78,7 +117,7 @@ export default class GoogleCloudUploader extends LightningElement {
 
 			showToast(
 				this,
-				UNABLE_TO_UPLOAD_MESSAGE,
+				DEFAULT_OOPS_MESSAGE,
 				DEFAULT_FILE_UPLOAD_FAILURE,
 				'error'
 			);
@@ -108,7 +147,7 @@ export default class GoogleCloudUploader extends LightningElement {
 
 			showToast(
 				this,
-				UNABLE_TO_UPLOAD_MESSAGE,
+				DEFAULT_OOPS_MESSAGE,
 				DEFAULT_FILE_UPLOAD_FAILURE,
 				'error'
 			);
@@ -146,6 +185,39 @@ export default class GoogleCloudUploader extends LightningElement {
 		this.isLoading = true;
 		await this.loadFiles();
 		this.isLoading = false;
+	}
+
+	async handleAttachExistingFile() {
+		if (isEmpty(this.recordId)) {
+			return;
+		}
+
+		const modalResult = await GoogleCloudExistingFileAttachModal.open({
+			size: 'medium',
+			label: 'Attach Existing Files',
+			recordId: this.recordId,
+			source: UPLOAD_SOURCE
+		});
+
+		if (!modalResult?.hasChanges) {
+			return;
+		}
+
+		await this.handleFilesRefresh();
+
+		this.dispatchEvent(new CustomEvent('fileattached', {
+			detail: {
+				...(modalResult.detail || {}),
+				numberOfFiles: this.files?.length ?? 0
+			}
+		}));
+		this.dispatchEvent(new FlowAttributeChangeEvent('files', this.files));
+	}
+
+	handleAttachExistingLinkClick(event) {
+		event.preventDefault();
+		event.stopPropagation();
+		this.handleAttachExistingFile();
 	}
 
 	async handleFileReplace(event) {
@@ -214,7 +286,7 @@ export default class GoogleCloudUploader extends LightningElement {
 		if (areNotAllowedFiles) {
 			showToast(
 				this,
-				UNABLE_TO_UPLOAD_MESSAGE,
+				DEFAULT_OOPS_MESSAGE,
 				DEFAULT_FILE_NOT_ALLOWED_MESSAGE,
 				'warning'
 			);
@@ -261,7 +333,7 @@ export default class GoogleCloudUploader extends LightningElement {
 
             showToast(
                 this,
-                UNABLE_TO_UPLOAD_MESSAGE,
+                DEFAULT_OOPS_MESSAGE,
                 message,
                 'warning'
             );
@@ -298,7 +370,7 @@ export default class GoogleCloudUploader extends LightningElement {
             }).catch(error => {
                 showToast(
 					this,
-					'Unable to create file record',
+					DEFAULT_OOPS_MESSAGE,
 					'The file was uploaded, but the record creation failed. Please contact your system administrator',
 					'error'
 				);
@@ -319,7 +391,7 @@ export default class GoogleCloudUploader extends LightningElement {
 			} else {
 				showToast(
 					this,
-					UNABLE_TO_RETRIEVE_FILES,
+					DEFAULT_OOPS_MESSAGE,
 					DEFAULT_FAILED_RETRIEVE_MESSAGE,
 					'error'
 				);
@@ -356,8 +428,10 @@ export default class GoogleCloudUploader extends LightningElement {
     }
 
     get isMultiple() {
-        return this.isNewFileVersionUpload === true 
-			? false
-			: this.allowMultipleFiles;
+        return this.isNewFileVersionUpload === true ? false : this.allowMultipleFiles;
     }
+
+	get dropzoneClass() {
+		return this.isDropzoneActive ? 'dropzone dropzone--active' : 'dropzone';
+	}
 }

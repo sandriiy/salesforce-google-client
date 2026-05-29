@@ -50,6 +50,8 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		User u = GoogleCloudTestFactory.newUser();
+		Account linkedAccount = new Account(Name = 'Visible Linked Account');
+		insert linkedAccount;
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('RS2').withDescription('D').insertRecord();
 
 		GoogleFile__Share sh = new GoogleFile__Share(
@@ -60,13 +62,11 @@ private class GoogleLocalFileSharingServiceTest {
 		);
 		insert sh;
 
-		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
-
 		GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(fakeAccountId)
+			.withLinkedRecord(linkedAccount.Id)
 			.withLinkedType('Account')
 			.insertRecord();
 
@@ -85,7 +85,50 @@ private class GoogleLocalFileSharingServiceTest {
 
 		System.assertNotEquals(null, dto.recordsSharedTo);
 		System.assertEquals(1, dto.recordsSharedTo.size());
-		System.assertEquals(String.valueOf(fakeAccountId), dto.recordsSharedTo[0].LinkedObjectId__c);
+		System.assertEquals(String.valueOf(linkedAccount.Id), dto.recordsSharedTo[0].LinkedObjectId__c);
+	}
+
+	@IsTest
+	private static void testFetchSharingDetailsFiltersInaccessibleRecordLinks() {
+		GoogleCloudTestFactory.initMocks();
+
+		User targetUser = GoogleCloudTestFactory.newUser();
+		Account linkedAccount = new Account(Name = 'Sharing Visible Account', OwnerId = targetUser.Id);
+		insert linkedAccount;
+		Id hiddenAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('RS_Filtered').withDescription('D').insertRecord();
+
+		insert new GoogleFile__Share(
+			ParentId = localFile.Id,
+			UserOrGroupId = targetUser.Id,
+			AccessLevel = 'Edit',
+			RowCause = Schema.GoogleFile__Share.RowCause.Manual
+		);
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(linkedAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('AllUsers')
+			.insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(hiddenAccountId)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('AllUsers')
+			.insertRecord();
+
+		System.runAs(targetUser) {
+			Test.startTest();
+			GoogleSharingInfoDTO dto = new GoogleLocalFileSharingService().fetchSharingDetails(localFile.Id);
+			Test.stopTest();
+
+			Assert.areEqual(1, dto.recordsSharedTo.size());
+			Assert.areEqual(String.valueOf(linkedAccount.Id), dto.recordsSharedTo[0].LinkedObjectId__c);
+		}
 	}
 
 	@IsTest
@@ -475,6 +518,47 @@ private class GoogleLocalFileSharingServiceTest {
 			System.assert(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
 			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+		}
+	}
+
+	@IsTest
+	private static void testRetrieveLinkedRecordsFiltersInaccessibleRecordLinks() {
+		GoogleCloudTestFactory.initMocks();
+
+		User fileOwner = GoogleCloudTestFactory.newUser();
+		User targetUser = GoogleCloudTestFactory.newUser();
+		Account linkedAccount = new Account(Name = 'Linked Record Visible', OwnerId = targetUser.Id);
+		insert linkedAccount;
+		Id hiddenAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Linked Records Filtered')
+			.withDescription('D')
+			.withOwner(fileOwner.Id)
+			.insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(linkedAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('AllUsers')
+			.insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(hiddenAccountId)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('AllUsers')
+			.insertRecord();
+
+		System.runAs(targetUser) {
+			Test.startTest();
+			List<GoogleFileLink__c> linkedRecords = new GoogleLocalFileSharingService().retrieveLinkedRecords(localFile.Id);
+			Test.stopTest();
+
+			Assert.areEqual(1, linkedRecords.size());
+			Assert.areEqual(String.valueOf(linkedAccount.Id), linkedRecords[0].LinkedObjectId__c);
 		}
 	}
 }

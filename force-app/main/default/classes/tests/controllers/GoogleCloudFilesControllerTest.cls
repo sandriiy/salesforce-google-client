@@ -54,54 +54,138 @@ private class GoogleCloudFilesControllerTest {
 	private static void testRetrieveGoogleFilesWithLimitPositive() {
 		GoogleCloudTestFactory.initMocks();
 
-		Id relatedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Account relatedAccount = new Account(Name = 'Related Account');
+		insert relatedAccount;
 
 		GoogleFile__c firstFile = GoogleCloudTestFactory.file()
 			.withName('F1')
 			.withDescription('D')
 			.withSource('Uploader')
 			.insertRecord();
+		GoogleCloudTestFactory.version().forFile(firstFile.Id).withName('F1.pdf').withDriveId('GD_F1').insertRecord();
 
 		GoogleFile__c secondFile = GoogleCloudTestFactory.file()
 			.withName('F2')
 			.withDescription('D')
+			.withSource('Uploader')
+			.insertRecord();
+		GoogleCloudTestFactory.version().forFile(secondFile.Id).withName('F2.pdf').withDriveId('GD_F2').insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(firstFile.Id)
+			.withLinkedRecord(relatedAccount.Id)
+			.withLinkedType('Account')
 			.withSource('Notes & Attachments')
+			.withShareType('Viewer')
+			.withVisibility('InternalUsers')
 			.insertRecord();
 
-		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = firstFile.Id, Name = firstFile.Name, OwnerId = UserInfo.getUserId()),
-			new GoogleFile__c(Id = secondFile.Id, Name = secondFile.Name, OwnerId = UserInfo.getUserId())
-		});
+		GoogleCloudTestFactory.link()
+			.forFile(secondFile.Id)
+			.withLinkedRecord(relatedAccount.Id)
+			.withLinkedType('Account')
+			.withSource('Uploader')
+			.withShareType('Viewer')
+			.withVisibility('InternalUsers')
+			.insertRecord();
 
 		Test.startTest();
-		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithLimit(relatedAccountId, 'Uploader', 1);
+		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithLimit(relatedAccount.Id, 'Notes & Attachments', 1);
 		Test.stopTest();
 
-		System.assertNotEquals(null, files);
+		Assert.areEqual(1, files.size());
+		Assert.areEqual(firstFile.Id, files[0].Id);
+	}
+
+	@IsTest
+	private static void testRetrieveGoogleFilesWithLimitFallsBackToPrimarySource() {
+		GoogleCloudTestFactory.initMocks();
+
+		Account relatedAccount = new Account(Name = 'Fallback Account');
+		insert relatedAccount;
+
+		GoogleFile__c firstFile = GoogleCloudTestFactory.file()
+			.withName('FB1')
+			.withDescription('D')
+			.withSource('Uploader')
+			.insertRecord();
+		GoogleCloudTestFactory.version().forFile(firstFile.Id).withName('FB1.pdf').withDriveId('GD_FB1').insertRecord();
+
+		GoogleFile__c secondFile = GoogleCloudTestFactory.file()
+			.withName('FB2')
+			.withDescription('D')
+			.withSource('Notes & Attachments')
+			.insertRecord();
+		GoogleCloudTestFactory.version().forFile(secondFile.Id).withName('FB2.pdf').withDriveId('GD_FB2').insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(firstFile.Id)
+			.withLinkedRecord(relatedAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('InternalUsers')
+			.insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(secondFile.Id)
+			.withLinkedRecord(relatedAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('InternalUsers')
+			.insertRecord();
+
+		Test.startTest();
+		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithLimit(relatedAccount.Id, 'Uploader', 5);
+		Test.stopTest();
+
+		Assert.areEqual(1, files.size());
+		Assert.areEqual(firstFile.Id, files[0].Id);
 	}
 
 	@IsTest
 	private static void testRetrieveGoogleFilesWithoutLimitPositive() {
 		GoogleCloudTestFactory.initMocks();
 
-		Id relatedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Account relatedAccount = new Account(Name = 'All Linked Account');
+		insert relatedAccount;
 
-		GoogleFile__c fileRecord = GoogleCloudTestFactory.file()
+		GoogleFile__c firstFile = GoogleCloudTestFactory.file()
 			.withName('F3')
 			.withDescription('D')
 			.withSource('Uploader')
 			.insertRecord();
+		GoogleCloudTestFactory.version().forFile(firstFile.Id).withName('F3.pdf').withDriveId('GD_F3').insertRecord();
 
-		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = fileRecord.Id, Name = fileRecord.Name, OwnerId = UserInfo.getUserId())
-		});
+		GoogleFile__c secondFile = GoogleCloudTestFactory.file()
+			.withName('F4')
+			.withDescription('D')
+			.withSource('Notes & Attachments')
+			.insertRecord();
+		GoogleCloudTestFactory.version().forFile(secondFile.Id).withName('F4.pdf').withDriveId('GD_F4').insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(firstFile.Id)
+			.withLinkedRecord(relatedAccount.Id)
+			.withLinkedType('Account')
+			.withSource('Uploader')
+			.withShareType('Viewer')
+			.withVisibility('InternalUsers')
+			.insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(secondFile.Id)
+			.withLinkedRecord(relatedAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('InternalUsers')
+			.insertRecord();
 
 		Test.startTest();
-		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit(relatedAccountId, null);
+		List<GoogleFile__c> files = GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit(relatedAccount.Id, null);
 		Test.stopTest();
 
-		System.assertNotEquals(null, files);
-		System.assertEquals(1, files.size());
+		Assert.areEqual(2, files.size());
+		Assert.areEqual(new Set<Id>{ firstFile.Id, secondFile.Id }, new Map<Id, GoogleFile__c>(files).keySet());
 	}
 
 	@IsTest
@@ -279,5 +363,58 @@ private class GoogleCloudFilesControllerTest {
 		Test.stopTest();
 
 		System.assertNotEquals(null, bigFileResult);
+	}
+
+	@IsTest
+	private static void testRetrieveAttachableOwnedGoogleFilesFiltersExistingLinksAndNonOwnedFiles() {
+		GoogleCloudTestFactory.initMocks();
+
+		User otherOwner = GoogleCloudTestFactory.newUser();
+		Account relatedAccount = new Account(Name = 'Attach Target');
+		insert relatedAccount;
+
+		GoogleFile__c attachableFile = createOwnedFileRecord('Attachable File', UserInfo.getUserId(), 'GD_ATTACHABLE_1');
+		GoogleFile__c linkedFile = createOwnedFileRecord('Linked File', UserInfo.getUserId(), 'GD_LINKED_1');
+		GoogleFile__c foreignFile = createOwnedFileRecord('Foreign File', otherOwner.Id, 'GD_FOREIGN_1');
+
+		GoogleCloudTestFactory.link()
+			.forFile(linkedFile.Id)
+			.withLinkedRecord(relatedAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('InternalUsers')
+			.insertRecord();
+
+		Test.startTest();
+		List<GoogleFile__c> attachableFiles = GoogleCloudFilesController.retrieveAttachableOwnedGoogleFiles(relatedAccount.Id);
+		Test.stopTest();
+
+		Assert.areEqual(1, attachableFiles.size());
+		Assert.areEqual(attachableFile.Id, attachableFiles[0].Id);
+		Assert.areEqual('Edit', attachableFiles[0].UserAccessLevel__c);
+		Assert.areNotEqual(foreignFile.Id, attachableFiles[0].Id);
+	}
+
+	private static GoogleFile__c createOwnedFileRecord(String fileName, Id ownerId, String driveId) {
+		return createOwnedFileRecord(fileName, ownerId, driveId, 'Notes & Attachments');
+	}
+
+	private static GoogleFile__c createOwnedFileRecord(String fileName, Id ownerId, String driveId, String source) {
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName(fileName)
+			.withDescription('D')
+			.withSource(source)
+			.withOwner(ownerId)
+			.insertRecord();
+
+		GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName(fileName + '.pdf')
+			.withType('application/pdf')
+			.withSize(10L)
+			.withDriveId(driveId)
+			.insertRecord();
+
+		return localFile;
 	}
 }

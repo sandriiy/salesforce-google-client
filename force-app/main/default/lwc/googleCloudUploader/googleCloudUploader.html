@@ -1,34 +1,46 @@
 <template>
     <div lwc:if={isAccessible} class="slds-card slds-p-top_xx-small slds-p-horizontal_small slds-p-bottom_xx-small" style="position: relative;">
         <div class="slds-p-horizontal_xx-small">
-            <label class="dropzone slds-grid slds-grid_vertical-align-center slds-grid_align-center slds-gutters_small">
-                <span class="dropzone__icon">
-                    <lightning-icon
-                        icon-name="utility:add"
-                        size="small"
-                        alternative-text="add files"
-                    ></lightning-icon>
-                </span>
-                <div>
-                    <p class="slds-text-body_regular">
-                        Drop files or <span class="link">browse</span>
-                    </p>
-                    <p lwc:if={supportedFileExtensions} class="slds-text-body_small slds-text-color_weak">
-                        Support files: {supportedFileExtensions}
-                    </p>
-                    <p lwc:if={maximumSizeMb} class="slds-text-body_small slds-text-color_weak">
-                        Max file size: {maximumSizeMb}&nbsp;MB
-                    </p>
+            <div class={dropzoneClass} onclick={openFileSelection} ondragenter={handleDropZoneDragEnter} ondragover={handleDropZoneDragOver} ondragleave={handleDropZoneDragLeave} ondrop={handleDropZoneDrop}>
+                <div class="dropzone__body">
+                    <div class="dropzone__content">
+                        <span class="dropzone__icon">
+                            <lightning-icon
+                                icon-name="utility:add"
+                                size="small"
+                                alternative-text="add files"
+                            ></lightning-icon>
+                        </span>
+                        <div>
+                            <p class="slds-text-body_regular">
+                                Drop files or <span class="link">browse</span>
+                            </p>
+                            <p lwc:if={supportedFileExtensions} class="slds-text-body_small slds-text-color_weak">
+                                Support files: {supportedFileExtensions}
+                            </p>
+                            <p lwc:if={maximumSizeMb} class="slds-text-body_small slds-text-color_weak">
+                                Max file size: {maximumSizeMb}&nbsp;MB
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="dropzone__existing-action">
+                        <span class="dropzone__separator"></span>
+                        <button type="button" class="attach-existing-link" onclick={handleAttachExistingLinkClick}>
+                            or attach existing
+                        </button>
+                    </div>
                 </div>
-                <input
-                    type="file"
-                    multiple={isMultiple}
-                    accept={acceptedTypes}
-                    onclick={handleFileReset}
-                    onchange={handleFileSelected}
-                    class="file-input"
-                />
-            </label>
+            </div>
+
+            <input
+                type="file"
+                multiple={isMultiple}
+                accept={acceptedTypes}
+                onclick={handleFileReset}
+                onchange={handleFileSelected}
+                class="file-input slds-hide"
+            />
         </div>
 
         <div lwc:if={filesExist} class="slds-m-top_medium files-container">

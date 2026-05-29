@@ -8,12 +8,27 @@
         <apexClass>GoogleCloudConfigController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>GoogleCloudFileIntelligenceController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>GoogleCloudFilesController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>GoogleCloudFilesSharingController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>GoogleCloudFilesViewController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>
         <name>GoogleClientConfig__mdt</name>
     </customMetadataTypeAccesses>
-    <description
-  >Provides access to Google Cloud file management functionality, including the application, file metadata, and all related system integration and configuration settings.</description>
+    <description>Provides access to Google Cloud file management functionality, including the application, file metadata, and all related system integration and configuration settings.</description>
     <fieldPermissions>
         <editable>true</editable>
         <field>GoogleFileVersion__c.Description__c</field>
@@ -32,6 +47,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>GoogleFileVersion__c.IsLatestFile__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>GoogleFileVersion__c.IsPreviewableFile__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -60,6 +80,11 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
+        <editable>false</editable>
+        <field>GoogleFileVersion__c.Summary__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
         <editable>true</editable>
         <field>GoogleFileVersion__c.Type__c</field>
         <readable>true</readable>
@@ -70,8 +95,53 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
+        <editable>false</editable>
+        <field>GoogleFile__c.NumberOfLinks__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>GoogleFile__c.NumberOfVersions__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>GoogleFile__c.Source__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
         <editable>true</editable>
         <field>GoogleFile__c.UserAccessLevel__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleFileLink__c.LinkedObjectId__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleFileLink__c.LinkedObjectName__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleFileLink__c.LinkedObjectType__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleFileLink__c.ShareType__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleFileLink__c.Source__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleFileLink__c.Visibility__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>

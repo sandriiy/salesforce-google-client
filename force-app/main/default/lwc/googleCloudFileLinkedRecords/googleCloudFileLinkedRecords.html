@@ -1,0 +1,40 @@
+<template>
+    <c-google-cloud-base-card title="Linked Records" icon-name="utility:link" badge-text={badgeText}>
+		<div class="linked-records__body">
+            <template lwc:if={isLoading}>
+                <div class="linked-records__state linked-records__state--loading">
+                    <lightning-spinner alternative-text="Loading linked records" size="small"></lightning-spinner>
+                </div>
+            </template>
+            <template lwc:elseif={hasError}>
+                <div class="linked-records__state linked-records__state--error">
+                    <p>{errorMessage}</p>
+                </div>
+            </template>
+            <template lwc:elseif={hasRecords}>
+                <ul class="linked-records__rows">
+                    <template for:each={records} for:item="record">
+                        <li key={record.id} class="linked-records__row">
+                            <c-google-cloud-base-entity
+                                value={record.targetId}
+                                title={record.displayName}
+                                meta={record.typeLabel}
+                                leading-icon-name={record.iconName}
+                                leading-icon-alternative-text={record.typeLabel}
+                                trailing-primary={record.accessLabel}
+                                trailing-secondary={record.visibilityLabel}
+                                onentityclick={handleOpenRecord}
+                            ></c-google-cloud-base-entity>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+            <template lwc:else>
+                <div class="linked-records__state linked-records__state--empty">
+                    <lightning-icon icon-name="utility:link" size="small" alternative-text="No linked records"></lightning-icon>
+                    <p>This file is not linked to any records yet.</p>
+                </div>
+            </template>
+        </div>
+    </c-google-cloud-base-card>
+</template>

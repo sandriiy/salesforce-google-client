@@ -35,35 +35,24 @@ public with sharing class GoogleCloudFilesController {
 		return recordService.retrieveGoogleFiles(UserInfo.getUserId());
 	}
 
+	@AuraEnabled
+	public static List<GoogleFile__c> retrieveAttachableOwnedGoogleFiles(Id relatedRecordId) {
+		GoogleLocalFileService recordService = new GoogleLocalFileService();
+		return recordService.retrieveAttachableOwnedFiles(relatedRecordId);
+	}
+
     @AuraEnabled
     public static List<GoogleFile__c> retrieveGoogleFiles(Id relatedRecordId, String source, Integer recordsCount) {
-		GoogleFileSelector selector = GoogleFileSelector.query()
-			.byRelatedRecordId(relatedRecordId)
-			.withBaseFields()
-			.withVersionsSubquery()
-			.orderByCreatedDesc();
-
-        if (String.isNotBlank(source)) {
-			selector.bySource(source);
-        }
-
-		if (recordsCount != null && recordsCount != 0) {
-			selector.limitTo(recordsCount);
-		}
-
 		GoogleLocalFileService recordService = new GoogleLocalFileService();
-        return recordService.stripInaccessibleRecords()
-			.forFiles(selector.toList())
-			.forUser(UserInfo.getUserId())
-			.strip();
+		return recordService.retrieveGoogleFilesForRelatedRecord(relatedRecordId, source, recordsCount);
     }
 
 	@AuraEnabled
     public static GoogleFile__c retrieveLocalGoogleFileById(Id localGoogleFileId) {
-        GoogleFile__c localGoogleFile = (GoogleFile__c) GoogleFileSelector.query()
-			.byRecordId(localGoogleFileId)
+		GoogleFile__c localGoogleFile = (GoogleFile__c) GoogleFileSelector.query()
 			.withBaseFields()
 			.withVersionsSubquery()
+			.byId(localGoogleFileId)
 			.toObject();
 
 		if (localGoogleFile != null) {

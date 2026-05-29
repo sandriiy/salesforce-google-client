@@ -9,6 +9,7 @@ import { requestConfig, stopConfigSession } from 'c/googleCloudConfigBus';
 import { updateTabPresentation, closeWhenReady } from 'c/googleCloudCrossPlatformUtils';
 
 import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
+import GoogleCloudExistingFileAttachModal from 'c/googleCloudExistingFileAttachModal';
 
 import {
 	isEmpty,
@@ -91,6 +92,29 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 		const fileInput = this.template.querySelector('.file-input');
 		if (fileInput) {
 			fileInput.click();
+		}
+	}
+
+	async handleAttachExistingFile() {
+		if (isEmpty(this.recordId)) {
+			return;
+		}
+
+		const modalResult = await GoogleCloudExistingFileAttachModal.open({
+			size: 'medium',
+			label: 'Attach Existing Files',
+			recordId: this.recordId,
+			source: this.source
+		});
+
+		if (modalResult?.hasChanges) {
+			this.handleDataRefresh();
+		}
+	}
+
+	handleHeaderActionSelect(event) {
+		if (event.detail?.value === 'attachExisting') {
+			this.handleAttachExistingFile();
 		}
 	}
 

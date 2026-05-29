@@ -1,0 +1,44 @@
+<template>
+    <button type="button" class="base-entity" title={buttonTitle} onclick={handleClick}>
+        <template lwc:if={hasIconLeading}>
+            <span class="base-entity__leading base-entity__leading--icon">
+                <span class="base-entity__icon-shell">
+                    <lightning-icon
+                        icon-name={leadingIconName}
+                        size="small"
+                        alternative-text={leadingIconAlternativeText}
+                    ></lightning-icon>
+                </span>
+            </span>
+        </template>
+
+        <span class="base-entity__main">
+            <span class="base-entity__title slds-truncate" title={title}>
+                {title}
+            </span>
+
+            <template lwc:if={meta}>
+                <span class="base-entity__meta slds-truncate" title={meta}>
+                    {meta}
+                </span>
+            </template>
+
+            <template lwc:if={detail}>
+                <span class={detailClass} title={detail}>
+                    {detail}
+                </span>
+            </template>
+        </span>
+
+        <template lwc:if={hasTrailing}>
+            <span class="base-entity__trailing">
+                <template lwc:if={trailingPrimary}>
+                    <span class="base-entity__tag">{trailingPrimary}</span>
+                </template>
+                <template lwc:if={trailingSecondary}>
+                    <span class="base-entity__tag base-entity__tag--muted">{trailingSecondary}</span>
+                </template>
+            </span>
+        </template>
+    </button>
+</template>

@@ -55,6 +55,7 @@
             <label>Is Edit Access?</label>
         </rules>
     </decisions>
+    <description>Opens the file details screen, where users can edit the file name, source, and description.</description>
     <dynamicChoiceSets>
         <name>GoogleFileSourcePicklist</name>
         <dataType>Picklist</dataType>
@@ -181,7 +182,7 @@
                     </defaultValue>
                     <fieldText>File Source</fieldText>
                     <fieldType>DropdownBox</fieldType>
-                    <helpText>&lt;p&gt;Changing the file source may affect its visibility and cause the file to disappear from the section where it was uploaded. Proceed only if you understand the impact.&lt;/p&gt;</helpText>
+                    <helpText>&lt;p&gt;Represents the file’s original upload source. This does not apply to secondary attachments, which are managed separately. Changing this value may affect file visibility and remove it from the section where it was originally uploaded.&lt;/p&gt;</helpText>
                     <inputsOnNextNavToAssocScrn>UseStoredValues</inputsOnNextNavToAssocScrn>
                     <isDisabled>
                         <elementReference>IsReadOnly</elementReference>

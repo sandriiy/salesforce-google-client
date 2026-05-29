@@ -93,9 +93,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 
 	async handleFileDownload(event) {
 		this.showLatestVersionWarning();
-		this.isHeaderLoading = true;
 		await this.downloadFile();
-		this.isHeaderLoading = false;
 	}
 
 	handleFilePreview(event) {
@@ -112,6 +110,8 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 			label: `Share ${this.fileName}`,
 			localFileRecordId: this.recordId
 		});
+
+		await this.refs.linkedRecords?.refresh?.();
 	}
 
 	handleFileEdit(event) {
@@ -359,6 +359,14 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 				value: this.isReadOnlyAccess
 			}
 		];
+	}
+
+	get isPageLoading() {
+		return this.isHeaderLoading || this.isMainLoading;
+	}
+
+	get isContentReady() {
+		return this.recordId && this.hasRecordAccess && !this.isPageLoading;
 	}
 
 	get hasAccess() {

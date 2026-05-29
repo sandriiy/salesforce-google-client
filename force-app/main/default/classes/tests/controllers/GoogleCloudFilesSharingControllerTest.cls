@@ -270,6 +270,137 @@ private class GoogleCloudFilesSharingControllerTest {
 	}
 
 	@IsTest
+	private static void testAttachExistingFileToRecordCreatesSingleLink() {
+		GoogleCloudTestFactory.initMocks();
+
+		Account relatedAccount = new Account(Name = 'Linked Account');
+		insert relatedAccount;
+
+		GoogleFile__c localFile = createOwnedFileRecord('Attach Once', UserInfo.getUserId(), 'GD_ATTACH_ONCE', 'Uploader');
+
+		Test.startTest();
+		Id firstLinkId = GoogleCloudFilesSharingController.attachExistingFileToRecord(localFile.Id, relatedAccount.Id, 'Notes & Attachments');
+		Id secondLinkId = GoogleCloudFilesSharingController.attachExistingFileToRecord(localFile.Id, relatedAccount.Id, 'Notes & Attachments');
+		Test.stopTest();
+
+		List<GoogleFileLink__c> createdLinks = [
+			SELECT Id, ShareType__c, Visibility__c, Source__c
+			FROM GoogleFileLink__c
+			WHERE GoogleFileId__c = :localFile.Id
+			AND LinkedObjectId__c = :String.valueOf(relatedAccount.Id)
+		];
+
+		Assert.areEqual(1, createdLinks.size());
+		Assert.areEqual(createdLinks[0].Id, firstLinkId);
+		Assert.areEqual(createdLinks[0].Id, secondLinkId);
+		Assert.areEqual('Viewer', createdLinks[0].ShareType__c);
+		Assert.areEqual('InternalUsers', createdLinks[0].Visibility__c);
+		Assert.areEqual('Notes & Attachments', createdLinks[0].Source__c);
+		GoogleFile__c updatedFile = [
+			SELECT Source__c
+			FROM GoogleFile__c
+			WHERE Id = :localFile.Id
+			LIMIT 1
+		];
+		Assert.areEqual('Uploader', updatedFile.Source__c);
+	}
+
+	@IsTest
+	private static void testAttachExistingFileToRecordRejectsSharedButNotOwnedFile() {
+		GoogleCloudTestFactory.initMocks();
+
+		User otherOwner = GoogleCloudTestFactory.newUser();
+		Account relatedAccount = new Account(Name = 'Restricted Account');
+		insert relatedAccount;
+
+		GoogleFile__c sharedFile = createOwnedFileRecord('Shared Edit File', otherOwner.Id, 'GD_SHARED_EDIT');
+		insert new GoogleFile__Share(
+			ParentId = sharedFile.Id,
+			UserOrGroupId = UserInfo.getUserId(),
+			AccessLevel = 'Edit',
+			RowCause = Schema.GoogleFile__Share.RowCause.Manual
+		);
+
+		try {
+			Test.startTest();
+			GoogleCloudFilesSharingController.attachExistingFileToRecord(sharedFile.Id, relatedAccount.Id, 'Notes & Attachments');
+			Test.stopTest();
+			Assert.fail('Expected the owner-only attach validation to reject the request');
+		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
+		}
+
+		Assert.areEqual(0, [
+			SELECT count()
+			FROM GoogleFileLink__c
+			WHERE GoogleFileId__c = :sharedFile.Id
+			AND LinkedObjectId__c = :String.valueOf(relatedAccount.Id)
+		]);
+	}
+
+	@IsTest
+	private static void testRetrieveLinkedRecordsReturnsAllLinkedRecords() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c localFile = createOwnedFileRecord('Linked Records File', UserInfo.getUserId(), 'GD_LINKED_RECORDS');
+		Account firstAccount = new Account(Name = 'First Related Record');
+		Account secondAccount = new Account(Name = 'Second Related Record');
+		insert new List<Account>{ firstAccount, secondAccount };
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(firstAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('InternalUsers')
+			.insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(secondAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('InternalUsers')
+			.insertRecord();
+
+		Test.startTest();
+		List<GoogleFileLink__c> linkedRecords = GoogleCloudFilesSharingController.retrieveLinkedRecords(localFile.Id);
+		Test.stopTest();
+
+		Set<String> linkedRecordIds = new Set<String>();
+		for (GoogleFileLink__c linkedRecord : linkedRecords) {
+			linkedRecordIds.add(linkedRecord.LinkedObjectId__c);
+			Assert.isTrue(String.isNotBlank(linkedRecord.LinkedObjectName__c));
+		}
+
+		Assert.areEqual(2, linkedRecords.size());
+		Assert.areEqual(new Set<String>{ String.valueOf(firstAccount.Id), String.valueOf(secondAccount.Id) }, linkedRecordIds);
+	}
+
+	private static GoogleFile__c createOwnedFileRecord(String fileName, Id ownerId, String driveId) {
+		return createOwnedFileRecord(fileName, ownerId, driveId, 'Notes & Attachments');
+	}
+
+	private static GoogleFile__c createOwnedFileRecord(String fileName, Id ownerId, String driveId, String source) {
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName(fileName)
+			.withDescription('D')
+			.withSource(source)
+			.withOwner(ownerId)
+			.insertRecord();
+
+		GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName(fileName + '.pdf')
+			.withType('application/pdf')
+			.withSize(10L)
+			.withDriveId(driveId)
+			.insertRecord();
+
+		return localFile;
+	}
+
+	@IsTest
 	private static void testIsPublicLinkDomainPositive() {
 		Test.startTest();
 		Boolean isDomainConfigured = GoogleCloudFilesSharingController.isPublicLinkDomain();

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>Notes &amp; Attachments</fullName>
+        <default>false</default>
+        <label>Notes &amp; Attachments</label>
+    </customValue>
+    <customValue>
+        <fullName>Uploader</fullName>
+        <default>false</default>
+        <label>Uploader</label>
+    </customValue>
+    <customValue>
+        <fullName>File Details</fullName>
+        <default>false</default>
+        <label>File Details</label>
+    </customValue>
+    <customValue>
+        <fullName>File Explorer</fullName>
+        <default>false</default>
+        <label>File Explorer</label>
+    </customValue>
+    <masterLabel>Google File Upload Sources</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

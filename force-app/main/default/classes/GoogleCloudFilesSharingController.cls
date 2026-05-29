@@ -29,6 +29,18 @@ public with sharing class GoogleCloudFilesSharingController {
 		sharingService.deleteExistingSharing(localFileRecordId, shareToRecordId);
 	}
 
+	@AuraEnabled
+	public static Id attachExistingFileToRecord(Id localFileRecordId, Id relatedRecordId, String source) {
+		GoogleLocalFileSharingService sharingService = new GoogleLocalFileSharingService();
+		return sharingService.attachExistingFileToRecord(localFileRecordId, relatedRecordId, source);
+	}
+
+	@AuraEnabled
+	public static List<GoogleFileLink__c> retrieveLinkedRecords(Id localFileRecordId) {
+		GoogleLocalFileSharingService sharingService = new GoogleLocalFileSharingService();
+		return sharingService.retrieveLinkedRecords(localFileRecordId);
+	}
+
     @AuraEnabled
     public static GoogleFileVersion__c createNewPublicLink(Id localFileVersionId, Datetime expirationDate, Boolean isDomainSkip) {
 		GoogleLocalFileVersionPublicLinkService localPublicLinkService = new GoogleLocalFileVersionPublicLinkService();

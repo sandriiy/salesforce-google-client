@@ -137,7 +137,8 @@ public without sharing class GoogleFileInsertCommand {
         if (shouldCreateLink()) {
             linkToBind = new GoogleFileLink__c(
                 LinkedObjectId__c = String.valueOf(relatedRecordId),
-                LinkedObjectType__c = relatedRecordId.getSObjectType().getDescribe().getName()
+                LinkedObjectType__c = relatedRecordId.getSObjectType().getDescribe().getName(),
+                Source__c = source
             );
 
             linkToBind = applyUserBasedChanges(linkToBind);
@@ -158,12 +159,7 @@ public without sharing class GoogleFileInsertCommand {
     }
 
     private GoogleFileLink__c applyUserBasedChanges(GoogleFileLink__c newLink) {
-        User userRow = [SELECT Id, UserType FROM User WHERE Id = :UserInfo.getUserId() LIMIT 1];
-
-        newLink.ShareType__c = isInternal(userRow.UserType) ? 'Viewer' : 'InferredFromRecord';
-        newLink.Visibility__c = isInternal(userRow.UserType) ? 'InternalUsers' : 'AllUsers';
-
-        return newLink;
+		return new GoogleFileLinkDefaultsResolver().applyDefaultValues(newLink);
     }
 
     private String buildLocalFileName(Boolean removeExtension) {
@@ -198,17 +194,6 @@ public without sharing class GoogleFileInsertCommand {
         }
 
         return namePart + extPart;
-    }
-
-    private Boolean isInternal(String userType) {
-        if (userType == null) return true;
-
-        String t = userType.toLowerCase();
-        if (t.contains('guest') || t.contains('portal') || t.contains('partner') || t.contains('customer') || t.contains('csn')) {
-            return false;
-        }
-
-        return true;
     }
 
     public class GoogleFileInsertResult {

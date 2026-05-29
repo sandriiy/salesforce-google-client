@@ -4,6 +4,7 @@ import { NavigationMixin } from 'lightning/navigation';
 import { refreshApex } from '@salesforce/apex';
 
 import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
+import GoogleCloudExistingFileAttachModal from 'c/googleCloudExistingFileAttachModal';
 
 import { startConfigSession } from 'c/googleCloudConfigBus';
 import { navigateToByAttributes, isExperienceCloudContext } from 'c/googleCloudCrossPlatformUtils';
@@ -71,6 +72,31 @@ export default class GoogleCloudAttachments extends NavigationMixin(LightningEle
 		const fileInput = this.template.querySelector('.file-input');
 		if (fileInput) {
 			fileInput.click();
+		}
+	}
+
+	async handleAttachExistingFile() {
+		if (isEmpty(this.recordId)) {
+			return;
+		}
+
+		const modalResult = await GoogleCloudExistingFileAttachModal.open({
+			size: 'medium',
+			label: 'Attach Existing Files',
+			recordId: this.recordId,
+			source: UPLOAD_SOURCE
+		});
+
+		if (modalResult?.hasChanges) {
+			this.isLoading = true;
+			await refreshApex(this.wiredFilesResult);
+			this.isLoading = false;
+		}
+	}
+
+	handleHeaderActionSelect(event) {
+		if (event.detail?.value === 'attachExisting') {
+			this.handleAttachExistingFile();
 		}
 	}
 

@@ -59,8 +59,8 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
         Logger.info('Mark As Latest Version If Applicable --> ' + joinIds(parentFileIds)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
         List<GoogleFile__c> parentFiles = (List<GoogleFile__c>) GoogleFileSelector.query()
-            .byRecordIds(new List<Id>(parentFileIds))
             .withVersionsSubquery()
+            .byIds(parentFileIds)
             .toList();
 
         List<GoogleFileVersion__c> latestVersionsToUpdate = buildLatestFlagUpdates(parentFiles);

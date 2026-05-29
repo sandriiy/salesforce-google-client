@@ -45,14 +45,24 @@ public without sharing class GoogleLocalFileSharingService {
 	}
 
 	public GoogleSharingInfoDTO fetchSharingDetails(Id localFileRecordId) {
-		try {
-			Map<Id, GoogleSharingInfoDTO> sharingInfo = new GoogleFileSharingCommand(uow)
-				.retrieveSharing()
-				.forFile(localFileRecordId)
-				.includeAll()
-				.fetch();
+		GoogleFileSharingCommand.RetrieveSharingCommand retrieveSharingCommand = new GoogleFileSharingCommand(uow)
+			.retrieveSharing()
+			.forFile(localFileRecordId)
+			.includeAll();
 
-			return sharingInfo.get(localFileRecordId);
+		requireFileAccess(localFileRecordId, true);
+
+		try {
+			Map<Id, GoogleSharingInfoDTO> sharingInfo = retrieveSharingCommand.fetch();
+			GoogleSharingInfoDTO fileSharingInfo = sharingInfo.get(localFileRecordId);
+			if (fileSharingInfo != null) {
+				fileSharingInfo.recordsSharedTo = new GoogleFileAccessResolver().resolveAccessibleRecordLinks(
+					fileSharingInfo.recordsSharedTo,
+					UserInfo.getUserId()
+				);
+			}
+
+			return fileSharingInfo;
 		} catch (Exception ex) {
 			Logger.error('Retrieve Sharing Details (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
@@ -61,13 +71,16 @@ public without sharing class GoogleLocalFileSharingService {
 	}
 
 	public Id createNewSharing(Id localFileRecordId, String shareToObjectApiName, Id shareToRecordId, String uiAccessLevel) {
+		GoogleFileSharingCommand.CreateSharingCommand createSharingCommand = new GoogleFileSharingCommand(uow)
+			.createSharing()
+			.forFile(localFileRecordId)
+			.shareTo(shareToObjectApiName, shareToRecordId)
+			.withUiAccessLevel(uiAccessLevel);
+
+		requireFileAccess(localFileRecordId, true);
+
 		try {
-			return new GoogleFileSharingCommand(uow)
-				.createSharing()
-				.forFile(localFileRecordId)
-				.shareTo(shareToObjectApiName, shareToRecordId)
-				.withUiAccessLevel(uiAccessLevel)
-				.apply();
+			return createSharingCommand.apply();
 		} catch (Exception ex) {
 			Logger.error('Create Google File Sharing (Local/Remote): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
@@ -76,13 +89,16 @@ public without sharing class GoogleLocalFileSharingService {
 	}
 
 	public void modifyExistingSharingAccess(Id localFileRecordId, Id shareToRecordId, String uiAccessLevel) {
+		GoogleFileSharingCommand.ModifySharingCommand modifySharingCommand = new GoogleFileSharingCommand(uow)
+			.modifySharing()
+			.forFile(localFileRecordId)
+			.shareTo(shareToRecordId)
+			.withUiAccessLevel(uiAccessLevel);
+
+		requireFileAccess(localFileRecordId, true);
+
 		try {
-			new GoogleFileSharingCommand(uow)
-				.modifySharing()
-				.forFile(localFileRecordId)
-				.shareTo(shareToRecordId)
-				.withUiAccessLevel(uiAccessLevel)
-				.apply();
+			modifySharingCommand.apply();
 		} catch (Exception ex) {
 			Logger.error('Modify Google File Sharing (Local - Access): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
@@ -91,13 +107,16 @@ public without sharing class GoogleLocalFileSharingService {
 	}
 
 	public void modifyExistingSharingVisibility(Id localFileRecordId, Id shareToRecordId, String visibility) {
+		GoogleFileSharingCommand.ModifySharingCommand modifySharingCommand = new GoogleFileSharingCommand(uow)
+			.modifySharing()
+			.forFile(localFileRecordId)
+			.shareTo(shareToRecordId)
+			.withVisibility(visibility);
+
+		requireFileAccess(localFileRecordId, true);
+
 		try {
-			new GoogleFileSharingCommand(uow)
-				.modifySharing()
-				.forFile(localFileRecordId)
-				.shareTo(shareToRecordId)
-				.withVisibility(visibility)
-				.apply();
+			modifySharingCommand.apply();
 		} catch (Exception ex) {
 			Logger.error('Modify Google File Sharing (Local - Visibility): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
@@ -106,16 +125,78 @@ public without sharing class GoogleLocalFileSharingService {
 	}
 
 	public void deleteExistingSharing(Id localFileRecordId, Id shareToRecordId) {
+		GoogleFileSharingCommand.DeleteSharingCommand deleteSharingCommand = new GoogleFileSharingCommand(uow)
+			.deleteSharing()
+			.forFile(localFileRecordId)
+			.shareTo(shareToRecordId);
+
+		requireFileAccess(localFileRecordId, true);
+
 		try {
-			new GoogleFileSharingCommand(uow)
-				.deleteSharing()
-				.forFile(localFileRecordId)
-				.shareTo(shareToRecordId)
-				.apply();
+			deleteSharingCommand.apply();
 		} catch (Exception ex) {
 			Logger.error('Delete Google File Sharing (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 			throw new GoogleLocalFileSharingException('Unable to remove sharing for this file. Please try again or contact your system administrator');
 		}
+	}
+
+	public Id attachExistingFileToRecord(Id localFileRecordId, Id relatedRecordId, String source) {
+		GoogleFileSharingCommand.CreateSharingCommand createSharingCommand = new GoogleFileSharingCommand(uow)
+			.createSharing()
+			.forFile(localFileRecordId)
+			.shareTo(relatedRecordId == null ? null : relatedRecordId.getSObjectType().getDescribe().getName(), relatedRecordId)
+			.withSource(source);
+
+		requireFileAccess(localFileRecordId, true);
+
+		try {
+			return createSharingCommand.apply();
+		} catch (Exception ex) {
+			Logger.error('Attach Existing Google File To Record (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileSharingException('Unable to attach the existing file to this record. Please try again or contact your system administrator');
+		}
+	}
+
+	public List<GoogleFileLink__c> retrieveLinkedRecords(Id localFileRecordId) {
+		GoogleFileLinkSelector selector = GoogleFileLinkSelector.query()
+			.withBaseFields()
+			.byParentId(localFileRecordId)
+			.orderByCreatedDesc();
+
+		requireFileAccess(localFileRecordId, false);
+
+		try {
+			List<GoogleFileLink__c> linkedRecords = (List<GoogleFileLink__c>) selector.toList();
+			List<GoogleFileLink__c> accessibleLinks = new GoogleFileAccessResolver().resolveAccessibleRecordLinks(
+				linkedRecords,
+				UserInfo.getUserId()
+			);
+
+			return new GoogleLocalFileLinkEnrichmentService().applyLinkedRecordAttributes(accessibleLinks);
+		} catch (Exception ex) {
+			Logger.error('Retrieve Linked Records (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileSharingException('Unable to retrieve the linked records. Please try again or contact your system administrator');
+		}
+	}
+
+	private GoogleFile__c requireFileAccess(Id localFileRecordId, Boolean requireEditAccess) {
+		List<GoogleFile__c> accessibleFiles = new GoogleFileAccessCheckCommand()
+			.forFile(localFileRecordId)
+			.forUser(UserInfo.getUserId())
+			.strip();
+
+		if (accessibleFiles.isEmpty()) {
+			throw new GoogleLocalFileSharingException('You don’t have access to manage this file');
+		}
+
+		GoogleFile__c accessibleFile = accessibleFiles[0];
+		if (requireEditAccess && accessibleFile.UserAccessLevel__c != 'Edit') {
+			throw new GoogleLocalFileSharingException('You don’t have permission to modify this file');
+		}
+
+		return accessibleFile;
 	}
 }

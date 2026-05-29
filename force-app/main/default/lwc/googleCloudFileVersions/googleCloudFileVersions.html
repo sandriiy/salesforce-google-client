@@ -3,34 +3,19 @@
         <div class="version-list__body">
             <ul class="version-list__rows">
                 <template for:each={allVersions} for:item="version">
-                    <li key={version.id} data-id={version.id} class="version-list__row">
-                        <button type="button" class="slds-button slds-button_reset version-row-button" onclick={handleVersionClick}>
-                            <div class="version-row__date">
-                                <div class="version-row__date-day slds-truncate"
-                                     title={version.createdDateLabel}>
-                                    {version.createdDateLabel}
-                                </div>
-                                <div class="version-row__date-time slds-truncate"
-                                     title={version.createdTimeLabel}>
-                                    {version.createdTimeLabel}
-                                </div>
-                            </div>
-                            <div class="version-row__main">
-                                <div class="version-row__title slds-truncate" title={version.name}>
-                                    {version.name}
-                                </div>
-
-                                <div class="version-row__meta slds-truncate" title={version.meta}>
-                                    {version.meta}
-                                </div>
-
-                                <template lwc:if={version.hasWarning}>
-                                    <div class="version-row__warning" title="This version contains a public link. For security, consider removing it">
-                                        <span>This version contains a public link. For security, consider removing it</span>
-                                    </div>
-                                </template>
-                            </div>
-                        </button>
+                    <li key={version.id} class="version-list__row">
+                        <c-google-cloud-base-entity
+                            value={version.id}
+                            title={version.name}
+                            meta={version.fileName}
+                            detail={version.warningMessage}
+                            detail-variant={version.detailVariant}
+                            leading-icon-name={version.iconName}
+                            leading-icon-alternative-text={version.fileName}
+                            trailing-primary={version.createdDateLabel}
+                            trailing-secondary={version.sizeLabel}
+                            onentityclick={handleVersionClick}
+                        ></c-google-cloud-base-entity>
                     </li>
                 </template>
             </ul>

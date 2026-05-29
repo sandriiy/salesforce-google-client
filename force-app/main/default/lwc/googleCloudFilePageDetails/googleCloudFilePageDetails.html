@@ -1,15 +1,17 @@
 <template>
     <div class="cloud-file-layout-wrapper">
         <div class="cloud-record-layout slds-grid slds-wrap slds-gutters">
+            <template lwc:if={isPageLoading}>
+                <div class="record-layout__page-loading">
+                    <lightning-spinner
+                        alternative-text="Loading file details..."
+                        size="medium"
+                    ></lightning-spinner>
+                </div>
+            </template>
+
             <header class="slds-page-header slds-page-header_record-home record-layout__header slds-size_1-of-1">
-                <input
-                    id="file-upload-input"
-                    type="file"
-                    accept="*"
-                    onclick={handleFileReset}
-                    onchange={handleFileSelected}
-                    class="file-input gcdc-hidden"
-                />
+                <input id="file-upload-input" type="file" accept="*" onclick={handleFileReset} onchange={handleFileSelected} class="file-input gcdc-hidden"/>
                 <div class="record-layout__header-top">
                     <div class="slds-page-header__row slds-grid_align-center slds-grid_vertical-align-center">
                         <div class="slds-page-header__col-title">
@@ -22,17 +24,10 @@
                                         class="record-layout__header-icon"
                                     ></lightning-icon>
                                 </div>
-                                <div class="slds-media__body">
-                                    <p class="cloud-file-file-type">File</p>
-                                    <div
-                                        class="slds-grid slds-grid_vertical-align-center cloud-file-file-name"
-                                    >
-                                        <h1
-                                            class="slds-page-header__title slds-truncate"
-                                            title={fileName}
-                                        >
-                                            {fileName}
-                                        </h1>
+                                <div class="slds-media__body cloud-file-title-stack">
+                                    <span class="cloud-file-file-type">File</span>
+                                    <div class="cloud-file-file-name slds-truncate" role="heading" aria-level="1" title={fileName}>
+                                        {fileName}
                                     </div>
                                 </div>
                             </div>
@@ -78,21 +73,10 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- HEADER COMPACT FIELDS + SPINNER -->
-                <div
-                    class="slds-page-header__row record-layout__header-bottom"
-                >
+                
+                <div class="slds-page-header__row record-layout__header-bottom">
                     <div class="slds-page-header__col-details cloud-record-layout-compact">
-                        <template lwc:if={isHeaderLoading}>
-                            <div class="record-layout__header-spinner gcdc-relative">
-                                <lightning-spinner
-                                    alternative-text="Loading header details..."
-                                    size="small"
-                                ></lightning-spinner>
-                            </div>
-                        </template>
-                        <template lwc:elseif={recordId}>
+                        <template lwc:if={isContentReady}>
                             <template if:true={hasHeaderCompactFields}>
                                 <div class="slds-grid">
                                     <template for:each={headerCompactFields} for:item="compactField">
@@ -127,15 +111,7 @@
             <div class="slds-size_1-of-1 slds-grid slds-wrap">
                 <div class="slds-col record-layout-main-region slds-large-size_8-of-12 slds-small-size_12-of-12">
                     <section class="record-layout__card" style="padding: 0.5% 1% 0 1%;">
-                        <template lwc:if={isMainLoading}>
-                            <div class="record-layout__main-spinner gcdc-relative slds-p-vertical_xx-large">
-                                <lightning-spinner
-                                    alternative-text="Loading content details..."
-                                    size="medium"
-                                ></lightning-spinner>
-                            </div>
-                        </template>
-                        <template lwc:elseif={recordId}>
+                        <template lwc:if={isContentReady}>
                             <lightning-tabset>
                                 <lightning-tab label="Details">
                                     <lightning-flow
@@ -150,23 +126,26 @@
                 </div>
 
                 <div class="slds-col record-layout-side-region slds-large-size_4-of-12 slds-small-size_12-of-12">
-                    <section class="record-layout__card">
-                        <template lwc:if={isMainLoading}>
-                            <div class="record-layout__main-spinner gcdc-relative slds-p-vertical_xx-large">
-                                <lightning-spinner
-                                    alternative-text="Loading content details..."
-                                    size="medium"
-                                ></lightning-spinner>
-                            </div>
-                        </template>
-                        <template lwc:elseif={recordId}>
-                            <c-google-cloud-file-versions
-                                lwc:ref="versions" 
-                                record-id={recordId}
-                                onlatestversionselected={handleLatestVersionSelection}>
-                            </c-google-cloud-file-versions>
-                        </template>
-                    </section>
+                    <div class="record-layout-side-stack">
+                        <section class="record-layout__card">
+                            <template lwc:if={isContentReady}>
+                                <c-google-cloud-file-versions
+                                    lwc:ref="versions" 
+                                    record-id={recordId}
+                                    onlatestversionselected={handleLatestVersionSelection}>
+                                </c-google-cloud-file-versions>
+                            </template>
+                        </section>
+
+                        <section class="record-layout__card">
+                            <template lwc:if={isContentReady}>
+                                <c-google-cloud-file-linked-records
+                                    lwc:ref="linkedRecords"
+                                    local-file-record-id={recordId}>
+                                </c-google-cloud-file-linked-records>
+                            </template>
+                        </section>
+                    </div>
                 </div>
             </div>
         </div>

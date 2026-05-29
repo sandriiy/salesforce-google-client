@@ -5,10 +5,13 @@ import {
 	resolveFileHoverText
 } from 'c/googleCloudFileIntelligenceUtils';
 
-export const DEFAULT_FILE_UPLOAD_FAILURE = 'Verify that the file is not corrupted, then try again. If the problem continues, please reach out to your System Administrator';
+export const DEFAULT_OOPS_MESSAGE = 'Oops!';
+export const DEFAULT_FILES_CAPACITY_MESSAGE = 'The maximum number of files has already been reached for this record';
+export const DEFAULT_FILE_UPLOAD_FAILURE = 'Verify that the file is not corrupted, then try again. If the problem continues, please reach out to your system administrator';
 export const DEFAULT_FILE_NOT_ALLOWED_MESSAGE = 'Some files don’t meet the allowed type or size, please check and retry';
 export const DEFAULT_FAILED_RETRIEVE_MESSAGE = 'Unable to load files. Please refresh the page or contact your administrator';
 export const DEFAULT_FAILED_DOWNLOAD_MESSAGE = 'Unable to download the file. Please try again later or contact your system administrator';
+export const DEFAULT_FAILED_ATTACH_MESSAGE = 'Unable to attach the selected file. Please try again later or contact your system administrator';
 export const DEFAULT_NO_VERSIONS_MESSAGE = 'No versions were found for this file. Please verify that the file still exists';
 export const DEFAULT_ACCESS_RESTRICTED_MESSAGE = 'You can\’t perform this action on this file. Try another file or contact the file owner';
 export const DEFAULT_PREVIEW_UNAVAILABILITY_MESSAGE = 'Preview unavailable. Try downloading instead';

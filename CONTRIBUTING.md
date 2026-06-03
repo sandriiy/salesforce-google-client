@@ -40,7 +40,7 @@ You may develop and test changes using any Salesforce environment of your choice
 
 ## Pull Requests
 
-- All pull requests **must target the `main` branch**
+- All pull requests **must target the `main` branch or `release` branch if present**
 - Provide a clear description of the changes being introduced
 - Include screenshots or recordings for UI-related changes when applicable
 - Pull requests are merged using **squash and merge**

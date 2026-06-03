@@ -23,7 +23,7 @@ Please follow this general process when contributing:
 
 3. **Fork the repository**
 
-4. **Create a branch from `main`**
+4. **Create a branch from `main` (or from specific `release` branch if applicable):**
    - `feature/<issue-number>`
    - `hotfix/<issue-number>`
 

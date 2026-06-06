@@ -366,6 +366,70 @@ private class GoogleCloudFilesControllerTest {
 	}
 
 	@IsTest
+	private static void testRetrieveDownloadAsOptionsPositive() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			IsFilePreviewDisabled__c = false,
+			DefaultBigFileSize__c = 1000L
+		);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('CTR_DA_1').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('Plan.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(50)
+			.withDriveId('GD_CTR_DA_1')
+			.withDocsId('DOCS_CTR_DA_1')
+			.insertRecord();
+
+		Test.startTest();
+		List<GoogleFileDownloadAsOptionDTO> options = GoogleCloudFilesController.retrieveDownloadAsOptions(localFileVersion.Id);
+		Test.stopTest();
+
+		Assert.areEqual(8, options.size());
+		Assert.areEqual('Plan.docx', options[0].fileName);
+	}
+
+
+	@IsTest
+	private static void testDownloadFileAsPositive() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.endpointContains('/export')
+		).thenReturn(
+			new GoogleDriveHttpMock.MockResponse()
+				.withStatus(200)
+				.withHeader('Content-Type', 'text/plain')
+				.withBodyAsBlob(Blob.valueOf('DOWNLOADED-AS-TEXT'))
+		);
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			IsFilePreviewDisabled__c = false,
+			DefaultBigFileSize__c = 1000L
+		);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('CTR_DA_2').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('Plan.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(50)
+			.withDriveId('GD_CTR_DA_2')
+			.withDocsId('DOCS_CTR_DA_2')
+			.insertRecord();
+
+		Test.startTest();
+		String base64Body = GoogleCloudFilesController.downloadFileAs(localFileVersion.Id, 'text/plain');
+		Test.stopTest();
+
+		Assert.areEqual(EncodingUtil.base64Encode(Blob.valueOf('DOWNLOADED-AS-TEXT')), base64Body);
+	}
+
+	@IsTest
 	private static void testRetrieveAttachableOwnedGoogleFilesFiltersExistingLinksAndNonOwnedFiles() {
 		GoogleCloudTestFactory.initMocks();
 

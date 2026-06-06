@@ -1,7 +1,7 @@
 import { LightningElement, api, track } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 
-import { isEmpty, showToast, normalizeError, getFileIcon } from 'c/googleCloudUtils';
+import { isEmpty, showToast, normalizeError, getFileIcon, truncateFileName } from 'c/googleCloudUtils';
 import { BIG_FILE_SIZE } from 'c/googleCloudDownloadUtils';
 import { download, downloadInChunks, createOperationControl, abortOperation, isOperationAbortedError } from 'c/googleCloudDownloadUtils';
 import { 
@@ -18,6 +18,7 @@ import pdfjs from '@salesforce/resourceUrl/GoogleCloudPreviewRender';
 import GoogleCloudFilePublicLinkModal from 'c/googleCloudFilePublicLinkModal';
 import GoogleCloudFileDetailsModal from 'c/googleCloudFileDetailsModal';
 import GoogleCloudFileDeleteModal from 'c/googleCloudFileDeleteModal';
+import GoogleCloudFileDownloadAsModal from 'c/googleCloudFileDownloadAsModal';
 import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
 import GoogleCloudFileSharingModal from 'c/googleCloudFileSharingModal';
 
@@ -154,6 +155,19 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		this.isLoading = true;
 		await this.downloadFile();
 		this.isLoading = false;
+	}
+
+	async handleDownloadAs(event) {
+		if (!this.isDownloadAsAvailable || !this.localLatestVersionRecord?.Id) {
+			return;
+		}
+
+		await GoogleCloudFileDownloadAsModal.open({
+			size: 'small',
+			label: `Download ${truncateFileName(this.fileName)} as`,
+			fileName: this.fileName,
+			localFileVersionId: this.localLatestVersionRecord.Id
+		});
 	}
 
 	async handleFileSharing(event) {
@@ -321,6 +335,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		operationControl = null
 	} = {}) {
 		let googleVersion = this.localLatestVersionRecord;
+
 		try {
 			if (googleVersion.Size__c <= BIG_FILE_SIZE) {
 				return await download(googleVersion.Id, {
@@ -338,8 +353,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 					returnBase64,
 					returnBlob,
 					control: operationControl,
-					onError: (err) => {
-						console.error(err);
+					onError: () => {
 						showToast(
 							this,
 							'Unable to download File Version',
@@ -594,6 +608,14 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		}
 
 		return getFileIcon(this.localLatestVersionRecord.Name);
+	}
+
+	get isDownloadAsAvailable() {
+		return this.isLoading !== true 
+			&& this.isUnavailablePreview !== true
+			&& this.localLatestVersionRecord?.IsPreviewableFile__c === true
+			&& this.localLatestVersionRecord?.Size__c != null
+			&& this.localLatestVersionRecord.Size__c <= BIG_FILE_SIZE;
 	}
 
 	get stageClass() {

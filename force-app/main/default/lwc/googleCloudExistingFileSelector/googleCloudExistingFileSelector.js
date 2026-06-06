@@ -19,7 +19,6 @@ export default class GoogleCloudExistingFileSelector extends LightningElement {
 	@track errorMessage = '';
 	@track searchTerm = '';
 	@track isLoading = false;
-	@track isRefreshing = false;
 	@track attachingFileId;
 
 	connectedCallback() {
@@ -35,14 +34,11 @@ export default class GoogleCloudExistingFileSelector extends LightningElement {
 			this.allFiles = [];
 			this.errorMessage = '';
 			this.isLoading = false;
-			this.isRefreshing = false;
 			return;
 		}
 
 		this.errorMessage = '';
-		if (silent) {
-			this.isRefreshing = true;
-		} else {
+		if (!silent) {
 			this.isLoading = true;
 		}
 
@@ -53,7 +49,6 @@ export default class GoogleCloudExistingFileSelector extends LightningElement {
 			this.errorMessage = normalizeError(error) || DEFAULT_FAILED_RETRIEVE_MESSAGE;
 		} finally {
 			this.isLoading = false;
-			this.isRefreshing = false;
 		}
 	}
 

@@ -186,6 +186,35 @@ public with sharing class GoogleCloudFilesController {
 	}
 
 	@AuraEnabled
+	public static List<GoogleFileDownloadAsOptionDTO> retrieveDownloadAsOptions(Id localGoogleFileVersionId) {
+		try {
+			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
+			return localVersionService.retrieveDownloadAsOptions(localGoogleFileVersionId);
+		} catch (Exception ex) {
+			Logger.error('Retrieve Download As Options, Id: ' + localGoogleFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Retrieve Download As Options, Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+
+			return new List<GoogleFileDownloadAsOptionDTO>();
+		}
+	}
+
+	@AuraEnabled
+	public static String downloadFileAs(Id localGoogleFileVersionId, String exportMimeType) {
+		try {
+			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
+			return localVersionService.downloadFileBase64BodyAs(localGoogleFileVersionId, exportMimeType);
+		} catch (Exception ex) {
+			Logger.error('Download File As, Id: ' + localGoogleFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Download File As, Export Mime Type: ' + exportMimeType).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Download File As, Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+
+			throw new AuraHandledException('We couldn’t download the file in the selected format. Please try again, or contact your system administrator');
+		}
+	}
+
+	@AuraEnabled
 	public static String downloadLargeFilePartial(Id localGoogleFileVersionId, Long startByte, Long endByte) {
 		try {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();

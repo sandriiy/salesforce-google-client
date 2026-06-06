@@ -271,6 +271,37 @@ const extractFileExtension = (fileName) => {
     return fileName.split('.').pop().toLowerCase();
 }
 
+const truncateFileName = (fileName, maxLength = 40) => {
+	const normalizedFileName = typeof fileName === 'string' && fileName.trim() ? fileName.trim() : DEFAULT_FILE_NAME;
+	const normalizedMaxLength = Number.isInteger(maxLength) && maxLength > 0 ? maxLength : 40;
+
+	if (normalizedFileName.length <= normalizedMaxLength) {
+		return normalizedFileName;
+	}
+
+	const extensionSeparator = normalizedFileName.lastIndexOf('.');
+	const hasExtension = extensionSeparator > 0 && extensionSeparator < normalizedFileName.length - 1;
+
+	if (!hasExtension) {
+		if (normalizedMaxLength <= 3) {
+			return normalizedFileName.slice(0, normalizedMaxLength);
+		}
+
+		return `${normalizedFileName.slice(0, normalizedMaxLength - 3).trimEnd()}...`;
+	}
+
+	const baseName = normalizedFileName.slice(0, extensionSeparator).trimEnd();
+	const extension = normalizedFileName.slice(extensionSeparator);
+	const baseLimit = normalizedMaxLength - extension.length - 3;
+
+	if (baseLimit < 1) {
+		const fallbackBaseName = baseName || DEFAULT_FILE_NAME;
+		return `${fallbackBaseName.slice(0, 1)}...${extension}`;
+	}
+
+	return `${baseName.slice(0, baseLimit).trimEnd()}...${extension}`;
+}
+
 const getLocalOffsetDateTime = () => {
     const pad = (n, width = 2) => String(n).padStart(width, '0');
     const d = new Date();
@@ -503,4 +534,4 @@ const asString = (value) => {
 	return String(extracted);
 };
 
-export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };

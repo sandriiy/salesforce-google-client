@@ -51,6 +51,26 @@ public without sharing class GoogleLocalFileVersionService {
 		}
 	}
 
+	public List<GoogleFileDownloadAsOptionDTO> retrieveDownloadAsOptions(Id localFileVersionId) {
+		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
+		return buildDownloadAsOptions(localFileVersion);
+	}
+
+	public String downloadFileBase64BodyAs(Id localFileVersionId, String exportMimeType) {
+		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
+		Logger.info('File Download As --> VersionId=' + localFileVersionId + ', ExportMimeType=' + exportMimeType + ', GoogleDocsFileId=' + localFileVersion.GoogleDocsFileId__c
+		).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+		try {
+			GoogleFileEntity fileResult = exportGoogleWorkspaceFile(localFileVersion, assertSupportedDownloadAsMimeType(localFileVersion, exportMimeType));
+			return EncodingUtil.base64Encode(fileResult.bodyAsBlob);
+		} catch (Exception ex) {
+			Logger.error('File Download As Failed --> VersionId=' + String.valueOf(localFileVersionId) + ', Message=' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw ex;
+		}
+	}
+
 	public String downloadFileBase64Body(Id localFileVersionId) {
 		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
 		Logger.info('File Download --> VersionId=' + String.valueOf(localFileVersionId) + ', GoogleDriveFileId=' + String.valueOf(localFileVersion == null ? null : localFileVersion.GoogleDriveFileId__c)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
@@ -96,17 +116,14 @@ public without sharing class GoogleLocalFileVersionService {
 	private GoogleFileEntity exportOrDownloadAsPdf(GoogleFileVersion__c localFileVersion) {
 		GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
 
-		if (localFileVersion.Type__c == 'application/pdf') {
+		if (localFileVersion.Type__c == GoogleCloudConstants.MIME_TYPE_PDF) {
 			return removeGoogleDrive.files().retrieve().download(localFileVersion.GoogleDriveFileId__c)
 				.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.CONTENT)
 				.setSearchOnAllDrives(true)
 				.execute();
 		}
 
-		return removeGoogleDrive.files().retrieve().export(localFileVersion.GoogleDocsFileId__c)
-			.setMimeType('application/pdf')
-			.setSearchOnAllDrives(true)
-			.execute();
+		return exportGoogleWorkspaceFile(localFileVersion, GoogleCloudConstants.MIME_TYPE_PDF);
 	}
 
 	private GoogleFilePreviewAction assertPreviewEligible(GoogleFileVersion__c localFileVersion) {
@@ -114,7 +131,7 @@ public without sharing class GoogleLocalFileVersionService {
 			throw new GoogleFileVersionException('Preview Unavailable. Please download it to open');
 		}
 
-		if (localFileVersion.Type__c == 'application/pdf') {
+		if (localFileVersion.Type__c == GoogleCloudConstants.MIME_TYPE_PDF) {
 			return GoogleFilePreviewAction.DIRECT;
 		}
 
@@ -133,7 +150,7 @@ public without sharing class GoogleLocalFileVersionService {
 		return (
 			fileVersion.IsPreviewableFile__c &&
 			String.isBlank(fileVersion.GoogleDocsFileId__c) &&
-			fileVersion.Type__c != 'application/pdf'
+			fileVersion.Type__c != GoogleCloudConstants.MIME_TYPE_PDF
 		);
 	}
 
@@ -141,5 +158,87 @@ public without sharing class GoogleLocalFileVersionService {
 		return (
 			!fileVersion.IsPreviewableFile__c
 		);
+	}
+
+	private List<GoogleFileDownloadAsOptionDTO> buildDownloadAsOptions(GoogleFileVersion__c localFileVersion) {
+		String workspaceType = resolveGoogleWorkspaceType(localFileVersion);
+		List<GoogleFileDownloadAsOptionDTO> downloadAsTypes = GoogleCloudConstants.GOOGLE_WORKSPACE_DOWNLOAD_AS_TYPES.get(workspaceType);
+		if (!isDownloadAsSupported(localFileVersion) || downloadAsTypes == null || downloadAsTypes.isEmpty()) {
+			return new List<GoogleFileDownloadAsOptionDTO>();
+		}
+
+		List<GoogleFileDownloadAsOptionDTO> options = new List<GoogleFileDownloadAsOptionDTO>();
+		for (GoogleFileDownloadAsOptionDTO downloadAsType : downloadAsTypes) {
+			options.add(createDownloadAsOption(downloadAsType, localFileVersion.Name));
+		}
+
+		return options;
+	}
+
+	private GoogleFileDownloadAsOptionDTO createDownloadAsOption(GoogleFileDownloadAsOptionDTO downloadAsType, String originalFileName) {
+		GoogleFileDownloadAsOptionDTO option = new GoogleFileDownloadAsOptionDTO(
+			downloadAsType.label,
+			downloadAsType.mimeType,
+			downloadAsType.fileExtension
+		);
+
+		option.fileName = buildDownloadAsFileName(originalFileName, downloadAsType.fileExtension);
+		return option;
+	}
+
+	private String buildDownloadAsFileName(String originalFileName, String fileExtension) {
+		String fileName = String.isNotBlank(originalFileName)
+			? originalFileName.trim()
+			: GoogleCloudConstants.DEFAULT_FILE_NAME;
+		Integer extensionSeparator = fileName.lastIndexOf('.');
+		String baseFileName = extensionSeparator > 0
+			? fileName.substring(0, extensionSeparator)
+			: fileName;
+
+		return baseFileName + '.' + fileExtension;
+	}
+
+	private Boolean isDownloadAsSupported(GoogleFileVersion__c localFileVersion) {
+		return localFileVersion != null
+			&& localFileVersion.Size__c != null
+			&& localFileVersion.Size__c <= this.googleConfig.getBigFileSizeInBytes()
+			&& localFileVersion.IsPreviewableFile__c
+			&& !this.googleConfig.isPreviewDisabled()
+			&& String.isNotBlank(localFileVersion.GoogleDocsFileId__c)
+			&& String.isNotBlank(resolveGoogleWorkspaceType(localFileVersion));
+	}
+
+	private String resolveGoogleWorkspaceType(GoogleFileVersion__c localFileVersion) {
+		return localFileVersion == null
+			? null
+			: GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.get(localFileVersion.Type__c);
+	}
+
+	private String assertSupportedDownloadAsMimeType(GoogleFileVersion__c localFileVersion, String exportMimeType) {
+		if (String.isBlank(exportMimeType)) {
+			throw new GoogleFileVersionException('The selected download format is unavailable for this file');
+		}
+
+		String workspaceType = resolveGoogleWorkspaceType(localFileVersion);
+		List<GoogleFileDownloadAsOptionDTO> downloadAsTypes = GoogleCloudConstants.GOOGLE_WORKSPACE_DOWNLOAD_AS_TYPES.get(workspaceType);
+		if (downloadAsTypes == null || downloadAsTypes.isEmpty()) {
+			throw new GoogleFileVersionException('The selected download format is unavailable for this file');
+		}
+
+		for (GoogleFileDownloadAsOptionDTO option : downloadAsTypes) {
+			if (option.mimeType == exportMimeType) {
+				return exportMimeType;
+			}
+		}
+
+		throw new GoogleFileVersionException('The selected download format is unavailable for this file');
+	}
+
+	private GoogleFileEntity exportGoogleWorkspaceFile(GoogleFileVersion__c localFileVersion, String exportMimeType) {
+		GoogleDrive removeGoogleDrive = this.remoteFileService.retrieveGoogleDriveClient();
+		return removeGoogleDrive.files().retrieve().export(localFileVersion.GoogleDocsFileId__c)
+			.setMimeType(exportMimeType)
+			.setSearchOnAllDrives(true)
+			.execute();
 	}
 }

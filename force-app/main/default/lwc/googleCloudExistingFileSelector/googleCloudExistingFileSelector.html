@@ -14,10 +14,6 @@
                 onclick={handleRefreshClick}
                 disabled={isLoading}>
             </lightning-button-icon>
-
-            <template lwc:if={isRefreshing}>
-                <div class="selector__refresh-pill">Refreshing…</div>
-            </template>
         </div>
 
         <template lwc:if={hasRecordContext}>

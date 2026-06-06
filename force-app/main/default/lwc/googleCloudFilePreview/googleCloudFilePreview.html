@@ -15,6 +15,7 @@
                     <lightning-button-icon onclick={handleFilePublicLink} value="link" icon-name="utility:link" title="Public Link" class="topbar-icon slds-m-horizontal_x-small" disabled={isReadMode} style={readModeStyles}></lightning-button-icon>
                     <lightning-button-menu variant="bare-inverse" class="slds-m-left_small" alternative-text="More" icon-name="utility:chevrondown" menu-alignment="right">
                         <lightning-menu-item onclick={handleGoogleFileOpen} value="view" label="View File Details" disabled={isOldVersion}></lightning-menu-item>
+                        <lightning-menu-item lwc:if={isDownloadAsAvailable} onclick={handleDownloadAs} value="downloadAs" label="Download As"></lightning-menu-item>
                         <lightning-menu-item onclick={handleNewVersionUpload} value="upload" label="Upload New Version" disabled={isOldOrReadMode}></lightning-menu-item>
                         <lightning-menu-item onclick={handleFileDetailsEdit} value="edit" label="Edit File Details" disabled={isReadMode}></lightning-menu-item>
                         <lightning-menu-item onclick={handleFileDelete} value="delete" label="Delete" disabled={isOldOrReadMode}></lightning-menu-item>

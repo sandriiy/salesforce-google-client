@@ -1,4 +1,5 @@
 import downloadFile from '@salesforce/apex/GoogleCloudFilesController.downloadFile';
+import downloadFileAs from '@salesforce/apex/GoogleCloudFilesController.downloadFileAs';
 import downloadFilePartial from '@salesforce/apex/GoogleCloudFilesController.downloadLargeFilePartial';
 
 export const BIG_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
@@ -8,6 +9,7 @@ const ABORT_ERROR_NAME = 'GoogleCloudDownloadAbortError';
 const BYTE_YIELD_INTERVAL = 65536;
 const BASE64_STRING_CHUNK_SIZE = 0x8000;
 const WORKER_YIELD_INTERVAL = 8;
+const OCTET_STREAM_MIME_TYPE = 'application/octet-stream';
 
 export const createOperationControl = () => {
     return {
@@ -38,7 +40,7 @@ export const isOperationAbortedError = (error) => {
 export async function download(localGoogleFileVersionId, options = {}) {
     const {
         fileName = 'download.bin',
-        mimeType = 'application/octet-stream',
+        mimeType = OCTET_STREAM_MIME_TYPE,
         returnBase64 = false,
         returnBlob = false,
         control = null
@@ -48,14 +50,57 @@ export async function download(localGoogleFileVersionId, options = {}) {
         throwIfAborted(control);
 
         const b64 = await downloadFile({ localGoogleFileVersionId });
-		if (returnBase64) return b64;
-        
-        throwIfAborted(control);
-        const blob = await base64ToBlob(b64, resolveSafeMimeType(mimeType), control);
-		if (returnBlob) return blob;
 
+        return await finalizeDownload(b64, {
+            fileName,
+            mimeType,
+            returnBase64,
+            returnBlob,
+            control
+        });
+    } catch (e) {
+        if (isOperationAbortedError(e)) {
+            throw e;
+        }
+
+        throw normalizeApexError(e);
+    }
+}
+
+/**
+ * Retrieves a converted/exported file through the Download As action.
+ *
+ * @param {string} localGoogleFileVersionId
+ * @param {object} options
+ * @param {string} options.exportMimeType
+ * @param {string} options.fileName - e.g., "report.pdf"
+ * @param {string} [options.mimeType="application/octet-stream"]
+ */
+export async function downloadAs(localGoogleFileVersionId, options = {}) {
+    const {
+        exportMimeType = null,
+        fileName = 'download.bin',
+        mimeType = OCTET_STREAM_MIME_TYPE,
+        returnBase64 = false,
+        returnBlob = false,
+        control = null
+    } = options;
+
+    try {
         throwIfAborted(control);
-        triggerDownload(blob, fileName);
+
+        const b64 = await downloadFileAs({
+            localGoogleFileVersionId,
+            exportMimeType
+        });
+
+        return await finalizeDownload(b64, {
+            fileName,
+            mimeType,
+            returnBase64,
+            returnBlob,
+            control
+        });
     } catch (e) {
         if (isOperationAbortedError(e)) {
             throw e;
@@ -83,7 +128,7 @@ export async function downloadInChunks(localGoogleFileVersionId, options = {}) {
     const {
         size,
         fileName = 'download.bin',
-        mimeType = 'application/octet-stream',
+        mimeType = OCTET_STREAM_MIME_TYPE,
         chunkSize = DEFAULT_CHUNK_SIZE,
         threads = DEFAULT_THREADS,
         onError = () => {},
@@ -179,8 +224,33 @@ const base64ToBlob = async (base64, mimeType, control) => {
     return new Blob([bytes], { type: mimeType });
 };
 
+const finalizeDownload = async (base64Body, options = {}) => {
+    const {
+        fileName = 'download.bin',
+        mimeType = OCTET_STREAM_MIME_TYPE,
+        returnBase64 = false,
+        returnBlob = false,
+        control = null
+    } = options;
+
+    if (returnBase64) {
+        return base64Body;
+    }
+
+    throwIfAborted(control);
+    const blob = await base64ToBlob(base64Body, resolveSafeMimeType(mimeType), control);
+
+    if (returnBlob) {
+        return blob;
+    }
+
+    throwIfAborted(control);
+    triggerDownload(blob, fileName);
+};
+
 const base64ToUint8Array = async (base64, control) => {
-    const binary = atob(base64);
+	const binary = atob(base64);
+
     const bytes = new Uint8Array(binary.length);
 
     for (let i = 0; i < binary.length; i++) {
@@ -215,16 +285,34 @@ const uint8ArrayToBase64 = async (bytes, control) => {
 };
 
 const triggerDownload = (blob, fileName) => {
-    const url = URL.createObjectURL(blob);
+    const url = createDownloadObjectUrl(blob);
+
     try {
         const a = document.createElement('a');
         a.href = url;
         a.download = fileName || 'download.bin';
         document.body.appendChild(a);
         a.click();
+
         a.remove();
     } finally {
         setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+};
+
+const createDownloadObjectUrl = (blob) => {
+    try {
+        return URL.createObjectURL(blob);
+    } catch (error) {
+        if (!isUnsupportedMimeTypeError(error) || blob?.type === OCTET_STREAM_MIME_TYPE) {
+            throw error;
+        }
+
+        const fallbackBlob = typeof blob?.slice === 'function'
+            ? blob.slice(0, blob.size, OCTET_STREAM_MIME_TYPE)
+            : new Blob([blob], { type: OCTET_STREAM_MIME_TYPE });
+
+        return URL.createObjectURL(fallbackBlob);
     }
 };
 
@@ -241,16 +329,22 @@ const normalizeApexError = (e) => {
     return new Error(String(e));
 };
 
+const isUnsupportedMimeTypeError = (error) => {
+    return /unsupported mime type/i.test(error?.message || '');
+};
+
 const resolveSafeMimeType = (mimeType) => {
-    const rawType = mimeType || 'application/octet-stream';
+    const rawType = mimeType || OCTET_STREAM_MIME_TYPE;
     const baseType = rawType.split(';')[0].trim().toLowerCase();
 
     const isAllowed =
-        baseType === 'application/octet-stream' ||
+        baseType === OCTET_STREAM_MIME_TYPE ||
         baseType === 'application/json' ||
         baseType === 'application/pdf' ||
         baseType === 'application/zip' ||
         baseType === 'application/x-bzip' ||
+        baseType === 'application/x-rar-compressed' ||
+        baseType === 'application/x-tar' ||
         baseType === 'text/plain' ||
         baseType === 'text/markdown' ||
         baseType === 'text/html' ||
@@ -261,7 +355,7 @@ const resolveSafeMimeType = (mimeType) => {
         baseType.startsWith('video/') ||
         baseType.startsWith('font/');
 
-    return isAllowed ? baseType : 'application/octet-stream';
+    return isAllowed ? baseType : OCTET_STREAM_MIME_TYPE;
 };
 
 const throwIfAborted = (control) => {

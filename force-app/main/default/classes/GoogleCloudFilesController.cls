@@ -99,6 +99,18 @@ public with sharing class GoogleCloudFilesController {
         return retrieveGoogleFiles(relatedRecordId, source, recordsCount);
     }
 
+	@AuraEnabled
+	public static void ensureGoogleDriveFolderStructure(Id relatedRecordId) {
+		try {
+			GoogleLocalFileService recordService = new GoogleLocalFileService();
+			recordService.ensureGoogleDriveFolderStructure(relatedRecordId);
+		} catch (Exception ex) {
+			Logger.error('Ensure Google Drive Folder Structure, Record Id: ' + relatedRecordId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Ensure Google Drive Folder Structure, Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+		}
+	}
+
     @AuraEnabled
     public static GoogleFile__c saveNewGoogleFile(Id recordId, String fileName, String fileType, Long fileSize, String googleDriveId, String parentFolderId, String source) {
         GoogleFileCreateRequestDTO request = new GoogleFileCreateRequestDTO();

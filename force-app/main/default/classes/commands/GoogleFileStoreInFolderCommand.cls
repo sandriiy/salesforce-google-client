@@ -24,21 +24,15 @@
 public without sharing class GoogleFileStoreInFolderCommand {
 	public class GoogleFileStoreInFolderCommandException extends Exception {}
 
-    private static final String FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
-    private static final String APP_PROPERTY_RECORD_ID = 'record-id';
-
-    private static final String STRUCTURE_USER = '{User}';
-    private static final String STRUCTURE_RECORD = '{Record}';
-    private static final String STRUCTURE_USER_RECORD = '{User}-{Record}';
-    private static final String STRUCTURE_RECORD_USER = '{Record}-{User}';
-
     private GoogleDrive remoteGoogleDrive;
     private GoogleMetadataConfigService metadataService;
+    private GoogleFileFolderStructureCommand folderStructureCommand;
     private final IGoogleUnitOfWork uowRef;
 
     public GoogleFileStoreInFolderCommand(IGoogleUnitOfWork uowRef) {
         this.remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
         this.metadataService = new GoogleMetadataConfigService();
+        this.folderStructureCommand = new GoogleFileFolderStructureCommand();
         this.uowRef = uowRef;
     }
 
@@ -54,16 +48,6 @@ public without sharing class GoogleFileStoreInFolderCommand {
         }
 
         List<String> uploadParentFolderIds = this.metadataService.getTargetFolderResolver().resolveUploadFolderId();
-
-        String folderStructure = this.metadataService.getGoogleDriveFolderStructure();
-        if (String.isBlank(folderStructure)) return;
-
-        Logger.info(
-            'Folder Placement Job --> Config' +
-            ', FolderStructure=' + String.valueOf(folderStructure) +
-            ', UploadParentFolderIds=' + String.valueOf(uploadParentFolderIds)
-        ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-
         String rootFolderId = getFirstFolderId(uploadParentFolderIds);
         if (String.isBlank(rootFolderId)) return;
 
@@ -80,16 +64,12 @@ public without sharing class GoogleFileStoreInFolderCommand {
 			return;
         }
 
-        FolderTargets folderTargets = loadFolderTargets(request);
-
-        String destinationFolderId = resolveDestinationFolderId(
-            folderStructure,
-            rootFolderId,
-            request.initiatorUserId,
-            folderTargets.userFolderName,
-            folderTargets.relatedRecordId,
-            folderTargets.recordFolderName
-        );
+        Id relatedRecordId = loadRelatedRecordId(request);
+        String destinationFolderId = folderStructureCommand.findExistingFolder(request.initiatorUserId, relatedRecordId);
+        if (String.isBlank(destinationFolderId)) {
+            destinationFolderId = folderStructureCommand.ensureFolder(request.initiatorUserId, relatedRecordId);
+        }
+		
         if (String.isBlank(destinationFolderId)) return;
 
         Logger.info(
@@ -164,148 +144,17 @@ public without sharing class GoogleFileStoreInFolderCommand {
         );
     }
 
-    private FolderTargets loadFolderTargets(GoogleFileRelocationRequestDTO request) {
-        FolderTargets targets = new FolderTargets();
+    private Id loadRelatedRecordId(GoogleFileRelocationRequestDTO request) {
+        if (request == null || request.linkLocalGoogleFileId == null) return null;
 
-        GoogleFileLink__c fileLink;
-        if (request != null && request.linkLocalGoogleFileId != null) {
-            fileLink = (GoogleFileLink__c) GoogleFileLinkSelector.query()
-                .withBaseFields()
-                .byId(request.linkLocalGoogleFileId)
-                .toObject();
-        }
+        GoogleFileLink__c fileLink = (GoogleFileLink__c) GoogleFileLinkSelector.query()
+            .withBaseFields()
+            .byId(request.linkLocalGoogleFileId)
+            .toObject();
 
-        targets.userFolderName = buildUserFolderName(request == null ? null : request.initiatorUserId);
-        targets.relatedRecordId = fileLink == null || String.isBlank(fileLink.LinkedObjectId__c)
+        return fileLink == null || String.isBlank(fileLink.LinkedObjectId__c)
             ? null
             : (Id) fileLink.LinkedObjectId__c;
-        targets.recordFolderName = buildRecordFolderName(fileLink, targets.relatedRecordId);
-
-        return targets;
-    }
-
-    private String buildUserFolderName(Id userId) {
-        User initiatingUser = loadUser(userId);
-        if (initiatingUser == null) return 'Unknown User';
-
-        String fullName = String.join(new List<String>{
-            String.isBlank(initiatingUser.FirstName) ? null : initiatingUser.FirstName,
-            String.isBlank(initiatingUser.LastName) ? null : initiatingUser.LastName
-        }, ' ').trim();
-
-        return 'User : ' + fullName;
-    }
-
-    private User loadUser(Id userId) {
-        if (userId == null) return null;
-
-        List<User> users = [
-            SELECT Id, FirstName, LastName
-            FROM User
-            WHERE Id = :userId
-            LIMIT 1
-        ];
-
-        return users.isEmpty() ? null : users[0];
-    }
-
-    private String buildRecordFolderName(GoogleFileLink__c fileLink, Id relatedRecordId) {
-        if (relatedRecordId == null) return null;
-
-        String explicitType = fileLink == null ? '' : fileLink.LinkedObjectType__c;
-        String explicitName = fileLink == null ? '' : fileLink.LinkedObjectName__c;
-
-        if (String.isBlank(explicitType) && String.isBlank(explicitName)) {
-            return 'Record : ' + String.valueOf(relatedRecordId);
-        }
-
-        return explicitType + ' : ' + (String.isBlank(explicitName) ? 'Unknown Record' : explicitName);
-    }
-
-    private String resolveDestinationFolderId(String folderStructure, String rootFolderId, Id userId, String userFolderName, Id recordId, String recordFolderName) {
-        if (String.isBlank(folderStructure)) return null;
-
-        if (folderStructure == STRUCTURE_USER) {
-            return getOrCreateFolder(rootFolderId, userFolderName, String.valueOf(userId));
-        }
-
-        Boolean hasRecord = recordId != null;
-        if (!hasRecord) {
-            return getOrCreateFolder(rootFolderId, userFolderName, String.valueOf(userId));
-        }
-
-        if (folderStructure == STRUCTURE_RECORD) {
-            return getOrCreateFolder(rootFolderId, recordFolderName, String.valueOf(recordId));
-        }
-
-        if (folderStructure == STRUCTURE_USER_RECORD) {
-            String userFolderId = getOrCreateFolder(rootFolderId, userFolderName, String.valueOf(userId));
-            if (String.isBlank(userFolderId)) return null;
-
-            return getOrCreateFolder(userFolderId, recordFolderName, String.valueOf(recordId));
-        }
-
-        if (folderStructure == STRUCTURE_RECORD_USER) {
-            String recordFolderId = getOrCreateFolder(rootFolderId, recordFolderName, String.valueOf(recordId));
-            if (String.isBlank(recordFolderId)) return null;
-
-            return getOrCreateFolder(recordFolderId, userFolderName, String.valueOf(userId));
-        }
-
-        return null;
-    }
-
-    private String getOrCreateFolder(String parentFolderId, String folderName, String uniqueIdValue) {
-        if (String.isBlank(parentFolderId)) return null;
-        if (String.isBlank(uniqueIdValue)) return null;
-
-        String existingFolderId = findFolderIdByUniqueId(parentFolderId, uniqueIdValue);
-        if (!String.isBlank(existingFolderId)) {
-            return existingFolderId;
-        }
-
-        return createFolder(parentFolderId, folderName, uniqueIdValue);
-    }
-
-    private String findFolderIdByUniqueId(String parentFolderId, String uniqueIdValue) {
-        String escapedParentId = escapeQueryValue(parentFolderId);
-        String escapedUniqueId = escapeQueryValue(uniqueIdValue);
-
-        String query = 'mimeType = \'' + FOLDER_MIME_TYPE + '\' ';
-        query += 'and \'' + escapedParentId + '\' in parents ';
-        query += 'and trashed = false ';
-        query += 'and appProperties has { key=\'' + APP_PROPERTY_RECORD_ID + '\' and value=\'' + escapedUniqueId + '\' }';
-
-        GoogleFileSearchResult searchResult = this.remoteGoogleDrive.files().search()
-            .setMaxResult(1)
-            .setSearchQuery(query)
-            .setSearchOnAllDrives(true)
-            .setFields('files(id,name)')
-            .execute();
-
-        if (searchResult != null && searchResult.files != null && !searchResult.files.isEmpty()) {
-            return searchResult.files[0].id;
-        }
-
-        return null;
-    }
-
-    private String createFolder(String parentFolderId, String folderName, String uniqueIdValue) {
-        Map<String, Object> customAttributes = new Map<String, Object>{
-            APP_PROPERTY_RECORD_ID => uniqueIdValue
-        };
-
-        String entityName = String.isBlank(folderName) ? 'Untitled' : folderName.trim();
-        GoogleFileEntity createdFolder = this.remoteGoogleDrive.files().multipartCreate()
-            .setFileName(entityName)
-            .setMimeType('application/vnd.google-apps.folder')
-            .setParentFolders(new List<String>{ parentFolderId })
-            .setCustomAttributes(customAttributes)
-            .setSupportsAllDrives(true)
-            .setBody('')
-            .execute();
-
-        return createdFolder == null ? null : createdFolder.id;
     }
 
     private void registerLatestVersionFolderUpdate(Id localGoogleFileVersionId, String resultingRemoteFileId, String destinationFolderId) {
@@ -336,17 +185,6 @@ public without sharing class GoogleFileStoreInFolderCommand {
         }
 
         return null;
-    }
-
-    private String escapeQueryValue(String value) {
-        if (value == null) return '';
-        return value.replace('\\', '\\\\').replace('\'', '\\\'');
-    }
-
-    private class FolderTargets {
-        public String userFolderName;
-        public String recordFolderName;
-        public Id relatedRecordId;
     }
 
     private class RemoteFileIds {

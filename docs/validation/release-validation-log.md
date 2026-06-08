@@ -2,6 +2,39 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
+???+ example "Hotfix v1.3.2"
+
+    ### Validation Suite Used
+    - [ ] Full Validation Suite
+    - [ ] Quick Regression Suite
+    - [X] Targeted Regression Suite
+
+    ### Release Changes
+    - [X] Fixed 1: When Google Client is configured to use a dedicated folder per record, uploading multiple files to a record that does not yet have any Google files creates multiple Google Drive folders for the same record. This issue appears to happen only when multiple files are uploaded at once and the record does not already have a resolved folder. After the first upload is completed, subsequent uploads to the same record are stored in a single folder as expected. For reference: https://github.com/sandriiy/salesforce-google-client/issues/68
+
+    ### Boring Changes
+    - [X] Version number assigned to all hard-coded labels
+    - [X] Version ID is assigned to all installation guides.
+
+    ### Smoke Checks
+    - [X] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [X] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [X] Admin can open Google Client app and browse configuration tabs without errors
+
+	### Specific Checks
+	- [X] With **Folder Structure** not configured at all, a regular user uploaded single, multiple, small, and large files from **Attachments**, **Uploader**, and **File Explorer** without any issues. Uploaded files stayed in the root Google Drive folder, and no sub-folder was created.
+	- [X] After admin changed **Folder Structure** to **Folder per User**, a regular user uploaded files from all three places without any issues. Uploaded files were placed in that user’s own folder.
+	- [X] With **Folder per User** configured, a regular user shared files with another internal user using both **Viewer** and **Collaborator** access. The second user was able to access those files, and when he uploaded his own file, it was placed in his own separate user folder.
+	- [X] After admin changed **Folder Structure** to **Folder per Record**, a regular user uploaded files from all three places without any issues. Files uploaded to records were placed in the folder created for the related record. The user tested several Account records, and only one folder was created per record.
+	- [X] Another internal user uploaded files to a record where the folder had already been created by the first user. New files were placed in the same existing record folder, and no duplicate folder was created.
+	- [X] After admin changed **Folder Structure** to **Folder per Record → Folder per User**, a regular user uploaded files from all three places without any issues. Files were placed inside the related record folder, under a sub-folder created for that user.
+	- [X] After admin changed **Folder Structure** to **Folder per User → Folder per Record**, a regular user uploaded files from all three places without any issues. Files were placed inside the user folder, under sub-folders created for each related record.
+	- [X] A user shared several files with an external user. The external user was able to see those files. After more single and multiple files were uploaded, all new files were placed in the already existing folder.
+
+    ### Notes
+    - As part of this hotfix, I also fixed an issue where files uploaded from the **File Explorer** component, which means without a record ID, could still trigger the asynchronous Google Drive folder-structure job to create a **User** folder, even when the **User** folder option was not enabled in the "Google Client" settings. Since this behavior does not seem to match the expected configuration, the job now respects the folder-structure settings. If the **User** folder is not selected, it will not be created.
+
+
 ???+ example "Hotfix v1.3.1"
 
     ### Validation Suite Used

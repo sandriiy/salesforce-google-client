@@ -12,10 +12,10 @@ Two packages are required before installing Google Client for Salesforce. If you
 Install Google Client for Salesforce using one of the options below.
 
 <div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 16px;">
-  <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MVpIAM" target="_blank" rel="noopener noreferrer">
+  <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000VyHdIAK" target="_blank" rel="noopener noreferrer">
     <img src="https://img.shields.io/badge/Install%20In%20Sandbox-blue?style=for-the-badge&logo=salesforce" alt="Install the Unlocked Package in Sandbox">
   </a>
-  <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tJ80000011MVpIAM" target="_blank" rel="noopener noreferrer">
+  <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000VyHdIAK" target="_blank" rel="noopener noreferrer">
     <img src="https://img.shields.io/badge/Install%20In%20Production-blue?style=for-the-badge&logo=salesforce" alt="Install the Unlocked Package in Production">
   </a>
 </div>
@@ -23,7 +23,7 @@ Install Google Client for Salesforce using one of the options below.
 Or via CLI:
 
 ```bash
-sf package install --wait 20 --security-type AdminsOnly --package 04tJ80000011MVpIAM
+sf package install --wait 20 --security-type AdminsOnly --package 04tQy000000VyHdIAK
 ```
 
 Once both dependencies and the package are installed, proceed to [Set Up Service Account](setup-service-account.md).

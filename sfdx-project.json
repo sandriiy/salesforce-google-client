@@ -4,8 +4,8 @@
       "path": "force-app",
       "default": true,
       "package": "Salesforce Google Client",
-      "versionName": "Version 1.3.1",
-      "versionNumber": "1.3.1.NEXT",
+      "versionName": "Version 1.3.2",
+      "versionNumber": "1.3.2.NEXT",
       "versionDescription": "An integrated Google Cloud solution on the Salesforce platform designed to simplify file management and improve productivity at scale",
       "releaseNotesUrl": "https://github.com/sandriiy/salesforce-google-client/releases",
       "dependencies": [
@@ -31,6 +31,7 @@
     "Salesforce Google Client@1.2.0-1": "04tJ80000011MKfIAM",
     "Salesforce Google Client@1.3.0-1": "04tJ80000011MVVIA2",
     "Salesforce Google Client@1.3.0-2": "04tJ80000011MVaIAM",
-    "Salesforce Google Client@1.3.1-1": "04tJ80000011MVpIAM"
+    "Salesforce Google Client@1.3.1-1": "04tJ80000011MVpIAM",
+    "Salesforce Google Client@1.3.2-1": "04tQy000000VyHdIAK"
   }
 }

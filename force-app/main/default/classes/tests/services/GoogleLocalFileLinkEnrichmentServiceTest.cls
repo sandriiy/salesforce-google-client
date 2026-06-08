@@ -75,4 +75,14 @@ private class GoogleLocalFileLinkEnrichmentServiceTest {
 			Assert.isNotNull(ex.getMessage());
 		}
 	}
+
+	@IsTest
+	private static void testResolveLinkedRecordNamePositive() {
+		Account linkedRecord = new Account(Name = 'Resolved Account Name');
+		insert linkedRecord;
+
+		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
+
+		System.assertEquals('Resolved Account Name', enrichmentService.resolveLinkedRecordName(linkedRecord.Id));
+	}
 }

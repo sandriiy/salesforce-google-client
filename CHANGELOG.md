@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2026-06-08
+
+### Fixed
+
+- Uploading multiple files at once to a record without an existing resolved Google Drive folder could create multiple folders for the same record when Google Client was configured to use a dedicated folder per record.
+- Files uploaded from the File Explorer tab/component could be placed into a user-specific Google Drive folder even when the folder per user option was not enabled.
+
 ## [1.3.1] - 2026-04-27
 
 ### Fixed

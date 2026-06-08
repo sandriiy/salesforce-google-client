@@ -22,6 +22,27 @@
  * SOFTWARE.
  */
 public without sharing class GoogleLocalFileLinkEnrichmentService {
+    public String resolveLinkedRecordName(Id linkedRecordId) {
+        if (linkedRecordId == null) return null;
+
+        Schema.SObjectType objectType = linkedRecordId.getSObjectType();
+        String objectApiName = objectType.getDescribe().getName();
+        GoogleFileLink__c lookupLink = new GoogleFileLink__c(
+            LinkedObjectId__c = linkedRecordId,
+            LinkedObjectType__c = objectApiName
+        );
+
+        Map<String, String> nameFieldByObjectApiName = resolveNameFieldByObjectApiName(new List<GoogleFileLink__c>{ lookupLink });
+        String nameFieldApiName = nameFieldByObjectApiName.get(objectApiName);
+        if (String.isBlank(nameFieldApiName)) return null;
+
+        SObject linkedRecord = GoogleFileLinkedRecordSelector.selectById(linkedRecordId, new List<String>{ nameFieldApiName });
+        if (linkedRecord == null) return null;
+
+        Object rawNameValue = linkedRecord.get(nameFieldApiName);
+        return rawNameValue == null ? null : String.valueOf(rawNameValue);
+    }
+
     /**
 	 * Enriches the provided Google File Link records by resolving each linked record’s Name field.
 	 */

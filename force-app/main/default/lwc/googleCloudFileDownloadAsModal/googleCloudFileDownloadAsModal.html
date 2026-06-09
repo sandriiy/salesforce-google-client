@@ -1,0 +1,29 @@
+<template>
+    <lightning-modal-header label={modalLabel}></lightning-modal-header>
+
+    <lightning-modal-body>
+        <lightning-spinner lwc:if={isLoading} alternative-text="Loading" size="small"></lightning-spinner>
+
+        <div class="download-panel" lwc:if={hasDownloadOptions}>
+            <lightning-radio-group
+                class="download-panel__options"
+                name="downloadAs"
+                type="radio"
+                options={radioOptions}
+                value={selectedMimeType}
+                onchange={handleSelectionChange}>
+            </lightning-radio-group>
+        </div>
+
+        <div lwc:elseif={isLoading} class="download-panel download-panel--empty"></div>
+
+        <div lwc:else class="download-panel download-panel--empty">
+            <div class="download-panel__title">No export formats are available for this file.</div>
+        </div>
+    </lightning-modal-body>
+
+    <lightning-modal-footer>
+        <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+        <lightning-button class="slds-m-left_x-small" variant="brand" label="Download" onclick={handleDownload} disabled={isDownloadDisabled}></lightning-button>
+    </lightning-modal-footer>
+</template>

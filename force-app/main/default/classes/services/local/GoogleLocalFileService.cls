@@ -65,6 +65,18 @@ public without sharing class GoogleLocalFileService {
 		}
 	}
 
+	public void ensureGoogleDriveFolderStructure(Id relatedRecordId) {
+		if (relatedRecordId == null) return;
+
+		try {
+			new GoogleFileFolderStructureCommand().ensureFolder(relatedRecordId);
+		} catch (Exception ex) {
+			Logger.error('Ensure Google Drive Folder Structure (Local): ' + relatedRecordId + ', message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileException('Unable to create the folder structure. Please try again or contact your system administrator');
+		}
+	}
+
 	public List<GoogleFile__c> retrieveGoogleFilesForRelatedRecord(Id relatedRecordId, String source, Integer recordsCount) {
 		if (relatedRecordId == null) return new List<GoogleFile__c>();
 

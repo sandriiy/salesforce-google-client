@@ -23,7 +23,7 @@ Please follow this general process when contributing:
 
 3. **Fork the repository**
 
-4. **Create a branch from `main`**
+4. **Create a branch from `main` (or from specific `release` branch if applicable):**
    - `feature/<issue-number>`
    - `hotfix/<issue-number>`
 
@@ -40,7 +40,7 @@ You may develop and test changes using any Salesforce environment of your choice
 
 ## Pull Requests
 
-- All pull requests **must target the `main` branch**
+- All pull requests **must target the `main` branch or `release` branch if present**
 - Provide a clear description of the changes being introduced
 - Include screenshots or recordings for UI-related changes when applicable
 - Pull requests are merged using **squash and merge**

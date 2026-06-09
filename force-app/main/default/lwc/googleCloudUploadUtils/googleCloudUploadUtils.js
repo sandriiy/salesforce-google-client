@@ -1,10 +1,12 @@
 import saveNewGoogleFileLocally from '@salesforce/apex/GoogleCloudFilesController.saveNewGoogleFile';
 import saveNewGoogleFileVersion from '@salesforce/apex/GoogleCloudFilesController.saveNewGoogleFileVersion';
+import ensureNewGoogleFileFolderStructure from '@salesforce/apex/GoogleCloudFilesController.ensureGoogleDriveFolderStructure';
 import uploadFilePartial from '@salesforce/apex/GoogleCloudFilesController.uploadLargeFilePartial';
 import uploadFile from '@salesforce/apex/GoogleCloudFilesController.uploadFile';
 
 export const BIG_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB
+const ensuredFolderRecordIds = new Set();
 
 /**
  * Upload a file to Google Drive in multiple chunks using the Google Drive resumable upload endpoint.
@@ -93,6 +95,8 @@ export async function upload(fileId, file, options) {
 }
 
 export async function saveGoogleFileLocally(recordId, file, uploadSource) {
+    ensureGoogleDriveFolderStructure(recordId);
+
     return await saveNewGoogleFileLocally({
         recordId: recordId,
         fileName: file.name,
@@ -117,9 +121,16 @@ export async function saveGoogleFileVersionLocally(recordId, localGoogleFileId, 
     });
 }
 
+const ensureGoogleDriveFolderStructure = (recordId) => {
+    if (!recordId || ensuredFolderRecordIds.has(recordId)) return;
+
+	ensuredFolderRecordIds.add(recordId);
+    ensureNewGoogleFileFolderStructure({ relatedRecordId: recordId });
+}
+
 const getParentFolderId = (uploaderParentFolderId) => {
     if (uploaderParentFolderId) {
-       const parents = Array.isArray(uploaderParentFolderId) ? uploaderParentFolderId : [];
+    	const parents = Array.isArray(uploaderParentFolderId) ? uploaderParentFolderId : [];
         return parents.length > 0 ? parents[0] : undefined; 
     }
 }

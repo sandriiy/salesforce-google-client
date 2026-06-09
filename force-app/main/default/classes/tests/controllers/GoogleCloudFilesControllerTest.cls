@@ -270,6 +270,32 @@ private class GoogleCloudFilesControllerTest {
 	}
 
 	@IsTest
+	private static void testEnsureGoogleDriveFolderStructurePositive() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.queryContains('appProperties')
+		).thenReturnStatus(200, '{"files":[]}');
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+
+		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
+		config.DefaultGoogleUploadFolderId__c = 'ROOT_FOLDER_01';
+		config.CustomGoogleUploadFolderStructure__c = '{Record}';
+		GoogleMetadataConfigService.configRecordOverride = config;
+
+		Account linkedRecord = new Account(Name = 'Controller Folder Account');
+		insert linkedRecord;
+
+		Test.startTest();
+		GoogleCloudFilesController.ensureGoogleDriveFolderStructure(linkedRecord.Id);
+		Test.stopTest();
+
+		System.assert(true);
+	}
+
+	@IsTest
 	private static void testSaveNewGoogleFileVersionPositive() {
 		GoogleCloudTestFactory.initMocks();
 		GoogleFileCloudFolderJob.skipExecution = true;

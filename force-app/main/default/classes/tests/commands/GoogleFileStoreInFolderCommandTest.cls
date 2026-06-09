@@ -165,6 +165,73 @@ private class GoogleFileStoreInFolderCommandTest {
 	}
 
 	@IsTest
+	private static void testPlaceFilePositiveExistingFolder() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.queryContains('appProperties')
+		).thenReturnStatus(200, '{"files":[{"id":"DEST_FOLDER_01","name":"Existing Folder"}]}');
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('PATCH')
+		).thenReturnStatus(200, '{"id":"MOVED_FILE_02"}');
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('PUT')
+		).thenReturnStatus(200, '{"id":"MOVED_FILE_02"}');
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}-{User}');
+
+		Account linkedRecord = new Account(Name = 'Existing Folder Account');
+		insert linkedRecord;
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('Existing Folder File')
+			.insertRecord();
+
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('Existing Folder File.pdf')
+			.withType('application/pdf')
+			.withSize(1)
+			.withDriveId('GD_EXISTING_1')
+			.withDocsId('GWS_EXISTING_1')
+			.insertRecord();
+
+		GoogleFileLink__c link = GoogleCloudTestFactory.link()
+			.forFile(parentFile.Id)
+			.withLinkedRecord(linkedRecord.Id)
+			.withLinkedType('Account')
+			.insertRecord();
+
+		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(
+			UserInfo.getUserId(),
+			parentFile.Id,
+			localFileVersion.Id,
+			link.Id
+		);
+
+		IGoogleUnitOfWork uow = buildUow();
+
+		Test.startTest();
+		new GoogleFileStoreInFolderCommand(uow).placeFile(request);
+		uow.commitWork(true);
+		Test.stopTest();
+
+		GoogleFileVersion__c updated = [
+			SELECT GoogleDriveFolderId__c, GoogleDriveFileId__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :localFileVersion.Id
+			LIMIT 1
+		];
+
+		Assert.areEqual('DEST_FOLDER_01', updated.GoogleDriveFolderId__c);
+		Assert.areEqual('MOVED_FILE_02', updated.GoogleDriveFileId__c);
+	}
+
+	@IsTest
 	private static void testPlaceFilePositiveBlankStructureEarlyReturn() {
 		GoogleCloudTestFactory.initMocks();
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '');
@@ -205,5 +272,48 @@ private class GoogleFileStoreInFolderCommandTest {
 
 		Assert.areEqual(null, sameVersion.GoogleDriveFolderId__c);
 		Assert.areEqual('GD_NO_MOVE_1', sameVersion.GoogleDriveFileId__c);
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveRecordStructureWithoutLinkEarlyReturn() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('Standalone File')
+			.insertRecord();
+
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('Standalone File.pdf')
+			.withType('application/pdf')
+			.withSize(1)
+			.withDriveId('GD_STANDALONE_1')
+			.withDocsId('GWS_STANDALONE_1')
+			.insertRecord();
+
+		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(
+			UserInfo.getUserId(),
+			parentFile.Id,
+			localFileVersion.Id,
+			null
+		);
+
+		IGoogleUnitOfWork uow = buildUow();
+
+		Test.startTest();
+		new GoogleFileStoreInFolderCommand(uow).placeFile(request);
+		uow.commitWork(true);
+		Test.stopTest();
+
+		GoogleFileVersion__c sameVersion = [
+			SELECT GoogleDriveFolderId__c, GoogleDriveFileId__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :localFileVersion.Id
+			LIMIT 1
+		];
+
+		Assert.areEqual(null, sameVersion.GoogleDriveFolderId__c);
+		Assert.areEqual('GD_STANDALONE_1', sameVersion.GoogleDriveFileId__c);
 	}
 }

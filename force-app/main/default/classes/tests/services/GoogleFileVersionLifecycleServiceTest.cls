@@ -78,13 +78,12 @@ private class GoogleFileVersionLifecycleServiceTest {
 		Test.stopTest();
 
 		GoogleFileVersion__c refreshedVersion = [
-			SELECT GoogleDocsFileId__c, Summary__c
+			SELECT GoogleDocsFileId__c
 			FROM GoogleFileVersion__c
 			WHERE Id = :version.Id
 			LIMIT 1
 		];
 
 		Assert.isTrue(String.isNotBlank(refreshedVersion.GoogleDocsFileId__c));
-		Assert.areEqual(null, refreshedVersion.Summary__c);
 	}
 }

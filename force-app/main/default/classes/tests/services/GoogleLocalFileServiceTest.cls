@@ -23,6 +23,14 @@
  */
 @IsTest
 private class GoogleLocalFileServiceTest {
+	private static GoogleClientConfig__mdt buildFolderConfig(String uploadFolderId, String folderStructure) {
+		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
+		config.DefaultGoogleUploadFolderId__c = uploadFolderId;
+		config.CustomGoogleUploadFolderStructure__c = folderStructure;
+		config.IsFilePreviewDisabled__c = true;
+		return config;
+	}
+
 	private static void coverFactories() {
 		GoogleLocalFileService localFileService = new GoogleLocalFileService();
 		System.assertNotEquals(null, localFileService.deleteGoogleFileRecord());
@@ -260,7 +268,7 @@ private class GoogleLocalFileServiceTest {
 		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
 			[
 				SELECT Id, Name, GoogleDriveFolderId__c, IsLatestFile__c, PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c,
-					CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c
+					CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c, Summary__c
 				FROM GoogleFileVersion__c
 				WHERE GoogleFileId__c = :localFile.Id
 			]
@@ -294,7 +302,7 @@ private class GoogleLocalFileServiceTest {
 		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
 			[
 				SELECT Id, Name, GoogleDriveFolderId__c, IsLatestFile__c, PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c,
-					CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c
+					CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c, Summary__c
 				FROM GoogleFileVersion__c
 				WHERE GoogleFileId__c = :localFile.Id
 			]
@@ -357,6 +365,49 @@ private class GoogleLocalFileServiceTest {
 		Assert.areEqual(request.source, createdFile.Source__c);
 		Assert.areEqual(request.source, createdLink.Source__c);
 		Assert.areEqual(String.valueOf(parentRecordId), createdLink.LinkedObjectId__c);
+	}
+
+	@IsTest
+	private static void testCreatePositiveNewPlacesFileInRecordFolder() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.queryContains('appProperties')
+		).thenReturnStatus(200, '{"files":[{"id":"DEST_FOLDER_UPLOAD","name":"Existing Record Folder"}]}');
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('PATCH')
+		).thenReturnStatus(200, '{"id":"MOVED_UPLOAD_FILE"}');
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+		GoogleFileCloudFolderJob.skipExecution = false;
+
+		Id parentRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ new GoogleFile__c(Name = 'Any') });
+
+		GoogleFileCreateRequestDTO request = new GoogleFileCreateRequestDTO();
+		request.recordId = parentRecordId;
+		request.googleDriveId = 'GD_UPLOAD_NEW';
+		request.fileName = 'Upload.pdf';
+		request.fileType = 'application/pdf';
+		request.fileSize = 123L;
+		request.parentFolderId = 'ROOT_FOLDER_01';
+		request.source = 'Notes & Attachments';
+
+		Test.startTest();
+		new GoogleLocalFileService().createGoogleFileRecord(request);
+		Test.stopTest();
+
+		GoogleFileVersion__c createdVersion = [
+			SELECT GoogleDriveFolderId__c, GoogleDriveFileId__c
+			FROM GoogleFileVersion__c
+			WHERE Name = :request.fileName
+			LIMIT 1
+		];
+
+		Assert.areEqual('DEST_FOLDER_UPLOAD', createdVersion.GoogleDriveFolderId__c);
+		Assert.areEqual('MOVED_UPLOAD_FILE', createdVersion.GoogleDriveFileId__c);
 	}
 
 	@IsTest

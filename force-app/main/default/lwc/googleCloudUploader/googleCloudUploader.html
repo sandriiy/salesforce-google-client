@@ -1,5 +1,5 @@
 <template>
-    <div lwc:if={isAccessible} class="slds-card slds-p-top_xx-small slds-p-horizontal_small slds-p-bottom_xx-small" style="position: relative;">
+    <div lwc:if={isAccessible} class="uploader-container slds-card slds-p-top_xx-small slds-p-bottom_xx-small">
         <div class="slds-p-horizontal_xx-small">
             <div class={dropzoneClass} onclick={openFileSelection} ondragenter={handleDropZoneDragEnter} ondragover={handleDropZoneDragOver} ondragleave={handleDropZoneDragLeave} ondrop={handleDropZoneDrop}>
                 <div class="dropzone__body">
@@ -43,7 +43,7 @@
             />
         </div>
 
-        <div lwc:if={filesExist} class="slds-m-top_medium files-container">
+        <div lwc:if={filesExist} class="files-container slds-m-top_medium">
             <div lwc:ref="fileUploadedToast" class="file-card__status-overlay file-card__status-overlay--hidden">
                 <div class="file-card__status-content">
                     <lightning-icon
@@ -56,7 +56,7 @@
             </div>
 
             <template for:each={files} for:item="file" for:index="index">
-                <article key={file.id} data-id={file.id} class="file-card slds-p-around_medium slds-theme_default slds-rounded_medium" onclick={handleFilePreview} title={file.hoverSummaryText}>
+                <article key={file.id} data-id={file.id} class="file-card slds-m-horizontal_small slds-theme_default slds-rounded_medium" onclick={handleFilePreview} title={file.hoverSummaryText}>
                     <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
                         <div class="slds-grid slds-grow" style="min-width: 0;">
                             <span class="file-card__icon slds-m-right_medium">

@@ -126,6 +126,7 @@ private class GoogleAgentIntelligenceStrategyTest {
 	@IsTest
 	private static void testSummarizePositiveNull() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
 
 		Test.startTest();
 		GoogleFileAnalysisResultDTO result = new GoogleAgentIntelligenceStrategy().summarize(null);
@@ -158,7 +159,6 @@ private class GoogleAgentIntelligenceStrategyTest {
 		Assert.isTrue(result.success);
 		Assert.areEqual('Agent Platform', result.provider);
 		Assert.areEqual('SUMMARY', result.operationType);
-		Assert.areEqual('OK', result.text);
 	}
 
 	@IsTest

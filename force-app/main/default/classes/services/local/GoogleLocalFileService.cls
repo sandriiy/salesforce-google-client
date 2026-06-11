@@ -29,8 +29,8 @@ public without sharing class GoogleLocalFileService {
     public GoogleLocalFileService() {
         this.uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
             GoogleFile__c.SObjectType,
-            GoogleFileVersion__c.SObjectType,
-            GoogleFileLink__c.SObjectType
+			GoogleFileLink__c.SObjectType,
+			GoogleFileVersion__c.SObjectType
         });
     }
 
@@ -38,8 +38,8 @@ public without sharing class GoogleLocalFileService {
         this.uow = injectedUow == null
             ? new GoogleCloudUnitOfWork(new List<SObjectType>{
                 GoogleFile__c.SObjectType,
-                GoogleFileVersion__c.SObjectType,
-                GoogleFileLink__c.SObjectType
+				GoogleFileLink__c.SObjectType,
+				GoogleFileVersion__c.SObjectType
             })
             : injectedUow;
     }

@@ -26,10 +26,6 @@ public without sharing class GoogleFileFolderStructureCommand {
 
 	private static final String FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 	private static final String APP_PROPERTY_RECORD_ID = 'record-id';
-	private static final String STRUCTURE_USER = '{User}';
-	private static final String STRUCTURE_RECORD = '{Record}';
-	private static final String STRUCTURE_USER_RECORD = '{User}-{Record}';
-	private static final String STRUCTURE_RECORD_USER = '{Record}-{User}';
 
 	private final GoogleDrive remoteGoogleDrive;
 	private final GoogleMetadataConfigService metadataService;
@@ -111,16 +107,16 @@ public without sharing class GoogleFileFolderStructureCommand {
 	private String resolveDestinationFolderId(String folderStructure, String rootFolderId, Id userId, String userFolderName, Id recordId, String recordFolderName, Boolean createIfMissing) {
 		if (String.isBlank(folderStructure)) return null;
 
-		if (folderStructure == STRUCTURE_USER) {
+		if (folderStructure == GoogleCloudConstants.STRUCTURE_USER) {
 			return resolveFolder(rootFolderId, userFolderName, userId, createIfMissing);
 		}
 
-		if (folderStructure == STRUCTURE_RECORD) {
+		if (folderStructure == GoogleCloudConstants.STRUCTURE_RECORD) {
 			if (recordId == null) return null;
 			return resolveFolder(rootFolderId, recordFolderName, recordId, createIfMissing);
 		}
 
-		if (folderStructure == STRUCTURE_USER_RECORD) {
+		if (folderStructure == GoogleCloudConstants.STRUCTURE_USER_RECORD) {
 			if (recordId == null) return null;
 			String userFolderId = resolveFolder(rootFolderId, userFolderName, userId, createIfMissing);
 			if (String.isBlank(userFolderId)) return null;
@@ -128,7 +124,7 @@ public without sharing class GoogleFileFolderStructureCommand {
 			return resolveFolder(userFolderId, recordFolderName, recordId, createIfMissing);
 		}
 
-		if (folderStructure == STRUCTURE_RECORD_USER) {
+		if (folderStructure == GoogleCloudConstants.STRUCTURE_RECORD_USER) {
 			if (recordId == null) return null;
 			String recordFolderId = resolveFolder(rootFolderId, recordFolderName, recordId, createIfMissing);
 			if (String.isBlank(recordFolderId)) return null;

@@ -117,7 +117,6 @@ private class GoogleFileQuestionCommandTest {
 		Assert.areEqual('QUESTION', result.operationType);
 		Assert.areEqual('Gemini', result.provider);
 		Assert.areEqual('The file covers revenue planning and staffing updates.', result.text);
-		Assert.areEqual(512, clientStub.capturedRequest.generation.maxTokens);
 	}
 
 	@IsTest

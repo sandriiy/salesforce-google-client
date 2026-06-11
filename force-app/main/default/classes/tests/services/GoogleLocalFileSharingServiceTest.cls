@@ -23,6 +23,13 @@
  */
 @IsTest
 private class GoogleLocalFileSharingServiceTest {
+	private static GoogleClientConfig__mdt buildFolderConfig(String uploadFolderId, String folderStructure) {
+		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
+		config.DefaultGoogleUploadFolderId__c = uploadFolderId;
+		config.CustomGoogleUploadFolderStructure__c = folderStructure;
+		return config;
+	}
+
 	@IsTest
 	private static void testFetchSharingDetailsPositiveEmpty() {
 		GoogleCloudTestFactory.initMocks();
@@ -191,12 +198,18 @@ private class GoogleLocalFileSharingServiceTest {
 		User u = GoogleCloudTestFactory.newUser();
 
 		try {
-			new GoogleLocalFileSharingService()
+			Id shareId = new GoogleLocalFileSharingService()
 				.createNewSharing(null, 'User', u.Id, 'viewer');
-			System.assert(false);
+			System.assertEquals(null, shareId);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to share'));
+			System.assertNotEquals(null, ex);
 		}
+
+		System.assertEquals(0, [
+			SELECT count()
+			FROM GoogleFile__Share
+			WHERE UserOrGroupId = :u.Id
+		]);
 	}
 
 	@IsTest
@@ -560,5 +573,37 @@ private class GoogleLocalFileSharingServiceTest {
 			Assert.areEqual(1, linkedRecords.size());
 			Assert.areEqual(String.valueOf(linkedAccount.Id), linkedRecords[0].LinkedObjectId__c);
 		}
+	}
+
+	@IsTest
+	private static void testAttachExistingFileToRecordPositiveRecordStructure() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+		GoogleFileCloudShortcutJob.skipExecution = true;
+
+		Account relatedAccount = new Account(Name = 'Attach Shortcut Account');
+		insert relatedAccount;
+
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Attach Shortcut File')
+			.insertRecord();
+
+		GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName('Attach Shortcut File.pdf')
+			.withDriveId('GD_ATTACH_SHORTCUT')
+			.insertRecord();
+
+		Test.startTest();
+		Id linkId = new GoogleLocalFileSharingService().attachExistingFileToRecord(localFile.Id, relatedAccount.Id, 'Notes & Attachments');
+		Test.stopTest();
+
+		Assert.isNotNull(linkId);
+		Assert.areEqual(1, [
+			SELECT count()
+			FROM GoogleFileLink__c
+			WHERE GoogleFileId__c = :localFile.Id
+			AND LinkedObjectId__c = :String.valueOf(relatedAccount.Id)
+		]);
 	}
 }

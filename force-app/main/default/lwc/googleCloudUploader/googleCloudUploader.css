@@ -1,3 +1,7 @@
+.uploader-container {
+	position: relative;
+}
+
 .dropzone {
     position: relative;
     border: 2px dashed rgba(1, 118, 211, 0.24);

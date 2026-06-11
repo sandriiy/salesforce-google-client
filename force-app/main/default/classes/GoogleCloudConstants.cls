@@ -52,4 +52,9 @@ public class GoogleCloudConstants {
 			new GoogleFileDownloadAsOptionDTO('Tab Separated Values (.tsv)', MIME_TYPE_TSV, 'tsv')
 		}
 	};
+
+	public static final String STRUCTURE_USER = '{User}';
+	public static final String STRUCTURE_RECORD = '{Record}';
+	public static final String STRUCTURE_USER_RECORD = '{User}-{Record}';
+	public static final String STRUCTURE_RECORD_USER = '{Record}-{User}';
 }

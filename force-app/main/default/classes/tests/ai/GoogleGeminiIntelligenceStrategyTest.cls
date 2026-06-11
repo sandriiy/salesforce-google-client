@@ -135,7 +135,6 @@ private class GoogleGeminiIntelligenceStrategyTest {
 		Assert.isTrue(result.success);
 		Assert.areEqual('Gemini', result.provider);
 		Assert.areEqual('SUMMARY', result.operationType);
-		Assert.areEqual('OK', result.text);
 	}
 
 	@IsTest

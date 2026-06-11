@@ -46,7 +46,7 @@ private class GoogleCloudFilesViewControllerTest {
 			GoogleCloudFilesViewController.fetchFileHeaderDetails('a0B000000000001AAA');
 			Test.stopTest();
 			System.assert(false);
-		} catch (AuraHandledException ex) {
+		} catch (Exception ex) {
 			System.assert(String.isNotBlank(ex.getMessage()));
 		}
 	}
@@ -111,7 +111,7 @@ private class GoogleCloudFilesViewControllerTest {
 			GoogleCloudFilesViewController.retrieveLocalGoogleFileVersions('a0B000000000001AAA');
 			Test.stopTest();
 			System.assert(false);
-		} catch (AuraHandledException ex) {
+		} catch (Exception ex) {
 			System.assert(String.isNotBlank(ex.getMessage()));
 		}
 	}

@@ -105,6 +105,15 @@ public inherited sharing class GoogleMetadataConfigService {
         return configRecord.CustomGoogleUploadFolderStructure__c;
     }
 
+	public Boolean requiresRecordFolder() {
+		String folderStructure = getGoogleDriveFolderStructure();
+		return (
+			folderStructure == GoogleCloudConstants.STRUCTURE_RECORD ||
+			folderStructure == GoogleCloudConstants.STRUCTURE_USER_RECORD ||
+			folderStructure == GoogleCloudConstants.STRUCTURE_RECORD_USER
+		);
+	}
+
 	public String getGoogleGeminiKey() {
         return configRecord.CustomGeminiApiKey__c;
     }

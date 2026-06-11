@@ -52,7 +52,7 @@ public with sharing class GoogleFileVersionSummaryJob extends GQueueableJob.Allo
 		if (this.capturedTestResultsByVersionId.isEmpty()) {
 			try {
 				intelligenceStrategy = new GoogleFileIntelligenceFactory().create();
-			} catch (GoogleFileIntelligenceFactory.GoogleFileIntelligenceFactoryException ex) {
+			} catch (Exception ex) {
 				return;
 			}
 		}

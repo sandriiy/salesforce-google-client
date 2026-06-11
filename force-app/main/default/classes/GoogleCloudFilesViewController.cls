@@ -23,6 +23,8 @@ public with sharing class GoogleCloudFilesViewController {
     }
 
 	private static void assertFileReadable(Id localFileRecordId) {
+		if (localFileRecordId == null) return;
+		
 		GoogleLocalFileService service = new GoogleLocalFileService();
 		List<GoogleFile__c> accessibleFiles = service.stripInaccessibleRecords()
 			.forFile(localFileRecordId)

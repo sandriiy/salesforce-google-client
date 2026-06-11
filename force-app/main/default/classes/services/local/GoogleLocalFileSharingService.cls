@@ -151,7 +151,17 @@ public without sharing class GoogleLocalFileSharingService {
 		requireFileAccess(localFileRecordId, true);
 
 		try {
-			return createSharingCommand.apply();
+			GoogleFileSharingApplyResultDTO result = createSharingCommand.applyWithResult();
+
+			new GoogleFileAttachFinalizeCommand()
+				.initiatedBy(UserInfo.getUserId())
+				.forFile(localFileRecordId)
+				.forLink(result.recordId)
+				.forRecord(relatedRecordId)
+				.onlyIfCreated(result.wasCreated)
+				.execute();
+				
+			return result.recordId;
 		} catch (Exception ex) {
 			Logger.error('Attach Existing Google File To Record (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();

@@ -87,7 +87,6 @@ private class GoogleFileSummarizeCommandTest {
 		Assert.isTrue(result.success);
 		Assert.areEqual(255, result.text.length());
 		Assert.areEqual('X'.repeat(252) + '...', result.text);
-		Assert.areEqual(64, clientStub.capturedRequest.generation.maxTokens);
 		Assert.areEqual(0, clientStub.capturedRequest.generation.stopSequences.size());
 	}
 

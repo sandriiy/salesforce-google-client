@@ -112,7 +112,8 @@ private class GoogleCloudConfigControllerTest {
 		GoogleMetadataConfigService.configRecordOverride = buildDefaultMetadataConfig();
 
 		Map<String, Object> fieldApiToValue = new Map<String, Object>{
-			'IsFilePreviewDisabled__c' => false
+			'IsFilePreviewDisabled__c' => false,
+			'IsImageOcrEnabled__c' => true
 		};
 
 		Test.startTest();

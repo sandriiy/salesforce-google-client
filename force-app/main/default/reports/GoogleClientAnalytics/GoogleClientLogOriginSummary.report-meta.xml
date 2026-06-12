@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
     <columns>
         <field>FK_NAME</field>
@@ -21,8 +21,7 @@
     <columns>
         <field>FK_$LogEntry__c.Timestamp__c</field>
     </columns>
-    <description
-  >Where does this log come from and at what level, who was affected and what are the technical details of this log entry?</description>
+    <description>Where does this log come from and at what level, who was affected and what are the technical details of this log entry?</description>
     <filter>
         <criteriaItems>
             <column>CUST_NAME</column>
@@ -31,8 +30,14 @@
             <operator>equals</operator>
             <value>Google Client for Salesforce</value>
         </criteriaItems>
+        <language>en_US</language>
     </filter>
     <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>FK_$LogEntry__c.Log__c</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
     <groupingsDown>
         <dateGranularity>Day</dateGranularity>
         <field>LogEntryTag__c.LogEntryOrigin__c</field>
@@ -48,8 +53,7 @@
         <name>co</name>
         <value>1</value>
     </params>
-    <reportType
-  >CustomEntityCustomEntity$LoggerTag__c$LogEntryTag__c@LogEntryTag__c.LogEntry__c</reportType>
+    <reportType>CustomEntityCustomEntity$LoggerTag__c$LogEntryTag__c@LogEntryTag__c.LogEntry__c</reportType>
     <scope>organization</scope>
     <showDetails>true</showDetails>
     <showGrandTotal>true</showGrandTotal>

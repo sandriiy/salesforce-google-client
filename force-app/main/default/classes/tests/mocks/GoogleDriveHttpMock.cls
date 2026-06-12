@@ -98,6 +98,12 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 .toHttpResponse(req);
         }
 
+        if (method == 'GET' && endpointLower.contains('/v1/documents/')) {
+            return new JsonResponses()
+                .documentWithOcrTextSuccess()
+                .toHttpResponse(req);
+        }
+
 		if (method == 'GET' && endpointLower.contains('mimetype=text/plain')) {
 			return new BinaryResponses()
 				.downloadSuccess(Blob.valueOf('Quarterly budget review covering revenue planning, staffing updates, and milestone approvals.'), 'text/plain')
@@ -130,6 +136,12 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
         if (method == 'POST' && endpointLower.contains('/permissions')) {
             return new JsonResponses()
                 .permissionCreated('perm_anyone_reader_001')
+                .toHttpResponse(req);
+        }
+
+        if (method == 'POST' && endpointLower.contains(':batchupdate')) {
+            return new JsonResponses()
+                .batchUpdateSuccess()
                 .toHttpResponse(req);
         }
 
@@ -397,6 +409,28 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                     '{ "id":"' + escapeJson(id) +
                     '", "type":"anyone", "role":"reader" }'
                 );
+        }
+
+        public MockResponse documentWithOcrTextSuccess() {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody(
+                    '{'
+                    + '"body":{'
+                        + '"content":['
+                            + '{"startIndex":1,"endIndex":5,"paragraph":{"elements":[{"startIndex":1,"endIndex":4,"inlineObjectElement":{"inlineObjectId":"img_001"}},{"startIndex":4,"endIndex":5,"textRun":{"content":"\\n"}}]}},'
+                            + '{"startIndex":5,"endIndex":17,"paragraph":{"elements":[{"startIndex":5,"endIndex":16,"textRun":{"content":"OCR line 1"}},{"startIndex":16,"endIndex":17,"textRun":{"content":"\\n"}}]}},'
+                            + '{"startIndex":17,"endIndex":29,"paragraph":{"elements":[{"startIndex":17,"endIndex":28,"textRun":{"content":"OCR line 2"}},{"startIndex":28,"endIndex":29,"textRun":{"content":"\\n"}}]}}'
+                        + ']'
+                    + '}'
+                    + '}'
+                );
+        }
+
+        public MockResponse batchUpdateSuccess() {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody('{ "replies":[] }');
         }
 
         public MockResponse error(Integer status, String msg) {

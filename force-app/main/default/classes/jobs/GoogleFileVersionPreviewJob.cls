@@ -36,15 +36,20 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 
 	public override void work() {
 		if (skipExecution) return;
+		if (versionIds.isEmpty()) return;
+
 		Logger.info('Queueable Job to generate Google Workspace previews for: ' + String.join(versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-        if (versionIds.isEmpty()) return;
 
 		List<GoogleFileVersion__c> localFileVersions = (List<GoogleFileVersion__c>) GoogleFileVersionSelector.query()
 			.withAdvancedFields()
 			.byIds(versionIds)
 			.toList();
 
-        List<GoogleFileVersion__c> toUpdate = new List<GoogleFileVersion__c>();
+		GoogleFilePreviewOcrCleanupCommand ocrCleanupCommand = new GoogleFilePreviewOcrCleanupCommand();
+		IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
+			GoogleFileVersion__c.SObjectType
+		});
+
         for (GoogleFileVersion__c localFileVersion : localFileVersions) {
             if (String.isNotBlank(localFileVersion.GoogleDocsFileId__c)) continue;
 
@@ -60,20 +65,23 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 				.setMimeType(targetGoogleWorkspaceType)
 				.execute();
 
-			localFileVersion.GoogleDocsFileId__c = clonedFile.id;
-			toUpdate.add(localFileVersion);
+			String generatedPreviewFileId = clonedFile.id;
+			ocrCleanupCommand.cleanupPreview(localFileVersion, generatedPreviewFileId);
+
+			uow.registerDirty(new GoogleFileVersion__c(
+				Id = localFileVersion.Id,
+				GoogleDocsFileId__c = generatedPreviewFileId
+			));
         }
 
-        if (!toUpdate.isEmpty()) {
+		try {
 			GTriggerHandler.setBypass('GoogleFileVersionTriggerHandler', true);
-			try {
-				update toUpdate;
-			} catch (Exception ex) {
-				Logger.error('Google File Version update failed (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-				Logger.saveLog();
-			} finally {
-				GTriggerHandler.clearAllBypasses();
-			}
-        }
+			uow.commitWork(true);
+		} catch (Exception ex) {
+			Logger.error('Google File Version update failed (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+		} finally {
+			GTriggerHandler.clearAllBypasses();
+		}
     }
 }

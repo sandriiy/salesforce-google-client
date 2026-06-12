@@ -41,14 +41,25 @@ private class GoogleMetadataConfigServiceTest {
 		}
 	}
 
+	private static GoogleClientConfig__mdt buildConfig(Boolean isPreviewDisabled, Boolean isImageOcrEnabled) {
+		return new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client',
+			IsFilePreviewDisabled__c = isPreviewDisabled,
+			IsImageOcrEnabled__c = isImageOcrEnabled
+		);
+	}
+
 	@IsTest
 	private static void testConstructorPositiveConfigExists() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(false, false);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
 		System.assertNotEquals(null, svc.getConfig());
 	}
 
 	@IsTest
 	private static void testSaveConfigPositiveNoOps() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(false, false);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new ThrowingDeployer());
 
 		Test.startTest();
@@ -61,11 +72,13 @@ private class GoogleMetadataConfigServiceTest {
 
 	@IsTest
 	private static void testSaveConfigPositiveEnqueue() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(false, false);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new SuccessDeployer());
 
 		Map<String, Object> changes = new Map<String, Object>{
 			'DefaultGoogleUploadFolderId__c' => 'folder_123',
-			'IsFilePreviewDisabled__c' => true
+			'IsFilePreviewDisabled__c' => true,
+			'IsImageOcrEnabled__c' => true
 		};
 
 		Test.startTest();
@@ -77,6 +90,7 @@ private class GoogleMetadataConfigServiceTest {
 
 	@IsTest
 	private static void testSaveConfigNegativeEnqueueThrows() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(false, false);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new ThrowingDeployer());
 
 		Map<String, Object> changes = new Map<String, Object>{
@@ -115,12 +129,23 @@ private class GoogleMetadataConfigServiceTest {
 	private static void testGettersPositiveValues() {
 		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
 			IsFilePreviewDisabled__c = false,
+			IsImageOcrEnabled__c = true,
 			DefaultBigFileSize__c = 2097152,
 			MaxDeleteChainSize__c = 3
 		);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
 		System.assertNotEquals(null, svc.isPreviewDisabled());
+		System.assertEquals(true, svc.isImageOcrEnabled());
 		System.assertNotEquals(null, svc.getBigFileSizeInBytes());
 		System.assertNotEquals(null, svc.getDeleteChainSize());
+	}
+
+	@IsTest
+	private static void testIsImageOcrEnabledPositiveDefaultsToFalse() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		System.assertEquals(false, svc.isImageOcrEnabled());
 	}
 }

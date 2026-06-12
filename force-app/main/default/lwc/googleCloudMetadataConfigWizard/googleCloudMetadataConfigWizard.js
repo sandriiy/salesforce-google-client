@@ -53,6 +53,10 @@ const QUERY = gql`
                             CustomModelName__c { value }
                             CustomAgentLocation__c { value }
                             CustomAgentProjectId__c { value }
+                            IsFileIntelligenceEnabled__c { value }
+                            CustomSummaryPrompt__c { value }
+                            CustomQuestionPrompt__c { value }
+                            QuestionMaxOutputTokens__c { value }
                         }
                     }
                 }
@@ -65,6 +69,9 @@ const MAX_DEPLOY_STATUS_CHECKS = 10;
 const DEPLOY_STATUS_DELAY_MS = 1000;
 const DEFAULT_BIG_FILE_SIZE = 2097152;
 const DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
+const DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
+const DEFAULT_SUMMARY_PROMPT = 'Create a very short summary of the provided document content that starts with "This file describes". Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief.';
+const DEFAULT_QUESTION_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
 
 export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     configComponentConstructor;
@@ -87,7 +94,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         customGeminiApiKey: '',
         customModelName: '',
         customAgentLocation: '',
-        customAgentProjectId: ''
+        customAgentProjectId: '',
+        isFileIntelligenceEnabled: false,
+        customSummaryPrompt: DEFAULT_SUMMARY_PROMPT,
+        customQuestionPrompt: DEFAULT_QUESTION_PROMPT,
+        questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS
     };
 
     errorMessage = '';
@@ -212,10 +223,16 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     handleToggle(event) {
         const fieldName = event.target.dataset.field;
-        this.draft = {
+        let nextDraft = {
             ...this.draft,
             [fieldName]: event.target.checked
         };
+
+        if (fieldName === 'isFileIntelligenceEnabled' && event.target.checked) {
+            nextDraft = this.applyIntelligenceDefaults(nextDraft);
+        }
+
+        this.draft = nextDraft;
     }
 
     async handleSave() {
@@ -257,8 +274,16 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
                 return;
             }
 
+            this.server = {
+                ...this.server,
+                hasPersistedRecord: true
+            };
+
             if (alsoValidate) {
-                await this.runValidation();
+                const didValidate = await this.runValidation({ skipInitialSave: true, showSkippedMessage: false });
+                if (!didValidate) {
+                    showToast(this, 'Configuration Saved', 'Configuration was saved successfully', 'success');
+                }
             } else {
                 showToast(this, 'Configuration Saved', 'Configuration was saved successfully', 'success');
             }
@@ -280,7 +305,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             }
         }
 
-        if (this.isAdvancedView && this.hasInputErrors('.advanced-container lightning-input')) {
+        if (this.isAdvancedView && this.hasInputErrors('.advanced-container lightning-input, .advanced-container lightning-textarea')) {
             return false;
         }
 
@@ -322,14 +347,38 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return true;
     }
 
-    async runValidation() {
+    async runValidation({ skipInitialSave = false, showSkippedMessage = true } = {}) {
+        if (!this.hasPersistedConfigRecord) {
+            if (skipInitialSave) {
+                return false;
+            }
+
+            if (!this.validateInputsBeforeSave()) {
+                return false;
+            }
+
+            const changedFieldApiToValue = this.buildChangedFieldMap();
+            if (!this.hasChanges(changedFieldApiToValue)) {
+                if (showSkippedMessage) {
+                    showToast(this, 'Save Required', 'Save the Google Client configuration before validating it', 'info');
+                }
+
+                return false;
+            }
+
+            await this.saveInternal({ alsoValidate: true });
+            return true;
+        }
+
         this.busy = true;
         try {
             const validateConfig = this.activeValidator;
             const result = await validateConfig();
             showToast(this, 'Validation Successful', result, 'success');
+            return true;
         } catch (error) {
             showToast(this, 'Validation Failed', normalizeError(error), 'error');
+            return false;
         } finally {
             this.busy = false;
         }
@@ -363,6 +412,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     buildDefaultServerSnapshot() {
         return {
+            hasPersistedRecord: false,
             developerName: CONFIG_DEV_NAME,
             masterLabel: 'Google Client',
             customGoogleAuthorizerClass: null,
@@ -378,12 +428,17 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGeminiApiKey: '',
             customModelName: '',
             customAgentLocation: '',
-            customAgentProjectId: ''
+            customAgentProjectId: '',
+            isFileIntelligenceEnabled: false,
+            customSummaryPrompt: '',
+            customQuestionPrompt: '',
+            questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS
         };
     }
 
     toServerSnapshot(recordNode) {
         return {
+            hasPersistedRecord: true,
             developerName: extractGraphValue(recordNode?.DeveloperName),
             masterLabel: extractGraphValue(recordNode?.MasterLabel),
             customGoogleAuthorizerClass: extractGraphValue(recordNode?.CustomGoogleAuthorizerClass__c),
@@ -399,13 +454,17 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGeminiApiKey: extractGraphValue(recordNode?.CustomGeminiApiKey__c) || '',
             customModelName: extractGraphValue(recordNode?.CustomModelName__c) || '',
             customAgentLocation: extractGraphValue(recordNode?.CustomAgentLocation__c) || '',
-            customAgentProjectId: extractGraphValue(recordNode?.CustomAgentProjectId__c) || ''
+            customAgentProjectId: extractGraphValue(recordNode?.CustomAgentProjectId__c) || '',
+            isFileIntelligenceEnabled: !!extractGraphValue(recordNode?.IsFileIntelligenceEnabled__c),
+            customSummaryPrompt: extractGraphValue(recordNode?.CustomSummaryPrompt__c) || '',
+            customQuestionPrompt: extractGraphValue(recordNode?.CustomQuestionPrompt__c) || '',
+            questionMaxOutputTokens: this.toNumberOrNull(extractGraphValue(recordNode?.QuestionMaxOutputTokens__c))
         };
     }
 
     toDraft(serverSnapshot) {
         const inferredMode = this.inferAuthMode(serverSnapshot);
-        return {
+        return this.applyIntelligenceDefaults({
             authMode: inferredMode,
             customGoogleAuthorizerClass: serverSnapshot.customGoogleAuthorizerClass || '',
             customGoogleServiceAccount: serverSnapshot.customGoogleServiceAccount || '',
@@ -420,8 +479,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGeminiApiKey: serverSnapshot.customGeminiApiKey || '',
             customModelName: serverSnapshot.customModelName || '',
             customAgentLocation: serverSnapshot.customAgentLocation || '',
-            customAgentProjectId: serverSnapshot.customAgentProjectId || ''
-        };
+            customAgentProjectId: serverSnapshot.customAgentProjectId || '',
+            isFileIntelligenceEnabled: !!serverSnapshot.isFileIntelligenceEnabled,
+            customSummaryPrompt: serverSnapshot.customSummaryPrompt || '',
+            customQuestionPrompt: serverSnapshot.customQuestionPrompt || '',
+            questionMaxOutputTokens: serverSnapshot.questionMaxOutputTokens
+        });
     }
 
     inferAuthMode(serverSnapshot) {
@@ -453,6 +516,10 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'CustomModelName__c', serverState.customModelName, draftState.customModelName);
         this.putIfChanged(changed, 'CustomAgentLocation__c', serverState.customAgentLocation, draftState.customAgentLocation);
         this.putIfChanged(changed, 'CustomAgentProjectId__c', serverState.customAgentProjectId, draftState.customAgentProjectId);
+        this.putIfChanged(changed, 'IsFileIntelligenceEnabled__c', !!serverState.isFileIntelligenceEnabled, !!draftState.isFileIntelligenceEnabled);
+        this.putIfChanged(changed, 'CustomSummaryPrompt__c', serverState.customSummaryPrompt, draftState.customSummaryPrompt);
+        this.putIfChanged(changed, 'CustomQuestionPrompt__c', serverState.customQuestionPrompt, draftState.customQuestionPrompt);
+        this.putIfChanged(changed, 'QuestionMaxOutputTokens__c', serverState.questionMaxOutputTokens, draftState.questionMaxOutputTokens);
 
         return changed;
     }
@@ -472,7 +539,24 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGeminiApiKey: draftState.customGeminiApiKey || '',
             customModelName: draftState.customModelName || '',
             customAgentLocation: draftState.customAgentLocation || '',
-            customAgentProjectId: draftState.customAgentProjectId || ''
+            customAgentProjectId: draftState.customAgentProjectId || '',
+            isFileIntelligenceEnabled: !!draftState.isFileIntelligenceEnabled,
+            customSummaryPrompt: draftState.customSummaryPrompt || '',
+            customQuestionPrompt: draftState.customQuestionPrompt || '',
+            questionMaxOutputTokens: draftState.questionMaxOutputTokens
+        };
+    }
+
+    applyIntelligenceDefaults(draftState) {
+        if (!draftState?.isFileIntelligenceEnabled) {
+            return draftState;
+        }
+
+        return {
+            ...draftState,
+            customSummaryPrompt: draftState.customSummaryPrompt || DEFAULT_SUMMARY_PROMPT,
+            customQuestionPrompt: draftState.customQuestionPrompt || DEFAULT_QUESTION_PROMPT,
+            questionMaxOutputTokens: draftState.questionMaxOutputTokens ?? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS
         };
     }
 
@@ -590,6 +674,18 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return this.isAdvancedView ? 'action-button action-button-pill is-on' : 'action-button action-button-pill';
     }
 
+    get hasPersistedConfigRecord() {
+        return this.server?.hasPersistedRecord === true;
+    }
+
+    get isIntelligenceEnabled() {
+        return !!this.draft?.isFileIntelligenceEnabled;
+    }
+
+    get isIntelligenceDisabled() {
+        return !this.isIntelligenceEnabled;
+    }
+
     get isDirty() {
         if (!this.server) {
             return false;
@@ -612,7 +708,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.customGeminiApiKey || '') !== (draftState.customGeminiApiKey || '') ||
             (serverState.customModelName || '') !== (draftState.customModelName || '') ||
             (serverState.customAgentLocation || '') !== (draftState.customAgentLocation || '') ||
-            (serverState.customAgentProjectId || '') !== (draftState.customAgentProjectId || '')
+			(serverState.customAgentProjectId || '') !== (draftState.customAgentProjectId || '') ||
+            (!!serverState.isFileIntelligenceEnabled !== !!draftState.isFileIntelligenceEnabled) ||
+            (serverState.customSummaryPrompt || '') !== (draftState.customSummaryPrompt || '') ||
+            (serverState.customQuestionPrompt || '') !== (draftState.customQuestionPrompt || '') ||
+            (serverState.questionMaxOutputTokens ?? null) !== (draftState.questionMaxOutputTokens ?? null)
         );
     }
 

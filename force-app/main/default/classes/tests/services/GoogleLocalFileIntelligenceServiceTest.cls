@@ -2,6 +2,7 @@
 private class GoogleLocalFileIntelligenceServiceTest {
 	private static GoogleClientConfig__mdt buildGeminiConfig() {
 		return new GoogleClientConfig__mdt(
+			IsFileIntelligenceEnabled__c = true,
 			CustomGeminiApiKey__c = 'api-key-1',
 			CustomModelName__c = 'gemini-2.0-flash'
 		);

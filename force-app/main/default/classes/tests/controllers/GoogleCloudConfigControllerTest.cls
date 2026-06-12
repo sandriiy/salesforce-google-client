@@ -34,6 +34,7 @@ private class GoogleCloudConfigControllerTest {
 		return new GoogleClientConfig__mdt(
 			DeveloperName = 'GoogleClient',
 			MasterLabel = 'Google Client',
+			IsFileIntelligenceEnabled__c = true,
 			CustomGeminiApiKey__c = 'api-key-1',
 			CustomModelName__c = 'gemini-2.0-flash'
 		);

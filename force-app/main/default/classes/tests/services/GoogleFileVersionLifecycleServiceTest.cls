@@ -28,6 +28,7 @@ private class GoogleFileVersionLifecycleServiceTest {
 			IsFilePreviewDisabled__c = false,
 			CustomGoogleUploadFolderStructure__c = '{User}',
 			MaxDeleteChainSize__c = 10,
+			IsFileIntelligenceEnabled__c = true,
 			CustomGeminiApiKey__c = 'api-key-1',
 			CustomModelName__c = 'gemini-2.0-flash'
 		);

@@ -32,7 +32,7 @@ private class GoogleFileIntelligenceFactoryTest {
 			new GoogleFileIntelligenceFactory().create();
 			Assert.isTrue(false);
 		} catch (GoogleFileIntelligenceFactory.GoogleFileIntelligenceFactoryException ex) {
-			Assert.isTrue(ex.getMessage().contains('Unable to determine'));
+			Assert.isTrue(ex.getMessage().contains('disabled'));
 		}
 		Test.stopTest();
 	}

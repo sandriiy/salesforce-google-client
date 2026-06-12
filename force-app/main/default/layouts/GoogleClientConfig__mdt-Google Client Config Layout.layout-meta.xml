@@ -38,6 +38,14 @@
                 <behavior>Edit</behavior>
                 <field>IsImageOcrEnabled__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>IsFileIntelligenceEnabled__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>QuestionMaxOutputTokens__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
@@ -63,6 +71,14 @@
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>CustomGoogleUploadFolderStructure__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>CustomSummaryPrompt__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>CustomQuestionPrompt__c</field>
             </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>

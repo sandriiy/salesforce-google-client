@@ -24,7 +24,7 @@
 public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntelligenceCommandBase {
 	private static final Integer MAX_OUTPUT_TOKENS = 80;
 	private static final String OPERATION_TYPE = 'SUMMARY';
-	private static final String SYSTEM_PROMPT = 'Create a very short summary of the provided document content. Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief. End the summary with a period. Return plain text only, with no line breaks.';
+	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
 	public GoogleFileAnalysisResultDTO summarize(Id localGoogleFileVersionId, String providerName, String modelName, IGenAiClient genAiClient) {
 		return execute(localGoogleFileVersionId, providerName, modelName, genAiClient, null);
@@ -43,11 +43,11 @@ public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntellige
 	}
 
 	public override String getSystemPrompt() {
-		return SYSTEM_PROMPT;
+		return metadataService.getSummaryPrompt();
 	}
 
 	public override String buildUserPrompt(String normalizedInput, String documentText) {
-		return 'Write one short sentence that starts with "This file describes". Aim around 180 characters and never exceed '
+		return 'If the document is empty, return "Not enough content to summarize... Maybe you have a question?". End the summary with a period. Return plain text only, with no line breaks. Aim around 180 characters and never exceed '
 			+ GoogleCloudConstants.MAX_SUMMARY_CHARACTERS
 			+ ' characters. \n\nDocument text:\n'
 			+ documentText;

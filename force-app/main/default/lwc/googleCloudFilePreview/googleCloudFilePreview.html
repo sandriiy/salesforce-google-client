@@ -55,8 +55,12 @@
                         </lightning-button>
                     </div>
 
-                    <div class="content">
+                    <div class={pdfContentClass}>
                         <iframe class="pdfjs-iframe" lwc:dom="manual"></iframe>
+                    </div>
+
+                    <div class={imageContentClass}>
+                        <img class="image-preview" src={previewBlobUrl} alt={fileName} />
                     </div>
 
                     <template lwc:if={isPreviewTakingTooLong}>

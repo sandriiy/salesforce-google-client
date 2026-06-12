@@ -1,5 +1,5 @@
 public with sharing class GoogleCloudFileIntelligenceController {
-	@AuraEnabled(cacheable=true)
+	@AuraEnabled
 	public static GoogleFileIntelligenceStateDTO retrieveFileIntelligenceState(Id localFileVersionId) {
 		try {
 			return new GoogleLocalFileIntelligenceService().retrieveIntelligenceState(localFileVersionId);

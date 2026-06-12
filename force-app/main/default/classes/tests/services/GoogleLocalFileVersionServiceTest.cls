@@ -296,6 +296,28 @@ private class GoogleLocalFileVersionServiceTest {
 	}
 
 	@IsTest
+	private static void testValidatePreviewEligiblePositiveDirectImage() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildPreviewConfig(false, 1000L);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('PVI1').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('PVI1.png')
+			.withType('image/png')
+			.withSize(5000000)
+			.withDriveId('GD_PVI_1')
+			.withDocsId(null)
+			.insertRecord();
+
+		Test.startTest();
+		GoogleFilePreviewAction action = new GoogleLocalFileVersionService().validatePreviewEligible(localFileVersion.Id);
+		Test.stopTest();
+
+		Assert.areEqual(GoogleFilePreviewAction.DIRECT, action);
+	}
+
+	@IsTest
 	private static void testValidatePreviewEligiblePositiveConvert() {
 		GoogleCloudTestFactory.initMocks();
 		GoogleMetadataConfigService.configRecordOverride = buildPreviewConfig(false, 1000L);

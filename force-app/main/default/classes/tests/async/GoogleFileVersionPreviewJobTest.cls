@@ -62,7 +62,6 @@ private class GoogleFileVersionPreviewJobTest {
 	@IsTest
 	private static void testExecutePositiveWithPreviewableVersion() {
 		GoogleCloudTestFactory.initMocks();
-		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsImageOcrEnabled__c = false);
 
 		GoogleFileVersion__c version = createPreviewVersion('V1.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'GD_PJ_1', null);
 		mockPreviewQuery(version.Id);
@@ -77,7 +76,6 @@ private class GoogleFileVersionPreviewJobTest {
 	@IsTest
 	private static void testExecutePositiveWithPreviewablePdfVersion() {
 		GoogleCloudTestFactory.initMocks();
-		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsImageOcrEnabled__c = false);
 
 		GoogleFileVersion__c version = createPreviewVersion('VPDF.pdf', 'application/pdf', 'GD_PJ_PDF', null);
 		mockPreviewQuery(version.Id);
@@ -90,10 +88,9 @@ private class GoogleFileVersionPreviewJobTest {
 	}
 
 	@IsTest
-	private static void testExecutePositiveWithImagePreviewAndImageOcrDisabled() {
+	private static void testExecutePositiveWithImagePreviewableVersion() {
 		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
 		GoogleCloudTestFactory.initMocks(driveMock);
-		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsImageOcrEnabled__c = false);
 
 		GTriggerHandler.setBypass('GoogleFileVersionTriggerHandler', true);
 		GoogleFileVersion__c version = createPreviewVersion('Preview.png', 'image/png', 'GD_PJ_IMG_1', null);
@@ -105,64 +102,14 @@ private class GoogleFileVersionPreviewJobTest {
 		Test.stopTest();
 
 		Assert.isTrue(String.isNotBlank(loadVersion(version.Id).GoogleDocsFileId__c));
-
-		Integer docsRequestCount = 0;
-		for (GoogleDriveHttpMock.CapturedRequest capturedRequest : driveMock.getCapturedRequests()) {
-			System.debug(capturedRequest.endpoint);
-			if (capturedRequest.endpoint != null && capturedRequest.endpoint.contains('/v1/documents/')) {
-				docsRequestCount++;
-			}
-		}
-
-		Assert.areEqual(2, docsRequestCount);
-	}
-
-	@IsTest
-	private static void testExecutePositiveWithImagePreviewAndImageOcrEnabled() {
-		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
-		GoogleCloudTestFactory.initMocks(driveMock);
-		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsImageOcrEnabled__c = true);
-
-		GoogleFileVersion__c version = createPreviewVersion('PreviewEnabled.png', 'image/png', 'GD_PJ_IMG_2', null);
-		mockPreviewQuery(version.Id);
-
-		Test.startTest();
-		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).work();
-		Test.stopTest();
-
-		Assert.isTrue(String.isNotBlank(loadVersion(version.Id).GoogleDocsFileId__c));
-
 		for (GoogleDriveHttpMock.CapturedRequest capturedRequest : driveMock.getCapturedRequests()) {
 			Assert.isFalse(capturedRequest.endpoint != null && capturedRequest.endpoint.contains('/v1/documents/'));
 		}
 	}
 
 	@IsTest
-	private static void testExecutePositiveWithImagePreviewCleanupFailure() {
-		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
-		driveMock.whenRequestMatches(
-			new GoogleDriveHttpMock.RequestMatcher()
-				.withMethod('POST')
-				.endpointContains(':batchUpdate')
-		).thenReturnStatus(500, '{"error":{"message":"Cleanup failed"}}');
-
-		GoogleCloudTestFactory.initMocks(driveMock);
-		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsImageOcrEnabled__c = false);
-
-		GoogleFileVersion__c version = createPreviewVersion('PreviewFailure.png', 'image/png', 'GD_PJ_IMG_3', null);
-		mockPreviewQuery(version.Id);
-
-		Test.startTest();
-		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).work();
-		Test.stopTest();
-
-		Assert.isTrue(String.isNotBlank(loadVersion(version.Id).GoogleDocsFileId__c));
-	}
-
-	@IsTest
 	private static void testExecutePositiveEmptyVersionIds() {
 		GoogleCloudTestFactory.initMocks();
-		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsImageOcrEnabled__c = false);
 
 		Test.startTest();
 		new GoogleFileVersionPreviewJob(new Set<Id>()).work();
@@ -174,7 +121,6 @@ private class GoogleFileVersionPreviewJobTest {
 	@IsTest
 	private static void testExecutePositiveNullVersionIds() {
 		GoogleCloudTestFactory.initMocks();
-		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsImageOcrEnabled__c = false);
 
 		Test.startTest();
 		new GoogleFileVersionPreviewJob(null).work();
@@ -186,7 +132,6 @@ private class GoogleFileVersionPreviewJobTest {
 	@IsTest
 	private static void testExecutePositiveAlreadyHasDocs() {
 		GoogleCloudTestFactory.initMocks();
-		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsImageOcrEnabled__c = false);
 		GoogleFileVersion__c version = createPreviewVersion('V2.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'GD_PJ_2', 'DOCS_PJ_2');
 		mockPreviewQuery(version.Id);
 

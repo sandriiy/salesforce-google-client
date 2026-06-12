@@ -131,7 +131,7 @@ public without sharing class GoogleLocalFileVersionService {
 			throw new GoogleFileVersionException('Preview Unavailable. Please download it to open');
 		}
 
-		if (localFileVersion.Type__c == GoogleCloudConstants.MIME_TYPE_PDF) {
+		if (GoogleCloudConstants.DIRECT_PREVIEW_MIME_TYPES.contains(localFileVersion.Type__c)) {
 			return GoogleFilePreviewAction.DIRECT;
 		}
 

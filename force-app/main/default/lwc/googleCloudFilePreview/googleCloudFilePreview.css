@@ -104,6 +104,29 @@
   	place-items: center;
 }
 
+.content--hidden {
+	display: none;
+}
+
+.image-content {
+	overflow: auto;
+	padding: 24px;
+	box-sizing: border-box;
+}
+
+.image-preview {
+	display: block;
+	max-width: 100%;
+	max-height: 100%;
+	width: auto;
+	height: auto;
+	object-fit: contain;
+	margin: auto;
+	box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+	border-radius: 6px;
+	background: transparent;
+}
+
 .absolute-centered {
   	position: absolute;
   	top: 0;

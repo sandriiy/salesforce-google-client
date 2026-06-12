@@ -45,7 +45,6 @@ const QUERY = gql`
                             DefaultBigFileSize__c { value }
                             OrganizationalDomain__c { value }
                             IsFilePreviewDisabled__c { value }
-                            IsImageOcrEnabled__c { value }
                             MaxDeleteChainSize__c { value }
                             CustomGoogleUploadFolderStructure__c { value }
 
@@ -89,7 +88,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         organizationalDomain: '',
         defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
         isFilePreviewDisabled: false,
-        isImageOcrEnabled: false,
         maxDeleteChainSize: DEFAULT_MAX_DELETE_CHAIN_SIZE,
         customGeminiApiKey: '',
         customModelName: '',
@@ -423,7 +421,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             organizationalDomain: '',
             defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
             isFilePreviewDisabled: false,
-            isImageOcrEnabled: false,
             maxDeleteChainSize: DEFAULT_MAX_DELETE_CHAIN_SIZE,
             customGeminiApiKey: '',
             customModelName: '',
@@ -449,7 +446,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             organizationalDomain: extractGraphValue(recordNode?.OrganizationalDomain__c) || '',
             defaultBigFileSize: this.toNumberOrNull(extractGraphValue(recordNode?.DefaultBigFileSize__c)),
             isFilePreviewDisabled: !!extractGraphValue(recordNode?.IsFilePreviewDisabled__c),
-            isImageOcrEnabled: !!extractGraphValue(recordNode?.IsImageOcrEnabled__c),
             maxDeleteChainSize: this.toNumberOrNull(extractGraphValue(recordNode?.MaxDeleteChainSize__c)),
             customGeminiApiKey: extractGraphValue(recordNode?.CustomGeminiApiKey__c) || '',
             customModelName: extractGraphValue(recordNode?.CustomModelName__c) || '',
@@ -474,7 +470,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             organizationalDomain: serverSnapshot.organizationalDomain || '',
             defaultBigFileSize: serverSnapshot.defaultBigFileSize,
             isFilePreviewDisabled: !!serverSnapshot.isFilePreviewDisabled,
-            isImageOcrEnabled: !!serverSnapshot.isImageOcrEnabled,
             maxDeleteChainSize: serverSnapshot.maxDeleteChainSize,
             customGeminiApiKey: serverSnapshot.customGeminiApiKey || '',
             customModelName: serverSnapshot.customModelName || '',
@@ -509,7 +504,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'OrganizationalDomain__c', serverState.organizationalDomain, draftState.organizationalDomain);
         this.putIfChanged(changed, 'DefaultBigFileSize__c', serverState.defaultBigFileSize, draftState.defaultBigFileSize);
         this.putIfChanged(changed, 'IsFilePreviewDisabled__c', !!serverState.isFilePreviewDisabled, !!draftState.isFilePreviewDisabled);
-        this.putIfChanged(changed, 'IsImageOcrEnabled__c', !!serverState.isImageOcrEnabled, !!draftState.isImageOcrEnabled);
         this.putIfChanged(changed, 'MaxDeleteChainSize__c', serverState.maxDeleteChainSize, draftState.maxDeleteChainSize);
         this.putIfChanged(changed, 'CustomGoogleUploadFolderStructure__c', serverState.customGoogleUploadFolderStructure, draftState.customGoogleUploadFolderStructure);
         this.putIfChanged(changed, 'CustomGeminiApiKey__c', serverState.customGeminiApiKey, draftState.customGeminiApiKey);
@@ -534,7 +528,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             organizationalDomain: draftState.organizationalDomain || '',
             defaultBigFileSize: draftState.defaultBigFileSize,
             isFilePreviewDisabled: !!draftState.isFilePreviewDisabled,
-            isImageOcrEnabled: !!draftState.isImageOcrEnabled,
             maxDeleteChainSize: draftState.maxDeleteChainSize,
             customGeminiApiKey: draftState.customGeminiApiKey || '',
             customModelName: draftState.customModelName || '',
@@ -703,7 +696,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.organizationalDomain || '') !== (draftState.organizationalDomain || '') ||
             (serverState.defaultBigFileSize ?? null) !== (draftState.defaultBigFileSize ?? null) ||
             (!!serverState.isFilePreviewDisabled !== !!draftState.isFilePreviewDisabled) ||
-			(!!serverState.isImageOcrEnabled !== !!draftState.isImageOcrEnabled) ||
             (serverState.maxDeleteChainSize ?? null) !== (draftState.maxDeleteChainSize ?? null) ||
             (serverState.customGeminiApiKey || '') !== (draftState.customGeminiApiKey || '') ||
             (serverState.customModelName || '') !== (draftState.customModelName || '') ||

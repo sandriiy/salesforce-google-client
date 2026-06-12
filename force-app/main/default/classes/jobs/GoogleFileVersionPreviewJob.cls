@@ -45,7 +45,6 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 			.byIds(versionIds)
 			.toList();
 
-		GoogleFilePreviewOcrCleanupCommand ocrCleanupCommand = new GoogleFilePreviewOcrCleanupCommand();
 		IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
 			GoogleFileVersion__c.SObjectType
 		});
@@ -66,8 +65,6 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 				.execute();
 
 			String generatedPreviewFileId = clonedFile.id;
-			ocrCleanupCommand.cleanupPreview(localFileVersion, generatedPreviewFileId);
-
 			uow.registerDirty(new GoogleFileVersion__c(
 				Id = localFileVersion.Id,
 				GoogleDocsFileId__c = generatedPreviewFileId

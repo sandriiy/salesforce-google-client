@@ -1,7 +1,6 @@
 import { LightningElement, track, api, wire } from 'lwc';
 import { CurrentPageReference } from 'lightning/navigation';
 import { NavigationMixin } from 'lightning/navigation';
-import { decryptObject } from 'c/googleCloudCryptoUtils';
 import { getRecord, getFieldValue } from 'lightning/uiRecordApi';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import { requestConfig, stopConfigSession } from 'c/googleCloudConfigBus';
@@ -28,6 +27,10 @@ const UNABLE_TO_RETRIEVE_FILES = 'Unable to retrieve file(s)';
 const TARGET_TAB_COMPONENT = 'c__googleCloudRelatedAttachments';
 const TAB_POLL_DELAY_MS = 200;
 const TAB_MAX_RETRIES = 5;
+const SORT_FIELD_NAME_BY_COLUMN = {
+	createdBy: 'createdBy.name',
+	date: 'lastModifiedDate'
+};
 
 export default class GoogleCloudRelatedAttachments extends NavigationMixin(LightningElement) {
 	@api title;
@@ -231,15 +234,22 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 	sortRecords(fieldName) {
 		const data = [...this.files];
+		const sortFieldName = SORT_FIELD_NAME_BY_COLUMN[fieldName] || fieldName;
 
 		data.sort((a, b) => {
-			let aVal = this.getFieldValue(a, fieldName);
-			let bVal = this.getFieldValue(b, fieldName);
+			let aVal = this.getFieldValue(a, sortFieldName);
+			let bVal = this.getFieldValue(b, sortFieldName);
 
-			if (typeof aVal === 'string' && Date.parse(aVal)) {
-				aVal = Date.parse(aVal);
-				bVal = Date.parse(bVal);
+			if (sortFieldName === 'lastModifiedDate') {
+				aVal = aVal ? Date.parse(aVal) : null;
+				bVal = bVal ? Date.parse(bVal) : null;
+			} else if (typeof aVal === 'string' && typeof bVal === 'string') {
+				aVal = aVal.toLowerCase();
+				bVal = bVal.toLowerCase();
 			}
+
+			if (Number.isNaN(aVal)) return 1;
+			if (Number.isNaN(bVal)) return -1;
 
 			if (aVal == null && bVal != null) return 1;
 			if (bVal == null && aVal != null) return -1;

@@ -85,10 +85,6 @@ public inherited sharing class GoogleMetadataConfigService {
 		return configRecord.IsFilePreviewDisabled__c == true;
     }
 
-	public Boolean isImageOcrEnabled() {
-		return configRecord.IsImageOcrEnabled__c == true;
-	}
-
 	public Long getBigFileSizeInBytes() {
 		Long configuredValue = (Long) configRecord.DefaultBigFileSize__c;
 		return configuredValue == null ? DEFAULT_BIG_FILE_SIZE : configuredValue;
@@ -172,7 +168,6 @@ public inherited sharing class GoogleMetadataConfigService {
 		Map<String, Object> normalizedValues = new Map<String, Object>(fieldApiToValue);
 
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsFilePreviewDisabled__c', configRecord.IsFilePreviewDisabled__c, false);
-		applyBooleanDefaultIfMissing(normalizedValues, 'IsImageOcrEnabled__c', configRecord.IsImageOcrEnabled__c, false);
 		applyNumberDefaultIfMissing(normalizedValues, 'DefaultBigFileSize__c', configRecord.DefaultBigFileSize__c, DEFAULT_BIG_FILE_SIZE);
 		applyNumberDefaultIfMissing(normalizedValues, 'MaxDeleteChainSize__c', configRecord.MaxDeleteChainSize__c, DEFAULT_MAX_DELETE_CHAIN_SIZE);
 

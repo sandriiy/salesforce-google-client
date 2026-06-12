@@ -30,10 +30,22 @@ public with sharing class GoogleFileIntelligenceFactory {
 	}
 
 	public Boolean isConfigured() {
-		return hasGeminiConfiguration() || hasAgentConfiguration();
+		return metadataConfig.isFileIntelligenceEnabled() && (hasGeminiConfiguration() || hasAgentConfiguration());
 	}
 
     public IGoogleFileIntelligenceStrategy create() {
+		if (!metadataConfig.isFileIntelligenceEnabled()) {
+			throw new GoogleFileIntelligenceFactoryException('AI file intelligence is disabled. Enable it in Advanced settings and save the configuration before using summaries or questions');
+		}
+
+		return createConfiguredStrategy();
+	}
+
+	public IGoogleFileIntelligenceStrategy createForValidation() {
+		return createConfiguredStrategy();
+	}
+
+	private IGoogleFileIntelligenceStrategy createConfiguredStrategy() {
 		if (hasGeminiConfiguration()) {
 			return new GoogleGeminiIntelligenceStrategy();
 		} else if (hasAgentConfiguration()) {
@@ -41,7 +53,7 @@ public with sharing class GoogleFileIntelligenceFactory {
 		} else {
 			throw new GoogleFileIntelligenceFactoryException('Unable to determine which Google AI Strategy to use. Please verify the configuration for Gemini or Agent Platform (ex-Vertex AI) is set correctly');
 		}
-    }
+	}
 
 	private Boolean hasGeminiConfiguration() {
 		return String.isNotBlank(metadataConfig.getGoogleGeminiKey())

@@ -31,6 +31,8 @@ public with sharing class GoogleCloudConfigController {
 
 	@AuraEnabled
     public static String validateDriveMetadataConfig() {
+		ensureMetadataConfigExists();
+
         GoogleClientApiProvider remoteProvider = new GoogleClientApiProvider();
 		Boolean isValid = remoteProvider.validateGoogleServiceAccount();
 
@@ -43,8 +45,10 @@ public with sharing class GoogleCloudConfigController {
 
 	@AuraEnabled
     public static String validateIntelligenceMetadataConfig() {
+		ensureMetadataConfigExists();
+
         GoogleFileIntelligenceFactory aiFactory = new GoogleFileIntelligenceFactory();
-		Boolean isValid = aiFactory.create().validate();
+		Boolean isValid = aiFactory.createForValidation().validate();
 
 		if (isValid) {
 			return 'The Intelligence configuration is valid and a successful response was returned!';
@@ -57,5 +61,11 @@ public with sharing class GoogleCloudConfigController {
 	public static void removeConfig(String configId) {
 		GoogleCacheConfigService cache = new GoogleCacheConfigService();
 		cache.removeConfig(configId);
+	}
+
+	private static void ensureMetadataConfigExists() {
+		if (!new GoogleMetadataConfigService().hasConfigRecord()) {
+			throw new AuraHandledException('Save the Google Client configuration before validating it');
+		}
 	}
 }

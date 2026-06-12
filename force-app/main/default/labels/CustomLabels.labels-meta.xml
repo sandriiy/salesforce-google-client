@@ -6,8 +6,7 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientGithubLink</shortDescription>
-        <value
-    >https://github.com/sandriiy/salesforce-google-drive-client</value>
+        <value>https://github.com/sandriiy/salesforce-google-drive-client</value>
     </labels>
     <labels>
         <fullName>GoogleClientQuickSetupLink</fullName>
@@ -15,8 +14,7 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientQuickSetupLink</shortDescription>
-        <value
-    >https://github.com/sandriiy/salesforce-google-drive-library/wiki/Quick-Setup-Guide</value>
+        <value>https://sandriiy.github.io/salesforce-google-client/setup/configure-certificate/</value>
     </labels>
     <labels>
         <fullName>GoogleClientReleaseNotesLink</fullName>
@@ -24,8 +22,7 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientReleaseNotesLink</shortDescription>
-        <value
-    >https://github.com/sandriiy/salesforce-google-drive-client/releases</value>
+        <value>https://github.com/sandriiy/salesforce-google-drive-client/releases</value>
     </labels>
     <labels>
         <fullName>GoogleClientReleaseTitle</fullName>

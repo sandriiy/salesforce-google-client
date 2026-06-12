@@ -23,8 +23,7 @@
  */
 public with sharing class GoogleFileQuestionCommand extends GoogleFileIntelligenceCommandBase {
 	private static final String OPERATION_TYPE = 'QUESTION';
-	private static final Integer MAX_OUTPUT_TOKENS = 1024;
-	private static final String SYSTEM_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
+	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localGoogleFileVersionId, String question, String providerName, String modelName, IGenAiClient genAiClient) {
 		return execute(localGoogleFileVersionId, providerName, modelName, genAiClient, question);
@@ -43,7 +42,7 @@ public with sharing class GoogleFileQuestionCommand extends GoogleFileIntelligen
 	}
 
 	public override String getSystemPrompt() {
-		return SYSTEM_PROMPT;
+		return metadataService.getQuestionPrompt();
 	}
 
 	public override String buildUserPrompt(String normalizedInput, String documentText) {
@@ -54,7 +53,7 @@ public with sharing class GoogleFileQuestionCommand extends GoogleFileIntelligen
 	}
 
 	public override Integer getMaxOutputTokens() {
-		return MAX_OUTPUT_TOKENS;
+		return metadataService.getQuestionMaxOutputTokens();
 	}
 
 	public override Double getTemperature() {

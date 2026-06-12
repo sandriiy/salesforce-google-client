@@ -76,6 +76,10 @@ public inherited sharing class GoogleMetadataConfigService {
         return configRecord.IsFilePreviewDisabled__c;
     }
 
+	public Boolean isImageOcrEnabled() {
+		return configRecord.IsImageOcrEnabled__c == true;
+	}
+
 	public Long getBigFileSizeInBytes() {
         return (Long) configRecord.DefaultBigFileSize__c;
     }

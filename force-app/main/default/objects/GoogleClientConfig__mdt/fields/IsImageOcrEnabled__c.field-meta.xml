@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsImageOcrEnabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Controls whether OCR-extracted text is kept in generated image preview files. When disabled, Google Client removes the extracted text from generated image preview documents.</description>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <label>Is OCR Enabled for Images?</label>
+    <type>Checkbox</type>
+</CustomField>

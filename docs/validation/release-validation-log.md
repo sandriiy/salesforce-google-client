@@ -34,6 +34,7 @@ This document tracks **test coverage, validation scenarios, and release checks**
     - Check google docs conversion + folder structure (chaining change). Also check delete queueable job, and check all of them in a different combination.
 	- Check the "latestVersion" for the FileVersion is set correctly. I did some refactoring.
 	- Check attaching an existing file under no folder structure, Folder per User, Folder per Record, Folder per User → Record, and Folder per Record → User. Shortcuts should be created only for structures containing Record.
+	- Enable Google Docs API !
 
 ???+ example "Hotfix v1.3.2"
 

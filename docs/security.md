@@ -54,6 +54,8 @@ The system always looks for the **highest** access level a person has (for examp
 
 Files can be **assigned to records** (for example, a File attached to an Account, Case, Opportunity, etc.). When this happens, the system creates a **File Link** that connects the File to that record.
 
+A single File can be linked to multiple Salesforce records. This allows teams to reuse one Google Drive file across related business records without duplicating the file.
+
 Each File Link includes a **Share Type** that defines what access (if any) this record relationship can grant:
 
 - **Viewer** – grants View access (if the record is visible to the user)  
@@ -72,6 +74,20 @@ This “inherit from record” behavior is especially useful when:
 - Many users work on the same record  
 - Access is already carefully managed at the record level  
 - You want File access to stay aligned with how people work in Salesforce today  
+
+## Multi-Record Access Resolution
+
+When a File is linked to more than one record, Google Client evaluates all valid linked records the current user can use as an access path.
+
+Example:
+
+- A File is linked to Record A and Record B
+- User 1 can read Record A
+- User 2 can read only unrelated Record C
+
+User 1 may receive access through Record A, depending on the File Link Share Type. User 2 does not receive access through Record C because Record C is not linked to the File.
+
+This prevents accidental exposure when files are reused across records. Reuse expands legitimate business context; it does not make a file globally visible.
 
 ## Internal vs External Users
 
@@ -95,7 +111,7 @@ For any given File, the security layer looks at:
 
 - Who owns the File  
 - Whether it has been shared directly with the user (or their groups/queues)  
-- Whether it is assigned to records via File Links, and what each link’s **Share Type** allows  
+- Whether it is assigned to one or more records via File Links, and what each link’s **Share Type** allows  
 - Whether the File is allowed for internal users only or for all users  
 
 From this, it calculates a final **User Access Level**:

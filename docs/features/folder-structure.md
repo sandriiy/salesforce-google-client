@@ -39,7 +39,19 @@ Folder Structure rules are applied whenever a file is uploaded through Google Cl
 
 In all cases, Google Client computes the target folder path and places the file accordingly.
 
-When an existing file is attached to another record, Google Client keeps the original Drive file in place and creates a Google Drive shortcut in the resolved folder for the newly linked record. This applies only to structures that include a record folder, such as **Record**, **User → Record**, and **Record → User**.
+When an existing file is attached to another record, Google Client keeps the original Drive file in place and creates a Google Drive shortcut in the resolved folder for the newly linked record.
+
+Shortcut behavior depends on the configured structure:
+
+| Folder Structure | Existing File Attachment Behavior |
+|------------------|-----------------------------------|
+| No folder structure / Default folder only | No shortcut is created |
+| Folder per User | No shortcut is created |
+| Folder per Record | Shortcut is created in the resolved record folder |
+| Folder per User → Record | Shortcut is created in the resolved nested record folder |
+| Folder per Record → User | Shortcut is created in the resolved nested user folder |
+
+![Drive shortcut in a record folder](../assets/images/gdrive_shortcuts.png)
 
 ## Processing Time
 

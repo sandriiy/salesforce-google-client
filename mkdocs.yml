@@ -59,25 +59,25 @@ nav:
   - Overview:
       - Home: index.md
       - Prerequisites: prerequisites.md
-      - Architecture: architecture.md
+      - Install & Upgrade: install-overview.md
       - Quality Assurance:
         - Validation Log: validation/release-validation-log.md
         - Validation Suites: validation/validation-suites.md
 
   - Setup:
-      - Install: setup/install-and-dependencies.md
-      - Set Up Service Account: setup/setup-service-account.md
+      - Configure Service Account & APIs: setup/setup-service-account.md
       - Configure Certificate: setup/configure-certificate.md
       - Configure Google Workspace: setup/configure-drive.md
       - Configure AI & Intelligence: setup/configure-intelligence.md
       - Permissions: setup/permissions.md
 
   - Usage:
-      - Add Components (Core Clouds): usage/core-clouds.md
-      - Add Components (Experience Cloud): usage/experience-cloud.md
+      - Configure Components (Core Clouds): usage/core-clouds.md
+      - Configure Components (Experience Cloud): usage/experience-cloud.md
 
   - Features:
       - File Explorer: features/file-explorer.md
+      - File Reuse & Linked Records: features/file-reuse-linked-records.md
       - Preview: features/preview.md
       - Sharing: features/sharing.md
       - Folder Structure: features/folder-structure.md

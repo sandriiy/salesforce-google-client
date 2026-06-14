@@ -133,8 +133,42 @@ private class GoogleLocalFileSharingServiceTest {
 			GoogleSharingInfoDTO dto = new GoogleLocalFileSharingService().fetchSharingDetails(localFile.Id);
 			Test.stopTest();
 
-			Assert.areEqual(1, dto.recordsSharedTo.size());
+			Assert.areEqual(2, dto.recordsSharedTo.size());
 			Assert.areEqual(String.valueOf(linkedAccount.Id), dto.recordsSharedTo[0].LinkedObjectId__c);
+		}
+	}
+
+	@IsTest
+	private static void testFetchSharingDetailsIncludesNoneRecordLinksForEditableUser() {
+		GoogleCloudTestFactory.initMocks();
+
+		User targetUser = GoogleCloudTestFactory.newUser();
+		Id linkedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('RS_None').withDescription('D').insertRecord();
+
+		insert new GoogleFile__Share(
+			ParentId = localFile.Id,
+			UserOrGroupId = targetUser.Id,
+			AccessLevel = 'Edit',
+			RowCause = Schema.GoogleFile__Share.RowCause.Manual
+		);
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(linkedAccountId)
+			.withLinkedType('Account')
+			.withShareType('None')
+			.withVisibility('AllUsers')
+			.insertRecord();
+
+		System.runAs(targetUser) {
+			Test.startTest();
+			GoogleSharingInfoDTO dto = new GoogleLocalFileSharingService().fetchSharingDetails(localFile.Id);
+			Test.stopTest();
+
+			Assert.areEqual(1, dto.recordsSharedTo.size());
+			Assert.areEqual(String.valueOf(linkedAccountId), dto.recordsSharedTo[0].LinkedObjectId__c);
+			Assert.areEqual('None', dto.recordsSharedTo[0].ShareType__c);
 		}
 	}
 
@@ -572,6 +606,46 @@ private class GoogleLocalFileSharingServiceTest {
 
 			Assert.areEqual(1, linkedRecords.size());
 			Assert.areEqual(String.valueOf(linkedAccount.Id), linkedRecords[0].LinkedObjectId__c);
+		}
+	}
+
+	@IsTest
+	private static void testRetrieveLinkedRecordsIncludesReadableNoneLinks() {
+		GoogleCloudTestFactory.initMocks();
+
+		User fileOwner = GoogleCloudTestFactory.newUser();
+		User targetUser = GoogleCloudTestFactory.newUser();
+		Account linkedAccount = new Account(Name = 'Linked Record None Visible', OwnerId = targetUser.Id);
+		insert linkedAccount;
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Linked Records None Visible')
+			.withDescription('D')
+			.withOwner(fileOwner.Id)
+			.insertRecord();
+
+		insert new GoogleFile__Share(
+			ParentId = localFile.Id,
+			UserOrGroupId = targetUser.Id,
+			AccessLevel = 'Read',
+			RowCause = Schema.GoogleFile__Share.RowCause.Manual
+		);
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(linkedAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('None')
+			.withVisibility('AllUsers')
+			.insertRecord();
+
+		System.runAs(targetUser) {
+			Test.startTest();
+			List<GoogleFileLink__c> linkedRecords = new GoogleLocalFileSharingService().retrieveLinkedRecords(localFile.Id);
+			Test.stopTest();
+
+			Assert.areEqual(1, linkedRecords.size());
+			Assert.areEqual(String.valueOf(linkedAccount.Id), linkedRecords[0].LinkedObjectId__c);
+			Assert.areEqual('None', linkedRecords[0].ShareType__c);
 		}
 	}
 

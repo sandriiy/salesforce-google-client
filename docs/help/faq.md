@@ -19,7 +19,7 @@ Open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ tar
 
     **Google Client for Salesforce solves this** by moving file storage entirely to Google Workspace, where your organization already has capacity. Files live where they belong, costs stay predictable, and your Salesforce storage limit becomes a non-issue.
 
-    Beyond cost, the goal of this solution is to give users the file management experience they deserve, one that Salesforce has consistently failed to deliver. That means native previews, structured folders tied to records, version history, controlled sharing with internal and external users, and a security model that actually makes sense. On top of that, AI-powered analytics let you go further, checking files against org policies, applying smart labels, and surfacing insights directly within your workflows. Files become a first-class part of your business operations, not an afterthought bolted onto the side.
+    Beyond cost, the goal of this solution is to give users the file management experience they expect inside Salesforce. That means previews, structured folders tied to records, file reuse without duplicate uploads, version history, controlled sharing with internal and external users, and a security model that evaluates the real access paths. Optional AI summaries and file Q&A take it further by helping users understand document content without opening separate tools.
 
 ??? question "Why should I trust this solution?"
 
@@ -30,3 +30,23 @@ Open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ tar
     On the infrastructure side, **your files never leave your organization's Google Workspace**. Google Client connects directly between your Salesforce org and your own Google Cloud project using a Service Account you create and control. No files are routed through third-party servers, no data is stored outside your environment, and no external party has access to your content.
 
     This architecture is well-suited for organizations operating under compliance frameworks such as **GDPR, HIPAA, or SOX**, not because we claim certification, but because the data residency, access controls, and audit logging are in your hands, not ours.
+
+??? question "Can the same Google file be used on multiple Salesforce records?"
+
+    Yes. Google Client can attach an existing owned Google Client file to another Salesforce record.
+
+    The Google Drive file is not duplicated, and the Google Client file record is not duplicated. Salesforce stores additional record links so the same document can appear in the right business contexts.
+
+    This is useful when one document belongs to more than one Account, Opportunity, Case, or custom record. Users can also see linked records from the File Details page, subject to their record access.
+
+??? question "Does linking a file to multiple records expose it to everyone?"
+
+    No. Multi-record reuse still goes through the Google Client security layer.
+
+    Access can come from file ownership, direct sharing, group or queue sharing, public link rules, internal/external visibility, and linked Salesforce records. If a user does not have a valid access path, the file is not returned to them.
+
+??? question "Is AI required?"
+
+    No. AI & Intelligence is optional.
+
+    Upload, preview, download, sharing, public links, folder structure, file reuse, and versioning work without AI. When AI is configured, supported files can get stored summaries and file Q&A inside the preview window.

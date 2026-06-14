@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Dashboard xmlns="http://soap.sforce.com/2006/04/metadata">
     <backgroundEndColor>#FFFFFF</backgroundEndColor>
     <backgroundFadeDirection>Diagonal</backgroundFadeDirection>
@@ -25,8 +25,7 @@
                 <drillToDetailEnabled>false</drillToDetailEnabled>
                 <enableHover>false</enableHover>
                 <expandOthers>false</expandOthers>
-                <groupingColumn
-        >FK_$LogEntry__c.LoggedByUsernameText__c</groupingColumn>
+                <groupingColumn>FK_$LogEntry__c.LoggedByUsernameText__c</groupingColumn>
                 <groupingSortProperties>
                     <groupingSorts>
                         <groupingLevel>g1</groupingLevel>
@@ -37,8 +36,7 @@
                 <header>Most Affected Users</header>
                 <legendPosition>Bottom</legendPosition>
                 <maxValuesDisplayed>9</maxValuesDisplayed>
-                <report
-        >GoogleClientAnalytics/GoogleClientMostAffectedUsers</report>
+                <report>GoogleClientAnalytics/GoogleClientMostAffectedUsers</report>
                 <showPercentage>false</showPercentage>
                 <showPicturesOnCharts>false</showPicturesOnCharts>
                 <showValues>true</showValues>
@@ -67,8 +65,7 @@
                 <drillToDetailEnabled>false</drillToDetailEnabled>
                 <enableHover>false</enableHover>
                 <expandOthers>false</expandOthers>
-                <groupingColumn
-        >LogEntryTag__c.LogEntryOrigin__c</groupingColumn>
+                <groupingColumn>LogEntryTag__c.LogEntryOrigin__c</groupingColumn>
                 <groupingSortProperties>
                     <groupingSorts>
                         <groupingLevel>g1</groupingLevel>
@@ -78,8 +75,7 @@
                 <header>Log Source Overview</header>
                 <legendPosition>Right</legendPosition>
                 <maxValuesDisplayed>6</maxValuesDisplayed>
-                <report
-        >GoogleClientAnalytics/GoogleClientLogOriginSummary</report>
+                <report>GoogleClientAnalytics/GoogleClientLogOriginSummary</report>
                 <showPercentage>true</showPercentage>
                 <showTotal>true</showTotal>
                 <showValues>true</showValues>
@@ -104,10 +100,9 @@
                     <hideChatterPhotos>true</hideChatterPhotos>
                     <useReportTableSetting>true</useReportTableSetting>
                 </flexComponentProperties>
-                <groupingSortProperties />
+                <groupingSortProperties/>
                 <header>Log Source Details</header>
-                <report
-        >GoogleClientAnalytics/GoogleClientLogOriginSummary</report>
+                <report>GoogleClientAnalytics/GoogleClientLogOriginSummary</report>
                 <title>What Do These Origins Contain?</title>
             </dashboardComponent>
             <rowIndex>8</rowIndex>
@@ -118,8 +113,6 @@
     </dashboardGridLayout>
     <dashboardType>SpecifiedUser</dashboardType>
     <isGridLayout>true</isGridLayout>
-    <owner>sukhetskiy@devt.com</owner>
-    <runningUser>sukhetskiy@devt.com</runningUser>
     <textColor>#000000</textColor>
     <title>Client Activity</title>
     <titleColor>#000000</titleColor>

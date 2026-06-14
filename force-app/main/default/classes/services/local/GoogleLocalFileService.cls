@@ -82,10 +82,9 @@ public without sharing class GoogleLocalFileService {
 
 		try {
 			List<GoogleFileLink__c> resolvedLinks = new GoogleFileLinkPlacementResolver().resolveLinks(relatedRecordId, source);
-			List<GoogleFileLink__c> accessibleLinks = new GoogleFileAccessResolver().resolveAccessibleRecordLinks(resolvedLinks, UserInfo.getUserId());
 			Set<Id> resolvedFileIds = new Set<Id>();
 
-			for (GoogleFileLink__c linkRecord : accessibleLinks) {
+			for (GoogleFileLink__c linkRecord : resolvedLinks) {
 				if (linkRecord.GoogleFileId__c != null) {
 					resolvedFileIds.add(linkRecord.GoogleFileId__c);
 				}
@@ -104,6 +103,7 @@ public without sharing class GoogleLocalFileService {
 
 			return stripInaccessibleRecords()
 				.forFiles(selector.byIds(resolvedFileIds).toList())
+				.forRecordLinks(resolvedLinks)
 				.forUser(UserInfo.getUserId())
 				.strip();
 		} catch (Exception ex) {

@@ -23,15 +23,14 @@
     </columns>
     <description>Where does this log come from and at what level, who was affected and what are the technical details of this log entry?</description>
     <filter>
-        <criteriaItems>
-            <column>CUST_NAME</column>
-            <columnToColumn>false</columnToColumn>
-            <isUnlocked>false</isUnlocked>
-            <operator>equals</operator>
-            <value>Google Client for Salesforce</value>
-        </criteriaItems>
-        <language>en_US</language>
-    </filter>
+		<criteriaItems>
+			<column>CUST_NAME</column>
+			<columnToColumn>false</columnToColumn>
+			<isUnlocked>false</isUnlocked>
+			<operator>equals</operator>
+			<value>Google Client for Salesforce</value>
+		</criteriaItems>
+	</filter>
     <format>Summary</format>
     <groupingsDown>
         <dateGranularity>Day</dateGranularity>

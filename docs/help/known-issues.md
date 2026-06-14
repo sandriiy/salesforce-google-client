@@ -42,3 +42,17 @@ If you run into something unexpected, check the list below. If your issue isn't 
     **Is anything broken?**
 
     No. Your configuration data is intact, the app continues to work exactly as before, and no action is required. The warning is purely informational.
+
+??? info "Uploader maximum file count is not enforced when attaching existing files"
+
+    **When does it happen?**
+
+    If the **Google Client: Uploader** component has a maximum file count configured, uploading new files respects that limit. However, attaching existing files can allow users to link more files than the configured maximum.
+
+    **Impact**
+
+    This affects the Uploader component limit only. File access, ownership checks, record access checks, preview, sharing, and Google Drive storage behavior continue to work normally.
+
+    **Workaround**
+
+    Use the Attachments component when strict record file count control is required, or review linked files from the record after users attach existing files. This limitation is tracked for a future release.

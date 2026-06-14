@@ -26,6 +26,10 @@ public without sharing class GoogleFileAccessResolver {
 	public enum AccessLevel { View, Edit }
 
 	public List<GoogleFile__c> resolveAccessibleFiles(List<GoogleFile__c> inputFiles, Id targetUserId) {
+		return resolveAccessibleFiles(inputFiles, targetUserId, null);
+	}
+
+	public List<GoogleFile__c> resolveAccessibleFiles(List<GoogleFile__c> inputFiles, Id targetUserId, List<GoogleFileLink__c> scopedRecordLinks) {
 		if (inputFiles == null || inputFiles.isEmpty()) return new List<GoogleFile__c>();
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
 
@@ -68,7 +72,9 @@ public without sharing class GoogleFileAccessResolver {
 
 		Logger.info('Files Access Check: ' + fileIdToOwnerId.keySet()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
-		LinkCompilationResult linkData = loadLinks(nonOwnedFileIds);
+		LinkCompilationResult linkData = scopedRecordLinks == null
+			? loadLinks(nonOwnedFileIds)
+			: compileLinks(scopedRecordLinks, nonOwnedFileIds);
 		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, linkData.linkedRecordIds);
 
 		List<GoogleFile__c> nonOwnedFiles = new List<GoogleFile__c>();
@@ -119,6 +125,22 @@ public without sharing class GoogleFileAccessResolver {
 		}
 
 		return accessibleLinks;
+	}
+
+	public List<GoogleFileLink__c> resolveReadableRecordLinks(List<GoogleFileLink__c> inputLinks, Id targetUserId) {
+		if (inputLinks == null || inputLinks.isEmpty()) return new List<GoogleFileLink__c>();
+		if (targetUserId == null) targetUserId = UserInfo.getUserId();
+
+		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, extractLinkedRecordIds(inputLinks));
+		List<GoogleFileLink__c> readableLinks = new List<GoogleFileLink__c>();
+
+		for (GoogleFileLink__c linkRecord : inputLinks) {
+			if (hasReadableParentAccess(loadLinkedRecordAccess(linkRecord, parentAccessByRecordId))) {
+				readableLinks.add(linkRecord);
+			}
+		}
+
+		return readableLinks;
 	}
 
 	private Set<Id> extractFileIds(List<GoogleFile__c> inputFiles) {
@@ -261,15 +283,14 @@ public without sharing class GoogleFileAccessResolver {
 		else return new List<GoogleFile__c>(candidateFilesById.values());
 	}
 
-	private LinkCompilationResult loadLinks(Set<Id> fileIds) {
+	private LinkCompilationResult compileLinks(List<GoogleFileLink__c> fileLinks, Set<Id> fileIds) {
 		LinkCompilationResult result = new LinkCompilationResult();
 
-		List<GoogleFileLink__c> fileLinks = GoogleFileLinkSelector.query()
-			.withBaseFields()
-			.byParentIds(fileIds)
-			.toList();
-
 		for (GoogleFileLink__c link : fileLinks) {
+			if (link == null || link.GoogleFileId__c == null || !fileIds.contains(link.GoogleFileId__c)) {
+				continue;
+			}
+
 			if (!result.linksByFileId.containsKey(link.GoogleFileId__c)) {
 				result.linksByFileId.put(link.GoogleFileId__c, new List<GoogleFileLink__c>());
 			}
@@ -282,6 +303,15 @@ public without sharing class GoogleFileAccessResolver {
 		}
 
 		return result;
+	}
+
+	private LinkCompilationResult loadLinks(Set<Id> fileIds) {
+		List<GoogleFileLink__c> fileLinks = GoogleFileLinkSelector.query()
+			.withBaseFields()
+			.byParentIds(fileIds)
+			.toList();
+
+		return compileLinks(fileLinks, fileIds);
 	}
 
 	private Map<Id, UserRecordAccess> loadUserRecordAccess(Id userId, Set<Id> recordIds) {

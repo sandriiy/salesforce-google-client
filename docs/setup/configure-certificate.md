@@ -126,12 +126,13 @@ In Salesforce Setup:
 4. Provide the key password
 5. Save
 
+<br>
+Once the certificate is uploaded to Salesforce, proceed to [Configure Google Workspace](configure-drive.md).
+
 ## Reference & deep-dive guides
 
 - [**Quick Setup Guide (Service Account + Certificate)**](https://github.com/sandriiy/salesforce-google-drive-library/wiki/Quick-Setup-Guide){ target="_blank" rel="noopener noreferrer" }
 - [**Google Service Accounts overview**](https://cloud.google.com/iam/docs/service-accounts){ target="_blank" rel="noopener noreferrer" }
 - [**Google Drive API documentation**](https://developers.google.com/drive/api){ target="_blank" rel="noopener noreferrer" }
-
-Once the certificate is uploaded to Salesforce, proceed to [Configure Google Workspace](configure-drive.md).
 
 <br>

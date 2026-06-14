@@ -522,6 +522,112 @@ private class GoogleLocalFileServiceTest {
 	}
 
 	@IsTest
+	private static void testRetrieveGoogleFilesForRelatedRecordShowsNoneFilesForOwnerAndExplicitShare() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		User fileOwner = GoogleCloudTestFactory.newUser();
+		User sharedUser = GoogleCloudTestFactory.newUser();
+		Account relatedAccount = new Account(Name = 'None Visibility Account', OwnerId = fileOwner.Id);
+		insert relatedAccount;
+
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('None Visible File')
+			.withDescription('D')
+			.withOwner(fileOwner.Id)
+			.insertRecord();
+
+		GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName('NoneVisible.pdf')
+			.withDriveId('GD_NONE_VISIBLE')
+			.insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(relatedAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('None')
+			.withVisibility('AllUsers')
+			.insertRecord();
+
+		insert new GoogleFile__Share(
+			ParentId = localFile.Id,
+			UserOrGroupId = sharedUser.Id,
+			AccessLevel = 'Read',
+			RowCause = Schema.GoogleFile__Share.RowCause.Manual
+		);
+
+		System.runAs(fileOwner) {
+			List<GoogleFile__c> ownerFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(relatedAccount.Id, null, 10);
+
+			Assert.areEqual(1, ownerFiles.size());
+			Assert.areEqual(localFile.Id, ownerFiles[0].Id);
+			Assert.areEqual('Edit', ownerFiles[0].UserAccessLevel__c);
+		}
+
+		System.runAs(sharedUser) {
+			List<GoogleFile__c> sharedFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(relatedAccount.Id, null, 10);
+
+			Assert.areEqual(1, sharedFiles.size());
+			Assert.areEqual(localFile.Id, sharedFiles[0].Id);
+			Assert.areEqual('View', sharedFiles[0].UserAccessLevel__c);
+		}
+	}
+
+	@IsTest
+	private static void testRetrieveGoogleFilesForRelatedRecordDoesNotLeakNoneAccessFromAnotherRecord() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		User fileOwner = GoogleCloudTestFactory.newUser();
+		User targetUser = GoogleCloudTestFactory.newUser();
+		Account hiddenAccount = new Account(Name = 'Hidden None Account', OwnerId = fileOwner.Id);
+		Account accessibleAccount = new Account(Name = 'Accessible Viewer Account', OwnerId = targetUser.Id);
+		insert new List<Account>{ hiddenAccount, accessibleAccount };
+
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('None Scoped File')
+			.withDescription('D')
+			.withOwner(fileOwner.Id)
+			.insertRecord();
+
+		GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName('NoneScoped.pdf')
+			.withDriveId('GD_NONE_SCOPED')
+			.insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(hiddenAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('None')
+			.withVisibility('AllUsers')
+			.insertRecord();
+
+		GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(accessibleAccount.Id)
+			.withLinkedType('Account')
+			.withShareType('Viewer')
+			.withVisibility('AllUsers')
+			.insertRecord();
+
+		System.runAs(targetUser) {
+			Test.startTest();
+			List<GoogleFile__c> hiddenFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(hiddenAccount.Id, null, 10);
+			List<GoogleFile__c> visibleFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(accessibleAccount.Id, null, 10);
+			Test.stopTest();
+
+			Assert.areEqual(0, hiddenFiles.size());
+			Assert.areEqual(1, visibleFiles.size());
+			Assert.areEqual(localFile.Id, visibleFiles[0].Id);
+			Assert.areEqual('View', visibleFiles[0].UserAccessLevel__c);
+		}
+	}
+
+	@IsTest
 	private static void testRetrieveGoogleFilesForRelatedRecordFiltersOtherRecordLinks() {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();

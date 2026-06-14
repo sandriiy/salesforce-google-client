@@ -20,12 +20,9 @@
 	align-items: center;
 	justify-content: center;
 	gap: 0.65rem;
-	min-height: 12rem;
+	min-height: 6rem;
 	padding: 1rem;
-	border-radius: 1rem;
 	text-align: center;
-	color: #5f6f82;
-	background: rgba(248, 250, 252, 0.9);
 }
 
 .linked-records__state--error {

@@ -47,7 +47,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@track tabInfo;
 	@track tabInfoRetries = 0;
 	@track isLoading = true;
-	@track recordIdentifierName;
+	@track recordIdentifierNames = [];
 	@track recordIdentifierValue;
 	@track files = [];
 
@@ -62,15 +62,20 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@wire(getObjectInfo, { objectApiName: '$sobjectApiName' })
 	wiredObjectInfo({ data, error }) {
 		if (data) {
-			let nameField = data.nameFields[data.nameFields.length - 1];
-			this.recordIdentifierName = `${this.sobjectApiName}.${nameField}`;
+			this.recordIdentifierNames = (data.nameFields || []).map((nameField) => `${this.sobjectApiName}.${nameField}`);
+			this.recordIdentifierValue = null;
+		} else if (error) {
+			this.recordIdentifierNames = [];
+			this.recordIdentifierValue = null;
 		}
 	}
 
 	@wire(getRecord, { recordId: '$recordId', fields: '$recordPrimaryField' })
 	wiredRecordInfo({ data, error }) {
 		if (data) {
-			this.recordIdentifierValue = getFieldValue(data, this.recordIdentifierName);
+			this.recordIdentifierValue = this.resolveRecordIdentifierValue(data);
+		} else if (error) {
+			this.recordIdentifierValue = null;
 		}
 	}
 
@@ -226,6 +231,18 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 	handlePreviewCloseReset(event) {
 		this.isNewFileVersionUpload = false;
+	}
+
+	resolveRecordIdentifierValue(recordInfo) {
+		for (const fieldName of this.recordIdentifierNames) {
+			const fieldValue = getFieldValue(recordInfo, fieldName);
+
+			if (!isEmpty(fieldValue)) {
+				return fieldValue;
+			}
+		}
+
+		return null;
 	}
 
 	getFieldValue(record, path) {
@@ -386,7 +403,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	}
 
 	get recordPrimaryField() {
-		return this.recordIdentifierName ? [this.recordIdentifierName] : [];
+		return this.recordIdentifierNames;
 	}
 
 	get displayedFiles() {

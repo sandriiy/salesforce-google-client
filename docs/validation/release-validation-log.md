@@ -10,33 +10,93 @@ This document tracks **test coverage, validation scenarios, and release checks**
     - [X] Targeted Regression Suite
 
     ### Release Changes
-    - [ ] Change 1: When an existing Google Client file is attached to another Salesforce record and Folder Structure includes a record folder, Google Client creates a Google Drive shortcut in the resolved folder for the newly linked record.
-    - [ ] Change 2:
-    - [ ] Change 3:
-    - [ ] Change 4:
-    - [ ] Change 5:
-    - [ ] Change 6:
-    - [ ] Change 7:
+    - [X] Change 1: When an existing Google Client file is attached to another Salesforce record and Folder Structure includes a record folder, Google Client creates a Google Drive shortcut in the resolved folder for the newly linked record.
+
+        - [X] With no folder structure configured, attaching an existing file does not create a record shortcut.
+        - [X] With Folder per User configured, attaching an existing file does not create a record shortcut.
+        - [X] With Folder per Record configured, attaching an existing file creates a shortcut in the resolved record folder.
+        - [X] With Folder per User → Record configured, attaching an existing file creates a shortcut in the resolved nested record folder.
+        - [X] With Folder per Record → User configured, attaching an existing file creates a shortcut in the resolved nested user folder.
+        - [X] Google Docs / Workspace conversion works correctly together with folder structure chaining.
+
+    - [X] Change 2: Preview modal supports `Download as...` for previewable files and hides the action for non-previewable files.
+
+        - [X] `Download as...` is available for PDF files.
+        - [X] `Download as...` is available for document files.
+        - [X] `Download as...` is available for image files.
+        - [X] `Download as...` is not visible for non-previewable files.
+
+    - [X] Change 3: Google Client stores AI-generated document summaries in Salesforce and displays them on hover and in the preview sidebar.
+
+        - [X] Document summary is generated and stored in Salesforce when Gemini is configured.
+        - [X] Document summary is generated and stored in Salesforce when Agent Platform / Vertex is configured.
+        - [X] Summary appears on hover where supported.
+        - [X] Summary appears in the preview sidebar.
+        - [X] When no AI provider is configured, preview opens without broken or empty AI summary UI.
+
+    - [X] Change 4: Preview modal supports file Q&A when Gemini or Agent Platform / Vertex is configured and Q&A / analysis is enabled.
+
+        - [X] With Gemini configured and Q&A / analysis enabled, user can ask questions about the file.
+        - [X] With Agent Platform / Vertex configured and Q&A / analysis enabled, user can ask questions about the file.
+        - [X] Answers are related to the currently opened file.
+        - [X] With Q&A / analysis disabled, Q&A is not available even when Gemini is configured.
+        - [X] With Q&A / analysis disabled, Q&A is not available even when Agent Platform / Vertex is configured.
+        - [X] Q&A respects configured prompts and token limits.
+
+    - [X] Change 5: Admin configuration supports AI prompts and token limits for summaries and file questions.
+
+        - [X] Admin can save the summary prompt.
+        - [X] Admin can save the question-answering prompt.
+        - [X] Admin can save token limits.
+        - [X] Saved summary prompt is used when generating summaries.
+        - [X] Saved question-answering prompt is used when answering file questions.
+        - [X] Existing Google Drive functionality continues to work after AI configuration changes.
+
+    - [X] Change 6: Existing Google files can be attached to multiple Salesforce records, and the File Record Details page shows linked Salesforce records.
+
+        - [X] User can attach an existing owned Google file to another Salesforce record.
+        - [X] User can attach the same existing Google file to multiple Salesforce records.
+        - [X] Files not owned by the current user are not available for selection.
+        - [X] The same Google Client file appears on all linked Salesforce records.
+        - [X] File Record Details page shows all linked Salesforce records the current user is allowed to see.
+        - [X] Attaching the same existing file to multiple records creates correct Salesforce associations and does not incorrectly duplicate the main Google Client file record.
+        - [X] Deleting a Google Client file removes all related record associations.
+        - [X] Security layer resolves access correctly when a file is linked to multiple records.
+
+    - [X] Change 7: Large image files can be previewed without relying only on Google Workspace preview generation.
+
+        - [X] Large image preview works from the Attachments component.
+        - [X] Large image preview works from the Uploader component.
+        - [X] Large image preview works from the View All page.
+        - [X] Large image preview works from File Explorer where applicable.
+        - [X] Large image preview works when Google Workspace preview generation is unavailable or unreliable.
+        - [X] Existing PDF, CSV, document, and regular image previews continue to work.
+
+    - [X] Change 8: File version handling continues to work correctly after the file/version refactoring.
+
+        - [X] `latestVersion` is set correctly after uploading a new file.
+        - [X] `latestVersion` is set correctly after replacing a file.
+        - [X] `latestVersion` is set correctly after attaching an existing file.
+        - [X] `latestVersion` is set correctly after uploading a new version.
 
     ### Boring Changes
     - [X] Version number assigned to all hard-coded labels
-    - [ ] Version ID is assigned to all installation guides.
+    - [X] Version ID is assigned to all installation guides.
 
     ### Smoke Checks
-    - [ ] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
-    - [ ] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
-    - [ ] Admin can open Google Client app and browse configuration tabs without errors
+    - [X] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [X] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [X] Admin can open Google Client app and browse configuration tabs without errors
 
     ### Suite Execution (only for Full or Quick)
-    - [ ] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
+    - [X] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
 
-    ### Notes
-    - Check google docs conversion + folder structure (chaining change). Also check delete queueable job, and check all of them in a different combination.
-	- Check the "latestVersion" for the FileVersion is set correctly. I did some refactoring.
-	- Check attaching an existing file under no folder structure, Folder per User, Folder per Record, Folder per User → Record, and Folder per Record → User. Shortcuts should be created only for structures containing Record.
-	- Enable Google Docs API !
+	### Notes
+    - During testing, I identified an issue where, when the share type for a link was set to “None”, the file disappeared from the list completely for everyone: the owner and explicitly shared users. None of them could see it. The only way to access it was through File Explorer, but even there, when opening the “Share” modal window, the record was not displayed. This problem was fixed as I continued testing, and everything looks good now.
+	- A few security layer changes were made because files were not being displayed correctly for the appropriate users. After the fixes, everything looks good.
+	- One small defect was found: when the Uploader component has reached the maximum number of allowed files, adding existing files does not respect this limit. As a result, users can attach more existing files than allowed. A defect will be created for this and included in a future release.
 
-???+ example "Hotfix v1.3.2"
+??? example "Hotfix v1.3.2"
 
     ### Validation Suite Used
     - [ ] Full Validation Suite

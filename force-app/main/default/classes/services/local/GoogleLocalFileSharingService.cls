@@ -54,15 +54,7 @@ public without sharing class GoogleLocalFileSharingService {
 
 		try {
 			Map<Id, GoogleSharingInfoDTO> sharingInfo = retrieveSharingCommand.fetch();
-			GoogleSharingInfoDTO fileSharingInfo = sharingInfo.get(localFileRecordId);
-			if (fileSharingInfo != null) {
-				fileSharingInfo.recordsSharedTo = new GoogleFileAccessResolver().resolveAccessibleRecordLinks(
-					fileSharingInfo.recordsSharedTo,
-					UserInfo.getUserId()
-				);
-			}
-
-			return fileSharingInfo;
+			return sharingInfo.get(localFileRecordId);
 		} catch (Exception ex) {
 			Logger.error('Retrieve Sharing Details (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
@@ -179,7 +171,7 @@ public without sharing class GoogleLocalFileSharingService {
 
 		try {
 			List<GoogleFileLink__c> linkedRecords = (List<GoogleFileLink__c>) selector.toList();
-			List<GoogleFileLink__c> accessibleLinks = new GoogleFileAccessResolver().resolveAccessibleRecordLinks(
+			List<GoogleFileLink__c> accessibleLinks = new GoogleFileAccessResolver().resolveReadableRecordLinks(
 				linkedRecords,
 				UserInfo.getUserId()
 			);

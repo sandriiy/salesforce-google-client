@@ -43,16 +43,42 @@ If you run into something unexpected, check the list below. If your issue isn't 
 
     No. Your configuration data is intact, the app continues to work exactly as before, and no action is required. The warning is purely informational.
 
-??? info "Uploader maximum file count is not enforced when attaching existing files"
+??? info ""Data Not Available" error during authentication or setup"
 
     **When does it happen?**
 
-    If the **Google Client: Uploader** component has a maximum file count configured, uploading new files respects that limit. However, attaching existing files can allow users to link more files than the configured maximum.
+    You may see this message in Salesforce:
 
-    **Impact**
+    > Data Not Available: The data you were trying to access could not be found.
 
-    This affects the Uploader component limit only. File access, ownership checks, record access checks, preview, sharing, and Google Drive storage behavior continue to work normally.
+    In this context, it usually means the Salesforce **Identity Provider** is not enabled for the org.
 
-    **Workaround**
+    **Fix**
 
-    Use the Attachments component when strict record file count control is required, or review linked files from the record after users attach existing files. This limitation is tracked for a future release.
+    1. Go to **Setup**.
+    2. Search for **Identity Provider** in Quick Find.
+    3. Open **Identity Provider**.
+    4. Click **Enable Identity Provider**.
+    5. Click **Save**.
+    6. Return to Google Client setup and try the action again.
+
+??? info ""Certificate cannot be null" when saving and validating Google Drive configuration"
+
+    **When does it happen?**
+
+    This can happen the first time you save and validate Google Drive configuration in the Google Client app.
+
+    **Root Cause**
+
+    The configuration save and validation can run too close together. The save is still being committed when validation starts, so validation may not see the certificate information yet and returns a certificate error.
+
+    **Fix**
+
+    1. Save the Google Drive configuration.
+    2. Wait 10-15 seconds.
+    3. Click **Validate** again.
+    4. If the same message appears, wait a little longer and click **Validate** again.
+
+    After the authentication details finish saving, validation should use the new certificate information correctly.
+
+<br>

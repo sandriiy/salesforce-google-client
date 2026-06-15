@@ -89,6 +89,8 @@ nav:
       - Artificial Intelligence:
           - Overview: features/artificial-intelligence/overview.md
 
+  - Enterprise: enterprise.md
+
   - Media:
       - Videos: media/videos.md
       - Articles: media/articles.md

@@ -46,6 +46,12 @@ There is no visible difference for end users, and no changes to how files move t
 
 <br />
 
+## Enterprise Managed Package
+
+Starting with 2.0.0, this codebase is also maintained in parallel as an Enterprise managed package. The managed package may include capabilities that are not available in the open-source version and is intended for organizations that need stronger release validation, support, penetration-testing reassurance, and Salesforce security-review alignment. For reference: https://sandriiy.github.io/salesforce-google-client/enterprise/
+
+<br />
+
 ## Installation
 
 This client depends on two required packages, which **must be installed first**: <a href="https://github.com/jongpie/NebulaLogger" target="_blank" rel="noopener noreferrer"><strong>Nebula Logger</strong></a> and <a href="https://github.com/sandriiy/salesforce-google-drive-library" target="_blank" rel="noopener noreferrer"><strong>Apex Google Drive Library</strong></a>. Once both dependencies are installed, you can install the Google Client for Salesforce package.

@@ -107,7 +107,7 @@ public class GoogleCloudUnitOfWork implements IGoogleUnitOfWork {
         try {
             processWave(pendingInserts, allOrNone, 'insert');
             processWave(pendingUpdates, allOrNone, 'update');
-            if (!pendingSparseUpdates.isEmpty()) processWave(pendingSparseUpdates, allOrNone, 'update');
+            processWave(pendingSparseUpdates, allOrNone, 'update');
             processDeletes(allOrNone);
 
             pendingInserts.clear();
@@ -117,9 +117,7 @@ public class GoogleCloudUnitOfWork implements IGoogleUnitOfWork {
             bindings.clear();
         } catch (Exception e) {
             Database.rollback(sp);
-            throw (e instanceof UnitOfWorkException)
-                ? (UnitOfWorkException)e
-                : new UnitOfWorkException(e.getMessage());
+            throw new UnitOfWorkException(e.getMessage());
         }
     }
 

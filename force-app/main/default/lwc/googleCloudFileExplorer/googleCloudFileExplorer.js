@@ -60,18 +60,16 @@ export default class GoogleCloudFileExplorer extends LightningElement {
         {
             label: 'Title',
             fieldName: 'fileName',
-            type: 'button',
+            type: 'fileTitle',
             sortable: true,
             wrapText: true,
             typeAttributes: {
                 label: { fieldName: 'fileName' },
-                name: 'openPreview',
-                variant: 'base',
-                title: { fieldName: 'fileName' }
+                title: { fieldName: 'fileName' },
+                rowId: { fieldName: 'localId' }
             },
             cellAttributes: {
-                alignment: 'left',
-                class: 'slds-text-align_left'
+                alignment: 'left'
             }
         },
         {
@@ -184,7 +182,7 @@ export default class GoogleCloudFileExplorer extends LightningElement {
                 fileName: file.name || 'Untitled',
                 nameSort: (file.name || 'Untitled').toLowerCase(),
                 isLinkedLabel: isLinked ? 'Yes' : 'No',
-                isLinkedSort: isLinked ? 1 : 0,
+                isLinkedSort: linksCount,
                 accessLabel,
                 accessSort: accessLabel.toLowerCase(),
                 ownerName,
@@ -319,6 +317,12 @@ export default class GoogleCloudFileExplorer extends LightningElement {
         if (actionName !== 'openPreview' || !row?.localId) return;
         this.openPreview(row.localId);
     }
+
+	handleTitleClick(event) {
+		const localFileId = event.detail?.rowId;
+		if (!localFileId) return;
+		this.openPreview(localFileId);
+	}
 
     openPreview(localFileId) {
         const previewModal = this.refs.filePreviewModal;

@@ -3,7 +3,7 @@
 This guide walks through configuring the **Google Workspace (Drive)** connection inside the Google Client app. This is the minimum required integration, it enables all file management features: upload, preview, sharing, versioning, and folder structure automation.
 
 !!! note
-    Haven't installed the package yet? Start here: [Install](install-and-dependencies.md)
+    Haven't installed the package yet? Start here: [Install & Upgrade](../install-overview.md)
 
 ## Before you begin
 
@@ -76,6 +76,6 @@ After authentication is configured:
 - Maintain a dedicated root folder per environment (**Dev / UAT / Prod**).
 
 !!! note
-    Google Workspace is now configured. If you'd like to take things further — AI analytics, policy checks, smart labeling, and more — you can also set up the AI & Intelligence layer: [Configure AI & Intelligence](configure-intelligence.md)
+  Google Workspace is now configured. If you'd like to add document summaries and file Q&A, you can also set up the AI & Intelligence layer: [Configure AI & Intelligence](configure-intelligence.md)
 
 <br>

@@ -41,16 +41,14 @@ private class GoogleCloudFilesViewControllerTest {
 	private static void testFetchFileHeaderDetailsPositiveMissing() {
 		GoogleCloudTestFactory.initMocks();
 
-		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>());
-
-		Test.startTest();
-		GoogleFileHeaderInfoDTO headerInfo = GoogleCloudFilesViewController.fetchFileHeaderDetails('a0B000000000001AAA');
-		Test.stopTest();
-
-		System.assertNotEquals(null, headerInfo);
-		System.assertEquals(null, headerInfo.name);
-		System.assertNotEquals(null, headerInfo.compactFields);
-		System.assertEquals(0, headerInfo.compactFields.size());
+		try {
+			Test.startTest();
+			GoogleCloudFilesViewController.fetchFileHeaderDetails('a0B000000000001AAA');
+			Test.stopTest();
+			System.assert(false);
+		} catch (Exception ex) {
+			System.assert(String.isNotBlank(ex.getMessage()));
+		}
 	}
 
 	@IsTest
@@ -102,5 +100,19 @@ private class GoogleCloudFilesViewControllerTest {
 		System.assertNotEquals(null, fileVersions);
 		System.assertEquals(1, fileVersions.size());
 		System.assertEquals(firstVersion.Id, fileVersions[0].Id);
+	}
+
+	@IsTest
+	private static void testRetrieveLocalGoogleFileVersionsNegativeNoAccess() {
+		GoogleCloudTestFactory.initMocks();
+
+		try {
+			Test.startTest();
+			GoogleCloudFilesViewController.retrieveLocalGoogleFileVersions('a0B000000000001AAA');
+			Test.stopTest();
+			System.assert(false);
+		} catch (Exception ex) {
+			System.assert(String.isNotBlank(ex.getMessage()));
+		}
 	}
 }

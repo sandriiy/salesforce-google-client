@@ -33,6 +33,7 @@ public inherited sharing class GoogleFileVersionSelector extends GSOQL implement
         GoogleFileVersion__c.IsPreviewableFile__c,
         GoogleFileVersion__c.Size__c,
         GoogleFileVersion__c.Type__c,
+		GoogleFileVersion__c.Summary__c,
         GoogleFileVersion__c.CreatedDate,
 		GoogleFileVersion__c.LastModifiedDate
     };
@@ -65,10 +66,20 @@ public inherited sharing class GoogleFileVersionSelector extends GSOQL implement
         return this;
     }
 
+	public GoogleFileVersionSelector byLatest() {
+		whereAre(Filter.with(GoogleFileVersion__c.IsLatestFile__c).equal(true));
+		return this;
+	}
+
     public GoogleFileVersionSelector orderByCreatedDesc() {
         orderBy(GoogleFileVersion__c.CreatedDate).sortDesc();
         return this;
     }
+
+	public GoogleFileVersionSelector limitTo(Integer n) {
+		setLimit(n);
+		return this;
+	}
 
     public GoogleFileVersionSelector withBaseFields() {
         with(BASE_FIELDS);

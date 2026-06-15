@@ -30,6 +30,10 @@
   	--slds-c-button-text-color-hover: #ffffff;
 }
 
+.topbar-icon--muted {
+	opacity: 0.2;
+}
+
 .topbar-filename {
   	max-width: 250px;
   	min-width: 40px;
@@ -37,18 +41,60 @@
 }
 
 .stage {
+	width: 100%;
+	height: 100%;
+	position: relative;
   	display: grid;
-  	place-items: center;
+	place-items: center;
   	overflow: auto;
+	box-sizing: border-box;
+}
+
+
+.stage--with-sidebar {
+	--intelligence-width: clamp(340px, 22vw, 520px);
+	--intelligence-gap: clamp(20px, 1.6vw, 32px);
+	--intelligence-offset-top: clamp(16px, 1.6vw, 28px);
+	--intelligence-offset-right: clamp(24px, 2vw, 36px);
+}
+
+.intelligence-rail {
+	position: absolute;
+	top: var(--intelligence-offset-top, 16px);
+	right: var(--intelligence-offset-right, 24px);
+	width: var(--intelligence-width, 340px);
+	overflow: visible;
+	z-index: 20;
+}
+
+.intelligence-rail--expanded {
+	display: block;
+}
+
+.intelligence-rail--collapsed {
+	display: flex;
+	justify-content: flex-end;
+	width: auto;
+	margin-top: 25px;
+}
+
+.intelligence-rail--hidden {
+	display: none;
 }
 
 .doc {
-  	width: min(840px, 92%);
-  	height: 100%;
-  	margin: 32px 0;
+	width: min(1680px, calc(100vw - 48px));
+	height: 100%;
+	margin: 0;
   	border-radius: 2px;
   	position: relative;
   	overflow: hidden;
+	transition: width 160ms ease, transform 160ms ease;
+}
+
+.doc--with-sidebar {
+	width: min(1680px, calc(100vw - 48px - var(--intelligence-width) - var(--intelligence-gap)));
+	transform: translateX(calc((var(--intelligence-width) + var(--intelligence-gap)) / -2));
 }
 
 .content {
@@ -56,6 +102,29 @@
   	height: 100%;
   	display: grid;
   	place-items: center;
+}
+
+.content--hidden {
+	display: none;
+}
+
+.image-content {
+	overflow: auto;
+	padding: 24px;
+	box-sizing: border-box;
+}
+
+.image-preview {
+	display: block;
+	max-width: 100%;
+	max-height: 100%;
+	width: auto;
+	height: auto;
+	object-fit: contain;
+	margin: auto;
+	box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+	border-radius: 6px;
+	background: transparent;
 }
 
 .absolute-centered {
@@ -98,18 +167,4 @@
 	line-height: 1.35;
 	font-weight: 500;
 	color: #1f1f1f;
-}
-
-@media (max-width: 640px) {
-	.preview-status-banner {
-		width: calc(100% - 24px);
-		bottom: 16px;
-		padding: 12px;
-		border-radius: 14px;
-		flex-direction: column;
-  	}
-
-  	.preview-status-copy {
-    	text-align: center;
-  	}
 }

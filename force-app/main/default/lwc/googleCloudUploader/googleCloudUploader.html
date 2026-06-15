@@ -1,37 +1,49 @@
 <template>
-    <div lwc:if={isAccessible} class="slds-card slds-p-top_xx-small slds-p-horizontal_small slds-p-bottom_xx-small" style="position: relative;">
+    <div lwc:if={isAccessible} class="uploader-container slds-card slds-p-top_xx-small slds-p-bottom_xx-small">
         <div class="slds-p-horizontal_xx-small">
-            <label class="dropzone slds-grid slds-grid_vertical-align-center slds-grid_align-center slds-gutters_small">
-                <span class="dropzone__icon">
-                    <lightning-icon
-                        icon-name="utility:add"
-                        size="small"
-                        alternative-text="add files"
-                    ></lightning-icon>
-                </span>
-                <div>
-                    <p class="slds-text-body_regular">
-                        Drop files or <span class="link">browse</span>
-                    </p>
-                    <p lwc:if={supportedFileExtensions} class="slds-text-body_small slds-text-color_weak">
-                        Support files: {supportedFileExtensions}
-                    </p>
-                    <p lwc:if={maximumSizeMb} class="slds-text-body_small slds-text-color_weak">
-                        Max file size: {maximumSizeMb}&nbsp;MB
-                    </p>
+            <div class={dropzoneClass} onclick={openFileSelection} ondragenter={handleDropZoneDragEnter} ondragover={handleDropZoneDragOver} ondragleave={handleDropZoneDragLeave} ondrop={handleDropZoneDrop}>
+                <div class="dropzone__body">
+                    <div class="dropzone__content">
+                        <span class="dropzone__icon">
+                            <lightning-icon
+                                icon-name="utility:add"
+                                size="small"
+                                alternative-text="add files"
+                            ></lightning-icon>
+                        </span>
+                        <div>
+                            <p class="slds-text-body_regular">
+                                Drop files or <span class="link">browse</span>
+                            </p>
+                            <p lwc:if={supportedFileExtensions} class="slds-text-body_small slds-text-color_weak">
+                                Support files: {supportedFileExtensions}
+                            </p>
+                            <p lwc:if={maximumSizeMb} class="slds-text-body_small slds-text-color_weak">
+                                Max file size: {maximumSizeMb}&nbsp;MB
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="dropzone__existing-action">
+                        <span class="dropzone__separator"></span>
+                        <button type="button" class="attach-existing-link" onclick={handleAttachExistingLinkClick}>
+                            or attach existing
+                        </button>
+                    </div>
                 </div>
-                <input
-                    type="file"
-                    multiple={isMultiple}
-                    accept={acceptedTypes}
-                    onclick={handleFileReset}
-                    onchange={handleFileSelected}
-                    class="file-input"
-                />
-            </label>
+            </div>
+
+            <input
+                type="file"
+                multiple={isMultiple}
+                accept={acceptedTypes}
+                onclick={handleFileReset}
+                onchange={handleFileSelected}
+                class="file-input slds-hide"
+            />
         </div>
 
-        <div lwc:if={filesExist} class="slds-m-top_medium files-container">
+        <div lwc:if={filesExist} class="files-container slds-m-top_medium">
             <div lwc:ref="fileUploadedToast" class="file-card__status-overlay file-card__status-overlay--hidden">
                 <div class="file-card__status-content">
                     <lightning-icon
@@ -44,7 +56,7 @@
             </div>
 
             <template for:each={files} for:item="file" for:index="index">
-                <article key={file.id} data-id={file.id} class="file-card slds-p-around_medium slds-theme_default slds-rounded_medium" onclick={handleFilePreview}>
+                <article key={file.id} data-id={file.id} class="file-card slds-m-horizontal_small slds-theme_default slds-rounded_medium" onclick={handleFilePreview} title={file.hoverSummaryText}>
                     <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
                         <div class="slds-grid slds-grow" style="min-width: 0;">
                             <span class="file-card__icon slds-m-right_medium">
@@ -55,10 +67,12 @@
                             </span>
 
                             <div class="slds-truncate slds-grow">
-                                <p class="slds-text-body_regular slds-truncate" title={file.name}>
-                                    {file.name}
-                                </p>
-                                <p class="file-meta slds-text-color_weak slds-truncate" title={file.name}>
+                                <div class="file-name-row">
+                                    <p class="slds-text-body_regular slds-truncate file-name-row__label" title={file.hoverSummaryText}>
+                                        {file.name}
+                                    </p>
+                                </div>
+                                <p class="file-meta slds-text-color_weak slds-truncate" title={file.hoverSummaryText}>
                                     {file.size} • {file.type}
                                 </p>
                             </div>

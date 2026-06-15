@@ -1,0 +1,26 @@
+.download-panel {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.download-panel--empty {
+	padding: 0.35rem 0;
+}
+
+.download-panel__title {
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.4;
+	color: #0f172a;
+	word-break: break-word;
+}
+
+.download-panel__text {
+	font-size: 0.9rem;
+	line-height: 1.5;
+	color: #475569;
+}
+
+.download-panel__options {
+	padding: 0 0.15rem 0 0;
+}

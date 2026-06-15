@@ -1,15 +1,24 @@
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import {
+	DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE,
+	createDefaultFileIntelligenceState,
+	resolveFileHoverText
+} from 'c/googleCloudFileIntelligenceUtils';
 
-export const DEFAULT_FILE_UPLOAD_FAILURE = 'Verify that the file is not corrupted, then try again. If the problem continues, please reach out to your System Administrator';
+export const DEFAULT_OOPS_MESSAGE = 'Oops!';
+export const DEFAULT_FILES_CAPACITY_MESSAGE = 'The maximum number of files has already been reached for this record';
+export const DEFAULT_FILE_UPLOAD_FAILURE = 'Verify that the file is not corrupted, then try again. If the problem continues, please reach out to your system administrator';
 export const DEFAULT_FILE_NOT_ALLOWED_MESSAGE = 'Some files don’t meet the allowed type or size, please check and retry';
 export const DEFAULT_FAILED_RETRIEVE_MESSAGE = 'Unable to load files. Please refresh the page or contact your administrator';
 export const DEFAULT_FAILED_DOWNLOAD_MESSAGE = 'Unable to download the file. Please try again later or contact your system administrator';
+export const DEFAULT_FAILED_ATTACH_MESSAGE = 'Unable to attach the selected file. Please try again later or contact your system administrator';
 export const DEFAULT_NO_VERSIONS_MESSAGE = 'No versions were found for this file. Please verify that the file still exists';
 export const DEFAULT_ACCESS_RESTRICTED_MESSAGE = 'You can\’t perform this action on this file. Try another file or contact the file owner';
 export const DEFAULT_PREVIEW_UNAVAILABILITY_MESSAGE = 'Preview unavailable. Try downloading instead';
 export const GENERIC_ERROR_MESSAGE = 'Something went wrong. Please try again later or contact your system administrator';
 export const DEFAULT_FILE_ICON_TYPE = 'doctype:unknown';
 export const DEFAULT_FILE_NAME = 'Untitled';
+export const DEFAULT_FILE_SUMMARY_UNAVAILABLE_MESSAGE = DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE;
 
 export const FILE_ICON_MAP = {
     doc:  'doctype:word',
@@ -135,10 +144,47 @@ const formatExistingLocalFiles = (localGoogleFiles) => {
             icon: getFileIcon(latestVersion.Name || ''),
 			isEditAccess: fileRecord.UserAccessLevel__c === 'Edit',
 			isReadAccess: fileRecord.UserAccessLevel__c !== 'Edit',
+			summary: latestVersion.Summary__c || '',
+			hoverSummaryText: resolveFileHoverText(latestVersion.Summary__c, latestVersion.Name, DEFAULT_FILE_NAME),
+			hasSummary: Boolean(latestVersion.Summary__c),
         });
     });
 
     return formattedFiles;
+}
+
+const applyFileIntelligenceStates = (files, intelligenceStates) => {
+	if (!Array.isArray(files) || files.length === 0) {
+		return [];
+	}
+
+	const statesByVersionId = new Map(
+		(Array.isArray(intelligenceStates) ? intelligenceStates : [])
+			.filter(state => state && state.versionId)
+			.map(state => [state.versionId, state])
+	);
+
+	return files.map(file => {
+		const intelligenceState = statesByVersionId.get(file.id) || createDefaultFileIntelligenceState(file.id);
+		const summary = typeof intelligenceState.summary === 'string'
+			? intelligenceState.summary.trim()
+			: (typeof file.summary === 'string' ? file.summary.trim() : '');
+		const hasSummary = intelligenceState.hasSummary === true || Boolean(summary);
+		const isIntelligenceEligible = intelligenceState.isIntelligenceEligible === true;
+		const hoverSummaryText = resolveFileHoverText(summary, file.name, DEFAULT_FILE_NAME);
+
+		return {
+			...file,
+			summary,
+			hoverSummaryText,
+			hasSummary,
+			isIntelligenceEligible,
+			showSummaryStatusIcon: isIntelligenceEligible && !hasSummary,
+			summaryStatusTooltip: isIntelligenceEligible && !hasSummary
+				? DEFAULT_FILE_SUMMARY_UNAVAILABLE_MESSAGE
+				: ''
+		};
+	});
 }
 
 const formatDateAsDayMonthYear = (dateValue) => {
@@ -189,6 +235,9 @@ const createNewFilePlaceholder = (inputFile) => {
         lastModifiedDate: getLocalOffsetDateTime(),
         progress: 0,
         icon: getFileIcon(inputFile.name),
+		summary: '',
+		hoverSummaryText: resolveFileHoverText('', inputFile.name, DEFAULT_FILE_NAME),
+		hasSummary: false,
     };
 }
 
@@ -220,6 +269,37 @@ const getFileType = (mimeType) => {
 
 const extractFileExtension = (fileName) => {
     return fileName.split('.').pop().toLowerCase();
+}
+
+const truncateFileName = (fileName, maxLength = 40) => {
+	const normalizedFileName = typeof fileName === 'string' && fileName.trim() ? fileName.trim() : DEFAULT_FILE_NAME;
+	const normalizedMaxLength = Number.isInteger(maxLength) && maxLength > 0 ? maxLength : 40;
+
+	if (normalizedFileName.length <= normalizedMaxLength) {
+		return normalizedFileName;
+	}
+
+	const extensionSeparator = normalizedFileName.lastIndexOf('.');
+	const hasExtension = extensionSeparator > 0 && extensionSeparator < normalizedFileName.length - 1;
+
+	if (!hasExtension) {
+		if (normalizedMaxLength <= 3) {
+			return normalizedFileName.slice(0, normalizedMaxLength);
+		}
+
+		return `${normalizedFileName.slice(0, normalizedMaxLength - 3).trimEnd()}...`;
+	}
+
+	const baseName = normalizedFileName.slice(0, extensionSeparator).trimEnd();
+	const extension = normalizedFileName.slice(extensionSeparator);
+	const baseLimit = normalizedMaxLength - extension.length - 3;
+
+	if (baseLimit < 1) {
+		const fallbackBaseName = baseName || DEFAULT_FILE_NAME;
+		return `${fallbackBaseName.slice(0, 1)}...${extension}`;
+	}
+
+	return `${baseName.slice(0, baseLimit).trimEnd()}...${extension}`;
 }
 
 const getLocalOffsetDateTime = () => {
@@ -454,4 +534,4 @@ const asString = (value) => {
 	return String(extracted);
 };
 
-export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };

@@ -1,13 +1,18 @@
 <template>
     <c-google-cloud-base-card lwc:if={isAccessible} title={title} icon-name={icon} badge-text={filesCount} show-footer={files.length} onheaderclick={openSeparateTab}>
         <div slot="actions">
-            <lightning-button onclick={handleFileUpload} label="Upload Files" variant="neutral"></lightning-button>
+            <lightning-button-group>
+                <lightning-button onclick={handleFileUpload} label="Upload Files" variant="neutral"></lightning-button>
+                <lightning-button-menu alternative-text="More actions" icon-name="utility:chevrondown" menu-alignment="right" onselect={handleHeaderActionSelect}>
+                    <lightning-menu-item value="attachExisting" label="Attach Existing File"></lightning-menu-item>
+                </lightning-button-menu>
+            </lightning-button-group>
             <input id="file-upload-input" type="file" multiple={isMultiple} accept={acceptedTypes} onclick={handleFileReset} onchange={handleFileSelected} class="file-input gcdc-hidden"/>
         </div>
         <div lwc:if={files.length} class="slds-grid slds-wrap slds-card__body slds-card__body_inner">
             <template for:each={files} for:item="file">
                 <div key={file.id} data-id={file.localId} class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-p-bottom_small">
-                    <div class="slds-media slds-media_center slds-has-flexi-truncate gcdc-link-cursor" onclick={handleFilePreviewOpen}>
+                    <div class="slds-media slds-media_center slds-has-flexi-truncate gcdc-link-cursor" onclick={handleFilePreviewOpen} title={file.hoverSummaryText}>
                         <div class="slds-media__figure">
                             <lightning-icon
                                 icon-name={file.icon}
@@ -17,11 +22,13 @@
                         </div>
 
                         <div class="slds-media__body">
-                            <div class="slds-truncate slds-p-right_small" title={file.name}>
-                                <a href="javascript:void(0)">{file.name}</a>
+                            <div class="gcdc-file-title-row">
+                                <div class="slds-truncate slds-p-right_small gcdc-file-title-link" title={file.hoverSummaryText}>
+                                    <a href="javascript:void(0)">{file.name}</a>
+                                </div>
                             </div>
 
-                            <div class="slds-text-body_small slds-text-color_weak slds-truncate gcdc-file-info" title={file.info}>
+                            <div class="slds-text-body_small slds-text-color_weak slds-truncate gcdc-file-info" title={file.hoverSummaryText}>
                                 {file.info}
                             </div>
                         </div>

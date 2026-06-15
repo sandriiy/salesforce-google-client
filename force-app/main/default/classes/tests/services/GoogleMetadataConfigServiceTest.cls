@@ -41,14 +41,24 @@ private class GoogleMetadataConfigServiceTest {
 		}
 	}
 
+	private static GoogleClientConfig__mdt buildConfig(Boolean isPreviewDisabled) {
+		return new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client',
+			IsFilePreviewDisabled__c = isPreviewDisabled
+		);
+	}
+
 	@IsTest
 	private static void testConstructorPositiveConfigExists() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(false);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
 		System.assertNotEquals(null, svc.getConfig());
 	}
 
 	@IsTest
 	private static void testSaveConfigPositiveNoOps() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(false);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new ThrowingDeployer());
 
 		Test.startTest();
@@ -61,6 +71,7 @@ private class GoogleMetadataConfigServiceTest {
 
 	@IsTest
 	private static void testSaveConfigPositiveEnqueue() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(false);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new SuccessDeployer());
 
 		Map<String, Object> changes = new Map<String, Object>{
@@ -77,6 +88,7 @@ private class GoogleMetadataConfigServiceTest {
 
 	@IsTest
 	private static void testSaveConfigNegativeEnqueueThrows() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(false);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new ThrowingDeployer());
 
 		Map<String, Object> changes = new Map<String, Object>{

@@ -29,6 +29,11 @@ public inherited sharing class GoogleMetadataConfigService {
 
 	public static final String DEFAULT_METADATA_DEPLOY_KEY = 'DefaultGoogleMetadataDeployerKey';
 	public static final String DEFAULT_AUTH_CLASS_NAME = 'DefaultGoogleDriveAuthorizer';
+	public static final Long DEFAULT_BIG_FILE_SIZE = 2097152L;
+	public static final Integer DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
+	public static final Integer DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
+	public static final String DEFAULT_SUMMARY_PROMPT = 'Create a very short summary of the provided document content that starts with "This file describes". Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief.';
+	public static final String DEFAULT_QUESTION_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
 
 	private static final String DEFAULT_RECORD_DEVELOPER_NAME = 'GoogleClient';
 	private static final String DEFAULT_RECORD_LABEL = 'Google Client';
@@ -61,27 +66,33 @@ public inherited sharing class GoogleMetadataConfigService {
             return null;
         }
 
-        return deployNewMetadataChanges(fieldApiToValue);
+		return deployNewMetadataChanges(applyManagedDefaults(fieldApiToValue));
     }
 
     public GoogleClientConfig__mdt getConfig() {
         return configRecord;
     }
 
+	public Boolean hasConfigRecord() {
+		return String.isNotBlank(configRecord == null ? null : configRecord.DeveloperName);
+	}
+
 	public IGoogleTargetFolderResolver getTargetFolderResolver() {
 		return new GoogleMetadataTargetFolderResolver(this);
 	}
 
     public Boolean isPreviewDisabled() {
-        return configRecord.IsFilePreviewDisabled__c;
+		return configRecord.IsFilePreviewDisabled__c == true;
     }
 
 	public Long getBigFileSizeInBytes() {
-        return (Long) configRecord.DefaultBigFileSize__c;
+		Long configuredValue = (Long) configRecord.DefaultBigFileSize__c;
+		return configuredValue == null ? DEFAULT_BIG_FILE_SIZE : configuredValue;
     }
 
 	public Integer getDeleteChainSize() {
-        return (Integer) configRecord.MaxDeleteChainSize__c;
+		Integer configuredValue = (Integer) configRecord.MaxDeleteChainSize__c;
+		return configuredValue == null ? DEFAULT_MAX_DELETE_CHAIN_SIZE : configuredValue;
     }
 
     public String getDefaultUploadFolderId() {
@@ -105,6 +116,15 @@ public inherited sharing class GoogleMetadataConfigService {
         return configRecord.CustomGoogleUploadFolderStructure__c;
     }
 
+	public Boolean requiresRecordFolder() {
+		String folderStructure = getGoogleDriveFolderStructure();
+		return (
+			folderStructure == GoogleCloudConstants.STRUCTURE_RECORD ||
+			folderStructure == GoogleCloudConstants.STRUCTURE_USER_RECORD ||
+			folderStructure == GoogleCloudConstants.STRUCTURE_RECORD_USER
+		);
+	}
+
 	public String getGoogleGeminiKey() {
         return configRecord.CustomGeminiApiKey__c;
     }
@@ -121,9 +141,96 @@ public inherited sharing class GoogleMetadataConfigService {
         return configRecord.CustomAgentProjectId__c;
     }
 
+	public Boolean isFileIntelligenceEnabled() {
+		return configRecord.IsFileIntelligenceEnabled__c == true;
+	}
+
+	public String getSummaryPrompt() {
+		String configuredValue = configRecord.CustomSummaryPrompt__c;
+		return String.isNotBlank(configuredValue) ? configuredValue : DEFAULT_SUMMARY_PROMPT;
+	}
+
+	public String getQuestionPrompt() {
+		String configuredValue = configRecord.CustomQuestionPrompt__c;
+		return String.isNotBlank(configuredValue) ? configuredValue : DEFAULT_QUESTION_PROMPT;
+	}
+
+	public Integer getQuestionMaxOutputTokens() {
+		Integer configuredValue = (Integer) configRecord.QuestionMaxOutputTokens__c;
+		return configuredValue == null ? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS : configuredValue;
+	}
+
 	public String getGoogleDriveDomain() {
         return configRecord.OrganizationalDomain__c;
     }
+
+	private Map<String, Object> applyManagedDefaults(Map<String, Object> fieldApiToValue) {
+		Map<String, Object> normalizedValues = new Map<String, Object>(fieldApiToValue);
+
+		applyBooleanDefaultIfMissing(normalizedValues, 'IsFilePreviewDisabled__c', configRecord.IsFilePreviewDisabled__c, false);
+		applyNumberDefaultIfMissing(normalizedValues, 'DefaultBigFileSize__c', configRecord.DefaultBigFileSize__c, DEFAULT_BIG_FILE_SIZE);
+		applyNumberDefaultIfMissing(normalizedValues, 'MaxDeleteChainSize__c', configRecord.MaxDeleteChainSize__c, DEFAULT_MAX_DELETE_CHAIN_SIZE);
+
+		Boolean isIntelligenceEnabled = resolveBooleanValue(normalizedValues, 'IsFileIntelligenceEnabled__c', configRecord.IsFileIntelligenceEnabled__c);
+		if (isIntelligenceEnabled) {
+			applyStringDefaultIfMissing(normalizedValues, 'CustomSummaryPrompt__c', configRecord.CustomSummaryPrompt__c, DEFAULT_SUMMARY_PROMPT);
+			applyStringDefaultIfMissing(normalizedValues, 'CustomQuestionPrompt__c', configRecord.CustomQuestionPrompt__c, DEFAULT_QUESTION_PROMPT);
+			applyNumberDefaultIfMissing(normalizedValues, 'QuestionMaxOutputTokens__c', configRecord.QuestionMaxOutputTokens__c, DEFAULT_QUESTION_MAX_OUTPUT_TOKENS);
+		}
+
+		return normalizedValues;
+	}
+
+	private void applyBooleanDefaultIfMissing(Map<String, Object> valuesByFieldName, String fieldApiName, Object currentValue, Boolean defaultValue) {
+		if (!valuesByFieldName.containsKey(fieldApiName) && currentValue == null) {
+			valuesByFieldName.put(fieldApiName, defaultValue);
+		}
+	}
+
+	private void applyNumberDefaultIfMissing(Map<String, Object> valuesByFieldName, String fieldApiName, Object currentValue, Object defaultValue) {
+		if (valuesByFieldName.containsKey(fieldApiName)) {
+			if (valuesByFieldName.get(fieldApiName) == null) {
+				valuesByFieldName.put(fieldApiName, defaultValue);
+			}
+			return;
+		}
+
+		if (currentValue == null) {
+			valuesByFieldName.put(fieldApiName, defaultValue);
+		}
+	}
+
+	private void applyStringDefaultIfMissing(Map<String, Object> valuesByFieldName, String fieldApiName, String currentValue, String defaultValue) {
+		if (valuesByFieldName.containsKey(fieldApiName)) {
+			Object rawNextValue = valuesByFieldName.get(fieldApiName);
+			String nextValue = rawNextValue == null ? null : String.valueOf(rawNextValue);
+			if (String.isBlank(nextValue)) {
+				valuesByFieldName.put(fieldApiName, defaultValue);
+			}
+			return;
+		}
+
+		if (String.isBlank(currentValue)) {
+			valuesByFieldName.put(fieldApiName, defaultValue);
+		}
+	}
+
+	private Boolean resolveBooleanValue(Map<String, Object> valuesByFieldName, String fieldApiName, Boolean currentValue) {
+		if (!valuesByFieldName.containsKey(fieldApiName)) {
+			return currentValue == true;
+		}
+
+		Object nextValue = valuesByFieldName.get(fieldApiName);
+		if (nextValue == null) {
+			return false;
+		}
+
+		if (nextValue instanceof Boolean) {
+			return (Boolean) nextValue;
+		}
+
+		return String.valueOf(nextValue).toLowerCase() == 'true';
+	}
 
 	private Id deployNewMetadataChanges(Map<String, Object> fieldApiToValue) {
 		try {

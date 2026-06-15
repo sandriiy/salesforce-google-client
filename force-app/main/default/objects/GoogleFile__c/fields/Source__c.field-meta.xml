@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Source__c</fullName>
-    <deprecated>false</deprecated>
-    <inlineHelpText>Specifies the source from which this file was uploaded.</inlineHelpText>
+    <inlineHelpText>Specifies the location where the file was first uploaded. Secondary attachments are tracked through File Links.</inlineHelpText>
     <label>Source</label>
     <required>true</required>
     <trackTrending>false</trackTrending>

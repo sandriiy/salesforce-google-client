@@ -77,8 +77,8 @@ public without sharing class GoogleFilePageDetailsCommand {
 			if (!selectFields.contains('Name')) selectFieldsWithName.add('Name');
 
 			return (GoogleFile__c) GoogleFileSelector.query()
-				.byRecordId(fileId)
 				.withSpecificFields(selectFieldsWithName)
+				.byId(fileId)
 				.toObject();
 		}
 

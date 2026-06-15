@@ -22,11 +22,18 @@
  * SOFTWARE.
  */
 public with sharing class GoogleFileAnalysisResultDTO {
+    @AuraEnabled
     public Boolean success;
+    @AuraEnabled
     public Boolean blocked;
+    @AuraEnabled
     public String provider;
+    @AuraEnabled
     public String operationType;
+	@AuraEnabled
 	public String text;
+    @AuraEnabled
     public String finishReason;
+    @AuraEnabled
     public String errorMessage;
 }

@@ -49,6 +49,8 @@ public without sharing class GoogleFileSharingCommand {
 	}
 
 	private class SharingSupport {
+		private final GoogleFileLinkDefaultsResolver linkDefaultsResolver = new GoogleFileLinkDefaultsResolver();
+
 		public void validateCommonIds(Id localFileRecordId, Id shareToRecordId) {
 			if (localFileRecordId == null) {
 				throw new GoogleFileSharingException('File Record Id must not be null');
@@ -116,6 +118,61 @@ public without sharing class GoogleFileSharingCommand {
 				WHERE GoogleFileId__c = :localFileRecordId
 				AND LinkedObjectId__c = :linkedRecordId
 			];
+		}
+
+		public void validateRecordLinkCreation(Id localFileRecordId, Id linkedRecordId, Id actingUserId) {
+			if (findOwnedFile(localFileRecordId, actingUserId) == null) {
+				throw new GoogleFileSharingException('Only owned files can be attached to records');
+			}
+
+			if (!hasReadableRecordAccess(linkedRecordId, actingUserId)) {
+				throw new GoogleFileSharingException('You don’t have access to attach this file to the selected record');
+			}
+		}
+
+		public GoogleFileLink__c buildRecordLink(Id localFileRecordId, Id linkedRecordId, String linkedObjectType, String source) {
+			GoogleFileLink__c linkRecord = new GoogleFileLink__c(
+				IsAdditionalLink__c = true,
+				GoogleFileId__c = localFileRecordId,
+				LinkedObjectId__c = String.valueOf(linkedRecordId),
+				LinkedObjectType__c = resolveLinkedObjectType(linkedRecordId, linkedObjectType)
+			);
+
+			linkRecord.Source__c = source.trim();
+			return linkDefaultsResolver.applyDefaultValues(linkRecord);
+		}
+
+		private String resolveLinkedObjectType(Id linkedRecordId, String linkedObjectType) {
+			if (String.isNotBlank(linkedObjectType)) {
+				return linkedObjectType.trim();
+			}
+
+			return linkedRecordId.getSObjectType().getDescribe().getName();
+		}
+
+		private GoogleFile__c findOwnedFile(Id localFileRecordId, Id ownerId) {
+			return (GoogleFile__c) GoogleFileSelector.query()
+				.withSpecificFields(new List<String>{ 'Id', 'OwnerId' })
+				.byOwner(ownerId)
+				.byId(localFileRecordId)
+				.toObject();
+		}
+
+		private Boolean hasReadableRecordAccess(Id linkedRecordId, Id actingUserId) {
+			if (linkedRecordId == null) {
+				return false;
+			}
+
+			List<UserRecordAccess> userAccessRows = [
+				SELECT RecordId
+				FROM UserRecordAccess
+				WHERE UserId = :actingUserId
+				AND RecordId = :linkedRecordId
+				AND HasReadAccess = true
+				LIMIT 1
+			];
+
+			return !userAccessRows.isEmpty();
 		}
 
 		public Boolean isUserOrGroup(Id shareToRecordId) {
@@ -266,8 +323,9 @@ public without sharing class GoogleFileSharingCommand {
 		private final SharingSupport support;
 
 		private Id localFileRecordId;
-		private String shareToObjectApiName;
+		private String linkedObjectType;
 		private String uiAccessLevel;
+		private String source;
 		private Id shareToRecordId;
 
 		public CreateSharingCommand(IGoogleUnitOfWork uowRef, SharingSupport support) {
@@ -280,20 +338,18 @@ public without sharing class GoogleFileSharingCommand {
 			return this;
 		}
 
-		public CreateSharingCommand shareTo(String shareToObjectApiName, Id shareToRecordId) {
-			this.shareToObjectApiName = shareToObjectApiName;
+		public CreateSharingCommand shareTo(String linkedObjectType, Id shareToRecordId) {
+			this.linkedObjectType = linkedObjectType;
 			this.shareToRecordId = shareToRecordId;
 			return this;
 		}
 
 		public CreateSharingCommand forUser(Id userId) {
-			this.shareToObjectApiName = 'User';
 			this.shareToRecordId = userId;
 			return this;
 		}
 
 		public CreateSharingCommand forGroup(Id groupId) {
-			this.shareToObjectApiName = 'Group';
 			this.shareToRecordId = groupId;
 			return this;
 		}
@@ -303,9 +359,37 @@ public without sharing class GoogleFileSharingCommand {
 			return this;
 		}
 
+		public CreateSharingCommand withSource(String source) {
+			this.source = source;
+			return this;
+		}
+
 		public Id apply() {
+			return applyWithResult().recordId;
+		}
+
+		public GoogleFileSharingApplyResultDTO applyWithResult() {
 			support.validateCommonIds(localFileRecordId, shareToRecordId);
 
+			if (support.isUserOrGroup(shareToRecordId)) {
+				return createUserOrGroupSharing();
+			}
+
+			return createRecordLink();
+		}
+
+		public void validateCreation() {
+			support.validateCommonIds(localFileRecordId, shareToRecordId);
+
+			if (support.isUserOrGroup(shareToRecordId)) {
+				support.mapUiAccessLevelToShareAccess(uiAccessLevel);
+				return;
+			}
+
+			support.validateRecordLinkCreation(localFileRecordId, shareToRecordId, UserInfo.getUserId());
+		}
+
+		private GoogleFileSharingApplyResultDTO createUserOrGroupSharing() {
 			String shareAccessLevel = support.mapUiAccessLevelToShareAccess(uiAccessLevel);
 			GoogleFile__Share shareRecord = support.buildShareRecord(
 				localFileRecordId,
@@ -318,7 +402,23 @@ public without sharing class GoogleFileSharingCommand {
 			uowRef.registerNew(shareRecord);
 			uowRef.commitWork(true);
 
-			return shareRecord.Id;
+			return new GoogleFileSharingApplyResultDTO(shareRecord.Id, true);
+		}
+
+		private GoogleFileSharingApplyResultDTO createRecordLink() {
+			support.validateRecordLinkCreation(localFileRecordId, shareToRecordId, UserInfo.getUserId());
+
+			List<GoogleFileLink__c> existingLinks = support.findRecordLinks(localFileRecordId, shareToRecordId);
+			if (!existingLinks.isEmpty()) {
+				return new GoogleFileSharingApplyResultDTO(existingLinks[0].Id, false);
+			}
+
+			GoogleFileLink__c linkRecord = support.buildRecordLink(localFileRecordId, shareToRecordId, linkedObjectType, source);
+			Logger.info('File Sharing Create (Record Link): File ID: ' + localFileRecordId + '; Share To: ' + shareToRecordId + '; ShareType: ' + linkRecord.ShareType__c + '; Visibility: ' + linkRecord.Visibility__c).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+			uowRef.registerNew(linkRecord);
+			uowRef.commitWork(true);
+			return new GoogleFileSharingApplyResultDTO(linkRecord.Id, true);
 		}
 	}
 

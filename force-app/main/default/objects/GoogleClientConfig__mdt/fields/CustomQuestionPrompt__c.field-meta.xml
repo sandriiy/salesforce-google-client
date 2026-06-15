@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CustomQuestionPrompt__c</fullName>
+    <description>System prompt used when Google Client answers questions about a file.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>System prompt used when Google Client answers questions about a file.</inlineHelpText>
+    <label>Custom Question Prompt</label>
+    <length>32768</length>
+    <required>false</required>
+    <type>LongTextArea</type>
+    <unique>false</unique>
+    <visibleLines>5</visibleLines>
+</CustomField>

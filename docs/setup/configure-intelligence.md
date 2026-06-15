@@ -1,13 +1,18 @@
 # Configure AI & Intelligence
 
-This guide walks through configuring the **AI & Intelligence** layer inside the Google Client app. Once set up, it enables AI-powered features for files stored in Google Drive: smart analysis, automated labeling, policy checks, and audit insights.
+This guide walks through configuring the optional **AI & Intelligence** layer inside the Google Client app. Once set up, it enables document summaries and file Q&A for supported files stored in Google Drive.
 
 !!! note
     Haven't configured Google Drive yet? That step is required first: [Configure Google Workspace](configure-drive.md)
 
-## Before you begin
+## Before You Begin
 
 AI & Intelligence is an optional layer on top of the Google Drive integration. You must have Google Drive already configured and working before proceeding.
+
+You also need to decide which provider model is appropriate for the org:
+
+- **Gemini Developer API** for quick setup, sandboxes, and internal evaluation
+- **Agent Platform** for UAT and production environments where Google Cloud project controls matter
 
 ### Step 1: Open the Google Client Application
 
@@ -15,7 +20,15 @@ AI & Intelligence is an optional layer on top of the Google Drive integration. Y
 2. Navigate to the **Home** page.
 3. Expand the **Gemini & Agent Platform** section under **Google Integration Settings**.
 
-### Step 2: Choose an Integration Method
+### Step 2: Enable File Intelligence
+
+Turn on **Is File Intelligence Enabled?** before using summaries or file questions.
+
+When this setting is off, Google Drive file operations continue to work normally, but the AI summary and Q&A experience is not available.
+
+![File Intelligence enablement setting](../assets/images/client_ai_enable_config.png)
+
+### Step 3: Choose an Integration Method
 
 Google Client supports two ways to connect to Google's AI services:
 
@@ -52,5 +65,30 @@ Use this option for production and UAT environments. Authentication uses the **s
 7. Click **Save & Validate**
 
 ![Agent Platform Setup](../assets/images/config_ai_agent_platform.png)
+
+### Step 4: Configure Prompts and Token Limits
+
+Admins can control how Google Client asks the AI provider to respond.
+
+Configure these settings based on your business language and expected output length:
+
+- **Custom Summary Prompt** - system prompt used when summaries are generated
+- **Custom Question Prompt** - system prompt used when users ask questions about a file
+- **Question Max Output Tokens** - maximum output tokens returned for file question responses
+
+Keep prompts specific and practical. The best prompts tell the provider what kind of business answer your users expect, without adding unnecessary ceremony.
+
+![File Intelligence enablement setting](../assets/images/client_ai_enable_config.png)
+
+## What Happens After Setup
+
+After File Intelligence is configured:
+
+- Google Client can generate summaries for supported file versions
+- Summaries are stored in Salesforce on the file version
+- The preview window can show a summary sidebar for eligible files
+- Users can ask questions about the current file when Q&A is available
+
+If the provider is not configured, validation fails, or the file is not eligible, Google Client simply keeps the regular file experience available without showing broken AI controls.
 
 <br>

@@ -1,7 +1,7 @@
 import { LightningElement, api, track } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 
-import { isEmpty, showToast, normalizeError, getFileIcon } from 'c/googleCloudUtils';
+import { isEmpty, showToast, normalizeError, getFileIcon, truncateFileName } from 'c/googleCloudUtils';
 import { BIG_FILE_SIZE } from 'c/googleCloudDownloadUtils';
 import { download, downloadInChunks, createOperationControl, abortOperation, isOperationAbortedError } from 'c/googleCloudDownloadUtils';
 import { 
@@ -18,6 +18,7 @@ import pdfjs from '@salesforce/resourceUrl/GoogleCloudPreviewRender';
 import GoogleCloudFilePublicLinkModal from 'c/googleCloudFilePublicLinkModal';
 import GoogleCloudFileDetailsModal from 'c/googleCloudFileDetailsModal';
 import GoogleCloudFileDeleteModal from 'c/googleCloudFileDeleteModal';
+import GoogleCloudFileDownloadAsModal from 'c/googleCloudFileDownloadAsModal';
 import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
 import GoogleCloudFileSharingModal from 'c/googleCloudFileSharingModal';
 
@@ -29,6 +30,9 @@ import validateFilePreview from '@salesforce/apex/GoogleCloudFilesController.val
 import downloadFileAsPdf from '@salesforce/apex/GoogleCloudFilesController.downloadFileAsPdf';
 
 const PREVIEW_SLOW_THRESHOLD_MS = 5000;
+const PREVIEW_RENDERER_PDF = 'pdf';
+const PREVIEW_RENDERER_IMAGE = 'image';
+const IMAGE_MIME_TYPE_PREFIX = 'image/';
 
 export default class GoogleCloudFilePreview extends NavigationMixin(LightningElement) {
 	@api localGoogleRecordId;
@@ -44,9 +48,12 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	@track isLoading = true;
 	@track isOpen = false;
 	@track isPreviewTakingTooLong = false;
+	@track isIntelligenceAvailable = false;
+	@track isIntelligencePanelOpen = false;
 
 	previewOperation;
 	previewBlobUrl;
+	previewRenderer = PREVIEW_RENDERER_PDF;
 
 	@api async open(localGoogleDriveId) {
 		this.initialization();
@@ -76,14 +83,20 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 
 	@api async refreshMetadata() {
 		this.isLoading = true;
+		const currentVersionId = this.intelligenceVersionId;
 
 		try {
 			await this.getLocalGoogleDriveFile();
 			this.localLatestVersionRecord = this.getLatestFileVersion(this.localGoogleRecord);
+
+			if (currentVersionId === this.intelligenceVersionId) {
+				await this.refs.fileIntelligence?.refresh?.();
+			}
 		} catch (e) {
 			this.unavailablePreviewMessage = normalizeError(e);
 			this.isUnavailablePreview = true;
-			this.applyPdfStageHiddenStyles();
+			this.cleanupPreviewBlobUrl();
+			this.resetAllStyles();
 		}
 
 		this.isLoading = false;
@@ -125,6 +138,8 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		this.localGoogleRecordId = undefined;
 		this.localGoogleRecord = undefined;
 		this.localLatestVersionRecord = undefined;
+		this.isIntelligenceAvailable = false;
+		this.isIntelligencePanelOpen = false;
 		this.resetAllStyles();
 	}
 
@@ -136,10 +151,28 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		this.close();
 	}
 
+	handleIntelligenceStateChange(event) {
+		this.isIntelligenceAvailable = event.detail?.isEligible === true;
+		this.isIntelligencePanelOpen = event.detail?.isOpen === true;
+	}
+
 	async handleFileDownload(event) {
 		this.isLoading = true;
 		await this.downloadFile();
 		this.isLoading = false;
+	}
+
+	async handleDownloadAs(event) {
+		if (!this.isDownloadAsAvailable || !this.localLatestVersionRecord?.Id) {
+			return;
+		}
+
+		await GoogleCloudFileDownloadAsModal.open({
+			size: 'small',
+			label: `Download ${truncateFileName(this.fileName)} as`,
+			fileName: this.fileName,
+			localFileVersionId: this.localLatestVersionRecord.Id
+		});
 	}
 
 	async handleFileSharing(event) {
@@ -234,7 +267,8 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 
 			this.unavailablePreviewMessage = normalizeError(e);
 			this.isUnavailablePreview = true;
-			this.applyPdfStageHiddenStyles();
+			this.cleanupPreviewBlobUrl();
+			this.resetAllStyles();
 		} finally {
 			if (this.previewOperation === previewOperation) {
 				this.finishPreviewOperation(previewOperation);
@@ -261,6 +295,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		// Will throw if preview is not eligible
 		const previewAction = await validateFilePreview({ localFileVersionId: localGoogleVersionId });
 		this.assertPreviewOperationActive(previewOperation);
+		const previewRenderer = this.resolvePreviewRenderer(previewAction);
 
 		let previewBlob;
 		if (previewAction === 'DIRECT') {
@@ -276,8 +311,9 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 			this.assertPreviewOperationActive(previewOperation);
 
 			if (isEmpty(base64)) {
+				this.cleanupPreviewBlobUrl();
 				this.isUnavailablePreview = true;
-				this.applyPdfStageHiddenStyles();
+				this.resetAllStyles();
 				return;
 			}
 
@@ -285,8 +321,9 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		}
 
 		if (!previewBlob || previewBlob.size === 0) {
+			this.cleanupPreviewBlobUrl();
 			this.isUnavailablePreview = true;
-			this.applyPdfStageHiddenStyles();
+			this.resetAllStyles();
 		} else {
 			const blobUrl = URL.createObjectURL(previewBlob);
 
@@ -295,8 +332,8 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 				this.assertPreviewOperationActive(previewOperation);
 			}
 
-			this.renderViewer(blobUrl);
-			this.applyMainStageStyles();
+			this.renderPreview(blobUrl, previewRenderer);
+			this.applyMainStageStyles(previewRenderer);
 		}
 	}
 
@@ -307,6 +344,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		operationControl = null
 	} = {}) {
 		let googleVersion = this.localLatestVersionRecord;
+
 		try {
 			if (googleVersion.Size__c <= BIG_FILE_SIZE) {
 				return await download(googleVersion.Id, {
@@ -324,8 +362,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 					returnBase64,
 					returnBlob,
 					control: operationControl,
-					onError: (err) => {
-						console.error(err);
+					onError: () => {
 						showToast(
 							this,
 							'Unable to download File Version',
@@ -374,45 +411,58 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		}
 	}
 
-	renderViewer(blobUrl) {
-        const iframe = this.template.querySelector('.pdfjs-iframe');
+	resolvePreviewRenderer(previewAction) {
+		if (previewAction === 'DIRECT' && this.isImageMimeType(this.localLatestVersionRecord?.Type__c)) {
+			return PREVIEW_RENDERER_IMAGE;
+		}
+
+		return PREVIEW_RENDERER_PDF;
+	}
+
+	isImageMimeType(mimeType) {
+		return typeof mimeType === 'string' && mimeType.toLowerCase().startsWith(IMAGE_MIME_TYPE_PREFIX);
+	}
+
+	renderPreview(blobUrl, previewRenderer) {
 		this.cleanupPreviewBlobUrl();
 		this.previewBlobUrl = blobUrl;
+		this.previewRenderer = previewRenderer;
 
-        const viewerUrl = `${pdfjs}/web/viewer.html?file=${encodeURIComponent(blobUrl)}`;
-        iframe.src = viewerUrl;
-    }
+		if (previewRenderer === PREVIEW_RENDERER_IMAGE) {
+			return;
+		}
 
-	applyMainStageStyles() {
+		const iframe = this.template.querySelector('.pdfjs-iframe');
+		if (!iframe) {
+			return;
+		}
+
+		const viewerUrl = `${pdfjs}/web/viewer.html?file=${encodeURIComponent(blobUrl)}`;
+		iframe.src = viewerUrl;
+	}
+
+	applyMainStageStyles(previewRenderer) {
         const docBlock = this.template.querySelector('.doc');
         if (docBlock) {
-            docBlock.style.backgroundColor = '#FFFFFF';
+			docBlock.style.backgroundColor = previewRenderer === PREVIEW_RENDERER_IMAGE
+				? '#111111'
+				: '#FFFFFF';
         }
     }
 
 	applyPdfStageHiddenStyles() {
 		const docBlock = this.template.querySelector('.doc');
-		const pdfFrame = this.template.querySelector('.content');
 
 		if (docBlock) {
 			docBlock.style.backgroundColor = '';
-		}
-
-		if (pdfFrame) {
-			pdfFrame.style.display = 'none';
 		}
 	}
 
 	resetAllStyles() {
 		const docBlock = this.template.querySelector('.doc');
-		const pdfFrame = this.template.querySelector('.content');
 
 		if (docBlock) {
 			docBlock.style.backgroundColor = '';
-		}
-
-		if (pdfFrame) {
-			pdfFrame.style.display = '';
 		}
 	}
 
@@ -566,6 +616,26 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 			: '';
 	}
 
+	get hasPreviewContent() {
+		return !this.isUnavailablePreview && !isEmpty(this.previewBlobUrl);
+	}
+
+	get isImagePreview() {
+		return this.previewRenderer === PREVIEW_RENDERER_IMAGE;
+	}
+
+	get pdfContentClass() {
+		return this.hasPreviewContent && !this.isImagePreview
+			? 'content'
+			: 'content content--hidden';
+	}
+
+	get imageContentClass() {
+		return this.hasPreviewContent && this.isImagePreview
+			? 'content image-content'
+			: 'content image-content content--hidden';
+	}
+
 	get fileName() {
 		if (!this.localLatestVersionRecord || isEmpty(this.localLatestVersionRecord.Name)) {
 			return DEFAULT_FILE_NAME;
@@ -580,6 +650,38 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		}
 
 		return getFileIcon(this.localLatestVersionRecord.Name);
+	}
+
+	get isDownloadAsAvailable() {
+		return this.isLoading !== true 
+			&& this.isUnavailablePreview !== true
+			&& this.localLatestVersionRecord?.IsPreviewableFile__c === true
+			&& this.localLatestVersionRecord?.Size__c != null
+			&& this.localLatestVersionRecord.Size__c <= BIG_FILE_SIZE;
+	}
+
+	get stageClass() {
+		return this.isIntelligencePanelOpen
+			? 'stage stage--with-sidebar'
+			: 'stage';
+	}
+
+	get docClass() {
+		return this.isIntelligencePanelOpen
+			? 'doc doc--with-sidebar'
+			: 'doc';
+	}
+
+	get intelligenceRailClass() {
+		return this.isIntelligencePanelOpen
+			? 'intelligence-rail intelligence-rail--expanded'
+			: this.isIntelligenceAvailable
+				? 'intelligence-rail intelligence-rail--collapsed'
+				: 'intelligence-rail intelligence-rail--hidden';
+	}
+
+	get intelligenceVersionId() {
+		return this.localLatestVersionRecord?.Id;
 	}
 
 	get viewDetailsReferenceName() {

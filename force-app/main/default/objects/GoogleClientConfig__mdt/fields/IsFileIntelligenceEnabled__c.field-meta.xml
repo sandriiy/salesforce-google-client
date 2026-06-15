@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsFileIntelligenceEnabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Controls whether Google Client can generate AI file summaries and answer document questions.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Controls whether Google Client can generate AI file summaries and answer document questions.</inlineHelpText>
+    <label>Is File Intelligence Enabled?</label>
+    <type>Checkbox</type>
+</CustomField>

@@ -41,7 +41,7 @@ public with sharing class GoogleFileVersionTriggerHandler extends GTriggerHandle
 	}
 
 	public override void afterInsert() {
-		this.lifecycleService.applyPreviewStateIfEligible(this.newRecords);
+		this.lifecycleService.processFileInsertFinalizer(this.newRecords);
 		this.lifecycleService.markAsLatestVersionIfApplicable(this.newRecords, null);
 	}
 

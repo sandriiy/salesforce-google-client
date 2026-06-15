@@ -29,8 +29,8 @@ public without sharing class GoogleLocalFileService {
     public GoogleLocalFileService() {
         this.uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
             GoogleFile__c.SObjectType,
-            GoogleFileVersion__c.SObjectType,
-            GoogleFileLink__c.SObjectType
+			GoogleFileLink__c.SObjectType,
+			GoogleFileVersion__c.SObjectType
         });
     }
 
@@ -38,8 +38,8 @@ public without sharing class GoogleLocalFileService {
         this.uow = injectedUow == null
             ? new GoogleCloudUnitOfWork(new List<SObjectType>{
                 GoogleFile__c.SObjectType,
-                GoogleFileVersion__c.SObjectType,
-                GoogleFileLink__c.SObjectType
+				GoogleFileLink__c.SObjectType,
+				GoogleFileVersion__c.SObjectType
             })
             : injectedUow;
     }
@@ -77,6 +77,78 @@ public without sharing class GoogleLocalFileService {
 		}
 	}
 
+	public List<GoogleFile__c> retrieveGoogleFilesForRelatedRecord(Id relatedRecordId, String source, Integer recordsCount) {
+		if (relatedRecordId == null) return new List<GoogleFile__c>();
+
+		try {
+			List<GoogleFileLink__c> resolvedLinks = new GoogleFileLinkPlacementResolver().resolveLinks(relatedRecordId, source);
+			Set<Id> resolvedFileIds = new Set<Id>();
+
+			for (GoogleFileLink__c linkRecord : resolvedLinks) {
+				if (linkRecord.GoogleFileId__c != null) {
+					resolvedFileIds.add(linkRecord.GoogleFileId__c);
+				}
+			}
+
+			if (resolvedFileIds.isEmpty()) return new List<GoogleFile__c>();
+
+			GoogleFileSelector selector = GoogleFileSelector.query()
+				.withBaseFields()
+				.withVersionsSubquery()
+				.orderByCreatedDesc();
+
+			if (recordsCount != null && recordsCount != 0) {
+				selector.limitTo(recordsCount);
+			}
+
+			return stripInaccessibleRecords()
+				.forFiles(selector.byIds(resolvedFileIds).toList())
+				.forRecordLinks(resolvedLinks)
+				.forUser(UserInfo.getUserId())
+				.strip();
+		} catch (Exception ex) {
+			Logger.error('Retrieve Google File Records By Related Record (Local): ' + String.valueOf(relatedRecordId) + ', source: ' + String.valueOf(source) + ', message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileException('Unable to retrieve the requested files. Please try again or contact your system administrator');
+		}
+	}
+
+	public List<GoogleFile__c> retrieveAttachableOwnedFiles(Id relatedRecordId) {
+		if (relatedRecordId == null) return new List<GoogleFile__c>();
+		
+		try {
+			Set<Id> alreadyLinkedFileIds = new Set<Id>();
+			for (GoogleFileLink__c existingLink : (List<GoogleFileLink__c>) GoogleFileLinkSelector.query().withBaseFields().byLinkedObjectId(relatedRecordId).toList()) {
+				if (existingLink.GoogleFileId__c != null) {
+					alreadyLinkedFileIds.add(existingLink.GoogleFileId__c);
+				}
+			}
+
+			List<GoogleFile__c> ownedFiles = (List<GoogleFile__c>) GoogleFileSelector.query()
+				.byOwner(UserInfo.getUserId())
+				.withAllFields()
+				.withLatestVersionSubquery()
+				.orderByCreatedDesc()
+				.toList();
+
+			List<GoogleFile__c> attachableFiles = new List<GoogleFile__c>();
+			for (GoogleFile__c ownedFile : ownedFiles) {
+				if (ownedFile == null || ownedFile.Id == null || alreadyLinkedFileIds.contains(ownedFile.Id)) {
+					continue;
+				}
+
+				ownedFile.UserAccessLevel__c = 'Edit';
+				attachableFiles.add(ownedFile);
+			}
+
+			return attachableFiles;
+		} catch (Exception ex) {
+			Logger.error('Retrieve Attachable Google Files (Local): ' + String.valueOf(relatedRecordId) + ', message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileException('Unable to retrieve the available files. Please try again or contact your system administrator');
+		}
+	}
+
     public GoogleFile__c createGoogleFileRecord(GoogleFileCreateRequestDTO request) {
 		GoogleFileInsertCommand insertCommand = new GoogleFileInsertCommand(uow)
 			.setRecordId(request.recordId)
@@ -101,12 +173,10 @@ public without sharing class GoogleLocalFileService {
 			throw new GoogleLocalFileException('Unable to create the file record. Please try again or contact your system administrator');
 		}
 
-		queueGoogleFileFolderStructuring(insertResult);
-
 		GoogleFile__c createdFile = (GoogleFile__c) GoogleFileSelector.query()
-			.byRecordId(insertResult.getLocalGoogleFileId())
 			.withLatestVersionSubquery()
 			.withBaseFields()
+			.byId(insertResult.getLocalGoogleFileId())
 			.toObject();
 
 		if (createdFile != null) {
@@ -176,31 +246,4 @@ public without sharing class GoogleLocalFileService {
         }
     }
 
-	@TestVisible
-	private void queueGoogleFileFolderStructuring(GoogleFileInsertCommand.GoogleFileInsertResult insertResult) {
-		Id localGoogleFileId = insertResult == null ? null : insertResult.getLocalGoogleFileId();
-        Id localGoogleFileVersionId = insertResult == null ? null : insertResult.getLocalGoogleFileVersionId();
-
-        Id localGoogleFileLinkId = insertResult == null ? null : insertResult.getLocalGoogleFileLinkId();
-        if (localGoogleFileLinkId == null && localGoogleFileId != null) {
-            localGoogleFileLinkId = GoogleFileLinkSelector.query()
-				.withBaseFields()
-				.byParentId(localGoogleFileId)
-				.orderByCreatedDesc()
-				.limitTo(1)
-				.toId();
-        }
-
-        if (localGoogleFileId != null && localGoogleFileVersionId != null) {
-            GoogleFileRelocationRequestDTO relocationRequest = new GoogleFileRelocationRequestDTO(
-                UserInfo.getUserId(),
-                localGoogleFileId,
-                localGoogleFileVersionId,
-                localGoogleFileLinkId
-            );
-
-			Integer delayInMinutes = 1;
-            System.enqueueJob(new GoogleFileCloudFolderJob(relocationRequest), delayInMinutes);
-        }
-	}
 }

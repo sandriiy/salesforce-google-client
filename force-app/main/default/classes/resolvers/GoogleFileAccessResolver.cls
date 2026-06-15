@@ -26,6 +26,10 @@ public without sharing class GoogleFileAccessResolver {
 	public enum AccessLevel { View, Edit }
 
 	public List<GoogleFile__c> resolveAccessibleFiles(List<GoogleFile__c> inputFiles, Id targetUserId) {
+		return resolveAccessibleFiles(inputFiles, targetUserId, null);
+	}
+
+	public List<GoogleFile__c> resolveAccessibleFiles(List<GoogleFile__c> inputFiles, Id targetUserId, List<GoogleFileLink__c> scopedRecordLinks) {
 		if (inputFiles == null || inputFiles.isEmpty()) return new List<GoogleFile__c>();
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
 
@@ -68,8 +72,10 @@ public without sharing class GoogleFileAccessResolver {
 
 		Logger.info('Files Access Check: ' + fileIdToOwnerId.keySet()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
-		LinkCompilationResult linkData = loadLinks(nonOwnedFileIds);
-		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, linkData.inferredRecordIds);
+		LinkCompilationResult linkData = scopedRecordLinks == null
+			? loadLinks(nonOwnedFileIds)
+			: compileLinks(scopedRecordLinks, nonOwnedFileIds);
+		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, linkData.linkedRecordIds);
 
 		List<GoogleFile__c> nonOwnedFiles = new List<GoogleFile__c>();
 		for (GoogleFile__c fileRecord : inputFiles) {
@@ -103,6 +109,40 @@ public without sharing class GoogleFileAccessResolver {
 		return resolveAccessibleFiles(candidateFiles, targetUserId);
 	}
 
+	public List<GoogleFileLink__c> resolveAccessibleRecordLinks(List<GoogleFileLink__c> inputLinks, Id targetUserId) {
+		if (inputLinks == null || inputLinks.isEmpty()) return new List<GoogleFileLink__c>();
+		if (targetUserId == null) targetUserId = UserInfo.getUserId();
+
+		User targetUser = loadTargetUser(targetUserId);
+		Boolean isInternalUser = isInternalUserType(targetUser.UserType);
+		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, extractLinkedRecordIds(inputLinks));
+		List<GoogleFileLink__c> accessibleLinks = new List<GoogleFileLink__c>();
+
+		for (GoogleFileLink__c linkRecord : inputLinks) {
+			if (resolveLinkAccess(linkRecord, isInternalUser, parentAccessByRecordId) != null) {
+				accessibleLinks.add(linkRecord);
+			}
+		}
+
+		return accessibleLinks;
+	}
+
+	public List<GoogleFileLink__c> resolveReadableRecordLinks(List<GoogleFileLink__c> inputLinks, Id targetUserId) {
+		if (inputLinks == null || inputLinks.isEmpty()) return new List<GoogleFileLink__c>();
+		if (targetUserId == null) targetUserId = UserInfo.getUserId();
+
+		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, extractLinkedRecordIds(inputLinks));
+		List<GoogleFileLink__c> readableLinks = new List<GoogleFileLink__c>();
+
+		for (GoogleFileLink__c linkRecord : inputLinks) {
+			if (hasReadableParentAccess(loadLinkedRecordAccess(linkRecord, parentAccessByRecordId))) {
+				readableLinks.add(linkRecord);
+			}
+		}
+
+		return readableLinks;
+	}
+
 	private Set<Id> extractFileIds(List<GoogleFile__c> inputFiles) {
 		Set<Id> fileIds = new Set<Id>();
 
@@ -113,6 +153,20 @@ public without sharing class GoogleFileAccessResolver {
 		}
 
 		return fileIds;
+	}
+
+	private Set<Id> extractLinkedRecordIds(List<GoogleFileLink__c> inputLinks) {
+		Set<Id> linkedRecordIds = new Set<Id>();
+
+		for (GoogleFileLink__c linkRecord : inputLinks) {
+			if (linkRecord == null || String.isBlank(linkRecord.LinkedObjectId__c)) {
+				continue;
+			}
+
+			linkedRecordIds.add((Id) linkRecord.LinkedObjectId__c);
+		}
+
+		return linkedRecordIds;
 	}
 
 	private User loadTargetUser(Id userId) {
@@ -217,31 +271,47 @@ public without sharing class GoogleFileAccessResolver {
             .limitTo(10000)
             .toMap());
 
+		candidateFilesById.putAll((Map<Id, GoogleFile__c>) GoogleFileSelector.query()
+			.withAllFields()
+			.withLatestVersionSubquery()
+			.byInferredRecordLinks()
+			.orderByCreatedDesc()
+			.limitTo(10000)
+			.toMap());
+
 		if (candidateFilesById.isEmpty()) return new List<GoogleFile__c>();
 		else return new List<GoogleFile__c>(candidateFilesById.values());
 	}
 
-	private LinkCompilationResult loadLinks(Set<Id> fileIds) {
+	private LinkCompilationResult compileLinks(List<GoogleFileLink__c> fileLinks, Set<Id> fileIds) {
 		LinkCompilationResult result = new LinkCompilationResult();
 
-		List<GoogleFileLink__c> fileLinks = GoogleFileLinkSelector.query()
-			.withBaseFields()
-			.byParentIds(fileIds)
-			.toList();
-
 		for (GoogleFileLink__c link : fileLinks) {
+			if (link == null || link.GoogleFileId__c == null || !fileIds.contains(link.GoogleFileId__c)) {
+				continue;
+			}
+
 			if (!result.linksByFileId.containsKey(link.GoogleFileId__c)) {
 				result.linksByFileId.put(link.GoogleFileId__c, new List<GoogleFileLink__c>());
 			}
 
 			result.linksByFileId.get(link.GoogleFileId__c).add(link);
 
-			if (link.ShareType__c == 'InferredFromRecord' && link.LinkedObjectId__c != null) {
-				result.inferredRecordIds.add((Id) link.LinkedObjectId__c);
+			if (!String.isBlank(link.LinkedObjectId__c)) {
+				result.linkedRecordIds.add((Id) link.LinkedObjectId__c);
 			}
 		}
 
 		return result;
+	}
+
+	private LinkCompilationResult loadLinks(Set<Id> fileIds) {
+		List<GoogleFileLink__c> fileLinks = GoogleFileLinkSelector.query()
+			.withBaseFields()
+			.byParentIds(fileIds)
+			.toList();
+
+		return compileLinks(fileLinks, fileIds);
 	}
 
 	private Map<Id, UserRecordAccess> loadUserRecordAccess(Id userId, Set<Id> recordIds) {
@@ -324,11 +394,7 @@ public without sharing class GoogleFileAccessResolver {
 		AccessLevel resolved = null;
 
 		for (GoogleFileLink__c link : links) {
-			if (!grantsVisibility(link.Visibility__c, isInternalUser)) {
-				continue;
-			}
-
-			AccessLevel candidate = mapLinkAccessLevel(link, parentAccessByRecordId);
+			AccessLevel candidate = resolveLinkAccess(link, isInternalUser, parentAccessByRecordId);
 			resolved = pickHigherAccess(resolved, candidate);
 
 			if (resolved == AccessLevel.Edit) {
@@ -339,6 +405,14 @@ public without sharing class GoogleFileAccessResolver {
 		return resolved;
 	}
 
+	private AccessLevel resolveLinkAccess(GoogleFileLink__c link, Boolean isInternalUser, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+		if (link == null || !grantsVisibility(link.Visibility__c, isInternalUser)) {
+			return null;
+		}
+
+		return mapLinkAccessLevel(link, parentAccessByRecordId);
+	}
+
 	private AccessLevel mapShareAccessLevel(String shareAccessLevel) {
 		if (String.isBlank(shareAccessLevel)) return null;
 		return shareAccessLevel == 'Read' ? AccessLevel.View : AccessLevel.Edit;
@@ -346,21 +420,34 @@ public without sharing class GoogleFileAccessResolver {
 
 	private AccessLevel mapLinkAccessLevel(GoogleFileLink__c link, Map<Id, UserRecordAccess> parentAccessByRecordId) {
 		if (link == null) return null;
+		UserRecordAccess linkedRecordAccess = loadLinkedRecordAccess(link, parentAccessByRecordId);
 
 		if (link.ShareType__c == 'None') {
 			return null;
 		}
 		if (link.ShareType__c == 'Viewer') {
-			return AccessLevel.View;
+			return hasReadableParentAccess(linkedRecordAccess) ? AccessLevel.View : null;
 		}
 		if (link.ShareType__c == 'Collaborator') {
-			return AccessLevel.Edit;
+			return hasReadableParentAccess(linkedRecordAccess) ? AccessLevel.Edit : null;
 		}
 		if (link.ShareType__c == 'InferredFromRecord') {
-			return inferLevelFromParent(parentAccessByRecordId.get((Id) link.LinkedObjectId__c));
+			return inferLevelFromParent(linkedRecordAccess);
 		}
 
 		return null;
+	}
+
+	private UserRecordAccess loadLinkedRecordAccess(GoogleFileLink__c link, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+		if (link == null || parentAccessByRecordId == null || String.isBlank(link.LinkedObjectId__c)) {
+			return null;
+		}
+
+		return parentAccessByRecordId.get((Id) link.LinkedObjectId__c);
+	}
+
+	private Boolean hasReadableParentAccess(UserRecordAccess userRecordAccess) {
+		return userRecordAccess != null && userRecordAccess.HasReadAccess;
 	}
 
 	private AccessLevel pickHigherAccess(AccessLevel current, AccessLevel candidate) {
@@ -413,7 +500,7 @@ public without sharing class GoogleFileAccessResolver {
 	}
 
 	private class LinkCompilationResult {
-		public Set<Id> inferredRecordIds = new Set<Id>();
+		public Set<Id> linkedRecordIds = new Set<Id>();
 		public Map<Id, List<GoogleFileLink__c>> linksByFileId = new Map<Id, List<GoogleFileLink__c>>();
 	}
 }

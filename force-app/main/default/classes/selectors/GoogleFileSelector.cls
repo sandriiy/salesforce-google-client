@@ -55,16 +55,6 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
         mockId(MOCK_ID);
     }
 
-    public GoogleFileSelector byRecordId(Id recordId) {
-        whereAre(Filter.with(GoogleFile__c.Id).equal(recordId));
-        return this;
-    }
-
-    public GoogleFileSelector byRecordIds(List<Id> recordIds) {
-        whereAre(Filter.with(GoogleFile__c.Id).equal(recordIds));
-        return this;
-    }
-
     public GoogleFileSelector byRelatedRecordId(Id relatedId) {
         whereAre(
             GSOQL.Filter.id().isIn(
@@ -86,6 +76,23 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
 
 	public GoogleFileSelector byOwner(Id userId) {
         whereAre(Filter.with(GoogleFile__c.OwnerId).equal(userId));
+        return this;
+    }
+
+    public GoogleFileSelector byInferredRecordLinks() {
+        whereAre(
+            GSOQL.Filter.id().isIn(
+                GSOQL.InnerJoin.of(GoogleFileLink__c.SObjectType)
+                    .with(GoogleFileLink__c.GoogleFileId__c)
+                    .whereAre(
+                        GSOQL.FilterGroup
+                            .add(GSOQL.Filter.with(GoogleFileLink__c.ShareType__c).equal('InferredFromRecord'))
+                            .add(GSOQL.Filter.with(GoogleFileLink__c.Visibility__c).equal(new List<String>{ 'AllUsers', 'InternalUsers' }))
+                            .conditionLogic('1 AND 2')
+                    )
+            )
+        );
+
         return this;
     }
 

@@ -40,3 +40,20 @@
 	width: 95%;
   	min-width: 0; 
 }
+
+.gcdc-file-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.gcdc-file-title-link {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.gcdc-summary-status-icon {
+    flex-shrink: 0;
+    --slds-c-icon-color-foreground-default: #6e6e6e;
+}

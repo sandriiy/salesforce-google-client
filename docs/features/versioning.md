@@ -10,6 +10,10 @@ When a collaborator uploads a new version:
 - Previous versions are retained for audit and review
 - Access permissions are preserved
 
+Google Client keeps the latest active version aligned after common file actions, including initial upload, file replacement, attaching an existing file to another record, and uploading a new version.
+
+Preview and download actions use the expected active version, while older versions remain available from the file details page where supported.
+
 ## Viewing Previous Versions
 
 To view older versions:

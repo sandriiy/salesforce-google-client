@@ -1,33 +1,47 @@
 # AI & Intelligence
 
-Google Client includes an optional AI layer powered by **Google Gemini**. When enabled, it can analyse files stored in Google Drive and surface insights directly inside Salesforce — things like automatic document classification, smart labeling, policy checks, and content summaries.
+Google Client includes an optional AI layer that helps users understand documents without leaving Salesforce.
 
-This feature is **completely optional**. The core functionality of Google Client (file upload, preview, sharing, versioning) works without it. AI & Intelligence is an add-on for teams that want to go further.
+When configured, Google Client can generate short document summaries, store them on the Salesforce file version, and let users ask questions about the opened file from the preview window.
+
+The core Google Drive experience does not depend on AI. Upload, preview, download, sharing, public links, folder structure, file reuse, and versioning continue to work when File Intelligence is disabled or not configured.
+
+![AI summary and Q&A panel](../../assets/images/client_preview_summary_and_question.png)
 
 ## What It Enables
 
-With AI connected, Google Client can:
+With File Intelligence enabled, Google Client can:
 
-- Analyse the contents of documents uploaded through Salesforce
-- Apply smart labels or categories to files based on what they contain
-- Flag files that may not meet policy or compliance requirements
-- Generate summaries or extract key details from documents
+- Generate a short business-facing summary for supported documents
+- Store the summary in Salesforce on the file version
+- Show the summary where supported, including hover experiences and the preview sidebar
+- Let users ask questions about the current file from the preview window
+- Return answers based on the document content that Google Client can export for analysis
 
-The specific capabilities available will grow over time as the feature matures.
+## File Q&A
 
-## Two Ways to Connect
+File Q&A is available from the preview window when:
 
-There are two integration options, and the right choice depends on your environment:
+- File Intelligence is enabled
+- Gemini Developer API or Agent Platform is configured and validates successfully
+- Q&A is available for the selected file
+- The user has access to the file
 
-**Gemini Developer API** uses a simple API key from Google AI Studio. It is the fastest way to get started and works well for development, sandboxes, and internal experimentation.
+Users ask questions in Salesforce and receive answers based on the current file content. This is useful for contracts, reports, requirements, proposals, statements of work, and other business documents where users need the answer faster than they need the full document.
 
-**Agent Platform** (Gemini Enterprise Agent Platform, formerly Vertex AI) uses your existing Google Cloud service account and project. It is the recommended approach for production and UAT environments, offering enterprise-grade reliability and controls.
+## Supported Providers
 
-Both options are configured in the same place.
+Google Client supports two AI connection options:
 
-## Where to Configure It
+**Gemini Developer API** uses an API key from Google AI Studio. It is the fastest option for development, sandboxes, and internal evaluation.
 
-AI & Intelligence is set up inside the **Google Client** application on the Home page, under **Google Integration Settings**. Expand the **Gemini & Agent Platform** section to get started.
+**Agent Platform** uses your Google Cloud project and the same service account model already used for Google Drive. It is the recommended fit for UAT and production environments where teams want stronger Google Cloud controls.
+
+## Admin Controls
+
+Admins control the AI behavior from the Google Client app. Configuration includes provider selection, model name, enablement, summary prompt, question prompt, and question output token limit.
+
+This keeps the output aligned with your organization’s language and cost expectations without changing the core file management experience.
 
 Full setup instructions are on the [Configure AI & Intelligence](../../setup/configure-intelligence.md) page.
 

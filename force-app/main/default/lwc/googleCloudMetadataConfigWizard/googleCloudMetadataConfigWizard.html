@@ -86,7 +86,6 @@
                                 <div class="panel-padding">
                                     <div class="advanced-header">
                                         <div class="advanced-title">Advanced settings</div>
-                                        <div class="advanced-description">Optional functionality adjustments. It’s recommended to leave these unchanged.</div>
                                     </div>
 
                                     <div class="advanced-grid">
@@ -129,6 +128,58 @@
                                                         placeholder="e.g. cloudrylabs.com">
                                                     </lightning-input>
                                                 </div>
+
+                                                <div class="slds-col slds-size_1-of-1">
+                                                    <lightning-input
+                                                        type="toggle"
+                                                        checked={draft.isFileIntelligenceEnabled}
+                                                        onchange={handleToggle}
+                                                        data-field="isFileIntelligenceEnabled"
+                                                        label="Enable AI File Intelligence"
+                                                        class="slds-m-top_small"
+                                                        field-level-help="Controls whether Google Client can generate summaries and answer questions by using Gemini Developer API or Agent Platform.">
+                                                    </lightning-input>
+                                                </div>
+
+                                                <div class="slds-col slds-size_1-of-1">
+                                                    <lightning-textarea
+                                                        value={draft.customSummaryPrompt}
+                                                        onchange={handleChangeText}
+                                                        data-field="customSummaryPrompt"
+                                                        label="Summary Prompt"
+                                                        field-level-help="System prompt used when Google Client generates a file summary."
+                                                        max-length="32768"
+                                                        disabled={isIntelligenceDisabled}
+                                                        required={isIntelligenceEnabled}
+                                                    ></lightning-textarea>
+                                                </div>
+
+                                                <div class="slds-col slds-size_1-of-1">
+                                                    <lightning-textarea
+                                                        value={draft.customQuestionPrompt}
+                                                        onchange={handleChangeText}
+                                                        data-field="customQuestionPrompt"
+                                                        label="Question Prompt"
+                                                        field-level-help="System prompt used when Google Client answers questions about a file."
+                                                        max-length="32768"
+                                                        disabled={isIntelligenceDisabled}
+                                                        required={isIntelligenceEnabled}
+                                                    ></lightning-textarea>
+                                                </div>
+
+                                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                                    <lightning-input
+                                                        type="number"
+                                                        value={draft.questionMaxOutputTokens}
+                                                        onchange={handleChangeNumber}
+                                                        data-field="questionMaxOutputTokens"
+                                                        label="Question Max Output Tokens"
+                                                        field-level-help="Maximum number of tokens returned for document question responses."
+                                                        placeholder="e.g. 1024"
+                                                        disabled={isIntelligenceDisabled}
+                                                        required={isIntelligenceEnabled}
+                                                    ></lightning-input>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -140,7 +191,7 @@
                                                         checked={draft.isFilePreviewDisabled}
                                                         onchange={handleToggle}
                                                         data-field="isFilePreviewDisabled"
-                                                        label="Disable file preview"
+                                                        label="Disable File Preview"
                                                         field-level-help="When enabled, preview docs are not generated and existing previews are unavailable.">
                                                     </lightning-input>
                                                 </div>

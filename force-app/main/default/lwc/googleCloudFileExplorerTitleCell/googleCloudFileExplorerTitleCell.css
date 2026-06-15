@@ -1,0 +1,21 @@
+.gcdc-title-link {
+	display: block;
+	width: 100%;
+	padding: 0;
+	color: var(--lwc-brandAccessible, #0b5cab);
+	text-align: left;
+	font: inherit;
+	cursor: pointer;
+}
+
+.gcdc-title-link:hover .gcdc-title-label,
+.gcdc-title-link:focus .gcdc-title-label {
+	text-decoration: underline;
+}
+
+.gcdc-title-label {
+	display: block;
+	white-space: normal;
+	word-break: break-word;
+	line-height: 1.45;
+}

@@ -1,0 +1,104 @@
+<template>
+	<template lwc:if={showTrigger}>
+		<div class="intelligence-trigger-wrap">
+			<button
+				type="button"
+				class="intelligence-trigger"
+				onclick={handleOpen}
+				title="Open File Intelligence"
+				aria-label="Open File Intelligence">
+				<lightning-icon
+					icon-name="utility:info_alt"
+					size="x-small"
+					alternative-text="Open File Intelligence"
+					class="intelligence-trigger__icon">
+				</lightning-icon>
+			</button>
+		</div>
+	</template>
+
+	<template lwc:if={showPanel}>
+		<aside class="intelligence-panel" aria-label="File intelligence panel">
+			<div class="intelligence-panel__header">
+				<div class="intelligence-panel__eyebrow">File Intelligence</div>
+				<lightning-button-icon
+					icon-name="utility:close"
+					variant="bare-inverse"
+					alternative-text="Hide File Intelligence"
+					title="Hide File Intelligence"
+					class="intelligence-panel__close"
+					onclick={handleClose}>
+				</lightning-button-icon>
+			</div>
+
+			<section class="intelligence-block">
+				<template lwc:if={isLoading}>
+					<div class="intelligence-loading">
+						<lightning-spinner size="small" alternative-text="Loading file analytics"></lightning-spinner>
+					</div>
+				</template>
+				<p lwc:else class={summaryCopyClass}>{summaryCopy}</p>
+			</section>
+
+			<section class="intelligence-block intelligence-block--conversation">
+				<div lwc:if={showMessages} class="intelligence-conversation" aria-live="polite">
+					<template for:each={messages} for:item="message">
+						<article key={message.id} class={message.rowClass}>
+							<div class={message.bubbleClass}>
+								<template lwc:if={message.isPending}>
+									<div class="intelligence-typing" aria-label="Generating answer">
+										<span class="intelligence-typing-dot"></span>
+										<span class="intelligence-typing-dot"></span>
+										<span class="intelligence-typing-dot"></span>
+									</div>
+								</template>
+								<p lwc:else class={message.copyClass}>{message.text}</p>
+								<p lwc:if={message.showMeta} class="intelligence-message__meta">{message.metaText}</p>
+							</div>
+						</article>
+					</template>
+				</div>
+
+				<div class={questionShellClass}>
+					<input
+						class="intelligence-question-input"
+						type="text"
+						placeholder="Ask about this file..."
+						value={draftQuestion}
+						oninput={handleQuestionInput}
+						onkeydown={handleQuestionKeyDown}
+						maxlength={questionCharacterLimit}
+						disabled={isQuestionInputDisabled}>
+
+					<div class="intelligence-question-shell__actions">
+						<template lwc:if={showComposerSpinner}>
+							<span class="intelligence-composer-spinner" aria-hidden="true"></span>
+						</template>
+						<template lwc:elseif={showSendButton}>
+							<button
+								type="button"
+								class="intelligence-send-button"
+								onclick={handleQuestionSend}
+								title="Send question"
+								aria-label="Send question">
+								<lightning-icon
+									icon-name="utility:send"
+									size="x-small"
+									alternative-text="Send question"
+									class="intelligence-send-button__icon">
+								</lightning-icon>
+							</button>
+						</template>
+					</div>
+				</div>
+
+				<div class="intelligence-question-footer">
+					<span class={questionCountClass}>{questionCountCopy}</span>
+					<template lwc:if={questionError}>
+						<span class="intelligence-question-error">{questionError}</span>
+					</template>
+				</div>
+			</section>
+		</aside>
+	</template>
+</template>

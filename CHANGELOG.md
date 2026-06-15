@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-06-14
+
+### Added
+
+- Attach Existing File support for reusing owned Google Client files across multiple Salesforce records.
+- Linked Records on the File Details page to show where a Google Client file is used.
+- Google Drive shortcut placement when an existing file is attached to another record and the configured folder structure includes a record folder.
+- Download As support from the preview modal for supported previewable files.
+- Large image preview support from supported preview entry points.
+- AI-generated document summaries stored on Salesforce file versions and shown where supported.
+- File Q&A in the preview modal when File Intelligence is configured and available.
+- Admin controls for AI summary prompts, question prompts, and question response token limits.
+
+### Changed
+
+- Security access resolution now supports files linked to multiple Salesforce records.
+- Preview experience expanded for PDFs, images, CSV/spreadsheet files, documents, non-previewable files, Download As, and optional AI sidebar behavior.
+- Latest active file version handling improved across upload, replacement, attach-existing, and new-version flows.
+
 ## [1.3.2] - 2026-06-08
 
 ### Fixed

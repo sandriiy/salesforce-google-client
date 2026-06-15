@@ -29,17 +29,40 @@ public with sharing class GoogleFileIntelligenceFactory {
 		this.metadataConfig = new GoogleMetadataConfigService();
 	}
 
-    public IGoogleFileIntelligenceStrategy create() {
-		String geminiKey = metadataConfig.getGoogleGeminiKey();
-		String agentLocation = metadataConfig.getGoogleAgentLocation();
-		String agentProjectId = metadataConfig.getGoogleAgentProjectId();
+	public Boolean isConfigured() {
+		return metadataConfig.isFileIntelligenceEnabled() && (hasGeminiConfiguration() || hasAgentConfiguration());
+	}
 
-		if (String.isNotBlank(geminiKey)) {
+    public IGoogleFileIntelligenceStrategy create() {
+		if (!metadataConfig.isFileIntelligenceEnabled()) {
+			throw new GoogleFileIntelligenceFactoryException('AI file intelligence is disabled. Enable it in Advanced settings and save the configuration before using summaries or questions');
+		}
+
+		return createConfiguredStrategy();
+	}
+
+	public IGoogleFileIntelligenceStrategy createForValidation() {
+		return createConfiguredStrategy();
+	}
+
+	private IGoogleFileIntelligenceStrategy createConfiguredStrategy() {
+		if (hasGeminiConfiguration()) {
 			return new GoogleGeminiIntelligenceStrategy();
-		} else if (String.isNotBlank(agentLocation) && String.isNotBlank(agentProjectId)) {
+		} else if (hasAgentConfiguration()) {
 			return new GoogleAgentIntelligenceStrategy();
 		} else {
 			throw new GoogleFileIntelligenceFactoryException('Unable to determine which Google AI Strategy to use. Please verify the configuration for Gemini or Agent Platform (ex-Vertex AI) is set correctly');
 		}
-    }
+	}
+
+	private Boolean hasGeminiConfiguration() {
+		return String.isNotBlank(metadataConfig.getGoogleGeminiKey())
+			&& String.isNotBlank(metadataConfig.getGoogleAiModel());
+	}
+
+	private Boolean hasAgentConfiguration() {
+		return String.isNotBlank(metadataConfig.getGoogleAgentLocation())
+			&& String.isNotBlank(metadataConfig.getGoogleAgentProjectId())
+			&& String.isNotBlank(metadataConfig.getGoogleAiModel());
+	}
 }

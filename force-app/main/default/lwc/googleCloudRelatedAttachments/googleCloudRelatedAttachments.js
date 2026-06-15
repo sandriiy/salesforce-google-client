@@ -1,7 +1,6 @@
 import { LightningElement, track, api, wire } from 'lwc';
 import { CurrentPageReference } from 'lightning/navigation';
 import { NavigationMixin } from 'lightning/navigation';
-import { decryptObject } from 'c/googleCloudCryptoUtils';
 import { getRecord, getFieldValue } from 'lightning/uiRecordApi';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import { requestConfig, stopConfigSession } from 'c/googleCloudConfigBus';
@@ -9,6 +8,7 @@ import { requestConfig, stopConfigSession } from 'c/googleCloudConfigBus';
 import { updateTabPresentation, closeWhenReady } from 'c/googleCloudCrossPlatformUtils';
 
 import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
+import GoogleCloudExistingFileAttachModal from 'c/googleCloudExistingFileAttachModal';
 
 import {
 	isEmpty,
@@ -27,6 +27,10 @@ const UNABLE_TO_RETRIEVE_FILES = 'Unable to retrieve file(s)';
 const TARGET_TAB_COMPONENT = 'c__googleCloudRelatedAttachments';
 const TAB_POLL_DELAY_MS = 200;
 const TAB_MAX_RETRIES = 5;
+const SORT_FIELD_NAME_BY_COLUMN = {
+	createdBy: 'createdBy.name',
+	date: 'lastModifiedDate'
+};
 
 export default class GoogleCloudRelatedAttachments extends NavigationMixin(LightningElement) {
 	@api title;
@@ -43,7 +47,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@track tabInfo;
 	@track tabInfoRetries = 0;
 	@track isLoading = true;
-	@track recordIdentifierName;
+	@track recordIdentifierNames = [];
 	@track recordIdentifierValue;
 	@track files = [];
 
@@ -58,15 +62,20 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@wire(getObjectInfo, { objectApiName: '$sobjectApiName' })
 	wiredObjectInfo({ data, error }) {
 		if (data) {
-			let nameField = data.nameFields[data.nameFields.length - 1];
-			this.recordIdentifierName = `${this.sobjectApiName}.${nameField}`;
+			this.recordIdentifierNames = (data.nameFields || []).map((nameField) => `${this.sobjectApiName}.${nameField}`);
+			this.recordIdentifierValue = null;
+		} else if (error) {
+			this.recordIdentifierNames = [];
+			this.recordIdentifierValue = null;
 		}
 	}
 
 	@wire(getRecord, { recordId: '$recordId', fields: '$recordPrimaryField' })
 	wiredRecordInfo({ data, error }) {
 		if (data) {
-			this.recordIdentifierValue = getFieldValue(data, this.recordIdentifierName);
+			this.recordIdentifierValue = this.resolveRecordIdentifierValue(data);
+		} else if (error) {
+			this.recordIdentifierValue = null;
 		}
 	}
 
@@ -91,6 +100,29 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 		const fileInput = this.template.querySelector('.file-input');
 		if (fileInput) {
 			fileInput.click();
+		}
+	}
+
+	async handleAttachExistingFile() {
+		if (isEmpty(this.recordId)) {
+			return;
+		}
+
+		const modalResult = await GoogleCloudExistingFileAttachModal.open({
+			size: 'medium',
+			label: 'Attach Existing Files',
+			recordId: this.recordId,
+			source: this.source
+		});
+
+		if (modalResult?.hasChanges) {
+			this.handleDataRefresh();
+		}
+	}
+
+	handleHeaderActionSelect(event) {
+		if (event.detail?.value === 'attachExisting') {
+			this.handleAttachExistingFile();
 		}
 	}
 
@@ -120,7 +152,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 					inputFiles: allowedFiles
 				}).then((result) => {
 					if (!isEmpty(result)) {
-						this.files = [...this.formatFilesInfo(result), ...this.files];
+						this.handleDataRefresh();
 					}
 				});
 			}
@@ -201,21 +233,40 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 		this.isNewFileVersionUpload = false;
 	}
 
+	resolveRecordIdentifierValue(recordInfo) {
+		for (const fieldName of this.recordIdentifierNames) {
+			const fieldValue = getFieldValue(recordInfo, fieldName);
+
+			if (!isEmpty(fieldValue)) {
+				return fieldValue;
+			}
+		}
+
+		return null;
+	}
+
 	getFieldValue(record, path) {
 		return path.split('.').reduce((obj, key) => (obj ? obj[key] : undefined), record);
 	}
 
 	sortRecords(fieldName) {
 		const data = [...this.files];
+		const sortFieldName = SORT_FIELD_NAME_BY_COLUMN[fieldName] || fieldName;
 
 		data.sort((a, b) => {
-			let aVal = this.getFieldValue(a, fieldName);
-			let bVal = this.getFieldValue(b, fieldName);
+			let aVal = this.getFieldValue(a, sortFieldName);
+			let bVal = this.getFieldValue(b, sortFieldName);
 
-			if (typeof aVal === 'string' && Date.parse(aVal)) {
-				aVal = Date.parse(aVal);
-				bVal = Date.parse(bVal);
+			if (sortFieldName === 'lastModifiedDate') {
+				aVal = aVal ? Date.parse(aVal) : null;
+				bVal = bVal ? Date.parse(bVal) : null;
+			} else if (typeof aVal === 'string' && typeof bVal === 'string') {
+				aVal = aVal.toLowerCase();
+				bVal = bVal.toLowerCase();
 			}
+
+			if (Number.isNaN(aVal)) return 1;
+			if (Number.isNaN(bVal)) return -1;
 
 			if (aVal == null && bVal != null) return 1;
 			if (bVal == null && aVal != null) return -1;
@@ -288,7 +339,8 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 		retrieveGoogleFiles({ relatedRecordId: this.recordId, source: this.source })
 			.then((data) => {
-				this.files = this.formatFilesInfo(formatExistingLocalFiles(data));
+				const formattedFiles = this.formatFilesInfo(formatExistingLocalFiles(data));
+				this.files = formattedFiles;
 				this.sortRecords(this.sortedBy);
 			})
 			.catch((error) => {
@@ -351,7 +403,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	}
 
 	get recordPrimaryField() {
-		return this.recordIdentifierName ? [this.recordIdentifierName] : [];
+		return this.recordIdentifierNames;
 	}
 
 	get displayedFiles() {

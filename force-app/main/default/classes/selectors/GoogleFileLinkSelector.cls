@@ -51,6 +51,21 @@ public inherited sharing class GoogleFileLinkSelector extends GSOQL implements G
         return this;
     }
 
+	public GoogleFileLinkSelector byLinkedObjectId(Id recordId) {
+		whereAre(Filter.with(GoogleFileLink__c.LinkedObjectId__c).equal(String.valueOf(recordId)));
+		return this;
+	}
+
+    public GoogleFileLinkSelector withPlacementFields() {
+        with(
+            GoogleFileLink__c.Id,
+            GoogleFileLink__c.GoogleFileId__c,
+            GoogleFileLink__c.Source__c
+        );
+		
+        return this;
+    }
+
 	public GoogleFileLinkSelector withBaseFields() {
         with(
             GoogleFileLink__c.Id,

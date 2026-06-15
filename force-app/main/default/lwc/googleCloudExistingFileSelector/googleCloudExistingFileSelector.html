@@ -1,0 +1,82 @@
+<template>
+    <article class={panelClass}>
+        <div class="selector__header">
+            <div class="selector__copy">
+                <p class="selector__eyebrow">Attach Existing</p>
+                <p class="selector__subtitle">{subtitle}</p>
+            </div>
+
+            <lightning-button-icon
+                icon-name="utility:refresh"
+                variant="bare"
+                alternative-text="Refresh files"
+                title="Refresh files"
+                onclick={handleRefreshClick}
+                disabled={isLoading}>
+            </lightning-button-icon>
+        </div>
+
+        <template lwc:if={hasRecordContext}>
+            <div class="selector__search-row">
+                <lightning-input
+                    type="search"
+                    variant="label-hidden"
+                    placeholder="Search your files"
+                    value={searchTerm}
+                    onchange={handleSearchChange}>
+                </lightning-input>
+            </div>
+        </template>
+
+        <template lwc:if={isLoading}>
+            <div class="selector__state selector__state--loading">
+                <lightning-spinner alternative-text="Loading available files" size="small"></lightning-spinner>
+            </div>
+        </template>
+        <template lwc:elseif={hasError}>
+            <div class="selector__state selector__state--error">
+                <p>{errorMessage}</p>
+            </div>
+        </template>
+        <template lwc:elseif={hasFiles}>
+            <div class="selector__list">
+                <template for:each={visibleFiles} for:item="file">
+                    <article key={file.localId} class="selector__item">
+                        <div class="selector__item-main">
+                            <span class="selector__item-icon">
+                                <lightning-icon icon-name={file.icon} size="small" alternative-text={file.type}></lightning-icon>
+                            </span>
+
+                            <div class="selector__item-copy">
+                                <p class="selector__item-name" title={file.name}>{file.name}</p>
+                                <p class="selector__item-meta" title={file.metaLine}>{file.metaLine}</p>
+                                <p class="selector__item-links">{file.linksLabel}</p>
+                            </div>
+                        </div>
+
+                        <div class="selector__item-action">
+                            <template lwc:if={file.isBusy}>
+                                <lightning-spinner alternative-text="Attaching file" size="x-small"></lightning-spinner>
+                            </template>
+                            <template lwc:else>
+                                <lightning-button
+                                    label="Attach"
+                                    variant="brand-outline"
+                                    data-id={file.localId}
+                                    onclick={handleAttachClick}
+                                    disabled={file.isDisabled}>
+                                </lightning-button>
+                            </template>
+                        </div>
+                    </article>
+                </template>
+            </div>
+        </template>
+        <template lwc:else>
+            <div class="selector__state selector__state--empty">
+                <lightning-icon icon-name="utility:link" size="small" alternative-text="No files"></lightning-icon>
+                <p>{emptyStateMessage}</p>
+            </div>
+        </template>
+    </article>
+</template>

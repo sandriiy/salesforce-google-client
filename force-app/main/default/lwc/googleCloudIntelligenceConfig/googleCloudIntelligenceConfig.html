@@ -22,6 +22,13 @@
                             </button>
                         </div>
 
+                        <template lwc:if={isIntelligenceDisabled}>
+                            <div class="info-panel slds-m-top_small">
+                                <div class="info-title">AI analysis is OFF</div>
+                                <div class="info-text">Enable AI File Intelligence in Advanced settings before using summaries or document questions. You can still save and validate provider credentials here.</div>
+                            </div>
+                        </template>
+
                         <template lwc:if={isGeminiMode}>
                             <div class="recommendation-panel recommendation-panel-gemini slds-m-top_small">
                                 <div class="recommendation-title">Recommendation</div>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsAdditionalLink__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Indicates whether this link was created in addition to the primary link. Additional links are not created as part of the initial file creation process.</description>
+    <label>Is Additional Link?</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

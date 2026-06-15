@@ -4,10 +4,12 @@
 .cloud-file-layout-wrapper {
     width: 100%;
     margin-left: 0.75rem;
+    padding-bottom: clamp(0.75rem, 2vw, 1.25rem);
 }
 
 .cloud-record-layout {
     width: 100%;
+    position: relative;
 }
 
 /* ============================================================
@@ -22,10 +24,23 @@
 }
 
 .record-layout__header-top {
-    background: #f3f2f2;
-    padding: 1rem 1rem 0.75rem 1rem;
+    background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+    padding: 0.75rem 1rem 0.85rem;
     border-radius: var(--lwc-borderRadiusMedium, 0.25rem)
         var(--lwc-borderRadiusMedium, 0.25rem) 0 0;
+}
+
+.record-layout__header .slds-media {
+    align-items: center;
+}
+
+.record-layout__header .slds-media__figure {
+    align-self: center;
+    margin-top: 0;
+}
+
+.record-layout__header .slds-media__body {
+    min-width: 0;
 }
 
 .record-layout__header-bottom {
@@ -36,13 +51,29 @@
     border-radius: 0.25rem;
 }
 
+.cloud-file-title-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+}
+
 .cloud-file-file-type {
     color: #444444;
-    margin-top: -4px;
+    display: block;
+    margin: 0;
+    font-size: 0.9rem;
 }
 
 .cloud-file-file-name {
-    margin-top: -3px;
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    font-size: clamp(1.45rem, 2.1vw, 1.65rem);
+    font-weight: 450;
+    color: #000000;
+	margin-top: -8px;
 }
 
 .cloud-record-layout-compact {
@@ -107,7 +138,19 @@
 .record-layout__card {
     background: #ffffff;
     border-radius: var(--lwc-borderRadiusMedium, 0.25rem);
-    box-shadow: var(--lwc-shadowDropDown, 0 2px 2px 0 rgba(0, 0, 0, 0.16));
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.record-layout__page-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.74);
+    backdrop-filter: blur(2px);
+    border-radius: var(--lwc-borderRadiusMedium, 0.25rem);
 }
 
 .gcdc-hidden {
@@ -132,4 +175,10 @@
 .record-layout-side-region {
     padding-left: 0;
     padding-right: 0;
+}
+
+.record-layout-side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }

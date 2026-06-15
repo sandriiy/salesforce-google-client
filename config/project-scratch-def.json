@@ -1,13 +1,63 @@
 {
-  "orgName": "Andrii Sukhetskyi",
-  "edition": "Developer",
-  "features": ["EnableSetPasswordInApi"],
+  "orgName": "Andrii Sukhetskyi - Full Dev Scratch Org",
+  "edition": "Enterprise",
+  "country": "CA",
+  "language": "en_US",
+  "hasSampleData": true,
+  "features": [
+    "EnableSetPasswordInApi"
+  ],
   "settings": {
     "lightningExperienceSettings": {
       "enableS1DesktopEnabled": true
     },
     "mobileSettings": {
       "enableS1EncryptedStoragePref2": false
+    },
+    "chatterSettings": {
+      "enableChatter": true
+    },
+    "enhancedNotesSettings": {
+      "enableEnhancedNotes": true
+    },
+    "emailAdministrationSettings": {
+      "enableEnhancedEmailEnabled": true
+    },
+    "accountSettings": {
+      "enableAccountTeams": true,
+      "enableRelateContactToMultipleAccounts": true
+    },
+    "opportunitySettings": {
+      "enableOpportunityTeam": true,
+      "enableOpportunityFieldHistoryTracking": true
+    },
+    "quoteSettings": {
+      "enableQuote": true
+    },
+    "entitlementSettings": {
+      "enableEntitlements": true
+    },
+    "knowledgeSettings": {
+      "enableKnowledge": true,
+      "enableLightningKnowledge": true
+    },
+    "omniChannelSettings": {
+      "enableOmniChannel": true
+    },
+    "communitiesSettings": {
+      "enableNetworksEnabled": true
+    },
+    "experienceBundleSettings": {
+      "enableExperienceBundleMetadata": true
+    },
+    "pathAssistantSettings": {
+      "pathAssistantEnabled": true
+    },
+    "languageSettings": {
+      "enableTranslationWorkbench": true
+    },
+    "securitySettings": {
+      "enableAdminLoginAsAnyUser": true
     }
   }
 }

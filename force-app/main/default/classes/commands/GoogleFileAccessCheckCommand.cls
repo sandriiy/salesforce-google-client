@@ -25,6 +25,7 @@ public without sharing class GoogleFileAccessCheckCommand {
 	public class GoogleFileAccessCheckException extends Exception {}
 
 	private List<GoogleFile__c> inputFiles = new List<GoogleFile__c>();
+	private List<GoogleFileLink__c> scopedRecordLinks;
 	private Id targetUserId;
 	private final GoogleFileAccessResolver accessResolver;
 
@@ -54,7 +55,20 @@ public without sharing class GoogleFileAccessCheckCommand {
 		return this;
 	}
 
+	public GoogleFileAccessCheckCommand forRecordLinks(List<GoogleFileLink__c> links) {
+		if (links == null) {
+			return this;
+		}
+
+		if (scopedRecordLinks == null) {
+			scopedRecordLinks = new List<GoogleFileLink__c>();
+		}
+
+		scopedRecordLinks.addAll(links);
+		return this;
+	}
+
 	public List<GoogleFile__c> strip() {
-		return accessResolver.resolveAccessibleFiles(inputFiles, targetUserId);
+		return accessResolver.resolveAccessibleFiles(inputFiles, targetUserId, scopedRecordLinks);
 	}
 }

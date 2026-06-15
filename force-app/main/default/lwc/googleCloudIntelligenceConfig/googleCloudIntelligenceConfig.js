@@ -154,7 +154,19 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
     }
 
     get primaryActionLabel() {
-        return this.isConfigDirty ? 'Save & Validate' : 'Validate';
+        if (!this.isConfigDirty) {
+            return 'Validate';
+        }
+
+        return 'Save & Validate';
+    }
+
+    get isIntelligenceEnabled() {
+        return !!this.draft?.isFileIntelligenceEnabled;
+    }
+
+    get isIntelligenceDisabled() {
+        return !this.isIntelligenceEnabled;
     }
 
     get isConfigDirty() {

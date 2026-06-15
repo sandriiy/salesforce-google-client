@@ -174,6 +174,7 @@ public class GoogleCloudTestFactory {
 		public LinkBuilder forFile(Id fileId) { r.GoogleFileId__c = fileId; return this; }
 		public LinkBuilder withLinkedRecord(Id recordId) { r.LinkedObjectId__c = recordId == null ? null : String.valueOf(recordId); return this; }
 		public LinkBuilder withLinkedType(String v) { r.LinkedObjectType__c = v; return this; }
+		public LinkBuilder withSource(String v) { r.Source__c = v; return this; }
 		public LinkBuilder withShareType(String v) { r.ShareType__c = v; return this; }
 		public LinkBuilder withVisibility(String v) { r.Visibility__c = v; return this; }
 

@@ -64,7 +64,7 @@
                 </template>
                 <template lwc:else>
                     <div class="gcdc-file-explorer-table-wrap">
-                        <lightning-datatable
+                        <c-google-cloud-file-explorer-data-table
                             key-field="localId"
                             data={visibleRows}
                             columns={columns}
@@ -72,9 +72,9 @@
                             sorted-by={sortedBy}
                             sorted-direction={sortedDirection}
                             onsort={handleSort}
-                            onrowaction={handleRowAction}
+                            ontitleclick={handleTitleClick}
                             class="gcdc-file-explorer-table"
-                        ></lightning-datatable>
+                        ></c-google-cloud-file-explorer-data-table>
                     </div>
                 </template>
             </main>

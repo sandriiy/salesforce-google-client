@@ -1,5 +1,5 @@
 import { LightningElement, api, track, wire } from 'lwc';
-import { isEmpty, showToast, formatFileSize } from 'c/googleCloudUtils';
+import { isEmpty, formatFileSize, getFileIcon } from 'c/googleCloudUtils';
 import { refreshApex } from '@salesforce/apex';
 
 import getLocalFileVersions from '@salesforce/apex/GoogleCloudFilesViewController.retrieveLocalGoogleFileVersions';
@@ -19,7 +19,7 @@ export default class GoogleCloudFileVersions extends LightningElement {
 
 	@wire(getLocalFileVersions, { localFileRecordId: "$recordId" })
 	wireFileVersions(result) {
-		const { data, error } = result;
+		const { data } = result;
 		this.wiredFileVersions = result;
 
 		if (data) {
@@ -29,10 +29,7 @@ export default class GoogleCloudFileVersions extends LightningElement {
 	}
 
 	handleVersionClick(event) {
-		let previewComponent = this.refs.filePreviewModal;
-		let parentContainer = event.target.closest('li[data-id]');
-		let parentContainerId = parentContainer.getAttribute('data-id');
-		previewComponent.openVersion(this.recordId, parentContainerId);
+		this.refs.filePreviewModal.openVersion(this.recordId, event.detail.value);
 	}
 
 	buildVersionViewModels(versions) {
@@ -43,23 +40,24 @@ export default class GoogleCloudFileVersions extends LightningElement {
 		return versions.map((record, index) => {
 			const id = record.Id;
 			const size = record.Size__c;
-			const type = record.Type__c;
-
-			const createdByName = record.CreatedBy?.Name || 'Unknown';
+			const fileName = record.Name || 'Untitled';
 
 			const createdDt = record.CreatedDate ? new Date(record.CreatedDate) : null;
 			const createdDateLabel = createdDt ? createdDt.toLocaleDateString() : '';
-			const createdTimeLabel = createdDt ? createdDt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }): '';
-			const meta = `${createdByName} | ${type} | ${formatFileSize(size)}`;
+			const sizeLabel = formatFileSize(size);
 			const name = `Version ${versions.length - index}`;
 
 			return {
 				id,
 				name,
-				meta,
+				fileName,
+				iconName: getFileIcon(fileName),
 				createdDateLabel,
-				createdTimeLabel,
-				hasWarning: !isEmpty(record.PublicLinkPermissionId__c)
+				sizeLabel,
+				warningMessage: !isEmpty(record.PublicLinkPermissionId__c)
+					? 'This version contains a public link. For security, consider removing it'
+					: '',
+				detailVariant: !isEmpty(record.PublicLinkPermissionId__c) ? 'warning' : 'default'
 			};
 		});
 	}
@@ -84,5 +82,9 @@ export default class GoogleCloudFileVersions extends LightningElement {
 		});
 
 		this.dispatchEvent(evt);
+	}
+
+	get badgeText() {
+		return this.allVersions ? `(${String(this.allVersions.length)})` : '';
 	}
 }

@@ -48,7 +48,7 @@ There is no visible difference for end users, and no changes to how files move t
 
 ## Enterprise Managed Package
 
-Starting with 2.0.0, this codebase is also maintained in parallel as an Enterprise managed package. The managed package may include capabilities that are not available in the open-source version and is intended for organizations that need stronger release validation, support, penetration-testing reassurance, and Salesforce security-review alignment. For reference: https://sandriiy.github.io/salesforce-google-client/enterprise/
+Starting with 2.0.0, this codebase is also maintained in parallel as an Enterprise managed package. The managed package may include capabilities that are not available in the open-source version and is intended for organizations that need stronger release validation, support, penetration-testing reassurance, and Salesforce security-review alignment. **[Click here](https://sandriiy.github.io/salesforce-google-client/enterprise/)** for more.
 
 <br />
 

@@ -316,4 +316,175 @@ private class GoogleFileStoreInFolderCommandTest {
 		Assert.areEqual(null, sameVersion.GoogleDriveFolderId__c);
 		Assert.areEqual('GD_STANDALONE_1', sameVersion.GoogleDriveFileId__c);
 	}
+
+	@IsTest
+	private static void testPlaceFilePositiveUsesFallbackDriveAsEffectiveRoot() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.queryContains('appProperties')
+		).thenReturnStatus(200, '{"files":[]}');
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('PATCH')
+		).thenReturnStatus(200, '{"id":"MOVED_FILE_FALLBACK"}');
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('PUT')
+		).thenReturnStatus(200, '{"id":"MOVED_FILE_FALLBACK"}');
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+
+		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
+		config.DefaultGoogleUploadFolderId__c = 'PRIMARY_ROOT_FOLDER';
+		config.AdditionalGoogleUploadFolderIds__c = 'FALLBACK_ROOT_FOLDER';
+		config.CustomGoogleUploadFolderStructure__c = '{Record}';
+		GoogleMetadataConfigService.configRecordOverride = config;
+
+		Account linkedRecord = new Account(Name = 'Fallback Placement Account');
+		insert linkedRecord;
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('Fallback File')
+			.insertRecord();
+
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('Fallback File.pdf')
+			.withType('application/pdf')
+			.withSize(1)
+			.withDriveId('GD_FALLBACK_1')
+			.withDocsId('GWS_FALLBACK_1')
+			.insertRecord();
+
+		localFileVersion.GoogleDriveFolderId__c = 'FALLBACK_ROOT_FOLDER';
+		update localFileVersion;
+
+		GoogleFileLink__c link = GoogleCloudTestFactory.link()
+			.forFile(parentFile.Id)
+			.withLinkedRecord(linkedRecord.Id)
+			.withLinkedType('Account')
+			.insertRecord();
+
+		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(
+			UserInfo.getUserId(),
+			parentFile.Id,
+			localFileVersion.Id,
+			link.Id
+		);
+
+		IGoogleUnitOfWork uow = buildUow();
+
+		Test.startTest();
+		new GoogleFileStoreInFolderCommand(uow).placeFile(request);
+		uow.commitWork(true);
+		Test.stopTest();
+
+		GoogleFileVersion__c updated = [
+			SELECT GoogleDriveFolderId__c, GoogleDriveFileId__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :localFileVersion.Id
+			LIMIT 1
+		];
+
+		Assert.isNotNull(updated.GoogleDriveFolderId__c);
+		Assert.areEqual('MOVED_FILE_FALLBACK', updated.GoogleDriveFileId__c);
+
+		Boolean createdFolderInFallbackDrive = false;
+		for (GoogleDriveHttpMock.CapturedRequest captured : driveMock.getCapturedRequests()) {
+			if (captured.method == 'POST' && captured.body != null && captured.body.contains('FALLBACK_ROOT_FOLDER')) {
+				createdFolderInFallbackDrive = true;
+				break;
+			}
+		}
+		Assert.isTrue(createdFolderInFallbackDrive, 'Expected a folder-creation POST whose body references the fallback root folder');
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveSelfHealsFromDriveWhenStoredFolderBlank() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.endpointContains('GD_BIGFILE_1')
+				.queryContains('fields=id')
+		).thenReturnStatus(200, '{"id":"GD_BIGFILE_1","parents":["FALLBACK_ROOT_FOLDER"]}');
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.queryContains('appProperties')
+		).thenReturnStatus(200, '{"files":[]}');
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('PATCH')
+		).thenReturnStatus(200, '{"id":"MOVED_FILE_BIGFILE"}');
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+
+		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
+		config.DefaultGoogleUploadFolderId__c = 'PRIMARY_ROOT_FOLDER';
+		config.AdditionalGoogleUploadFolderIds__c = 'FALLBACK_ROOT_FOLDER';
+		config.CustomGoogleUploadFolderStructure__c = '{Record}';
+		GoogleMetadataConfigService.configRecordOverride = config;
+
+		Account linkedRecord = new Account(Name = 'Self-Healing Placement Account');
+		insert linkedRecord;
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('Big File')
+			.insertRecord();
+
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('Big File.pdf')
+			.withType('application/pdf')
+			.withSize(1)
+			.withDriveId('GD_BIGFILE_1')
+			.withDocsId('GWS_BIGFILE_1')
+			.insertRecord();
+
+		GoogleFileLink__c link = GoogleCloudTestFactory.link()
+			.forFile(parentFile.Id)
+			.withLinkedRecord(linkedRecord.Id)
+			.withLinkedType('Account')
+			.insertRecord();
+
+		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(
+			UserInfo.getUserId(),
+			parentFile.Id,
+			localFileVersion.Id,
+			link.Id
+		);
+
+		IGoogleUnitOfWork uow = buildUow();
+
+		Test.startTest();
+		new GoogleFileStoreInFolderCommand(uow).placeFile(request);
+		uow.commitWork(true);
+		Test.stopTest();
+
+		GoogleFileVersion__c updated = [
+			SELECT GoogleDriveFolderId__c, GoogleDriveFileId__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :localFileVersion.Id
+			LIMIT 1
+		];
+
+		Assert.isNotNull(updated.GoogleDriveFolderId__c);
+		Assert.areEqual('MOVED_FILE_BIGFILE', updated.GoogleDriveFileId__c);
+
+		Boolean searchedInFallbackDrive = false;
+		Boolean createdFolderInFallbackDrive = false;
+		for (GoogleDriveHttpMock.CapturedRequest captured : driveMock.getCapturedRequests()) {
+			if (captured.method == 'GET' && captured.endpoint != null && captured.endpoint.contains('FALLBACK_ROOT_FOLDER')) {
+				searchedInFallbackDrive = true;
+			}
+			if (captured.method == 'POST' && captured.body != null && captured.body.contains('FALLBACK_ROOT_FOLDER')) {
+				createdFolderInFallbackDrive = true;
+			}
+		}
+		Assert.isTrue(searchedInFallbackDrive, 'Expected the subfolder search to run inside the fallback root discovered via Drive lookup');
+		Assert.isTrue(createdFolderInFallbackDrive, 'Expected the subfolder creation POST to reference the fallback root');
+	}
 }

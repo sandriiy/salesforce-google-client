@@ -42,6 +42,7 @@ const QUERY = gql`
                             CustomGoogleCertificate__c { value }
 
                             DefaultGoogleUploadFolderId__c { value }
+                            AdditionalGoogleUploadFolderIds__c { value }
                             DefaultBigFileSize__c { value }
                             OrganizationalDomain__c { value }
                             IsFilePreviewDisabled__c { value }
@@ -84,6 +85,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         customGoogleServiceAccount: '',
         customGoogleCertificate: '',
         defaultGoogleUploadFolderId: '',
+        additionalGoogleUploadFolderIds: '',
         customGoogleUploadFolderStructure: '',
         organizationalDomain: '',
         defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
@@ -104,6 +106,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     selectedConfigKey = CONFIG_SECTIONS?.[0]?.key || 'drive';
     isConfigMenuOpen = false;
     viewMode = 'main';
+    validationIssues = new Map();
 
     connectedCallback() {
         this.initActiveConfigComponent();
@@ -203,6 +206,23 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         showToast(this, 'Incomplete setup', 'Complete Authorization before moving to Folder structure', 'warning');
     }
 
+    handleValidityChange(event) {
+        const detail = event?.detail || {};
+        const { key, isValid, message } = detail;
+        if (!key) return;
+
+        if (isValid) {
+            this.validationIssues.delete(key);
+        } else {
+            this.validationIssues.set(key, message || 'Invalid input');
+        }
+    }
+
+    firstTrackedValidationMessage() {
+        if (!this.validationIssues || this.validationIssues.size === 0) return null;
+        return this.validationIssues.values().next().value;
+    }
+
     handleChangeNumber(event) {
         const fieldName = event.target.dataset.field;
         this.draft = {
@@ -293,6 +313,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     }
 
     validateInputsBeforeSave() {
+        const trackedMessage = this.firstTrackedValidationMessage();
+        if (trackedMessage) {
+            showToast(this, 'Invalid Fields', trackedMessage, 'error');
+            return false;
+        }
+
         const configComponent = this.refs.configComponent;
 
         if (!this.isAdvancedView && configComponent && typeof configComponent.reportValidity === 'function') {
@@ -417,6 +443,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGoogleServiceAccount: null,
             customGoogleCertificate: null,
             defaultGoogleUploadFolderId: null,
+            additionalGoogleUploadFolderIds: '',
             customGoogleUploadFolderStructure: '',
             organizationalDomain: '',
             defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
@@ -442,6 +469,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGoogleServiceAccount: extractGraphValue(recordNode?.CustomGoogleServiceAccount__c),
             customGoogleCertificate: extractGraphValue(recordNode?.CustomGoogleCertificate__c),
             defaultGoogleUploadFolderId: extractGraphValue(recordNode?.DefaultGoogleUploadFolderId__c),
+            additionalGoogleUploadFolderIds: extractGraphValue(recordNode?.AdditionalGoogleUploadFolderIds__c) || '',
             customGoogleUploadFolderStructure: extractGraphValue(recordNode?.CustomGoogleUploadFolderStructure__c) || '',
             organizationalDomain: extractGraphValue(recordNode?.OrganizationalDomain__c) || '',
             defaultBigFileSize: this.toNumberOrNull(extractGraphValue(recordNode?.DefaultBigFileSize__c)),
@@ -466,6 +494,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGoogleServiceAccount: serverSnapshot.customGoogleServiceAccount || '',
             customGoogleCertificate: serverSnapshot.customGoogleCertificate || '',
             defaultGoogleUploadFolderId: serverSnapshot.defaultGoogleUploadFolderId || '',
+            additionalGoogleUploadFolderIds: serverSnapshot.additionalGoogleUploadFolderIds || '',
             customGoogleUploadFolderStructure: serverSnapshot.customGoogleUploadFolderStructure || '',
             organizationalDomain: serverSnapshot.organizationalDomain || '',
             defaultBigFileSize: serverSnapshot.defaultBigFileSize,
@@ -501,6 +530,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'CustomGoogleServiceAccount__c', serverState.customGoogleServiceAccount, draftState.customGoogleServiceAccount);
         this.putIfChanged(changed, 'CustomGoogleCertificate__c', serverState.customGoogleCertificate, draftState.customGoogleCertificate);
         this.putIfChanged(changed, 'DefaultGoogleUploadFolderId__c', serverState.defaultGoogleUploadFolderId, draftState.defaultGoogleUploadFolderId);
+        this.putIfChanged(changed, 'AdditionalGoogleUploadFolderIds__c', serverState.additionalGoogleUploadFolderIds, draftState.additionalGoogleUploadFolderIds);
         this.putIfChanged(changed, 'OrganizationalDomain__c', serverState.organizationalDomain, draftState.organizationalDomain);
         this.putIfChanged(changed, 'DefaultBigFileSize__c', serverState.defaultBigFileSize, draftState.defaultBigFileSize);
         this.putIfChanged(changed, 'IsFilePreviewDisabled__c', !!serverState.isFilePreviewDisabled, !!draftState.isFilePreviewDisabled);
@@ -524,6 +554,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGoogleServiceAccount: draftState.customGoogleServiceAccount || '',
             customGoogleCertificate: draftState.customGoogleCertificate || '',
             defaultGoogleUploadFolderId: draftState.defaultGoogleUploadFolderId || '',
+            additionalGoogleUploadFolderIds: draftState.additionalGoogleUploadFolderIds || '',
             customGoogleUploadFolderStructure: draftState.customGoogleUploadFolderStructure || '',
             organizationalDomain: draftState.organizationalDomain || '',
             defaultBigFileSize: draftState.defaultBigFileSize,
@@ -692,6 +723,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.customGoogleServiceAccount || '') !== (draftState.customGoogleServiceAccount || '') ||
             (serverState.customGoogleCertificate || '') !== (draftState.customGoogleCertificate || '') ||
             (serverState.defaultGoogleUploadFolderId || '') !== (draftState.defaultGoogleUploadFolderId || '') ||
+            (serverState.additionalGoogleUploadFolderIds || '') !== (draftState.additionalGoogleUploadFolderIds || '') ||
             (serverState.customGoogleUploadFolderStructure || '') !== (draftState.customGoogleUploadFolderStructure || '') ||
             (serverState.organizationalDomain || '') !== (draftState.organizationalDomain || '') ||
             (serverState.defaultBigFileSize ?? null) !== (draftState.defaultBigFileSize ?? null) ||

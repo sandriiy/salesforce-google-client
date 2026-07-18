@@ -48,15 +48,15 @@ public without sharing class GoogleFileStoreInFolderCommand {
         }
 
         List<String> uploadParentFolderIds = this.metadataService.getTargetFolderResolver().resolveUploadFolderId();
-        String rootFolderId = getFirstFolderId(uploadParentFolderIds);
-        if (String.isBlank(rootFolderId)) return;
+        String primaryRootFolderId = getFirstFolderId(uploadParentFolderIds);
 
         RemoteFileIds remoteFileIds = loadRemoteFileIds(request.localGoogleFileVersionId);
 
         Logger.info(
             'Folder Placement Job --> RemoteIds' +
             ', GoogleDriveFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleDriveFileId) +
-            ', GoogleWorkspaceFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleWorkspaceFileId)
+            ', GoogleWorkspaceFileId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.googleWorkspaceFileId) +
+            ', StoredGoogleDriveFolderId=' + String.valueOf(remoteFileIds == null ? null : remoteFileIds.currentGoogleDriveFolderId)
         ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
         if (remoteFileIds == null || String.isBlank(remoteFileIds.googleDriveFileId)) {
@@ -64,26 +64,32 @@ public without sharing class GoogleFileStoreInFolderCommand {
 			return;
         }
 
+        String effectiveRootFolderId = resolveEffectiveRootFolderId(remoteFileIds, primaryRootFolderId);
+        if (String.isBlank(effectiveRootFolderId)) return;
+
         Id relatedRecordId = loadRelatedRecordId(request);
-        String destinationFolderId = folderStructureCommand.findExistingFolder(request.initiatorUserId, relatedRecordId);
+        String destinationFolderId = folderStructureCommand.findExistingFolder(effectiveRootFolderId, request.initiatorUserId, relatedRecordId);
         if (String.isBlank(destinationFolderId)) {
-            destinationFolderId = folderStructureCommand.ensureFolder(request.initiatorUserId, relatedRecordId);
+            destinationFolderId = folderStructureCommand.ensureFolder(effectiveRootFolderId, request.initiatorUserId, relatedRecordId);
         }
 		
         if (String.isBlank(destinationFolderId)) return;
 
+        List<String> foldersToDetach = new List<String>{effectiveRootFolderId};
+
         Logger.info(
             'Folder Placement Job --> Move' +
             ', SourceFileId=' + String.valueOf(remoteFileIds.googleDriveFileId) +
+            ', EffectiveRootFolderId=' + String.valueOf(effectiveRootFolderId) +
             ', DestinationFolderId=' + String.valueOf(destinationFolderId) +
-            ', RemoveParents=' + String.valueOf(uploadParentFolderIds)
+            ', RemoveParents=' + String.valueOf(foldersToDetach)
         ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
         GoogleFileEntity movedFile;
         try {
             movedFile = this.remoteGoogleDrive.files().modify().metadata(remoteFileIds.googleDriveFileId)
                 .addParentFolders(new List<String>{destinationFolderId})
-                .removeParentFolders(uploadParentFolderIds)
+                .removeParentFolders(foldersToDetach)
                 .setSupportsAllDrives(true)
                 .execute();
         } catch (Exception e) {
@@ -101,7 +107,7 @@ public without sharing class GoogleFileStoreInFolderCommand {
         if (String.isBlank(resultingGoogleDriveFileId)) return;
 
         if (!String.isBlank(remoteFileIds.googleWorkspaceFileId)) {
-            moveRemoteFile(remoteFileIds.googleWorkspaceFileId, uploadParentFolderIds, destinationFolderId);
+            moveRemoteFile(remoteFileIds.googleWorkspaceFileId, foldersToDetach, destinationFolderId);
         }
 
         registerLatestVersionFolderUpdate(
@@ -140,7 +146,8 @@ public without sharing class GoogleFileStoreInFolderCommand {
 
         return new RemoteFileIds(
             versionRecord.GoogleDriveFileId__c,
-            versionRecord.GoogleDocsFileId__c
+            versionRecord.GoogleDocsFileId__c,
+            versionRecord.GoogleDriveFolderId__c
         );
     }
 
@@ -187,13 +194,59 @@ public without sharing class GoogleFileStoreInFolderCommand {
         return null;
     }
 
+    private String resolveEffectiveRootFolderId(RemoteFileIds remoteFileIds, String primaryRootFolderId) {
+        if (remoteFileIds != null && String.isNotBlank(remoteFileIds.currentGoogleDriveFolderId)) {
+            return remoteFileIds.currentGoogleDriveFolderId;
+        }
+
+        String parentFromDrive = fetchCurrentParentFromDrive(remoteFileIds == null ? null : remoteFileIds.googleDriveFileId);
+        if (String.isNotBlank(parentFromDrive)) {
+            Logger.info(
+                'Folder Placement Job --> Effective root resolved via Drive lookup' +
+                ', SourceFileId=' + String.valueOf(remoteFileIds.googleDriveFileId) +
+                ', EffectiveRootFolderId=' + parentFromDrive
+            ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+            return parentFromDrive;
+        }
+
+        return primaryRootFolderId;
+    }
+
+    private String fetchCurrentParentFromDrive(String googleDriveFileId) {
+        if (String.isBlank(googleDriveFileId)) return null;
+
+        try {
+            GoogleFileEntity currentFile = this.remoteGoogleDrive.files().retrieve().download(googleDriveFileId)
+                .setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.METADATA)
+                .setSearchOnAllDrives(true)
+                .setFields('id, parents')
+                .execute();
+
+            if (currentFile == null || currentFile.parents == null) return null;
+
+            for (String parent : currentFile.parents) {
+                if (String.isNotBlank(parent)) return parent;
+            }
+        } catch (Exception ex) {
+            Logger.info(
+                'Folder Placement Job --> Drive parent lookup failed' +
+                ', SourceFileId=' + String.valueOf(googleDriveFileId) +
+                ', Error=' + ex.getMessage()
+            ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+        }
+
+        return null;
+    }
+
     private class RemoteFileIds {
         public String googleDriveFileId;
         public String googleWorkspaceFileId;
+        public String currentGoogleDriveFolderId;
 
-        public RemoteFileIds(String googleDriveFileId, String googleWorkspaceFileId) {
+        public RemoteFileIds(String googleDriveFileId, String googleWorkspaceFileId, String currentGoogleDriveFolderId) {
             this.googleDriveFileId = googleDriveFileId;
             this.googleWorkspaceFileId = googleWorkspaceFileId;
+            this.currentGoogleDriveFolderId = currentGoogleDriveFolderId;
         }
     }
 }

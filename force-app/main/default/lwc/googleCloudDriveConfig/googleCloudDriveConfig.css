@@ -15,6 +15,7 @@
 
 .config-step-bar {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     padding: 10px;
     border-radius: 14px;
@@ -23,7 +24,8 @@
 }
 
 .step-button {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 120px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -198,6 +200,100 @@
 
 .drag-cursor {
     cursor: grab;
+}
+
+.upload-folder-card {
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+.upload-folder-header {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.upload-folder-title {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    font-weight: 600;
+}
+
+.upload-folder-count {
+    font-size: 12.5px;
+    opacity: 0.85;
+}
+
+.upload-folder-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.upload-folder-item {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(0,0,0,0.10);
+}
+
+.upload-folder-item.is-primary {
+    border-color: rgba(1,118,211,0.25);
+}
+
+.upload-folder-item.is-dragging {
+    opacity: 0.6;
+}
+
+.upload-folder-item.is-drop-target {
+    outline: 2px dashed rgba(1, 118, 211, 0.55);
+    outline-offset: 2px;
+}
+
+.upload-folder-title-row {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.upload-folder-item-title {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.upload-folder-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(1,118,211,0.15);
+    color: #014486;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.upload-folder-input-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.upload-folder-input-row lightning-input {
+    min-width: 0;
+}
+
+.upload-folder-controls {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+	margin-top: -5px;
 }
 
 .quick-setup-title {

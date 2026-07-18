@@ -31,4 +31,8 @@ public with sharing class GoogleMetadataTargetFolderResolver implements IGoogleT
     public List<String> resolveUploadFolderId() {
         return new List<String>{config.getDefaultUploadFolderId()};
     }
+
+    public List<String> resolveUploadFolderCandidates() {
+        return config.getAllUploadFolderIds();
+    }
 }

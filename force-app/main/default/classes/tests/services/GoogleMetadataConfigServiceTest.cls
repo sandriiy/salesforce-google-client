@@ -135,4 +135,91 @@ private class GoogleMetadataConfigServiceTest {
 		System.assertNotEquals(null, svc.getBigFileSizeInBytes());
 		System.assertNotEquals(null, svc.getDeleteChainSize());
 	}
+
+	@IsTest
+	private static void testGetAdditionalUploadFolderIdsPositiveEmpty() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			AdditionalGoogleUploadFolderIds__c = null
+		);
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		Assert.areEqual(0, svc.getAdditionalUploadFolderIds().size());
+	}
+
+	@IsTest
+	private static void testGetAdditionalUploadFolderIdsPositiveBlank() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			AdditionalGoogleUploadFolderIds__c = '   '
+		);
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		Assert.areEqual(0, svc.getAdditionalUploadFolderIds().size());
+	}
+
+	@IsTest
+	private static void testGetAdditionalUploadFolderIdsPositiveTrimsAndDropsBlanks() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			AdditionalGoogleUploadFolderIds__c = ' folder_a ;;folder_b; ;folder_c '
+		);
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		List<String> ids = svc.getAdditionalUploadFolderIds();
+		Assert.areEqual(3, ids.size());
+		Assert.areEqual('folder_a', ids[0]);
+		Assert.areEqual('folder_b', ids[1]);
+		Assert.areEqual('folder_c', ids[2]);
+	}
+
+	@IsTest
+	private static void testGetAllUploadFolderIdsPositiveOrderedAndDeduped() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DefaultGoogleUploadFolderId__c = 'primary_folder',
+			AdditionalGoogleUploadFolderIds__c = 'secondary_folder;primary_folder;third_folder'
+		);
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		List<String> ordered = svc.getAllUploadFolderIds();
+		Assert.areEqual(3, ordered.size());
+		Assert.areEqual('primary_folder', ordered[0]);
+		Assert.areEqual('secondary_folder', ordered[1]);
+		Assert.areEqual('third_folder', ordered[2]);
+	}
+
+	@IsTest
+	private static void testGetAllUploadFolderIdsPositivePrimaryOnly() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DefaultGoogleUploadFolderId__c = 'primary_folder',
+			AdditionalGoogleUploadFolderIds__c = null
+		);
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		List<String> ordered = svc.getAllUploadFolderIds();
+		Assert.areEqual(1, ordered.size());
+		Assert.areEqual('primary_folder', ordered[0]);
+	}
+
+	@IsTest
+	private static void testGetAllUploadFolderIdsPositiveNoPrimary() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DefaultGoogleUploadFolderId__c = null,
+			AdditionalGoogleUploadFolderIds__c = 'secondary_folder;third_folder'
+		);
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		List<String> ordered = svc.getAllUploadFolderIds();
+		Assert.areEqual(2, ordered.size());
+		Assert.areEqual('secondary_folder', ordered[0]);
+		Assert.areEqual('third_folder', ordered[1]);
+	}
+
+	@IsTest
+	private static void testGetAllUploadFolderIdsPositiveAllBlank() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DefaultGoogleUploadFolderId__c = null,
+			AdditionalGoogleUploadFolderIds__c = null
+		);
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		Assert.areEqual(0, svc.getAllUploadFolderIds().size());
+	}
 }

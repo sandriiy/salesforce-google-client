@@ -157,4 +157,46 @@ private class GoogleFileFolderStructureCommandTest {
 
 		Assert.areEqual('EXISTING_FOLDER_01', folderId);
 	}
+
+	@IsTest
+	private static void testEnsureFolderPositiveExplicitRootOverride() {
+		GoogleCloudTestFactory.initMocks(buildMissingFolderMock());
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('PRIMARY_ROOT', '{Record}');
+
+		Account linkedRecord = new Account(Name = 'Fallback Root Account');
+		insert linkedRecord;
+
+		Test.startTest();
+		String folderId = new GoogleFileFolderStructureCommand().ensureFolder('FALLBACK_ROOT', UserInfo.getUserId(), linkedRecord.Id);
+		Test.stopTest();
+
+		Assert.isNotNull(folderId);
+	}
+
+	@IsTest
+	private static void testEnsureFolderPositiveExplicitRootBlankReturnsNull() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('PRIMARY_ROOT', '{User}');
+
+		Test.startTest();
+		String folderId = new GoogleFileFolderStructureCommand().ensureFolder('', UserInfo.getUserId(), null);
+		Test.stopTest();
+
+		Assert.areEqual(null, folderId);
+	}
+
+	@IsTest
+	private static void testFindExistingFolderPositiveExplicitRootOverride() {
+		GoogleCloudTestFactory.initMocks(buildExistingFolderMock('EXISTING_FALLBACK_FOLDER'));
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('PRIMARY_ROOT', '{Record}');
+
+		Account linkedRecord = new Account(Name = 'Fallback Existing Account');
+		insert linkedRecord;
+
+		Test.startTest();
+		String folderId = new GoogleFileFolderStructureCommand().findExistingFolder('FALLBACK_ROOT', UserInfo.getUserId(), linkedRecord.Id);
+		Test.stopTest();
+
+		Assert.areEqual('EXISTING_FALLBACK_FOLDER', folderId);
+	}
 }

@@ -99,6 +99,42 @@ public inherited sharing class GoogleMetadataConfigService {
         return configRecord.DefaultGoogleUploadFolderId__c;
     }
 
+    public List<String> getAdditionalUploadFolderIds() {
+        String raw = configRecord.AdditionalGoogleUploadFolderIds__c;
+        List<String> result = new List<String>();
+        if (String.isBlank(raw)) return result;
+
+        for (String token : raw.split(';')) {
+            if (token == null) continue;
+            String trimmed = token.trim();
+            if (String.isNotBlank(trimmed)) result.add(trimmed);
+        }
+
+        return result;
+    }
+
+    public List<String> getAllUploadFolderIds() {
+        List<String> ordered = new List<String>();
+        Set<String> seen = new Set<String>();
+
+        String primary = getDefaultUploadFolderId();
+        if (String.isNotBlank(primary)) {
+            String trimmedPrimary = primary.trim();
+            if (String.isNotBlank(trimmedPrimary)) {
+                ordered.add(trimmedPrimary);
+                seen.add(trimmedPrimary);
+            }
+        }
+
+        for (String additional : getAdditionalUploadFolderIds()) {
+            if (seen.contains(additional)) continue;
+            ordered.add(additional);
+            seen.add(additional);
+        }
+
+        return ordered;
+    }
+
     public String getGoogleDriveAuthorizerClassName() {
         String customClassName = configRecord.CustomGoogleAuthorizerClass__c;
 		return String.isNotBlank(customClassName) ? customClassName : DEFAULT_AUTH_CLASS_NAME;

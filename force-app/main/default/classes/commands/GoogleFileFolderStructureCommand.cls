@@ -45,13 +45,25 @@ public without sharing class GoogleFileFolderStructureCommand {
 		return resolveFolderId(initiatorUserId, relatedRecordId, true);
 	}
 
+	public String ensureFolder(String rootFolderId, Id initiatorUserId, Id relatedRecordId) {
+		return resolveFolderId(rootFolderId, initiatorUserId, relatedRecordId, true);
+	}
+
 	public String findExistingFolder(Id initiatorUserId, Id relatedRecordId) {
 		return resolveFolderId(initiatorUserId, relatedRecordId, false);
+	}
+
+	public String findExistingFolder(String rootFolderId, Id initiatorUserId, Id relatedRecordId) {
+		return resolveFolderId(rootFolderId, initiatorUserId, relatedRecordId, false);
 	}
 
 	private String resolveFolderId(Id initiatorUserId, Id relatedRecordId, Boolean createIfMissing) {
 		List<String> uploadParentFolderIds = metadataService.getTargetFolderResolver().resolveUploadFolderId();
 		String rootFolderId = getFirstFolderId(uploadParentFolderIds);
+		return resolveFolderId(rootFolderId, initiatorUserId, relatedRecordId, createIfMissing);
+	}
+
+	private String resolveFolderId(String rootFolderId, Id initiatorUserId, Id relatedRecordId, Boolean createIfMissing) {
 		if (String.isBlank(rootFolderId)) return null;
 
 		String folderStructure = metadataService.getGoogleDriveFolderStructure();

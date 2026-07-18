@@ -55,6 +55,10 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
+                <field>AdditionalGoogleUploadFolderIds__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
                 <field>CustomGoogleAuthorizerClass__c</field>
             </layoutItems>
             <layoutItems>

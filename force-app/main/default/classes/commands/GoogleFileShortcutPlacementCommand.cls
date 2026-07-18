@@ -45,12 +45,16 @@ public without sharing class GoogleFileShortcutPlacementCommand {
 			throw new GoogleFileShortcutPlacementCommandException('Shortcut Placement Job Failed, latest Google File Version not found');
 		}
 
-		String destinationFolderId = folderStructureCommand.ensureFolder(initiatorUserId, relatedRecordId);
+		String effectiveRootFolderId = resolveEffectiveRootFolderId(latestVersion);
+		String destinationFolderId = String.isBlank(effectiveRootFolderId)
+			? folderStructureCommand.ensureFolder(initiatorUserId, relatedRecordId)
+			: folderStructureCommand.ensureFolder(effectiveRootFolderId, initiatorUserId, relatedRecordId);
 		if (String.isBlank(destinationFolderId)) return;
 
 		Logger.info(
 			'Shortcut Placement Job --> Create' +
 			', SourceFileId=' + String.valueOf(latestVersion.GoogleDriveFileId__c) +
+			', EffectiveRootFolderId=' + String.valueOf(effectiveRootFolderId) +
 			', DestinationFolderId=' + String.valueOf(destinationFolderId) +
 			', LinkId=' + String.valueOf(linkLocalGoogleFileId)
 		).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
@@ -79,6 +83,42 @@ public without sharing class GoogleFileShortcutPlacementCommand {
 
 			throw new GoogleFileShortcutPlacementCommandException('Shortcut Placement Job Failed, remote shortcut create failed');
 		}
+	}
+
+	private String resolveEffectiveRootFolderId(GoogleFileVersion__c latestVersion) {
+		if (latestVersion == null) return null;
+
+		if (String.isNotBlank(latestVersion.GoogleDriveFolderId__c)) {
+			return latestVersion.GoogleDriveFolderId__c;
+		}
+
+		return fetchCurrentParentFromDrive(latestVersion.GoogleDriveFileId__c);
+	}
+
+	private String fetchCurrentParentFromDrive(String googleDriveFileId) {
+		if (String.isBlank(googleDriveFileId)) return null;
+
+		try {
+			GoogleFileEntity currentFile = remoteGoogleDrive.files().retrieve().download(googleDriveFileId)
+				.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.METADATA)
+				.setSearchOnAllDrives(true)
+				.setFields('id, parents')
+				.execute();
+
+			if (currentFile == null || currentFile.parents == null) return null;
+
+			for (String parent : currentFile.parents) {
+				if (String.isNotBlank(parent)) return parent;
+			}
+		} catch (Exception ex) {
+			Logger.info(
+				'Shortcut Placement Job --> Drive parent lookup failed' +
+				', SourceFileId=' + String.valueOf(googleDriveFileId) +
+				', Error=' + ex.getMessage()
+			).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		}
+
+		return null;
 	}
 
 	private GoogleFileLink__c loadFileLink(Id linkLocalGoogleFileId) {

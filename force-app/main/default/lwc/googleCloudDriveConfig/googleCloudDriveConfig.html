@@ -10,7 +10,12 @@
                                 <span class="step-label">Authorization</span>
                             </button>
 
-                            <button class={folderStepClass} data-step="folder" onclick={handleStepClick} type="button">
+                            <button class={locationsStepClass} data-step="locations" onclick={handleStepClick} type="button">
+                                <span class="step-indicator"></span>
+                                <span class="step-label">Folder Locations</span>
+                            </button>
+
+                            <button class={structureStepClass} data-step="structure" onclick={handleStepClick} type="button">
                                 <span class="step-indicator"></span>
                                 <span class="step-label">Folder Structure</span>
                             </button>
@@ -97,7 +102,7 @@
                                                 <lightning-button
                                                     variant="brand"
                                                     label="Next"
-                                                    onclick={goToFolderStep}
+                                                    onclick={goToLocationsStep}
                                                     disabled={busy}>
                                                 </lightning-button>
                                             </div>
@@ -107,23 +112,114 @@
                             </div>
                         </template>
 
-                        <template lwc:if={isFolderStep}>
+                        <template lwc:if={isLocationsStep}>
                             <div class="slds-m-top_medium">
-                                <lightning-input
-                                    value={draft.defaultGoogleUploadFolderId}
-                                    onchange={handleTextChange}
-                                    data-field="defaultGoogleUploadFolderId"
-                                    label="Default Upload Folder Id"
-                                    field-level-help="The ID of the Google Drive folder where files will be uploaded by default. Prefer a Shared Drive folder for org-wide ownership and simpler access management."
-                                    placeholder="e.g. 1a2B3cD4eF5g..."
-                                    required
-                                ></lightning-input>
+                                <div class="upload-folder-card">
+                                    <div class="upload-folder-header">
+                                        <div class="upload-folder-title">
+                                            Upload Folder Locations (IDs)
+                                            <lightning-helptext content="Configure up to 10 Google Drive folder IDs in priority order. The first one is used by default. If it becomes full, uploads automatically fall over to the next one."></lightning-helptext>
+                                        </div>
+                                        <div class="upload-folder-count">{uploadFolderCountLabel}</div>
+                                    </div>
 
-                                <div class="folder-structure-card slds-m-top_small">
+                                    <div class="upload-folder-grid slds-m-top_small">
+                                        <template for:each={uploadFolderRows} for:item="row">
+                                            <div
+                                                key={row.key}
+                                                class={row.containerClass}
+                                                data-index={row.index}
+                                                draggable={row.draggable}
+                                                ondragstart={handleUploadFolderDragStart}
+                                                ondragover={handleUploadFolderDragOver}
+                                                ondrop={handleUploadFolderDrop}
+                                                ondragend={handleUploadFolderDragEnd}
+                                            >
+                                                <div class="upload-folder-title-row">
+                                                    <div class="upload-folder-item-title">{row.title}</div>
+                                                </div>
+
+                                                <div class="upload-folder-input-row">
+                                                    <lightning-input
+                                                        data-role="upload-folder-input"
+                                                        value={row.value}
+                                                        data-index={row.index}
+                                                        onchange={handleUploadFolderChange}
+                                                        variant="label-hidden"
+                                                        label={row.title}
+                                                        placeholder={row.placeholder}
+                                                        required={row.required}
+                                                    ></lightning-input>
+
+                                                    <template lwc:if={row.showControls}>
+                                                        <div class="upload-folder-controls">
+                                                            <lightning-button-icon
+                                                                icon-name="utility:up"
+                                                                variant="bare"
+                                                                alternative-text="Move up"
+                                                                title="Move up"
+                                                                onclick={handleUploadFolderMoveUp}
+                                                                data-index={row.index}
+                                                                disabled={row.disableMoveUp}
+                                                            ></lightning-button-icon>
+
+                                                            <lightning-button-icon
+                                                                icon-name="utility:down"
+                                                                variant="bare"
+                                                                alternative-text="Move down"
+                                                                title="Move down"
+                                                                onclick={handleUploadFolderMoveDown}
+                                                                data-index={row.index}
+                                                                disabled={row.disableMoveDown}
+                                                            ></lightning-button-icon>
+
+                                                            <lightning-button-icon
+                                                                icon-name="utility:delete"
+                                                                variant="bare"
+                                                                alternative-text="Remove"
+                                                                title="Remove"
+                                                                onclick={handleUploadFolderRemove}
+                                                                data-index={row.index}
+                                                                style="margin-top: -2px;"
+                                                            ></lightning-button-icon>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <div class="slds-m-top_small slds-grid slds-grid_align-start">
+                                        <lightning-button
+                                            variant="neutral"
+                                            icon-name="utility:add"
+                                            label="Add folder location (ID)"
+                                            onclick={handleUploadFolderAdd}
+                                            disabled={addUploadFolderDisabled}
+                                        ></lightning-button>
+                                    </div>
+
+                                    <div class="info-panel slds-m-top_small">
+                                        <div class="info-title">Fallback behavior</div>
+                                        <div class="info-text">Google Drive folders (especially shared drives) enforce hard limits on how many files they can hold. Once the primary folder cannot accept more uploads, the system automatically tries the next folder ID in the list, in order, until an upload succeeds. This lets you extend storage across multiple folders (or shared drives) without downtime.</div>
+                                    </div>
+                                </div>
+
+                                <div class="slds-grid slds-grid_align-end slds-m-top_medium">
+                                    <lightning-button variant="neutral" label="Back" onclick={goToAuthStep} disabled={busy}></lightning-button>
+                                    <lightning-button class="slds-m-left_x-small" variant="brand" label="Next" onclick={goToStructureStep} disabled={busy}></lightning-button>
+                                    <lightning-button class="slds-m-left_x-small" variant="brand" label="Save" onclick={handleSave} disabled={busy}></lightning-button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template lwc:if={isStructureStep}>
+                            <div class="slds-m-top_medium">
+                                <div class="folder-structure-card">
                                     <div class="folder-structure-header">
                                         <div class="folder-structure-title">
-                                            Folder structure
-                                            <lightning-helptext content="Build a subfolder structure under the Default Upload Folder. Enable User and/or Record, then reorder using drag-and-drop or the arrow controls. Leave both options disabled to upload files directly into the default folder."></lightning-helptext>
+                                            Folder Structure
+                                            <lightning-helptext content="Build a subfolder structure under the primary upload folder. Enable User and/or Record, then reorder using drag-and-drop or the arrow controls. Leave both options disabled to upload files directly into the primary folder."></lightning-helptext>
                                         </div>
                                         <div class="folder-structure-preview">
                                             <span class="preview-label">Preview:</span>
@@ -199,10 +295,17 @@
                                         <div class="info-title">Usage</div>
                                         <div class="info-text">Enable <b>User</b> folder to create a folder for each user and <b>Record</b> folder to create a folder for each record. When both options are enabled, the order defines the folder hierarchy (e.g., Record → User or User → Record). See the <b>Preview</b> in the top-right corner.</div>
                                     </div>
+
+                                    <template lwc:if={hasMultipleUploadFolders}>
+                                        <div class="info-panel slds-m-top_small">
+                                            <div class="info-title">Behavior with <b>multiple</b> upload folders</div>
+                                            <div class="info-text">Because you configured multiple folder locations (IDs), this subfolder structure is created inside whichever folder actually accepts the upload (the primary folder by default, or a fallback folder when the primary is full). Each configured folder gets its own subtree.</div>
+                                        </div>
+                                    </template>
                                 </div>
 
                                 <div class="slds-grid slds-grid_align-end slds-m-top_medium">
-                                    <lightning-button variant="neutral" label="Back" onclick={goToAuthStep} disabled={busy}></lightning-button>
+                                    <lightning-button variant="neutral" label="Back" onclick={goToLocationsStep} disabled={busy}></lightning-button>
                                     <lightning-button class="slds-m-left_x-small" variant="brand" label="Save" onclick={handleSave} disabled={busy}></lightning-button>
                                 </div>
                             </div>

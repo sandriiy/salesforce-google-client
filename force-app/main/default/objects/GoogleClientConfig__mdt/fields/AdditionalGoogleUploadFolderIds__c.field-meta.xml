@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AdditionalGoogleUploadFolderIds__c</fullName>
+    <description>Ordered list of fallback Google Drive folder identification (ID) values, separated by ";". Files are uploaded to the "Default Google Upload Folder Id" first; when that folder exceeds its capacity limits (for example, a shared drive reaches its item cap), the system automatically retries the upload using the next folder identification (ID) in this list, in order, until one succeeds.</description>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Ordered list of fallback Google Drive folder identification (ID) values, separated by ";". Used only when the primary "Default Google Upload Folder Id" cannot accept more uploads. Leave blank to keep the current single-folder behavior.</inlineHelpText>
+    <label>Additional Google Upload Folder Ids</label>
+    <length>1024</length>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

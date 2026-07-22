@@ -57,6 +57,8 @@ const QUERY = gql`
                             CustomSummaryPrompt__c { value }
                             CustomQuestionPrompt__c { value }
                             QuestionMaxOutputTokens__c { value }
+                            AiSafetyMode__c { value }
+                            CustomAiPromptSafetyGuardClass__c { value }
                         }
                     }
                 }
@@ -70,6 +72,19 @@ const DEPLOY_STATUS_DELAY_MS = 1000;
 const DEFAULT_BIG_FILE_SIZE = 2097152;
 const DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 const DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
+const DEFAULT_AI_SAFETY_MODE = 'Standard';
+const AI_SAFETY_MODE_OPTIONS = [
+    { label: 'Strict', value: 'Strict' },
+    { label: 'Standard', value: 'Standard' },
+    { label: 'Relaxed', value: 'Relaxed' },
+    { label: 'Off', value: 'Off' }
+];
+const ADVANCED_TAB_FILE_MANAGEMENT = 'fileManagement';
+const ADVANCED_TAB_AI_INTELLIGENCE = 'aiIntelligence';
+const ADVANCED_TAB_SAFETY_CUSTOMIZATION = 'safetyCustomization';
+const ADVANCED_TAB_KEYS = [ADVANCED_TAB_FILE_MANAGEMENT, ADVANCED_TAB_AI_INTELLIGENCE, ADVANCED_TAB_SAFETY_CUSTOMIZATION];
+const SAFETY_MODE_GUIDE_URL = 'https://sandriiy.github.io/salesforce-google-client/features/artificial-intelligence/safety/';
+const CUSTOM_GUARD_GUIDE_URL = 'https://sandriiy.github.io/salesforce-google-client/features/artificial-intelligence/safety/#ownguard';
 const DEFAULT_SUMMARY_PROMPT = 'Create a very short summary of the provided document content that starts with "This file describes". Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief.';
 const DEFAULT_QUESTION_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
 
@@ -98,7 +113,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         isFileIntelligenceEnabled: false,
         customSummaryPrompt: DEFAULT_SUMMARY_PROMPT,
         customQuestionPrompt: DEFAULT_QUESTION_PROMPT,
-        questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS
+        questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
+        aiSafetyMode: DEFAULT_AI_SAFETY_MODE,
+        customAiPromptSafetyGuardClass: ''
     };
 
     errorMessage = '';
@@ -106,6 +123,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     selectedConfigKey = CONFIG_SECTIONS?.[0]?.key || 'drive';
     isConfigMenuOpen = false;
     viewMode = 'main';
+    activeAdvancedTab = ADVANCED_TAB_FILE_MANAGEMENT;
     validationIssues = new Map();
 
     connectedCallback() {
@@ -188,6 +206,13 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     toggleAdvancedView() {
         this.viewMode = this.isAdvancedView ? 'main' : 'advanced';
+    }
+
+    handleAdvancedStepClick(event) {
+        const nextTab = event?.currentTarget?.dataset?.step;
+        if (nextTab && ADVANCED_TAB_KEYS.includes(nextTab)) {
+            this.activeAdvancedTab = nextTab;
+        }
     }
 
     handleFieldChange(event) {
@@ -330,6 +355,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         }
 
         if (this.isAdvancedView && this.hasInputErrors('.advanced-container lightning-input, .advanced-container lightning-textarea')) {
+            this.focusFailingAdvancedTab();
             return false;
         }
 
@@ -456,7 +482,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             isFileIntelligenceEnabled: false,
             customSummaryPrompt: '',
             customQuestionPrompt: '',
-            questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS
+            questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
+            aiSafetyMode: '',
+            customAiPromptSafetyGuardClass: ''
         };
     }
 
@@ -482,7 +510,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             isFileIntelligenceEnabled: !!extractGraphValue(recordNode?.IsFileIntelligenceEnabled__c),
             customSummaryPrompt: extractGraphValue(recordNode?.CustomSummaryPrompt__c) || '',
             customQuestionPrompt: extractGraphValue(recordNode?.CustomQuestionPrompt__c) || '',
-            questionMaxOutputTokens: this.toNumberOrNull(extractGraphValue(recordNode?.QuestionMaxOutputTokens__c))
+            questionMaxOutputTokens: this.toNumberOrNull(extractGraphValue(recordNode?.QuestionMaxOutputTokens__c)),
+            aiSafetyMode: extractGraphValue(recordNode?.AiSafetyMode__c) || '',
+            customAiPromptSafetyGuardClass: extractGraphValue(recordNode?.CustomAiPromptSafetyGuardClass__c) || ''
         };
     }
 
@@ -507,7 +537,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             isFileIntelligenceEnabled: !!serverSnapshot.isFileIntelligenceEnabled,
             customSummaryPrompt: serverSnapshot.customSummaryPrompt || '',
             customQuestionPrompt: serverSnapshot.customQuestionPrompt || '',
-            questionMaxOutputTokens: serverSnapshot.questionMaxOutputTokens
+            questionMaxOutputTokens: serverSnapshot.questionMaxOutputTokens,
+            aiSafetyMode: serverSnapshot.aiSafetyMode || '',
+            customAiPromptSafetyGuardClass: serverSnapshot.customAiPromptSafetyGuardClass || ''
         });
     }
 
@@ -544,6 +576,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'CustomSummaryPrompt__c', serverState.customSummaryPrompt, draftState.customSummaryPrompt);
         this.putIfChanged(changed, 'CustomQuestionPrompt__c', serverState.customQuestionPrompt, draftState.customQuestionPrompt);
         this.putIfChanged(changed, 'QuestionMaxOutputTokens__c', serverState.questionMaxOutputTokens, draftState.questionMaxOutputTokens);
+        this.putIfChanged(changed, 'AiSafetyMode__c', serverState.aiSafetyMode, draftState.aiSafetyMode);
+        this.putIfChanged(changed, 'CustomAiPromptSafetyGuardClass__c', serverState.customAiPromptSafetyGuardClass, draftState.customAiPromptSafetyGuardClass);
 
         return changed;
     }
@@ -567,7 +601,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             isFileIntelligenceEnabled: !!draftState.isFileIntelligenceEnabled,
             customSummaryPrompt: draftState.customSummaryPrompt || '',
             customQuestionPrompt: draftState.customQuestionPrompt || '',
-            questionMaxOutputTokens: draftState.questionMaxOutputTokens
+            questionMaxOutputTokens: draftState.questionMaxOutputTokens,
+            aiSafetyMode: draftState.aiSafetyMode || '',
+            customAiPromptSafetyGuardClass: draftState.customAiPromptSafetyGuardClass || ''
         };
     }
 
@@ -644,6 +680,17 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return false;
     }
 
+    focusFailingAdvancedTab() {
+        for (const tabKey of ADVANCED_TAB_KEYS) {
+            const inputs = Array.from(this.template.querySelectorAll(`[data-tab="${tabKey}"] lightning-input, [data-tab="${tabKey}"] lightning-textarea`));
+            const hasInvalid = inputs.some((input) => typeof input.checkValidity === 'function' && !input.checkValidity());
+            if (hasInvalid) {
+                this.activeAdvancedTab = tabKey;
+                return;
+            }
+        }
+    }
+
     get hasError() {
         return !isEmpty(this.errorMessage);
     }
@@ -710,6 +757,54 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return !this.isIntelligenceEnabled;
     }
 
+    get aiSafetyModeOptions() {
+        return AI_SAFETY_MODE_OPTIONS;
+    }
+
+    get effectiveAiSafetyMode() {
+        return this.draft?.aiSafetyMode || DEFAULT_AI_SAFETY_MODE;
+    }
+
+    get safetyModeGuideUrl() {
+        return SAFETY_MODE_GUIDE_URL;
+    }
+
+    get customGuardGuideUrl() {
+        return CUSTOM_GUARD_GUIDE_URL;
+    }
+
+    advancedStepButtonClass(tabKey) {
+        return this.activeAdvancedTab === tabKey ? 'advanced-step-button is-active' : 'advanced-step-button';
+    }
+
+    advancedTabPanelClass(tabKey) {
+        return this.activeAdvancedTab === tabKey ? 'advanced-tab-panel' : 'advanced-tab-panel is-hidden';
+    }
+
+    get fileManagementStepClass() {
+        return this.advancedStepButtonClass(ADVANCED_TAB_FILE_MANAGEMENT);
+    }
+
+    get aiIntelligenceStepClass() {
+        return this.advancedStepButtonClass(ADVANCED_TAB_AI_INTELLIGENCE);
+    }
+
+    get safetyCustomizationStepClass() {
+        return this.advancedStepButtonClass(ADVANCED_TAB_SAFETY_CUSTOMIZATION);
+    }
+
+    get fileManagementPanelClass() {
+        return this.advancedTabPanelClass(ADVANCED_TAB_FILE_MANAGEMENT);
+    }
+
+    get aiIntelligencePanelClass() {
+        return this.advancedTabPanelClass(ADVANCED_TAB_AI_INTELLIGENCE);
+    }
+
+    get safetyCustomizationPanelClass() {
+        return this.advancedTabPanelClass(ADVANCED_TAB_SAFETY_CUSTOMIZATION);
+    }
+
     get isDirty() {
         if (!this.server) {
             return false;
@@ -736,7 +831,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (!!serverState.isFileIntelligenceEnabled !== !!draftState.isFileIntelligenceEnabled) ||
             (serverState.customSummaryPrompt || '') !== (draftState.customSummaryPrompt || '') ||
             (serverState.customQuestionPrompt || '') !== (draftState.customQuestionPrompt || '') ||
-            (serverState.questionMaxOutputTokens ?? null) !== (draftState.questionMaxOutputTokens ?? null)
+            (serverState.questionMaxOutputTokens ?? null) !== (draftState.questionMaxOutputTokens ?? null) ||
+            (serverState.aiSafetyMode || '') !== (draftState.aiSafetyMode || '') ||
+            (serverState.customAiPromptSafetyGuardClass || '') !== (draftState.customAiPromptSafetyGuardClass || '')
         );
     }
 

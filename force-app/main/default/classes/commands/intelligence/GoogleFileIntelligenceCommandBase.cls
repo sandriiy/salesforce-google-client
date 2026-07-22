@@ -26,9 +26,11 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	private static final String DEFAULT_RESPONSE_MIME_TYPE = 'text/plain';
 	private static final Integer DEFAULT_CANDIDATE_COUNT = 1;
 	private static final Integer DEFAULT_THINKING_BUDGET = 0;
+	private static final Integer INPUT_MARKER_EDGE_LENGTH = 8;
 
 	private final GoogleClientApiProvider googleApiProvider;
 	private final GoogleFileVersionContextResolver versionContextResolver;
+	private final GoogleMetadataConfigService metadataConfigService;
 
 	public GoogleFileIntelligenceCommandBase() {
 		this(new GoogleClientApiProvider(), new GoogleFileVersionContextResolver());
@@ -38,6 +40,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	public GoogleFileIntelligenceCommandBase(GoogleClientApiProvider googleApiProvider, GoogleFileVersionContextResolver versionContextResolver) {
 		this.googleApiProvider = googleApiProvider == null ? new GoogleClientApiProvider() : googleApiProvider;
 		this.versionContextResolver = versionContextResolver == null ? new GoogleFileVersionContextResolver() : versionContextResolver;
+		this.metadataConfigService = new GoogleMetadataConfigService();
 	}
 
 	public GoogleFileAnalysisResultDTO execute(Id localGoogleFileVersionId, String providerName, String modelName, IGenAiClient genAiClient, String inputText) {
@@ -56,6 +59,22 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			return result;
 		}
 
+		IGoogleAiPromptSafetyGuard safetyGuard = resolveSafetyGuard();
+		GoogleAiPromptContext safetyContext = buildSafetyContext(localGoogleFileVersionId, providerName, modelName, normalizedInput);
+
+		GoogleAiPromptSafetyDecision requestDecision = safetyGuard.inspectRequest(safetyContext);
+		if (requestDecision != null && requestDecision.allowed != true) {
+			result.blocked = true;
+			result.errorMessage = requestDecision.userVisibleMessage;
+			logRequestBlocked(requestDecision, safetyContext);
+			return result;
+		}
+
+		if (requestDecision != null && String.isNotBlank(requestDecision.sanitizedUserInput)) {
+			normalizedInput = requestDecision.sanitizedUserInput;
+			safetyContext.userInput = normalizedInput;
+		}
+
 		try {
 			GoogleFileVersion__c localFileVersion = retrieveLocalFileVersion(localGoogleFileVersionId);
 			if (!isEligible(localFileVersion)) {
@@ -69,16 +88,30 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 				return result;
 			}
 
-			GenAiResponse response = genAiClient.generate(buildRequest(modelName, normalizedInput, documentText));
+			safetyContext.documentText = documentText;
+			String effectiveSystemPrompt = safetyGuard.wrapSystemPrompt(safetyContext);
+
+			GenAiResponse response = genAiClient.generate(buildRequest(modelName, normalizedInput, documentText, effectiveSystemPrompt));
 			String outcomeReason = response == null ? null : response.outcomeReason();
 			result.finishReason = response == null || response.firstCandidate() == null
 				? null
 				: response.firstCandidate().finishReason;
 
-			String outputText = finalizeGeneratedText(
-				normalizeGeneratedText(response == null ? null : response.firstText()),
-				result.finishReason
-			);
+			GoogleAiResponseSnapshot responseSnapshot = buildResponseSnapshot(response, result.finishReason, outcomeReason);
+			GoogleAiResponseSafetyDecision responseDecision = safetyGuard.inspectResponse(safetyContext, responseSnapshot);
+			if (responseDecision != null && responseDecision.allowed != true) {
+				result.blocked = true;
+				result.text = null;
+				result.errorMessage = responseDecision.userVisibleMessage;
+				logResponseBlocked(responseDecision, safetyContext, result.finishReason);
+				return result;
+			}
+
+			String responseText = responseDecision != null && String.isNotBlank(responseDecision.sanitizedText)
+				? responseDecision.sanitizedText
+				: (response == null ? null : response.firstText());
+
+			String outputText = finalizeGeneratedText(normalizeGeneratedText(responseText), result.finishReason);
 			if (String.isBlank(outputText)) {
 				result.errorMessage = buildAnalysisFailureMessage(outcomeReason);
 				return result;
@@ -219,9 +252,9 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			: result.bodyAsBlob.toString();
 	}
 
-	private GenAiRequest buildRequest(String modelName, String normalizedInput, String documentText) {
+	private GenAiRequest buildRequest(String modelName, String normalizedInput, String documentText, String effectiveSystemPrompt) {
 		return new GenAiRequestBuilder(modelName)
-			.withSystemText(getSystemPrompt())
+			.withSystemText(effectiveSystemPrompt)
 			.addUserText(buildUserPrompt(normalizedInput, documentText))
 			.withCandidates(getCandidateCount())
 			.withTemperature(getTemperature())
@@ -229,5 +262,65 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			.withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(getThinkingBudget()))
 			.withResponseMimeType(getResponseMimeType())
 			.build();
+	}
+
+	@TestVisible
+	protected virtual IGoogleAiPromptSafetyGuard resolveSafetyGuard() {
+		return new GoogleAiPromptSafetyGuardFactory().resolve();
+	}
+
+	private GoogleAiPromptContext buildSafetyContext(Id localGoogleFileVersionId, String providerName, String modelName, String normalizedInput) {
+		GoogleAiPromptContext context = new GoogleAiPromptContext();
+		context.operationType = getOperationType();
+		context.providerName = providerName;
+		context.modelName = modelName;
+		context.localFileVersionId = localGoogleFileVersionId;
+		context.rawSystemPrompt = getSystemPrompt();
+		context.userInput = normalizedInput;
+		context.safetyMode = metadataConfigService.getAiSafetyMode();
+		return context;
+	}
+
+	private GoogleAiResponseSnapshot buildResponseSnapshot(GenAiResponse response, String finishReason, String outcomeReason) {
+		GoogleAiResponseSnapshot snapshot = new GoogleAiResponseSnapshot();
+		snapshot.finishReason = finishReason;
+		snapshot.outcomeReason = outcomeReason;
+		snapshot.firstText = response == null ? null : response.firstText();
+		return snapshot;
+	}
+
+	private void logRequestBlocked(GoogleAiPromptSafetyDecision decision, GoogleAiPromptContext context) {
+		Logger.info('AI Safety Guard blocked request: reason=' + decision.reasonCode
+			+ '; provider=' + context.providerName
+			+ '; operation=' + context.operationType
+			+ '; versionId=' + context.localFileVersionId
+			+ '; inputLength=' + inputLength(context.userInput)
+			+ '; inputMarker=' + inputMarker(context.userInput)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		Logger.saveLog();
+	}
+
+	private void logResponseBlocked(GoogleAiResponseSafetyDecision decision, GoogleAiPromptContext context, String finishReason) {
+		Logger.info('AI Safety Guard blocked response: reason=' + decision.reasonCode
+			+ '; provider=' + context.providerName
+			+ '; operation=' + context.operationType
+			+ '; versionId=' + context.localFileVersionId
+			+ '; finishReason=' + finishReason).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		Logger.saveLog();
+	}
+
+	private Integer inputLength(String input) {
+		return input == null ? 0 : input.length();
+	}
+
+	private String inputMarker(String input) {
+		if (String.isBlank(input)) {
+			return '';
+		}
+
+		if (input.length() <= INPUT_MARKER_EDGE_LENGTH * 2) {
+			return input;
+		}
+
+		return input.substring(0, INPUT_MARKER_EDGE_LENGTH) + '...' + input.substring(input.length() - INPUT_MARKER_EDGE_LENGTH);
 	}
 }

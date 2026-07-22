@@ -185,4 +185,72 @@ private class GoogleFileSummarizeCommandTest {
 		Assert.areEqual(null, result.success);
 		Assert.areEqual('Summary response returned no content (NO_CONTENT_STOP)', result.errorMessage);
 	}
+
+	@IsTest
+	private static void testSummarizeGuardBlocksResponseWithSecretLeak() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsFilePreviewDisabled__c = true);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('SUMCMD5')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('SUMCMD5.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(2048)
+			.withDocsId('DOCS_SUMCMD_5')
+			.insertRecord();
+
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileSummarizeCommand().summarize(
+				version.Id,
+				'Gemini',
+				'gemini-2.0-flash',
+				new GenAiClientStub('Summary revealing key AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456ab.', 'STOP')
+			);
+		Test.stopTest();
+
+		Assert.isTrue(result.blocked);
+		Assert.areNotEqual(true, result.success);
+		Assert.isNull(result.text);
+	}
+
+	@IsTest
+	private static void testSummarizeGuardBlocksResponseOnProviderSafetyFinishReason() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsFilePreviewDisabled__c = true);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('SUMCMD6')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('SUMCMD6.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(2048)
+			.withDocsId('DOCS_SUMCMD_6')
+			.insertRecord();
+
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileSummarizeCommand().summarize(
+				version.Id,
+				'Gemini',
+				'gemini-2.0-flash',
+				new GenAiClientStub('Some benign summary text.', 'SAFETY')
+			);
+		Test.stopTest();
+
+		Assert.isTrue(result.blocked);
+		Assert.areNotEqual(true, result.success);
+		Assert.isNull(result.text);
+	}
 }

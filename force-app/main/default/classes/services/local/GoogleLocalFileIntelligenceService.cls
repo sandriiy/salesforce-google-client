@@ -41,9 +41,11 @@ public without sharing class GoogleLocalFileIntelligenceService {
 
 		GoogleFileVersionContextResolver contextResolver = new GoogleFileVersionContextResolver();
 		Boolean isIntelligenceConfigured = new GoogleFileIntelligenceFactory().isConfigured();
+		IGoogleAiPromptSafetyGuard safetyGuard = new GoogleAiPromptSafetyGuardFactory().resolve();
+		String safetyMode = new GoogleMetadataConfigService().getAiSafetyMode();
 		for (Id versionId : localFileVersionIds) {
 			if (versionId == null) continue;
-			intelligenceStates.add(buildIntelligenceState(versionId, versionsById.get(versionId), contextResolver, isIntelligenceConfigured));
+			intelligenceStates.add(buildIntelligenceState(versionId, versionsById.get(versionId), contextResolver, isIntelligenceConfigured, safetyGuard, safetyMode));
 		}
 
 		return intelligenceStates;
@@ -61,14 +63,46 @@ public without sharing class GoogleLocalFileIntelligenceService {
 		}
 	}
 
-	private GoogleFileIntelligenceStateDTO buildIntelligenceState(Id versionId, GoogleFileVersion__c localFileVersion, GoogleFileVersionContextResolver contextResolver, Boolean isIntelligenceConfigured) {
+	private GoogleFileIntelligenceStateDTO buildIntelligenceState(Id versionId, GoogleFileVersion__c localFileVersion, GoogleFileVersionContextResolver contextResolver, Boolean isIntelligenceConfigured, IGoogleAiPromptSafetyGuard safetyGuard, String safetyMode) {
 		GoogleFileIntelligenceStateDTO intelligenceState = createDefaultState(versionId);
-		intelligenceState.summary = localFileVersion == null ? null : localFileVersion.Summary__c;
-		intelligenceState.hasSummary = localFileVersion != null && String.isNotBlank(localFileVersion.Summary__c);
+		String storedSummary = localFileVersion == null ? null : localFileVersion.Summary__c;
+		Boolean hasStoredSummary = String.isNotBlank(storedSummary);
+
+		if (hasStoredSummary && !isHistoricalSummaryAllowed(safetyGuard, safetyMode, versionId, storedSummary)) {
+			storedSummary = null;
+			hasStoredSummary = false;
+		}
+
+		intelligenceState.summary = storedSummary;
+		intelligenceState.hasSummary = hasStoredSummary;
 		intelligenceState.isIntelligenceEligible = isIntelligenceConfigured == true
 			&& localFileVersion != null
 			&& contextResolver.supportsInteractiveIntelligence(localFileVersion);
 		return intelligenceState;
+	}
+
+	private Boolean isHistoricalSummaryAllowed(IGoogleAiPromptSafetyGuard safetyGuard, String safetyMode, Id versionId, String storedSummary) {
+		if (safetyGuard == null) {
+			return true;
+		}
+
+		GoogleAiPromptContext context = new GoogleAiPromptContext();
+		context.operationType = GoogleAiPromptContext.OPERATION_SUMMARY;
+		context.localFileVersionId = versionId;
+		context.safetyMode = safetyMode;
+
+		GoogleAiResponseSnapshot snapshot = new GoogleAiResponseSnapshot();
+		snapshot.finishReason = 'STOP';
+		snapshot.firstText = storedSummary;
+
+		GoogleAiResponseSafetyDecision decision = safetyGuard.inspectResponse(context, snapshot);
+		if (decision != null && decision.allowed != true) {
+			Logger.info('AI Safety Guard hid historical summary: reason=' + decision.reasonCode + '; versionId=' + versionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			return false;
+		}
+
+		return true;
 	}
 
 	private GoogleFileAnalysisResultDTO buildBlockedQuestionResult(String errorMessage) {

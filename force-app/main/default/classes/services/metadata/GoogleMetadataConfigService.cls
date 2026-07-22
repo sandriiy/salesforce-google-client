@@ -29,6 +29,8 @@ public inherited sharing class GoogleMetadataConfigService {
 
 	public static final String DEFAULT_METADATA_DEPLOY_KEY = 'DefaultGoogleMetadataDeployerKey';
 	public static final String DEFAULT_AUTH_CLASS_NAME = 'DefaultGoogleDriveAuthorizer';
+	public static final String DEFAULT_AI_SAFETY_MODE = 'Standard';
+	public static final Set<String> SUPPORTED_AI_SAFETY_MODES = new Set<String>{ 'Strict', 'Standard', 'Relaxed', 'Off' };
 	public static final Long DEFAULT_BIG_FILE_SIZE = 2097152L;
 	public static final Integer DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 	public static final Integer DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
@@ -196,6 +198,19 @@ public inherited sharing class GoogleMetadataConfigService {
 		return configuredValue == null ? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS : configuredValue;
 	}
 
+	public String getAiSafetyMode() {
+		String configuredValue = configRecord.AiSafetyMode__c;
+		if (String.isBlank(configuredValue)) {
+			return DEFAULT_AI_SAFETY_MODE;
+		}
+
+		return SUPPORTED_AI_SAFETY_MODES.contains(configuredValue) ? configuredValue : DEFAULT_AI_SAFETY_MODE;
+	}
+
+	public String getCustomAiPromptSafetyGuardClass() {
+		return configRecord.CustomAiPromptSafetyGuardClass__c;
+	}
+
 	public String getGoogleDriveDomain() {
         return configRecord.OrganizationalDomain__c;
     }
@@ -212,6 +227,7 @@ public inherited sharing class GoogleMetadataConfigService {
 			applyStringDefaultIfMissing(normalizedValues, 'CustomSummaryPrompt__c', configRecord.CustomSummaryPrompt__c, DEFAULT_SUMMARY_PROMPT);
 			applyStringDefaultIfMissing(normalizedValues, 'CustomQuestionPrompt__c', configRecord.CustomQuestionPrompt__c, DEFAULT_QUESTION_PROMPT);
 			applyNumberDefaultIfMissing(normalizedValues, 'QuestionMaxOutputTokens__c', configRecord.QuestionMaxOutputTokens__c, DEFAULT_QUESTION_MAX_OUTPUT_TOKENS);
+			applyStringDefaultIfMissing(normalizedValues, 'AiSafetyMode__c', configRecord.AiSafetyMode__c, DEFAULT_AI_SAFETY_MODE);
 		}
 
 		return normalizedValues;

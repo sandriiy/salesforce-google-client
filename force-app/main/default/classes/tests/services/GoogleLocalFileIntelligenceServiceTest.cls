@@ -87,4 +87,60 @@ private class GoogleLocalFileIntelligenceServiceTest {
 		Assert.areEqual(1, states.size());
 		Assert.isFalse(states[0].isIntelligenceEligible);
 	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesHidesHistoricalSummaryContainingSecret() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INT4').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('INT4.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId('GD_INT_4')
+			.withDocsId('DOCS_INT_4')
+			.build();
+		localFileVersion.Summary__c = 'Historical summary leaking AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456ab key.';
+		insert localFileVersion;
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(1, states.size());
+		Assert.isNull(states[0].summary);
+		Assert.isFalse(states[0].hasSummary);
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesKeepsBenignHistoricalSummary() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INT5').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('INT5.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId('GD_INT_5')
+			.withDocsId('DOCS_INT_5')
+			.build();
+		localFileVersion.Summary__c = 'This file describes a signed project agreement.';
+		insert localFileVersion;
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(1, states.size());
+		Assert.areEqual('This file describes a signed project agreement.', states[0].summary);
+		Assert.isTrue(states[0].hasSummary);
+	}
 }

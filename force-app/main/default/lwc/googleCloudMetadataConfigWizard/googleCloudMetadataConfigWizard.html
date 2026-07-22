@@ -88,112 +88,192 @@
                                         <div class="advanced-title">Advanced settings</div>
                                     </div>
 
-                                    <div class="advanced-grid">
-                                        <div class="advanced-left">
-                                            <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_small">
-                                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                                    <lightning-input
-                                                        type="number"
-                                                        value={draft.defaultBigFileSize}
-                                                        onchange={handleChangeNumber}
-                                                        data-field="defaultBigFileSize"
-                                                        label="Maximum Preview File Size"
-                                                        field-level-help="Specifies the maximum file size, in bytes, allowed for preview generation. This setting does not apply to PDF files, as they can be previewed regardless of size. Setting this value too high may result in a heap size limit exception. The default value is 2,097,152 bytes (2 MB)."
-                                                        placeholder="e.g. 5000000">
-                                                    </lightning-input>
-                                                </div>
+                                    <div class="advanced-step-bar">
+                                        <button class={fileManagementStepClass} data-step="fileManagement" onclick={handleAdvancedStepClick} type="button">
+                                            <span class="step-indicator"></span>
+                                            <span class="step-label">File Management</span>
+                                        </button>
 
-                                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                                    <lightning-input
-                                                        type="number"
-                                                        value={draft.maxDeleteChainSize}
-                                                        onchange={handleChangeNumber}
-                                                        data-field="maxDeleteChainSize"
-                                                        label="Max Delete Chain Size"
-                                                        field-level-help="How many files are deleted per queueable job before chaining another job."
-                                                        placeholder="e.g. 50"
-                                                        required>
-                                                    </lightning-input>
-                                                </div>
+                                        <button class={aiIntelligenceStepClass} data-step="aiIntelligence" onclick={handleAdvancedStepClick} type="button">
+                                            <span class="step-indicator"></span>
+                                            <span class="step-label">AI Intelligence</span>
+                                        </button>
 
-                                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                                    <lightning-input
-                                                        type="text"
-                                                        maxlength="255"
-                                                        value={draft.organizationalDomain}
-                                                        onchange={handleChangeText}
-                                                        data-field="organizationalDomain"
-                                                        label="Organizational Domain"
-                                                        field-level-help="Specify your organization’s domain (for example, “cloudrylabs.com”). If set, all public links and shares created for outside Salesforce will be restricted to this domain, unless the user specifies otherwise."
-                                                        placeholder="e.g. cloudrylabs.com">
-                                                    </lightning-input>
-                                                </div>
+                                        <button class={safetyCustomizationStepClass} data-step="safetyCustomization" onclick={handleAdvancedStepClick} type="button">
+                                            <span class="step-indicator"></span>
+                                            <span class="step-label">Safety & Customization</span>
+                                        </button>
+                                    </div>
 
-                                                <div class="slds-col slds-size_1-of-1">
-                                                    <lightning-input
-                                                        type="toggle"
-                                                        checked={draft.isFileIntelligenceEnabled}
-                                                        onchange={handleToggle}
-                                                        data-field="isFileIntelligenceEnabled"
-                                                        label="Enable AI File Intelligence"
-                                                        class="slds-m-top_small"
-                                                        field-level-help="Controls whether Google Client can generate summaries and answer questions by using Gemini Developer API or Agent Platform.">
-                                                    </lightning-input>
-                                                </div>
+                                    <div class={fileManagementPanelClass} data-tab="fileManagement">
+                                        <div class="tab-toggle-header">
+                                            <div class="tab-toggle-copy">
+                                                <div class="tab-toggle-title">File preview</div>
+                                                <div class="tab-toggle-subtitle">Skip generating preview documents and hide any previews that already exist.</div>
+                                            </div>
+                                            <div class="tab-toggle-control">
+                                                <lightning-input
+                                                    type="toggle"
+                                                    variant="label-hidden"
+                                                    checked={draft.isFilePreviewDisabled}
+                                                    onchange={handleToggle}
+                                                    data-field="isFilePreviewDisabled"
+                                                    label="Disable File Preview"
+                                                    message-toggle-active=""
+                                                    message-toggle-inactive="">
+                                                </lightning-input>
+                                            </div>
+                                        </div>
 
-                                                <div class="slds-col slds-size_1-of-1">
-                                                    <lightning-textarea
-                                                        value={draft.customSummaryPrompt}
-                                                        onchange={handleChangeText}
-                                                        data-field="customSummaryPrompt"
-                                                        label="Summary Prompt"
-                                                        field-level-help="System prompt used when Google Client generates a file summary."
-                                                        max-length="32768"
-                                                        disabled={isIntelligenceDisabled}
-                                                        required={isIntelligenceEnabled}
-                                                    ></lightning-textarea>
-                                                </div>
+                                        <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_medium">
+                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                                <lightning-input
+                                                    type="number"
+                                                    value={draft.defaultBigFileSize}
+                                                    onchange={handleChangeNumber}
+                                                    data-field="defaultBigFileSize"
+                                                    label="Maximum Preview File Size"
+                                                    field-level-help="Specifies the maximum file size, in bytes, allowed for preview generation. This setting does not apply to PDF files, as they can be previewed regardless of size. Setting this value too high may result in a heap size limit exception. The default value is 2,097,152 bytes (2 MB)."
+                                                    placeholder="e.g. 5000000">
+                                                </lightning-input>
+                                            </div>
 
-                                                <div class="slds-col slds-size_1-of-1">
-                                                    <lightning-textarea
-                                                        value={draft.customQuestionPrompt}
-                                                        onchange={handleChangeText}
-                                                        data-field="customQuestionPrompt"
-                                                        label="Question Prompt"
-                                                        field-level-help="System prompt used when Google Client answers questions about a file."
-                                                        max-length="32768"
-                                                        disabled={isIntelligenceDisabled}
-                                                        required={isIntelligenceEnabled}
-                                                    ></lightning-textarea>
-                                                </div>
+                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                                <lightning-input
+                                                    type="number"
+                                                    value={draft.maxDeleteChainSize}
+                                                    onchange={handleChangeNumber}
+                                                    data-field="maxDeleteChainSize"
+                                                    label="Max Delete Chain Size"
+                                                    field-level-help="How many files are deleted per queueable job before chaining another job."
+                                                    placeholder="e.g. 50"
+                                                    required>
+                                                </lightning-input>
+                                            </div>
 
-                                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                                    <lightning-input
-                                                        type="number"
-                                                        value={draft.questionMaxOutputTokens}
-                                                        onchange={handleChangeNumber}
-                                                        data-field="questionMaxOutputTokens"
-                                                        label="Question Max Output Tokens"
-                                                        field-level-help="Maximum number of tokens returned for document question responses."
-                                                        placeholder="e.g. 1024"
-                                                        disabled={isIntelligenceDisabled}
-                                                        required={isIntelligenceEnabled}
-                                                    ></lightning-input>
+                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                                <lightning-input
+                                                    type="text"
+                                                    maxlength="255"
+                                                    value={draft.organizationalDomain}
+                                                    onchange={handleChangeText}
+                                                    data-field="organizationalDomain"
+                                                    label="Organizational Domain"
+                                                    field-level-help="Specify your organization’s domain (for example, “cloudrylabs.com”). If set, all public links and shares created for outside Salesforce will be restricted to this domain, unless the user specifies otherwise."
+                                                    placeholder="e.g. cloudrylabs.com">
+                                                </lightning-input>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class={aiIntelligencePanelClass} data-tab="aiIntelligence">
+                                        <div class="tab-toggle-header">
+                                            <div class="tab-toggle-copy">
+                                                <div class="tab-toggle-title">AI File Intelligence</div>
+                                                <div class="tab-toggle-subtitle">Generate summaries and answer questions about Google Drive files using Gemini or Agent Platform.</div>
+                                            </div>
+                                            <div class="tab-toggle-control">
+                                                <lightning-input
+                                                    type="toggle"
+                                                    variant="label-hidden"
+                                                    checked={draft.isFileIntelligenceEnabled}
+                                                    onchange={handleToggle}
+                                                    data-field="isFileIntelligenceEnabled"
+                                                    label="Enable AI File Intelligence"
+                                                    message-toggle-active=""
+                                                    message-toggle-inactive="">
+                                                </lightning-input>
+                                            </div>
+                                        </div>
+
+                                        <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_medium">
+                                            <div class="slds-col slds-size_1-of-1">
+                                                <lightning-textarea
+                                                    value={draft.customSummaryPrompt}
+                                                    onchange={handleChangeText}
+                                                    data-field="customSummaryPrompt"
+                                                    label="Summary Prompt"
+                                                    field-level-help="System prompt used when Google Client generates a file summary."
+                                                    max-length="32768"
+                                                    disabled={isIntelligenceDisabled}
+                                                    required={isIntelligenceEnabled}
+                                                ></lightning-textarea>
+                                            </div>
+
+                                            <div class="slds-col slds-size_1-of-1">
+                                                <lightning-textarea
+                                                    value={draft.customQuestionPrompt}
+                                                    onchange={handleChangeText}
+                                                    data-field="customQuestionPrompt"
+                                                    label="Question Prompt"
+                                                    field-level-help="System prompt used when Google Client answers questions about a file."
+                                                    max-length="32768"
+                                                    disabled={isIntelligenceDisabled}
+                                                    required={isIntelligenceEnabled}
+                                                ></lightning-textarea>
+                                            </div>
+
+                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                                <lightning-input
+                                                    type="number"
+                                                    value={draft.questionMaxOutputTokens}
+                                                    onchange={handleChangeNumber}
+                                                    data-field="questionMaxOutputTokens"
+                                                    label="Question Max Output Tokens"
+                                                    field-level-help="Maximum number of tokens returned for document question responses."
+                                                    placeholder="e.g. 1024"
+                                                    disabled={isIntelligenceDisabled}
+                                                    required={isIntelligenceEnabled}
+                                                ></lightning-input>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class={safetyCustomizationPanelClass} data-tab="safetyCustomization">
+                                        <div class="safety-row">
+                                            <div class="safety-field-col">
+                                                <lightning-combobox
+                                                    value={effectiveAiSafetyMode}
+                                                    onchange={handleChangeText}
+                                                    data-field="aiSafetyMode"
+                                                    options={aiSafetyModeOptions}
+                                                    label="AI Safety Mode"
+                                                    field-level-help="Controls how strictly the AI prompt safety guard evaluates user questions and AI responses. Standard is recommended for most orgs."
+                                                    disabled={isIntelligenceDisabled}
+                                                ></lightning-combobox>
+                                            </div>
+                                            <div class="safety-info-col">
+                                                <div class="info-panel">
+                                                    <div class="info-title">How safety modes work</div>
+                                                    <div class="info-text">Strict blocks the most aggressive prompts and responses, Standard is the recommended baseline for production, Relaxed allows broader questions with light filtering, and Off skips the guard entirely and forwards raw prompts to the model.</div>
+                                                    <div class="info-link">
+                                                        <a href={safetyModeGuideUrl} target="_blank" rel="noopener noreferrer">Read the AI safety guide →</a>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div class="advanced-right">
-                                            <div class="advanced-toggle-panel">
-                                                <div class="advanced-toggle-row">
-                                                    <lightning-input
-                                                        type="toggle"
-                                                        checked={draft.isFilePreviewDisabled}
-                                                        onchange={handleToggle}
-                                                        data-field="isFilePreviewDisabled"
-                                                        label="Disable File Preview"
-                                                        field-level-help="When enabled, preview docs are not generated and existing previews are unavailable.">
-                                                    </lightning-input>
+                                        <div class="safety-row">
+                                            <div class="safety-field-col">
+                                                <lightning-input
+                                                    type="text"
+                                                    maxlength="60"
+                                                    value={draft.customAiPromptSafetyGuardClass}
+                                                    onchange={handleChangeText}
+                                                    data-field="customAiPromptSafetyGuardClass"
+                                                    label="Custom AI Prompt Safety Guard Class"
+                                                    field-level-help="Optional. The name of your Apex class implementing IGoogleAiPromptSafetyGuard. Leave blank to use the built-in default guard."
+                                                    placeholder="e.g. MyCustomAiPromptSafetyGuard"
+                                                    disabled={isIntelligenceDisabled}
+                                                ></lightning-input>
+                                            </div>
+                                            <div class="safety-info-col">
+                                                <div class="info-panel">
+                                                    <div class="info-title">Bring your own safety guard</div>
+                                                    <div class="info-text">Implement the IGoogleAiPromptSafetyGuard Apex interface with your own inspection rules, then enter the class name here. Leave blank to keep the built-in default guard that uses the AI Safety Mode setting on the left.</div>
+                                                    <div class="info-link">
+                                                        <a href={customGuardGuideUrl} target="_blank" rel="noopener noreferrer">Read the custom guard guide →</a>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

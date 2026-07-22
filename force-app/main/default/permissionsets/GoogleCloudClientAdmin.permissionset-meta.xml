@@ -13,6 +13,16 @@
         <name>GoogleClientConfig__mdt</name>
     </customMetadataTypeAccesses>
     <description>Provides access to Google Cloud file management functionality, including the application, file metadata, and all related system integration and configuration settings.</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleClientConfig__mdt.AiSafetyMode__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleClientConfig__mdt.CustomAiPromptSafetyGuardClass__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Google Cloud Client Admin</label>
     <tabSettings>

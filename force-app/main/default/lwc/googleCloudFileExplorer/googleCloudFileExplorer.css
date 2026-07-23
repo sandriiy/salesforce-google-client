@@ -27,10 +27,14 @@
 
 .gcdc-file-explorer-table-wrap {
     background: var(--lwc-colorBackgroundAlt, #ffffff);
+    position: relative;
+    height: calc(100vh - 160px);
 }
 
 .gcdc-file-explorer-table {
     --_slds-c-datatable-radius-border: 0px !important;
+    display: block;
+    height: 100%;
 }
 
 .gcdc-file-explorer-section-label {
@@ -59,4 +63,10 @@
 
 .gcdc-file-explorer-empty {
     color: var(--lwc-colorTextLabel, #706e6b);
+    position: absolute;
+    top: 40%;
+    left: 0;
+    right: 0;
+    margin: 0;
+    pointer-events: none;
 }

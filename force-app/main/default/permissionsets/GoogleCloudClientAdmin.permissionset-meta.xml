@@ -23,6 +23,11 @@
         <field>GoogleClientConfig__mdt.CustomAiPromptSafetyGuardClass__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleClientConfig__mdt.FileExplorerColumns__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Google Cloud Client Admin</label>
     <tabSettings>

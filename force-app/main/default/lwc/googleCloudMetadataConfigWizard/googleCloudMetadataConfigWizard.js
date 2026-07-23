@@ -1,6 +1,11 @@
 import { LightningElement, api, wire } from 'lwc';
 import { gql, graphql } from 'lightning/uiGraphQLApi';
 import { isEmpty, showToast, normalizeError, extractGraphValue } from 'c/googleCloudUtils';
+import {
+    FILE_EXPLORER_COLUMN_OPTIONS,
+    DEFAULT_FILE_EXPLORER_COLUMNS,
+    MAX_FILE_EXPLORER_COLUMNS
+} from 'c/googleCloudFileExplorerColumns';
 
 import checkConfig from '@salesforce/apex/GoogleCloudConfigController.validateLatestMetadataDeploy';
 import validateDriveConfig from '@salesforce/apex/GoogleCloudConfigController.validateDriveMetadataConfig';
@@ -59,6 +64,8 @@ const QUERY = gql`
                             QuestionMaxOutputTokens__c { value }
                             AiSafetyMode__c { value }
                             CustomAiPromptSafetyGuardClass__c { value }
+
+                            FileExplorerColumns__c { value }
                         }
                     }
                 }
@@ -80,10 +87,14 @@ const AI_SAFETY_MODE_OPTIONS = [
     { label: 'Off', value: 'Off' }
 ];
 const ADVANCED_TAB_FILE_MANAGEMENT = 'fileManagement';
+const ADVANCED_TAB_USER_INTERFACE = 'userInterface';
 const ADVANCED_TAB_AI_INTELLIGENCE = 'aiIntelligence';
 const ADVANCED_TAB_SAFETY_CUSTOMIZATION = 'safetyCustomization';
-const ADVANCED_TAB_KEYS = [ADVANCED_TAB_FILE_MANAGEMENT, ADVANCED_TAB_AI_INTELLIGENCE, ADVANCED_TAB_SAFETY_CUSTOMIZATION];
+const ADVANCED_TAB_KEYS = [ADVANCED_TAB_FILE_MANAGEMENT, ADVANCED_TAB_USER_INTERFACE, ADVANCED_TAB_AI_INTELLIGENCE, ADVANCED_TAB_SAFETY_CUSTOMIZATION];
+const FILE_EXPLORER_REQUIRED_COLUMNS = ['title'];
+const FILE_EXPLORER_COLUMNS_OVERFLOW_MESSAGE = `You can display up to ${MAX_FILE_EXPLORER_COLUMNS} columns.`;
 const SAFETY_MODE_GUIDE_URL = 'https://sandriiy.github.io/salesforce-google-client/features/artificial-intelligence/safety/';
+const UI_FILE_EXPLORER_URL = 'https://sandriiy.github.io/salesforce-google-client/features/file-explorer/';
 const CUSTOM_GUARD_GUIDE_URL = 'https://sandriiy.github.io/salesforce-google-client/features/artificial-intelligence/safety/#ownguard';
 const DEFAULT_SUMMARY_PROMPT = 'Create a very short summary of the provided document content that starts with "This file describes". Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief.';
 const DEFAULT_QUESTION_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
@@ -115,10 +126,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         customQuestionPrompt: DEFAULT_QUESTION_PROMPT,
         questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
         aiSafetyMode: DEFAULT_AI_SAFETY_MODE,
-        customAiPromptSafetyGuardClass: ''
+        customAiPromptSafetyGuardClass: '',
+        fileExplorerColumns: ''
     };
 
     errorMessage = '';
+    customColumnDraft = '';
     configRegistry = CONFIG_SECTIONS;
     selectedConfigKey = CONFIG_SECTIONS?.[0]?.key || 'drive';
     isConfigMenuOpen = false;
@@ -354,7 +367,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             }
         }
 
-        if (this.isAdvancedView && this.hasInputErrors('.advanced-container lightning-input, .advanced-container lightning-textarea')) {
+        if (this.isAdvancedView && this.hasInputErrors('.advanced-container lightning-input, .advanced-container lightning-textarea, .advanced-container lightning-dual-listbox')) {
             this.focusFailingAdvancedTab();
             return false;
         }
@@ -484,7 +497,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customQuestionPrompt: '',
             questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
             aiSafetyMode: '',
-            customAiPromptSafetyGuardClass: ''
+            customAiPromptSafetyGuardClass: '',
+            fileExplorerColumns: ''
         };
     }
 
@@ -512,7 +526,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customQuestionPrompt: extractGraphValue(recordNode?.CustomQuestionPrompt__c) || '',
             questionMaxOutputTokens: this.toNumberOrNull(extractGraphValue(recordNode?.QuestionMaxOutputTokens__c)),
             aiSafetyMode: extractGraphValue(recordNode?.AiSafetyMode__c) || '',
-            customAiPromptSafetyGuardClass: extractGraphValue(recordNode?.CustomAiPromptSafetyGuardClass__c) || ''
+            customAiPromptSafetyGuardClass: extractGraphValue(recordNode?.CustomAiPromptSafetyGuardClass__c) || '',
+            fileExplorerColumns: extractGraphValue(recordNode?.FileExplorerColumns__c) || ''
         };
     }
 
@@ -539,7 +554,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customQuestionPrompt: serverSnapshot.customQuestionPrompt || '',
             questionMaxOutputTokens: serverSnapshot.questionMaxOutputTokens,
             aiSafetyMode: serverSnapshot.aiSafetyMode || '',
-            customAiPromptSafetyGuardClass: serverSnapshot.customAiPromptSafetyGuardClass || ''
+            customAiPromptSafetyGuardClass: serverSnapshot.customAiPromptSafetyGuardClass || '',
+            fileExplorerColumns: serverSnapshot.fileExplorerColumns || ''
         });
     }
 
@@ -578,6 +594,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'QuestionMaxOutputTokens__c', serverState.questionMaxOutputTokens, draftState.questionMaxOutputTokens);
         this.putIfChanged(changed, 'AiSafetyMode__c', serverState.aiSafetyMode, draftState.aiSafetyMode);
         this.putIfChanged(changed, 'CustomAiPromptSafetyGuardClass__c', serverState.customAiPromptSafetyGuardClass, draftState.customAiPromptSafetyGuardClass);
+        this.putIfChanged(changed, 'FileExplorerColumns__c', serverState.fileExplorerColumns, draftState.fileExplorerColumns);
 
         return changed;
     }
@@ -603,7 +620,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customQuestionPrompt: draftState.customQuestionPrompt || '',
             questionMaxOutputTokens: draftState.questionMaxOutputTokens,
             aiSafetyMode: draftState.aiSafetyMode || '',
-            customAiPromptSafetyGuardClass: draftState.customAiPromptSafetyGuardClass || ''
+            customAiPromptSafetyGuardClass: draftState.customAiPromptSafetyGuardClass || '',
+            fileExplorerColumns: draftState.fileExplorerColumns || ''
         };
     }
 
@@ -682,7 +700,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     focusFailingAdvancedTab() {
         for (const tabKey of ADVANCED_TAB_KEYS) {
-            const inputs = Array.from(this.template.querySelectorAll(`[data-tab="${tabKey}"] lightning-input, [data-tab="${tabKey}"] lightning-textarea`));
+            const inputs = Array.from(this.template.querySelectorAll(`[data-tab="${tabKey}"] lightning-input, [data-tab="${tabKey}"] lightning-textarea, [data-tab="${tabKey}"] lightning-dual-listbox`));
             const hasInvalid = inputs.some((input) => typeof input.checkValidity === 'function' && !input.checkValidity());
             if (hasInvalid) {
                 this.activeAdvancedTab = tabKey;
@@ -765,6 +783,10 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return this.draft?.aiSafetyMode || DEFAULT_AI_SAFETY_MODE;
     }
 
+	get uiFileExplorerUrl() {
+        return UI_FILE_EXPLORER_URL;
+    }
+
     get safetyModeGuideUrl() {
         return SAFETY_MODE_GUIDE_URL;
     }
@@ -805,6 +827,85 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return this.advancedTabPanelClass(ADVANCED_TAB_SAFETY_CUSTOMIZATION);
     }
 
+    get userInterfaceStepClass() {
+        return this.advancedStepButtonClass(ADVANCED_TAB_USER_INTERFACE);
+    }
+
+    get userInterfacePanelClass() {
+        return this.advancedTabPanelClass(ADVANCED_TAB_USER_INTERFACE);
+    }
+
+    get maxFileExplorerColumns() {
+        return MAX_FILE_EXPLORER_COLUMNS;
+    }
+
+    get requiredFileExplorerColumns() {
+        return FILE_EXPLORER_REQUIRED_COLUMNS;
+    }
+
+    get fileExplorerColumnsOverflowMessage() {
+        return FILE_EXPLORER_COLUMNS_OVERFLOW_MESSAGE;
+    }
+
+    get selectedFileExplorerColumns() {
+        return this.splitColumns(this.draft?.fileExplorerColumns);
+    }
+
+    get fileExplorerColumnOptions() {
+        const catalogValues = new Set(FILE_EXPLORER_COLUMN_OPTIONS.map((option) => option.value));
+        const customOptions = this.selectedFileExplorerColumns
+            .filter((columnKey) => !catalogValues.has(columnKey))
+            .map((columnKey) => ({ label: columnKey, value: columnKey }));
+
+        return [...FILE_EXPLORER_COLUMN_OPTIONS, ...customOptions];
+    }
+
+    handleColumnsChange(event) {
+        const selectedValues = event.detail?.value || [];
+        this.draft = {
+            ...this.draft,
+            fileExplorerColumns: selectedValues.join(';')
+        };
+    }
+
+    handleCustomColumnDraftChange(event) {
+        this.customColumnDraft = event.target.value || '';
+    }
+
+    handleAddCustomColumn() {
+        const token = this.customColumnDraft.trim();
+        if (isEmpty(token)) {
+            return;
+        }
+
+        const currentColumns = this.selectedFileExplorerColumns;
+        const alreadyPresent = currentColumns.some((columnKey) => columnKey.toLowerCase() === token.toLowerCase());
+        if (alreadyPresent) {
+            showToast(this, 'Column already added', `“${token}” is already in the list`, 'info');
+            this.customColumnDraft = '';
+            return;
+        }
+
+        if (currentColumns.length >= MAX_FILE_EXPLORER_COLUMNS) {
+            showToast(this, 'Too many columns', FILE_EXPLORER_COLUMNS_OVERFLOW_MESSAGE, 'error');
+            return;
+        }
+
+        this.draft = {
+            ...this.draft,
+            fileExplorerColumns: [...currentColumns, token].join(';')
+        };
+        this.customColumnDraft = '';
+    }
+
+    splitColumns(rawColumns) {
+        const source = isEmpty(rawColumns) ? DEFAULT_FILE_EXPLORER_COLUMNS : rawColumns;
+        return source
+            .split(';')
+            .map((columnKey) => columnKey.trim())
+            .filter((columnKey) => columnKey.length > 0);
+    }
+
     get isDirty() {
         if (!this.server) {
             return false;
@@ -833,7 +934,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.customQuestionPrompt || '') !== (draftState.customQuestionPrompt || '') ||
             (serverState.questionMaxOutputTokens ?? null) !== (draftState.questionMaxOutputTokens ?? null) ||
             (serverState.aiSafetyMode || '') !== (draftState.aiSafetyMode || '') ||
-            (serverState.customAiPromptSafetyGuardClass || '') !== (draftState.customAiPromptSafetyGuardClass || '')
+            (serverState.customAiPromptSafetyGuardClass || '') !== (draftState.customAiPromptSafetyGuardClass || '') ||
+            (serverState.fileExplorerColumns || '') !== (draftState.fileExplorerColumns || '')
         );
     }
 

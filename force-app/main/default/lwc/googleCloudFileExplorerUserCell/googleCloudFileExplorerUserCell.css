@@ -1,0 +1,21 @@
+.gcdc-user-link {
+    display: block;
+    width: 100%;
+    padding: 0;
+    color: var(--lwc-brandAccessible, #0b5cab);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+
+.gcdc-user-link:hover .gcdc-user-label,
+.gcdc-user-link:focus .gcdc-user-label {
+    text-decoration: underline;
+}
+
+.gcdc-user-label {
+    display: block;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.45;
+}

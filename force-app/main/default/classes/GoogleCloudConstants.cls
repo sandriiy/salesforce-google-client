@@ -80,4 +80,10 @@ public class GoogleCloudConstants {
 	public static final String STRUCTURE_RECORD = '{Record}';
 	public static final String STRUCTURE_USER_RECORD = '{User}-{Record}';
 	public static final String STRUCTURE_RECORD_USER = '{Record}-{User}';
+
+	public static final String FILE_COLUMN_TITLE = 'title';
+	public static final Integer MAX_FILE_EXPLORER_COLUMNS = 7;
+	public static final Set<String> FILE_EXPLORER_COLUMNS = new Set<String>{
+		'title', 'type', 'size', 'owner', 'fileOwner', 'createdDate', 'lastModified', 'isLinked', 'access', 'summary'
+	};
 }

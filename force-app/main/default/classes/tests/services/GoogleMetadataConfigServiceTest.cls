@@ -222,4 +222,34 @@ private class GoogleMetadataConfigServiceTest {
 
 		Assert.areEqual(0, svc.getAllUploadFolderIds().size());
 	}
+
+	@IsTest
+	private static void testGetFileExplorerColumnsPositiveBlankUsesDefault() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			FileExplorerColumns__c = null
+		);
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		List<String> columns = svc.getFileExplorerColumns();
+		Assert.areEqual(5, columns.size());
+		Assert.areEqual('title', columns[0]);
+		Assert.areEqual('isLinked', columns[1]);
+		Assert.areEqual('access', columns[2]);
+		Assert.areEqual('owner', columns[3]);
+		Assert.areEqual('lastModified', columns[4]);
+	}
+
+	@IsTest
+	private static void testGetFileExplorerColumnsPositiveParsesConfigured() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			FileExplorerColumns__c = ' title ;summary;; type ; '
+		);
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		List<String> columns = svc.getFileExplorerColumns();
+		Assert.areEqual(3, columns.size());
+		Assert.areEqual('title', columns[0]);
+		Assert.areEqual('summary', columns[1]);
+		Assert.areEqual('type', columns[2]);
+	}
 }

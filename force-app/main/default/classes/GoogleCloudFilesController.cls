@@ -35,6 +35,11 @@ public with sharing class GoogleCloudFilesController {
 		return recordService.retrieveGoogleFiles(UserInfo.getUserId());
 	}
 
+	@AuraEnabled(cacheable=true)
+	public static List<GoogleFileColumnDTO> retrieveFileExplorerColumns() {
+		return new GoogleFileExplorerColumnResolver().resolveColumns();
+	}
+
 	@AuraEnabled
 	public static List<GoogleFile__c> retrieveAttachableOwnedGoogleFiles(Id relatedRecordId) {
 		GoogleLocalFileService recordService = new GoogleLocalFileService();

@@ -30,6 +30,7 @@ public inherited sharing class GoogleMetadataConfigService {
 	public static final String DEFAULT_METADATA_DEPLOY_KEY = 'DefaultGoogleMetadataDeployerKey';
 	public static final String DEFAULT_AUTH_CLASS_NAME = 'DefaultGoogleDriveAuthorizer';
 	public static final String DEFAULT_AI_SAFETY_MODE = 'Standard';
+	public static final String DEFAULT_FILE_EXPLORER_COLUMNS = 'title;isLinked;access;owner;lastModified';
 	public static final Set<String> SUPPORTED_AI_SAFETY_MODES = new Set<String>{ 'Strict', 'Standard', 'Relaxed', 'Off' };
 	public static final Long DEFAULT_BIG_FILE_SIZE = 2097152L;
 	public static final Integer DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
@@ -135,6 +136,22 @@ public inherited sharing class GoogleMetadataConfigService {
         }
 
         return ordered;
+    }
+
+    public List<String> getFileExplorerColumns() {
+        String raw = configRecord.FileExplorerColumns__c;
+        if (String.isBlank(raw)) {
+            raw = DEFAULT_FILE_EXPLORER_COLUMNS;
+        }
+
+        List<String> result = new List<String>();
+        for (String token : raw.split(';')) {
+            if (token == null) continue;
+            String trimmed = token.trim();
+            if (String.isNotBlank(trimmed)) result.add(trimmed);
+        }
+
+        return result;
     }
 
     public String getGoogleDriveAuthorizerClassName() {

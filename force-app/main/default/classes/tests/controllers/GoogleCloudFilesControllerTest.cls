@@ -51,6 +51,34 @@ private class GoogleCloudFilesControllerTest {
 	}
 
 	@IsTest
+	private static void testRetrieveFileExplorerColumnsPositiveDefault() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			FileExplorerColumns__c = null
+		);
+
+		Test.startTest();
+		List<GoogleFileColumnDTO> columns = GoogleCloudFilesController.retrieveFileExplorerColumns();
+		Test.stopTest();
+
+		System.assertEquals(5, columns.size());
+		System.assertEquals('title', columns[0].key);
+	}
+
+	@IsTest
+	private static void testRetrieveFileExplorerColumnsPositiveConfigured() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			FileExplorerColumns__c = 'title;summary'
+		);
+
+		Test.startTest();
+		List<GoogleFileColumnDTO> columns = GoogleCloudFilesController.retrieveFileExplorerColumns();
+		Test.stopTest();
+
+		System.assertEquals(2, columns.size());
+		System.assertEquals('summary', columns[1].key);
+	}
+
+	@IsTest
 	private static void testRetrieveGoogleFilesWithLimitPositive() {
 		GoogleCloudTestFactory.initMocks();
 

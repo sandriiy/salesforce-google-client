@@ -24,7 +24,17 @@
             </div>
 
             <div class="slds-page-header__col-actions">
-                <div class="slds-page-header__controls">
+                <div class="slds-page-header__controls gcdc-file-explorer-controls">
+                    <div class="slds-page-header__control gcdc-file-explorer-search">
+                        <lightning-input
+                            type="search"
+                            variant="label-hidden"
+                            placeholder="Search files..."
+                            value={searchTerm}
+                            onchange={handleSearch}
+                            label="Search files">
+                        </lightning-input>
+                    </div>
                     <div class="slds-page-header__control">
                         <lightning-button
                             label="Upload Files"
@@ -73,8 +83,15 @@
                             sorted-direction={sortedDirection}
                             onsort={handleSort}
                             ontitleclick={handleTitleClick}
+                            onuserclick={handleUserClick}
                             class="gcdc-file-explorer-table"
                         ></c-google-cloud-file-explorer-data-table>
+
+                        <template lwc:if={hasNoSearchResults}>
+                            <p class="slds-text-body_regular slds-text-align_center slds-p-around_medium gcdc-file-explorer-empty">
+                                No files match your search.
+                            </p>
+                        </template>
                     </div>
                 </template>
             </main>

@@ -110,6 +110,7 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
         with(BASE_FIELDS);
         with(DETAIL_FIELDS);
 		with(ROLL_UP_FIELDS);
+        with('Owner.Name');
         return this;
     }
 
@@ -124,11 +125,19 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
     }
 
     public GoogleFileSelector withLatestVersionSubquery() {
+        return withLatestVersionSubquery(new List<String>());
+    }
+
+    public GoogleFileSelector withLatestVersionSubquery(List<String> additionalFields) {
         GSOQL.SubQuery latestVersion = GSOQL.SubQuery.of('GoogleFileVersions__r')
             .with(GoogleFileVersionSelector.BASE_FIELDS)
             .with('CreatedBy', new List<SObjectField>{ User.Name })
             .orderBy(GoogleFileVersion__c.CreatedDate).sortDesc()
             .setLimit(1);
+
+        if (additionalFields != null && !additionalFields.isEmpty()) {
+            latestVersion.with(String.join(additionalFields, ','));
+        }
 
         with(latestVersion);
         return this;

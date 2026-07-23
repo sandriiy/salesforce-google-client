@@ -49,3 +49,4 @@ site/
 **/__pycache__/
 **/.venv/
 **/venv/
+CLAUDE.md

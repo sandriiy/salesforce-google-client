@@ -46,3 +46,17 @@
 .gcdc-file-explorer-meta-line {
     color: var(--lwc-colorTextLabel, #706e6b);
 }
+
+.gcdc-file-explorer-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.gcdc-file-explorer-search {
+    min-width: 240px;
+}
+
+.gcdc-file-explorer-empty {
+    color: var(--lwc-colorTextLabel, #706e6b);
+}

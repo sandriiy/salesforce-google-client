@@ -100,10 +100,14 @@ public without sharing class GoogleFileAccessResolver {
 	}
 
 	public List<GoogleFile__c> resolveAccessibleFilesForUser(Id targetUserId) {
+		return resolveAccessibleFilesForUser(targetUserId, new List<String>());
+	}
+
+	public List<GoogleFile__c> resolveAccessibleFilesForUser(Id targetUserId, List<String> additionalVersionFields) {
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
 
 		Set<Id> userAndGroupIds = resolvePrincipalIds(targetUserId);
-		List<GoogleFile__c> candidateFiles = resolveAccessibleCandidateFiles(targetUserId, userAndGroupIds);
+		List<GoogleFile__c> candidateFiles = resolveAccessibleCandidateFiles(targetUserId, userAndGroupIds, additionalVersionFields);
 
 		if (candidateFiles.isEmpty()) return new List<GoogleFile__c>();
 		return resolveAccessibleFiles(candidateFiles, targetUserId);
@@ -248,24 +252,24 @@ public without sharing class GoogleFileAccessResolver {
 		return principalIds;
 	}
 
-	private List<GoogleFile__c> resolveAccessibleCandidateFiles(Id targetUserId, Set<Id> userAndGroupIds) {
+	private List<GoogleFile__c> resolveAccessibleCandidateFiles(Id targetUserId, Set<Id> userAndGroupIds, List<String> additionalVersionFields) {
 		Map<Id, GoogleFile__c> candidateFilesById = new Map<Id, GoogleFile__c>();
 
         candidateFilesById.putAll((Map<Id, GoogleFile__c>) GoogleFileSelector.query()
             .withAllFields()
-            .withLatestVersionSubquery()
+            .withLatestVersionSubquery(additionalVersionFields)
             .byOwner(targetUserId)
             .toMap());
 
         candidateFilesById.putAll((Map<Id, GoogleFile__c>) GoogleFileSelector.query()
 			.withAllFields()
-			.withLatestVersionSubquery()
+			.withLatestVersionSubquery(additionalVersionFields)
 			.bySharedToUserOrGroups(userAndGroupIds)
 			.toMap());
 
         candidateFilesById.putAll((Map<Id, GoogleFile__c>) GoogleFileSelector.query()
             .withAllFields()
-            .withLatestVersionSubquery()
+            .withLatestVersionSubquery(additionalVersionFields)
             .byDirectLinkForInternalVisibility()
 			.orderByCreatedDesc()
             .limitTo(10000)
@@ -273,7 +277,7 @@ public without sharing class GoogleFileAccessResolver {
 
 		candidateFilesById.putAll((Map<Id, GoogleFile__c>) GoogleFileSelector.query()
 			.withAllFields()
-			.withLatestVersionSubquery()
+			.withLatestVersionSubquery(additionalVersionFields)
 			.byInferredRecordLinks()
 			.orderByCreatedDesc()
 			.limitTo(10000)

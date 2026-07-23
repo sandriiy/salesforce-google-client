@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>FileExplorerColumns__c</fullName>
+    <description>Ordered list of columns displayed in the File Explorer datatable, separated by ";". Supported values are "title", "type", "size", "owner", "createdDate", "lastModified", "isLinked", "access" and "summary". Any other value is treated as a "Google File Version" field API name and is displayed only when that field exists. Leave blank to keep the standard layout.</description>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Ordered list of File Explorer columns, separated by ";". "title" is always displayed first. A maximum of 7 columns is supported. Leave blank to keep the standard layout.</inlineHelpText>
+    <label>File Explorer Columns</label>
+    <length>1024</length>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

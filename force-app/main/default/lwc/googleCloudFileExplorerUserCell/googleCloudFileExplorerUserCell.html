@@ -1,0 +1,10 @@
+<template>
+    <template lwc:if={isNavigable}>
+        <button type="button" class="slds-button_reset gcdc-user-link" title={label} onclick={handleClick}>
+            <span class="gcdc-user-label">{label}</span>
+        </button>
+    </template>
+    <template lwc:else>
+        <span class="gcdc-user-label" title={label}>{label}</span>
+    </template>
+</template>

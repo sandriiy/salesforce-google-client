@@ -94,6 +94,11 @@
                                             <span class="step-label">File Management</span>
                                         </button>
 
+                                        <button class={userInterfaceStepClass} data-step="userInterface" onclick={handleAdvancedStepClick} type="button">
+                                            <span class="step-indicator"></span>
+                                            <span class="step-label">User Interface</span>
+                                        </button>
+
                                         <button class={aiIntelligenceStepClass} data-step="aiIntelligence" onclick={handleAdvancedStepClick} type="button">
                                             <span class="step-indicator"></span>
                                             <span class="step-label">AI Intelligence</span>
@@ -108,7 +113,7 @@
                                     <div class={fileManagementPanelClass} data-tab="fileManagement">
                                         <div class="tab-toggle-header">
                                             <div class="tab-toggle-copy">
-                                                <div class="tab-toggle-title">File preview</div>
+                                                <div class="tab-toggle-title">File Preview</div>
                                                 <div class="tab-toggle-subtitle">Skip generating preview documents and hide any previews that already exist.</div>
                                             </div>
                                             <div class="tab-toggle-control">
@@ -162,6 +167,74 @@
                                                     field-level-help="Specify your organization’s domain (for example, “cloudrylabs.com”). If set, all public links and shares created for outside Salesforce will be restricted to this domain, unless the user specifies otherwise."
                                                     placeholder="e.g. cloudrylabs.com">
                                                 </lightning-input>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class={userInterfacePanelClass} data-tab="userInterface">
+                                        <div class="ui-section">
+                                            <div class="ui-section-header">
+                                                <div class="ui-section-title">File Explorer tab</div>
+                                                <div class="ui-section-subtitle">This section lets you configure the File Explorer tab, including which columns appear in the datatable.</div>
+                                            </div>
+
+                                            <div class="ui-section-body">
+                                                <div class="ui-columns-row">
+                                                    <div class="safety-field-col">
+                                                        <lightning-dual-listbox
+                                                            name="fileExplorerColumns"
+                                                            label="Datatable Columns"
+                                                            source-label="Available Columns"
+                                                            selected-label="Displayed Columns"
+                                                            field-level-help="Choose which columns appear in the datatable. The `Title` column is always displayed first, and up to 7 columns are supported."
+                                                            options={fileExplorerColumnOptions}
+                                                            value={selectedFileExplorerColumns}
+                                                            required-options={requiredFileExplorerColumns}
+                                                            max={maxFileExplorerColumns}
+                                                            message-when-range-overflow={fileExplorerColumnsOverflowMessage}
+                                                            onchange={handleColumnsChange}
+                                                            enable-reorder>
+                                                        </lightning-dual-listbox>
+                                                    </div>
+                                                    <div class="safety-info-col">
+                                                        <div class="info-panel">
+                                                            <div class="info-title">Add a custom field</div>
+                                                            <div class="info-text">
+                                                                <p>
+                                                                    You can add custom fields from the Google File Version object to the File Explorer datatable, making additional file information visible to your users.
+                                                                    <br><br>
+                                                                    Enter the field’s exact API name, for example: My_Custom_Field__c
+                                                                    <br><br>
+                                                                    API names are not validated when the configuration is saved. If a field does not exist or cannot be accessed, its column will remain empty in the datatable.
+                                                                </p>
+                                                            </div>
+                                                            <div class="slds-grid slds-grid_vertical-align-end slds-gutters_x-small slds-m-top_small">
+                                                                <div class="slds-col slds-grow">
+                                                                    <lightning-input
+                                                                        type="text"
+                                                                        maxlength="80"
+                                                                        variant="label-hidden"
+                                                                        value={customColumnDraft}
+                                                                        onchange={handleCustomColumnDraftChange}
+                                                                        label="Custom field API name"
+                                                                        placeholder="e.g. My_Custom_Field__c">
+                                                                    </lightning-input>
+                                                                </div>
+                                                                <div class="slds-col slds-no-flex">
+                                                                    <lightning-button
+                                                                        variant="brand"
+                                                                        label="Add column"
+                                                                        title="Add custom field column"
+                                                                        onclick={handleAddCustomColumn}>
+                                                                    </lightning-button>
+                                                                </div>
+                                                            </div>
+                                                            <div class="slds-grid slds-grid_vertical-align-end info-link" style="height: 100%;">
+                                                                <a href={uiFileExplorerUrl} target="_blank" rel="noopener noreferrer">Learn about File Explorer →</a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

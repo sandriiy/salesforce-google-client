@@ -21,13 +21,27 @@ The File Explorer has two views:
 
 ## File List Columns
 
-The table shows your accessible files with key details such as:
+By default, the table shows your accessible files with key details such as:
 
 - **Title**
 - **Is Linked?** — whether the file is linked (assigned) to a Salesforce record
 - **Access** — your effective access level (View/Edit)
 - **Owner**
 - **Last Modified Date**
+
+### Configuring Columns
+
+Administrators can tailor which columns appear, and in what order, from the **Google Client** app → setup wizard → **Advanced → User Interface**.
+
+- Pick columns from the built-in catalog — **Title**, **Type**, **Size**, **Created By**, **Owner**, **Created Date**, **Last Modified Date**, **Is Linked?**, **Access**, and **Summary** (the AI-generated file summary) — and drag to reorder them.
+- **Title** is always displayed first and cannot be removed, because it is the link users click to preview a file.
+- A maximum of **7** columns can be displayed.
+
+Need a field that isn't in the catalog? Enter any **Google File Version** field API name (for example, `Summary__c`) in the **Add a custom field** box. Custom entries are **not** validated when you save — enter the exact API name. If the field does not exist or cannot be read, its column simply appears empty instead of causing an error.
+
+## Searching Files
+
+Use the **Search** box in the File Explorer header to filter the current view. The search matches on the **file name** and, when present, the file's **Summary** — so you can find a document by what it contains even if you do not remember its exact name. Files without a summary continue to match by name.
 
 ## Uploading Files from File Explorer
 

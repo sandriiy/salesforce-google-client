@@ -57,7 +57,8 @@ public without sharing class GoogleLocalFileService {
 	public List<GoogleFile__c> retrieveGoogleFiles(Id userId) {
 		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
 		try {
-			return accessResolver.resolveAccessibleFilesForUser(userId);
+			List<String> additionalVersionFields = new GoogleFileExplorerColumnResolver().resolveAdditionalVersionFields();
+			return accessResolver.resolveAccessibleFilesForUser(userId, additionalVersionFields);
 		} catch (Exception ex) {
 			Logger.error('Retrieve Google File Records (Local): ' + userId + ', message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
             Logger.saveLog();

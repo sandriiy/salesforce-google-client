@@ -1,5 +1,6 @@
 import { LightningElement, track, wire } from 'lwc';
 import retrieveAllGoogleFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveAllGoogleFiles';
+import retrieveFileExplorerColumns from '@salesforce/apex/GoogleCloudFilesController.retrieveFileExplorerColumns';
 import USER_ID from '@salesforce/user/Id';
 import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
 import {
@@ -12,8 +13,16 @@ import {
     asString,
     DEFAULT_FAILED_RETRIEVE_MESSAGE
 } from 'c/googleCloudUtils';
+import {
+    buildDatatableColumns,
+    buildStandardColumnValues,
+    buildCustomColumnValues,
+    resolveSortField,
+    resolveColumnLabel,
+    resolveDefaultSortFieldName
+} from 'c/googleCloudFileExplorerColumns';
 
-import { CurrentPageReference } from 'lightning/navigation';
+import { CurrentPageReference, NavigationMixin } from 'lightning/navigation';
 import { updateTabPresentation } from 'c/googleCloudCrossPlatformUtils';
 
 const TAB_FALLBACK_COMPONENT_NAME = 'c__googleCloudFileExplorer';
@@ -27,23 +36,16 @@ const NAV = {
     SHARED: 'shared'
 };
 
-const COLUMN = {
-    TITLE: 'nameSort',
-    IS_LINKED: 'isLinkedSort',
-    ACCESS: 'accessSort',
-    OWNER: 'ownerNameSort',
-    LAST_MODIFIED: 'lastModifiedSort'
-};
-
 const UPLOAD_SOURCE = 'File Explorer';
 const UNABLE_TO_UPLOAD_MESSAGE = 'Unable to upload file(s)';
 
-export default class GoogleCloudFileExplorer extends LightningElement {
+export default class GoogleCloudFileExplorer extends NavigationMixin(LightningElement) {
     @track isLoading = true;
     @track errorMessage = '';
     @track selectedNavKey = NAV.OWNED;
     @track isNewFileVersionUpload = false;
     @track activeActionFileId = null;
+    @track searchTerm = '';
 
     currentPageRef;
     tabInfo;
@@ -53,50 +55,11 @@ export default class GoogleCloudFileExplorer extends LightningElement {
     bucketOwned = [];
     bucketShared = [];
 
+    resolvedColumns = [];
+    columns = [];
+
     sortedBy = 'lastModifiedDisplay';
     sortedDirection = 'desc';
-
-    columns = [
-        {
-            label: 'Title',
-            fieldName: 'fileName',
-            type: 'fileTitle',
-            sortable: true,
-            wrapText: true,
-            typeAttributes: {
-                label: { fieldName: 'fileName' },
-                title: { fieldName: 'fileName' },
-                rowId: { fieldName: 'localId' }
-            },
-            cellAttributes: {
-                alignment: 'left'
-            }
-        },
-        {
-            label: 'Is Linked?',
-            fieldName: 'isLinkedLabel',
-            type: 'text',
-            sortable: true
-        },
-        {
-            label: 'Access',
-            fieldName: 'accessLabel',
-            type: 'text',
-            sortable: true
-        },
-        {
-            label: 'Owner',
-            fieldName: 'ownerName',
-            type: 'text',
-            sortable: true
-        },
-        {
-            label: 'Last Modified Date',
-            fieldName: 'lastModifiedDisplay',
-            type: 'text',
-            sortable: true
-        }
-    ];
 
     @wire(CurrentPageReference)
     wiredCurrentPageRef(pageRef) {
@@ -119,30 +82,21 @@ export default class GoogleCloudFileExplorer extends LightningElement {
     }
 
     get visibleRows() {
-        return this.applySort(this.getSelectedBucket(), this.sortedBy, this.sortedDirection);
+        return this.applySort(this.getFilteredBucket(), this.sortedBy, this.sortedDirection);
     }
 
     get metaLine() {
-        const count = this.getSelectedBucket().length;
+        const count = this.getFilteredBucket().length;
         const itemText = count === 1 ? 'item' : 'items';
         return `${count} ${itemText} • Sorted by ${this.sortLabel}`;
     }
 
     get sortLabel() {
-        switch (this.sortedBy) {
-            case 'fileName':
-                return 'Title';
-            case 'isLinkedLabel':
-                return 'Is Linked?';
-            case 'accessLabel':
-                return 'Access';
-            case 'ownerName':
-                return 'Owner';
-            case 'lastModifiedDisplay':
-                return 'Last Modified Date';
-            default:
-                return 'Last Modified Date';
-        }
+        return resolveColumnLabel(this.resolvedColumns, this.sortedBy) || 'Last Modified Date';
+    }
+
+    get hasNoSearchResults() {
+        return !this.hasError && !isEmpty(this.searchTerm) && this.getFilteredBucket().length === 0;
     }
 
     async loadFiles() {
@@ -150,8 +104,14 @@ export default class GoogleCloudFileExplorer extends LightningElement {
         this.errorMessage = '';
 
         try {
-            const result = await retrieveAllGoogleFiles();
-            const rawFiles = Array.isArray(result) ? result : [];
+            const [columnResult, filesResult] = await Promise.all([
+                this.loadColumns(),
+                retrieveAllGoogleFiles()
+            ]);
+
+            this.applyResolvedColumns(columnResult);
+
+            const rawFiles = Array.isArray(filesResult) ? filesResult : [];
             const rows = this.buildRows(rawFiles);
 
             this.allRows = rows;
@@ -165,20 +125,44 @@ export default class GoogleCloudFileExplorer extends LightningElement {
         }
     }
 
+    async loadColumns() {
+        try {
+            return await retrieveFileExplorerColumns();
+        } catch (error) {
+            return [];
+        }
+    }
+
+    applyResolvedColumns(columnResult) {
+        this.resolvedColumns = Array.isArray(columnResult) ? columnResult : [];
+        this.columns = buildDatatableColumns(this.resolvedColumns);
+
+        const availableSortFields = this.columns.map(column => column.fieldName);
+        if (!availableSortFields.includes(this.sortedBy)) {
+            this.sortedBy = resolveDefaultSortFieldName(this.resolvedColumns);
+            this.sortedDirection = 'desc';
+        }
+    }
+
     buildRows(rawFiles) {
         const formattedFiles = formatExistingLocalFiles(rawFiles);
         const rawByLocalId = this.indexRawFilesById(rawFiles);
 
         return formattedFiles.map(file => {
             const rawRecord = rawByLocalId.get(file.localId);
+            const latestVersion = rawRecord?.GoogleFileVersions__r?.[0];
             const linksCount = Number(extractGraphValue(rawRecord?.NumberOfLinks__c) || 0);
             const isLinked = linksCount > 0;
             const ownerName = asString(rawRecord?.CreatedBy?.Name) || (file.createdBy?.name || '');
             const ownerId = asString(rawRecord?.CreatedById) || (file.createdBy?.id || '');
+            const fileOwner = asString(rawRecord?.Owner?.Name) || '';
+            const fileOwnerId = asString(rawRecord?.OwnerId) || '';
             const accessLabel = asString(file.mode) || 'Viewer';
 
             return {
                 ...file,
+                ...buildStandardColumnValues(file),
+                ...buildCustomColumnValues(this.resolvedColumns, latestVersion),
                 fileName: file.name || 'Untitled',
                 nameSort: (file.name || 'Untitled').toLowerCase(),
                 isLinkedLabel: isLinked ? 'Yes' : 'No',
@@ -188,6 +172,9 @@ export default class GoogleCloudFileExplorer extends LightningElement {
                 ownerName,
                 ownerId,
                 ownerNameSort: (ownerName || '').toLowerCase(),
+                fileOwner,
+                fileOwnerId,
+                fileOwnerSort: fileOwner.toLowerCase(),
                 lastModifiedDisplay: formatDateAsDDMMYYYY_HHMM(file.lastModifiedDate),
                 lastModifiedSort: this.toTimestamp(file.lastModifiedDate)
             };
@@ -213,8 +200,38 @@ export default class GoogleCloudFileExplorer extends LightningElement {
         return [];
     }
 
+    getFilteredBucket() {
+        const bucket = this.getSelectedBucket();
+        if (isEmpty(this.searchTerm)) return bucket;
+
+        const term = this.searchTerm.toLowerCase();
+        return bucket.filter(row => {
+            const name = (row.fileName || '').toLowerCase();
+            const summary = (row.summary || '').toLowerCase();
+            return name.includes(term) || summary.includes(term);
+        });
+    }
+
     handleNavSelect(event) {
         this.selectedNavKey = event.detail.name;
+        this.searchTerm = '';
+    }
+
+    handleSearch(event) {
+        this.searchTerm = event.target.value || '';
+    }
+
+    handleUserClick(event) {
+        const userId = event.detail?.userId;
+        if (isEmpty(userId)) return;
+
+        this[NavigationMixin.Navigate]({
+            type: 'standard__recordPage',
+            attributes: {
+                recordId: userId,
+                actionName: 'view'
+            }
+        });
     }
 
     handleSort(event) {
@@ -222,26 +239,9 @@ export default class GoogleCloudFileExplorer extends LightningElement {
         this.sortedDirection = event.detail.sortDirection;
     }
 
-    resolveSortKey(fieldName) {
-        switch (fieldName) {
-            case 'fileName':
-                return COLUMN.TITLE;
-            case 'isLinkedLabel':
-                return COLUMN.IS_LINKED;
-            case 'accessLabel':
-                return COLUMN.ACCESS;
-            case 'ownerName':
-                return COLUMN.OWNER;
-            case 'lastModifiedDisplay':
-                return COLUMN.LAST_MODIFIED;
-            default:
-                return COLUMN.LAST_MODIFIED;
-        }
-    }
-
     applySort(rows, fieldName, direction) {
         const isDesc = direction === 'desc';
-        const sortKey = this.resolveSortKey(fieldName);
+        const sortKey = resolveSortField(this.resolvedColumns, fieldName);
         const sortedRows = [...(rows || [])];
 
         sortedRows.sort((leftRow, rightRow) => {

@@ -39,6 +39,8 @@ const NAV = {
 const UPLOAD_SOURCE = 'File Explorer';
 const UNABLE_TO_UPLOAD_MESSAGE = 'Unable to upload file(s)';
 
+const PAGE_SIZE = 50;
+
 export default class GoogleCloudFileExplorer extends NavigationMixin(LightningElement) {
     @track isLoading = true;
     @track errorMessage = '';
@@ -61,6 +63,10 @@ export default class GoogleCloudFileExplorer extends NavigationMixin(LightningEl
     sortedBy = 'lastModifiedDisplay';
     sortedDirection = 'desc';
 
+    filteredSortedRows = [];
+    renderedCount = PAGE_SIZE;
+    isLoadingMore = false;
+
     @wire(CurrentPageReference)
     wiredCurrentPageRef(pageRef) {
         this.currentPageRef = pageRef;
@@ -82,11 +88,15 @@ export default class GoogleCloudFileExplorer extends NavigationMixin(LightningEl
     }
 
     get visibleRows() {
-        return this.applySort(this.getFilteredBucket(), this.sortedBy, this.sortedDirection);
+        return this.filteredSortedRows.slice(0, this.renderedCount);
+    }
+
+    get enableInfiniteLoading() {
+        return this.renderedCount < this.filteredSortedRows.length;
     }
 
     get metaLine() {
-        const count = this.getFilteredBucket().length;
+        const count = this.filteredSortedRows.length;
         const itemText = count === 1 ? 'item' : 'items';
         return `${count} ${itemText} • Sorted by ${this.sortLabel}`;
     }
@@ -96,7 +106,7 @@ export default class GoogleCloudFileExplorer extends NavigationMixin(LightningEl
     }
 
     get hasNoSearchResults() {
-        return !this.hasError && !isEmpty(this.searchTerm) && this.getFilteredBucket().length === 0;
+        return !this.hasError && !isEmpty(this.searchTerm) && this.filteredSortedRows.length === 0;
     }
 
     async loadFiles() {
@@ -117,6 +127,8 @@ export default class GoogleCloudFileExplorer extends NavigationMixin(LightningEl
             this.allRows = rows;
             this.bucketOwned = rows.filter(row => row.ownerId === USER_ID);
             this.bucketShared = rows.filter(row => row.ownerId && row.ownerId !== USER_ID);
+
+            this.recomputeRows();
         } catch (error) {
             this.errorMessage = normalizeError(error) || DEFAULT_FAILED_RETRIEVE_MESSAGE;
             showToast(this, 'Unable to retrieve file(s)', this.errorMessage, 'error');
@@ -212,13 +224,20 @@ export default class GoogleCloudFileExplorer extends NavigationMixin(LightningEl
         });
     }
 
+    recomputeRows() {
+        this.filteredSortedRows = this.applySort(this.getFilteredBucket(), this.sortedBy, this.sortedDirection);
+        this.renderedCount = PAGE_SIZE;
+    }
+
     handleNavSelect(event) {
         this.selectedNavKey = event.detail.name;
         this.searchTerm = '';
+        this.recomputeRows();
     }
 
     handleSearch(event) {
         this.searchTerm = event.target.value || '';
+        this.recomputeRows();
     }
 
     handleUserClick(event) {
@@ -237,6 +256,15 @@ export default class GoogleCloudFileExplorer extends NavigationMixin(LightningEl
     handleSort(event) {
         this.sortedBy = event.detail.fieldName;
         this.sortedDirection = event.detail.sortDirection;
+        this.recomputeRows();
+    }
+
+    handleLoadMore() {
+        if (this.isLoadingMore || !this.enableInfiniteLoading) return;
+
+        this.isLoadingMore = true;
+        this.renderedCount = Math.min(this.renderedCount + PAGE_SIZE, this.filteredSortedRows.length);
+        this.isLoadingMore = false;
     }
 
     applySort(rows, fieldName, direction) {

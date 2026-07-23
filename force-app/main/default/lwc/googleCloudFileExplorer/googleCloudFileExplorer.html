@@ -81,6 +81,10 @@
                             hide-checkbox-column
                             sorted-by={sortedBy}
                             sorted-direction={sortedDirection}
+                            enable-infinite-loading={enableInfiniteLoading}
+                            load-more-offset="200"
+                            is-loading={isLoadingMore}
+                            onloadmore={handleLoadMore}
                             onsort={handleSort}
                             ontitleclick={handleTitleClick}
                             onuserclick={handleUserClick}

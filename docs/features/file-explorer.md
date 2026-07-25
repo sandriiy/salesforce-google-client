@@ -43,6 +43,8 @@ Need a field that isn't in the catalog? Enter any **Google File Version** field 
 
 Use the **Search** box in the File Explorer header to filter the current view. The search matches on the **file name** and, when present, the file's **Summary** — so you can find a document by what it contains even if you do not remember its exact name. Files without a summary continue to match by name.
 
+Beyond the File Explorer, Google Files can also be found through Salesforce **global search**. Opening a file from a global search result takes you straight to its **File Details** page. Global search follows Salesforce's standard sharing (files you own or that are directly shared with you), while the File Explorer also shows files you can reach through record-based access.
+
 ## Loading Large File Lists
 
 The file list loads **progressively**: an initial set of rows is shown right away, and more rows are appended automatically as you scroll toward the bottom of the table. This keeps the tab responsive when you have access to a large number of files. Searching, filtering, and sorting always apply across **all** of your files.

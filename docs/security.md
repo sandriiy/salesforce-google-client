@@ -122,4 +122,12 @@ From this, it calculates a final **User Access Level**:
 
 If multiple rules apply, the system always chooses the **highest** access level the user qualifies for.
 
+## Finding Files with Global Search
+
+Google Files can be found through Salesforce **global search**, the same search box you use to find any other record.
+
+Because global search follows Salesforce’s standard sharing, results include the Files you **own** or that have been **directly shared** with you. Files you can reach only through **record-based access** (a File Link on a record you can see) may not appear in global search, but they remain available through the **File Explorer** and the record components.
+
+When you open a File from a search result, the security layer described above runs again before anything is shown. Search never bypasses these checks: if you are not allowed to see a File, opening it simply shows a “no access” message.
+
 <br>

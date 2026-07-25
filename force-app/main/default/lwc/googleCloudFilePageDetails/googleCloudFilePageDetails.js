@@ -26,6 +26,17 @@ const TAB_POLL_DELAY_MS = 200;
 const TAB_MAX_RETRIES = 5;
 
 export default class GoogleCloudFilePageDetails extends NavigationMixin(LightningElement) {
+	@api
+	get recordId() {
+		return this._recordId;
+	}
+	set recordId(value) {
+		if (value && value !== this._recordId) {
+			this._recordId = value;
+			this.initializePage();
+		}
+	}
+
 	@track fileName;
 	@track tabTitle;
 
@@ -39,17 +50,16 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	@track isMainLoading = true;
 
 	currentPageRef;
-	recordId;
+	_recordId;
 	latestVersionRecord;
 
 	@wire(CurrentPageReference)
 	wiredCurrentPageRef(pageRef) {
 		this.currentPageRef = pageRef;
 
-		const newRecordId = pageRef?.state?.c__recordId;
-		if (newRecordId && newRecordId !== this.recordId) {
-			this.recordId = newRecordId;
-			this.initializePage();
+		const stateRecordId = pageRef?.state?.c__recordId;
+		if (stateRecordId) {
+			this.recordId = stateRecordId;
 		}
 	}
 
@@ -291,6 +301,10 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 		const label = `${baseTitle} | File`;
 
 		this.tabTitle = label;
+
+		if (this.currentPageRef?.type === 'standard__recordPage') {
+			return;
+		}
 
 		updateTabPresentation({
 			label,

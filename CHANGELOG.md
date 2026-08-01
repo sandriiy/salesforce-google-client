@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - TBA
+
+### Added
+
+- Direct Browser Upload, an optional setting that sends large file content from the browser straight to Google Drive instead of routing every chunk through Apex. Disabled by default, so existing organizations keep the standard upload path until an administrator turns it on.
+- CSP Trusted Site for `https://www.googleapis.com`, limited to the `connect-src` directive, so the browser can reach the Google Drive upload endpoint.
+- Test connection action in Advanced → File Management that verifies the service account, upload folder, and browser connection without leaving a file in Google Drive.
+- Retry through Salesforce prompt in the Uploader and in the Attachments and File Explorer upload window when a direct upload cannot complete.
+
 ## [2.0.0] - 2026-06-14
 
 ### Added

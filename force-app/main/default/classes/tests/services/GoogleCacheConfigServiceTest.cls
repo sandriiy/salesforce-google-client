@@ -72,20 +72,20 @@ private class GoogleCacheConfigServiceTest {
 	@IsTest
 	private static void testCtorPositiveDefault() {
 		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService();
-		System.assertNotEquals(null, cacheConfigService);
+		Assert.areNotEqual(null, cacheConfigService);
 	}
 
 	@IsTest
 	private static void testCtorPositiveNullProvider() {
 		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService((IGoogleCacheProvider) null);
-		System.assertNotEquals(null, cacheConfigService);
+		Assert.areNotEqual(null, cacheConfigService);
 	}
 
 	@IsTest
 	private static void testGetPartitionsPositiveNulls() {
 		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
-		System.assertEquals(null, cacheConfigService.getSessionPartition());
-		System.assertEquals(null, cacheConfigService.getOrgPartition());
+		Assert.areEqual(null, cacheConfigService.getSessionPartition());
+		Assert.areEqual(null, cacheConfigService.getOrgPartition());
 	}
 
 	@IsTest
@@ -93,9 +93,9 @@ private class GoogleCacheConfigServiceTest {
 		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		try {
 			cacheConfigService.get('');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(true);
+			Assert.isTrue(true);
 		}
 	}
 
@@ -107,9 +107,9 @@ private class GoogleCacheConfigServiceTest {
 
 		try {
 			cacheConfigService.get(cacheKey);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(true);
+			Assert.isTrue(true);
 		}
 	}
 
@@ -118,9 +118,9 @@ private class GoogleCacheConfigServiceTest {
 		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		try {
 			cacheConfigService.put('abc', null);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(true);
+			Assert.isTrue(true);
 		}
 	}
 
@@ -132,10 +132,10 @@ private class GoogleCacheConfigServiceTest {
 		String cacheValue = 'v1';
 
 		cacheConfigService.put(rawCacheKey, cacheValue);
-		System.assertEquals(cacheValue, cacheConfigService.get(rawCacheKey));
+		Assert.areEqual(cacheValue, cacheConfigService.get(rawCacheKey));
 
 		cacheConfigService.remove(rawCacheKey);
-		System.assertEquals(null, cacheConfigService.get(rawCacheKey));
+		Assert.areEqual(null, cacheConfigService.get(rawCacheKey));
 	}
 
 	@IsTest
@@ -146,10 +146,10 @@ private class GoogleCacheConfigServiceTest {
 		String cacheValue = 'v1';
 
 		cacheConfigService.put(rawCacheKey, cacheValue);
-		System.assertEquals(cacheValue, cacheConfigService.get(rawCacheKey));
+		Assert.areEqual(cacheValue, cacheConfigService.get(rawCacheKey));
 
 		cacheConfigService.remove(rawCacheKey);
-		System.assertEquals(null, cacheConfigService.get(rawCacheKey));
+		Assert.areEqual(null, cacheConfigService.get(rawCacheKey));
 	}
 
 	@IsTest
@@ -157,12 +157,12 @@ private class GoogleCacheConfigServiceTest {
 		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		String generatedConfigId = cacheConfigService.generateConfigId();
 
-		System.assertEquals(true, cacheConfigService.isValidConfigId(generatedConfigId));
-		System.assertEquals(false, cacheConfigService.isValidConfigId(null));
-		System.assertEquals(false, cacheConfigService.isValidConfigId(''));
-		System.assertEquals(false, cacheConfigService.isValidConfigId('cfg_abc_12345678'));
-		System.assertEquals(false, cacheConfigService.isValidConfigId('cfg_123_zzzzzzzz'));
-		System.assertEquals(false, cacheConfigService.isValidConfigId(' cfg_123_12345678 '));
+		Assert.areEqual(true, cacheConfigService.isValidConfigId(generatedConfigId));
+		Assert.areEqual(false, cacheConfigService.isValidConfigId(null));
+		Assert.areEqual(false, cacheConfigService.isValidConfigId(''));
+		Assert.areEqual(false, cacheConfigService.isValidConfigId('cfg_abc_12345678'));
+		Assert.areEqual(false, cacheConfigService.isValidConfigId('cfg_123_zzzzzzzz'));
+		Assert.areEqual(false, cacheConfigService.isValidConfigId(' cfg_123_12345678 '));
 	}
 
 	@IsTest
@@ -170,9 +170,9 @@ private class GoogleCacheConfigServiceTest {
 		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		try {
 			cacheConfigService.putConfig('bad', '{}');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(true);
+			Assert.isTrue(true);
 		}
 	}
 
@@ -181,9 +181,9 @@ private class GoogleCacheConfigServiceTest {
 		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		try {
 			cacheConfigService.getConfig('bad');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(true);
+			Assert.isTrue(true);
 		}
 	}
 
@@ -192,9 +192,9 @@ private class GoogleCacheConfigServiceTest {
 		GoogleCacheConfigService cacheConfigService = new GoogleCacheConfigService(new FakeCacheProvider());
 		try {
 			cacheConfigService.removeConfig('bad');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(true);
+			Assert.isTrue(true);
 		}
 	}
 
@@ -205,9 +205,9 @@ private class GoogleCacheConfigServiceTest {
 
 		try {
 			cacheConfigService.putConfig(generatedConfigId, null);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(true);
+			Assert.isTrue(true);
 		}
 	}
 
@@ -219,10 +219,10 @@ private class GoogleCacheConfigServiceTest {
 		String payloadJson = '{"a":1}';
 
 		cacheConfigService.putConfig(generatedConfigId, payloadJson);
-		System.assertEquals(payloadJson, cacheConfigService.getConfig(generatedConfigId));
+		Assert.areEqual(payloadJson, cacheConfigService.getConfig(generatedConfigId));
 
 		cacheConfigService.removeConfig(generatedConfigId);
-		System.assertEquals(null, cacheConfigService.getConfig(generatedConfigId));
+		Assert.areEqual(null, cacheConfigService.getConfig(generatedConfigId));
 	}
 
 	@IsTest
@@ -233,9 +233,9 @@ private class GoogleCacheConfigServiceTest {
 
 		try {
 			cacheConfigService.put(cacheKey, cacheValue);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
+			Assert.isTrue(e.getMessage().contains('Unable to access Platform Cache partition'));
 		}
 	}
 
@@ -246,9 +246,9 @@ private class GoogleCacheConfigServiceTest {
 
 		try {
 			cacheConfigService.get(cacheKey);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
+			Assert.isTrue(e.getMessage().contains('Unable to access Platform Cache partition'));
 		}
 	}
 
@@ -259,9 +259,9 @@ private class GoogleCacheConfigServiceTest {
 
 		try {
 			cacheConfigService.remove(cacheKey);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
+			Assert.isTrue(e.getMessage().contains('Unable to access Platform Cache partition'));
 		}
 	}
 
@@ -273,9 +273,9 @@ private class GoogleCacheConfigServiceTest {
 
 		try {
 			cacheConfigService.putConfig(generatedConfigId, payloadJson);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
+			Assert.isTrue(e.getMessage().contains('Unable to access Platform Cache partition'));
 		}
 	}
 
@@ -286,9 +286,9 @@ private class GoogleCacheConfigServiceTest {
 
 		try {
 			cacheConfigService.getConfig(generatedConfigId);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
+			Assert.isTrue(e.getMessage().contains('Unable to access Platform Cache partition'));
 		}
 	}
 
@@ -299,9 +299,9 @@ private class GoogleCacheConfigServiceTest {
 
 		try {
 			cacheConfigService.removeConfig(generatedConfigId);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleCacheConfigService.GoogleCacheConfigException e) {
-			System.assert(e.getMessage().contains('Unable to access Platform Cache partition'));
+			Assert.isTrue(e.getMessage().contains('Unable to access Platform Cache partition'));
 		}
 	}
 }

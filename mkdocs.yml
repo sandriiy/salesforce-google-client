@@ -75,12 +75,16 @@ nav:
       - Configure Components (Core Clouds): usage/core-clouds.md
       - Configure Components (Experience Cloud): usage/experience-cloud.md
 
+  - Config & Settings:
+      - Getting Started: config/getting-started.md
+      - Folder Structure: config/folder-structure.md
+      - Direct Browser Upload: config/direct-browser-upload.md
+
   - Features:
       - File Explorer: features/file-explorer.md
       - File Reuse & Linked Records: features/file-reuse-linked-records.md
       - Preview: features/preview.md
       - Sharing: features/sharing.md
-      - Folder Structure: features/folder-structure.md
       - Public Links: features/public-links.md
       - Versioning: features/versioning.md
       - Audit & Logging: features/audit.md

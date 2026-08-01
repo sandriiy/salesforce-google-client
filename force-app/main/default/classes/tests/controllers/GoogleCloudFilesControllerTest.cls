@@ -36,7 +36,7 @@ private class GoogleCloudFilesControllerTest {
 		String accessLevel = GoogleCloudFilesController.fetchFileAccess(localFile.Id);
 		Test.stopTest();
 
-		System.assertEquals('Edit', accessLevel);
+		Assert.areEqual('Edit', accessLevel);
 	}
 
 	@IsTest
@@ -47,7 +47,7 @@ private class GoogleCloudFilesControllerTest {
 		GoogleFileExplorerResultDTO result = GoogleCloudFilesController.retrieveAllGoogleFiles();
 		Test.stopTest();
 
-		System.assertNotEquals(null, result.files);
+		Assert.areNotEqual(null, result.files);
 	}
 
 	@IsTest
@@ -60,8 +60,8 @@ private class GoogleCloudFilesControllerTest {
 		List<GoogleFileColumnDTO> columns = GoogleCloudFilesController.retrieveFileExplorerColumns();
 		Test.stopTest();
 
-		System.assertEquals(5, columns.size());
-		System.assertEquals('title', columns[0].key);
+		Assert.areEqual(5, columns.size());
+		Assert.areEqual('title', columns[0].key);
 	}
 
 	@IsTest
@@ -74,8 +74,8 @@ private class GoogleCloudFilesControllerTest {
 		List<GoogleFileColumnDTO> columns = GoogleCloudFilesController.retrieveFileExplorerColumns();
 		Test.stopTest();
 
-		System.assertEquals(2, columns.size());
-		System.assertEquals('summary', columns[1].key);
+		Assert.areEqual(2, columns.size());
+		Assert.areEqual('summary', columns[1].key);
 	}
 
 	@IsTest
@@ -233,8 +233,8 @@ private class GoogleCloudFilesControllerTest {
 		GoogleFile__c fileRecord = GoogleCloudFilesController.retrieveLocalGoogleFileById(localFile.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, fileRecord);
-		System.assertEquals(localFile.Id, fileRecord.Id);
+		Assert.areNotEqual(null, fileRecord);
+		Assert.areEqual(localFile.Id, fileRecord.Id);
 	}
 
 	@IsTest
@@ -247,9 +247,9 @@ private class GoogleCloudFilesControllerTest {
 			Test.startTest();
 			GoogleCloudFilesController.retrieveLocalGoogleFileById(missingFileId);
 			Test.stopTest();
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (Exception ex) {
-			System.assert(String.isNotBlank(ex.getMessage()));
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
 		}
 	}
 
@@ -275,8 +275,8 @@ private class GoogleCloudFilesControllerTest {
 		GoogleFileVersion__c outVersion = GoogleCloudFilesController.retrieveLocalGoogleFileVersionById(fileVersion.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, outVersion);
-		System.assertEquals(fileVersion.Id, outVersion.Id);
+		Assert.areNotEqual(null, outVersion);
+		Assert.areEqual(fileVersion.Id, outVersion.Id);
 	}
 
 	@IsTest
@@ -294,7 +294,7 @@ private class GoogleCloudFilesControllerTest {
 		);
 		Test.stopTest();
 
-		System.assert(true);
+		Assert.isTrue(true);
 	}
 
 	@IsTest
@@ -320,7 +320,7 @@ private class GoogleCloudFilesControllerTest {
 		GoogleCloudFilesController.ensureGoogleDriveFolderStructure(linkedRecord.Id);
 		Test.stopTest();
 
-		System.assert(true);
+		Assert.isTrue(true);
 	}
 
 	@IsTest
@@ -357,7 +357,7 @@ private class GoogleCloudFilesControllerTest {
 		);
 		Test.stopTest();
 
-		System.assertNotEquals(null, createdFile);
+		Assert.areNotEqual(null, createdFile);
 	}
 
 	@IsTest
@@ -388,7 +388,7 @@ private class GoogleCloudFilesControllerTest {
 		GoogleCloudFilesController.deleteExistingGoogleFile(localFile.Id);
 		Test.stopTest();
 
-		System.assertEquals(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
+		Assert.areEqual(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
 	}
 
 	@IsTest
@@ -399,7 +399,7 @@ private class GoogleCloudFilesControllerTest {
 		GoogleFileEntity uploadedFile = GoogleCloudFilesController.uploadFile('hello.txt', 'aGVsbG8=');
 		Test.stopTest();
 
-		System.assertNotEquals(null, uploadedFile);
+		Assert.areNotEqual(null, uploadedFile);
 	}
 
 	@IsTest
@@ -416,7 +416,7 @@ private class GoogleCloudFilesControllerTest {
 		);
 		Test.stopTest();
 
-		System.assertNotEquals(null, bigFileResult);
+		Assert.areNotEqual(null, bigFileResult);
 	}
 
 	@IsTest

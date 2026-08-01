@@ -11,6 +11,14 @@ import checkConfig from '@salesforce/apex/GoogleCloudConfigController.validateLa
 import validateDriveConfig from '@salesforce/apex/GoogleCloudConfigController.validateDriveMetadataConfig';
 import validateIntelligenceConfig from '@salesforce/apex/GoogleCloudConfigController.validateIntelligenceMetadataConfig';
 import saveConfig from '@salesforce/apex/GoogleCloudConfigController.saveMetadataConfig';
+import initializeDirectUpload from '@salesforce/apex/GoogleCloudDirectUploadController.initializeDirectUpload';
+import reportDirectUploadOutcome from '@salesforce/apex/GoogleCloudDirectUploadController.reportDirectUploadOutcome';
+
+const PROBE_FILE_NAME = 'google-client-connection-test.tmp';
+const PROBE_TOTAL_BYTES = 1048576;
+const PROBE_CHUNK_BYTES = 262144;
+const PROBE_TIMEOUT_MS = 30000;
+const RESUMABLE_INCOMPLETE_STATUS = 308;
 
 const CONFIG_DEV_NAME = 'GoogleClient';
 const CONFIG_SECTIONS = [
@@ -51,6 +59,7 @@ const QUERY = gql`
                             DefaultBigFileSize__c { value }
                             OrganizationalDomain__c { value }
                             IsFilePreviewDisabled__c { value }
+                            IsDirectBrowserUploadEnabled__c { value }
                             MaxDeleteChainSize__c { value }
                             CustomGoogleUploadFolderStructure__c { value }
 
@@ -116,6 +125,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         organizationalDomain: '',
         defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
         isFilePreviewDisabled: false,
+        isDirectBrowserUploadEnabled: false,
         maxDeleteChainSize: DEFAULT_MAX_DELETE_CHAIN_SIZE,
         customGeminiApiKey: '',
         customModelName: '',
@@ -138,6 +148,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     viewMode = 'main';
     activeAdvancedTab = ADVANCED_TAB_FILE_MANAGEMENT;
     validationIssues = new Map();
+    isDirectUploadProbeRunning = false;
+    directUploadProbeSucceeded = false;
+    directUploadProbeMessage = '';
 
     connectedCallback() {
         this.initActiveConfigComponent();
@@ -289,6 +302,66 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         }
 
         this.draft = nextDraft;
+    }
+
+    async handleDirectUploadProbe() {
+        this.isDirectUploadProbeRunning = true;
+        this.directUploadProbeSucceeded = false;
+        this.directUploadProbeMessage = 'Testing…';
+
+        let session;
+        try {
+            session = await initializeDirectUpload({
+                fileName: PROBE_FILE_NAME,
+                mimeType: 'application/octet-stream',
+                totalBytes: PROBE_TOTAL_BYTES
+            });
+        } catch (error) {
+            this.directUploadProbeMessage = `Google rejected the upload session. Check the service account and upload folder configuration. (${normalizeError(error)})`;
+            this.isDirectUploadProbeRunning = false;
+            return;
+        }
+
+        const probeStatus = await this.sendDirectUploadProbeChunk(session.sessionUri);
+
+        if (probeStatus === RESUMABLE_INCOMPLETE_STATUS) {
+            this.directUploadProbeSucceeded = true;
+            this.directUploadProbeMessage = 'Direct browser upload is ready!';
+        } else if (probeStatus === 0) {
+            this.directUploadProbeMessage = 'The browser could not reach Google. Check that the CSP Trusted Site for https://www.googleapis.com is active!';
+        } else {
+            this.directUploadProbeMessage = `Google returned an unexpected response (${probeStatus}). Check the service account and upload folder configuration!`;
+        }
+
+        this.discardDirectUploadProbe(session.sessionUri);
+        this.isDirectUploadProbeRunning = false;
+    }
+
+    sendDirectUploadProbeChunk(sessionUri) {
+        return new Promise((resolve) => {
+            const request = new XMLHttpRequest();
+            request.open('PUT', sessionUri, true);
+            request.timeout = PROBE_TIMEOUT_MS;
+            request.setRequestHeader('Content-Range', `bytes 0-${PROBE_CHUNK_BYTES - 1}/${PROBE_TOTAL_BYTES}`);
+
+            request.onload = () => resolve(request.status);
+            request.onerror = () => resolve(request.status);
+            request.ontimeout = () => resolve(0);
+
+            request.send(new Blob([new Uint8Array(PROBE_CHUNK_BYTES)]));
+        });
+    }
+
+    discardDirectUploadProbe(sessionUri) {
+        const request = new XMLHttpRequest();
+        request.open('DELETE', sessionUri, true);
+        request.onerror = () => {};
+        request.send();
+
+        reportDirectUploadOutcome({
+            outcome: 'cancelled',
+            diagnostics: 'connection test'
+        }).catch(() => {});
     }
 
     async handleSave() {
@@ -487,6 +560,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             organizationalDomain: '',
             defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
             isFilePreviewDisabled: false,
+            isDirectBrowserUploadEnabled: false,
             maxDeleteChainSize: DEFAULT_MAX_DELETE_CHAIN_SIZE,
             customGeminiApiKey: '',
             customModelName: '',
@@ -516,6 +590,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             organizationalDomain: extractGraphValue(recordNode?.OrganizationalDomain__c) || '',
             defaultBigFileSize: this.toNumberOrNull(extractGraphValue(recordNode?.DefaultBigFileSize__c)),
             isFilePreviewDisabled: !!extractGraphValue(recordNode?.IsFilePreviewDisabled__c),
+            isDirectBrowserUploadEnabled: !!extractGraphValue(recordNode?.IsDirectBrowserUploadEnabled__c),
             maxDeleteChainSize: this.toNumberOrNull(extractGraphValue(recordNode?.MaxDeleteChainSize__c)),
             customGeminiApiKey: extractGraphValue(recordNode?.CustomGeminiApiKey__c) || '',
             customModelName: extractGraphValue(recordNode?.CustomModelName__c) || '',
@@ -544,6 +619,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             organizationalDomain: serverSnapshot.organizationalDomain || '',
             defaultBigFileSize: serverSnapshot.defaultBigFileSize,
             isFilePreviewDisabled: !!serverSnapshot.isFilePreviewDisabled,
+            isDirectBrowserUploadEnabled: !!serverSnapshot.isDirectBrowserUploadEnabled,
             maxDeleteChainSize: serverSnapshot.maxDeleteChainSize,
             customGeminiApiKey: serverSnapshot.customGeminiApiKey || '',
             customModelName: serverSnapshot.customModelName || '',
@@ -582,6 +658,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'OrganizationalDomain__c', serverState.organizationalDomain, draftState.organizationalDomain);
         this.putIfChanged(changed, 'DefaultBigFileSize__c', serverState.defaultBigFileSize, draftState.defaultBigFileSize);
         this.putIfChanged(changed, 'IsFilePreviewDisabled__c', !!serverState.isFilePreviewDisabled, !!draftState.isFilePreviewDisabled);
+        this.putIfChanged(changed, 'IsDirectBrowserUploadEnabled__c', !!serverState.isDirectBrowserUploadEnabled, !!draftState.isDirectBrowserUploadEnabled);
         this.putIfChanged(changed, 'MaxDeleteChainSize__c', serverState.maxDeleteChainSize, draftState.maxDeleteChainSize);
         this.putIfChanged(changed, 'CustomGoogleUploadFolderStructure__c', serverState.customGoogleUploadFolderStructure, draftState.customGoogleUploadFolderStructure);
         this.putIfChanged(changed, 'CustomGeminiApiKey__c', serverState.customGeminiApiKey, draftState.customGeminiApiKey);
@@ -610,6 +687,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             organizationalDomain: draftState.organizationalDomain || '',
             defaultBigFileSize: draftState.defaultBigFileSize,
             isFilePreviewDisabled: !!draftState.isFilePreviewDisabled,
+            isDirectBrowserUploadEnabled: !!draftState.isDirectBrowserUploadEnabled,
             maxDeleteChainSize: draftState.maxDeleteChainSize,
             customGeminiApiKey: draftState.customGeminiApiKey || '',
             customModelName: draftState.customModelName || '',
@@ -819,6 +897,19 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return this.advancedTabPanelClass(ADVANCED_TAB_FILE_MANAGEMENT);
     }
 
+    get isDirectUploadSaved() {
+        return !!this.server?.isDirectBrowserUploadEnabled;
+    }
+
+    get directUploadProbeClass() {
+        let toneClass = 'slds-text-color_weak';
+        if (!this.isDirectUploadProbeRunning) {
+            toneClass = this.directUploadProbeSucceeded ? 'slds-text-color_success' : 'slds-text-color_error';
+        }
+
+        return `slds-text-body_small ${toneClass}`;
+    }
+
     get aiIntelligencePanelClass() {
         return this.advancedTabPanelClass(ADVANCED_TAB_AI_INTELLIGENCE);
     }
@@ -924,6 +1015,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.organizationalDomain || '') !== (draftState.organizationalDomain || '') ||
             (serverState.defaultBigFileSize ?? null) !== (draftState.defaultBigFileSize ?? null) ||
             (!!serverState.isFilePreviewDisabled !== !!draftState.isFilePreviewDisabled) ||
+            (!!serverState.isDirectBrowserUploadEnabled !== !!draftState.isDirectBrowserUploadEnabled) ||
             (serverState.maxDeleteChainSize ?? null) !== (draftState.maxDeleteChainSize ?? null) ||
             (serverState.customGeminiApiKey || '') !== (draftState.customGeminiApiKey || '') ||
             (serverState.customModelName || '') !== (draftState.customModelName || '') ||

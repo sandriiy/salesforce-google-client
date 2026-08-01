@@ -67,6 +67,45 @@ public without sharing class GoogleRemoteFileUploader {
 		throw new GoogleRemoteFileUploaderException('Unable to upload the file. Please try again or contact your system administrator.');
 	}
 
+	public GoogleResumableSessionResult initializeResumableSession(String fileName, String mimeType) {
+		List<String> candidateFolders = resolveCandidateFolders();
+		Integer candidateCount = candidateFolders.size();
+
+		for (Integer i = 0; i < candidateCount; i++) {
+			String candidateFolderId = candidateFolders[i];
+			Boolean hasNextCandidate = (i + 1) < candidateCount;
+
+			try {
+				GoogleResumableFileBuilder sessionBuilder = this.remoteGoogleDrive.files().resumableCreate()
+					.setFileName(fileName)
+					.setParentFolders(new List<String>{candidateFolderId})
+					.setSupportsAllDrives(true)
+					.setFields('id, name, parents');
+
+				if (String.isNotBlank(mimeType)) {
+					sessionBuilder.setMimeType(mimeType);
+				}
+
+				GoogleBigFileEntity initializedSession = sessionBuilder.initialize();
+				return new GoogleResumableSessionResult(initializedSession.resumableSessionId, candidateFolderId);
+			} catch (Exception ex) {
+				if (hasNextCandidate && GoogleDriveCapacityErrorClassifier.isCapacityExhaustedError(ex)) {
+					logCapacityFallover('Initialize Resumable Session', fileName, candidateFolderId, ex);
+					continue;
+				}
+
+				if (!hasNextCandidate && candidateCount > 1 && GoogleDriveCapacityErrorClassifier.isCapacityExhaustedError(ex)) {
+					logCapacityFallover('Initialize Resumable Session', fileName, candidateFolderId, ex);
+					throw new GoogleRemoteFileUploaderException('All configured shared drives are full. Please contact your system administrator.');
+				}
+
+				throw new GoogleRemoteFileUploaderException('Unable to start the file upload. Please try again or contact your system administrator.');
+			}
+		}
+
+		throw new GoogleRemoteFileUploaderException('Unable to start the file upload. Please try again or contact your system administrator.');
+	}
+
 	public GoogleBigFileEntity uploadBigFilePartial(String fileName, String chunkToUpload, String resumableSessionId, Long startByte, Long totalBytes) {
 		Blob decodedBlob = EncodingUtil.base64Decode(chunkToUpload);
 
@@ -143,5 +182,15 @@ public without sharing class GoogleRemoteFileUploader {
 			', FileName=' + String.valueOf(fileName) +
 			', Reason=' + String.valueOf(reason)
 		).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+	}
+
+	public class GoogleResumableSessionResult {
+		public String sessionUri;
+		public String folderId;
+
+		public GoogleResumableSessionResult(String sessionUri, String folderId) {
+			this.sessionUri = sessionUri;
+			this.folderId = folderId;
+		}
 	}
 }

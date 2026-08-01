@@ -8,6 +8,10 @@
         <apexClass>GoogleCloudConfigController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>GoogleCloudDirectUploadController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>
         <name>GoogleClientConfig__mdt</name>
@@ -26,6 +30,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>GoogleClientConfig__mdt.FileExplorerColumns__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleClientConfig__mdt.IsDirectBrowserUploadEnabled__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>

@@ -33,9 +33,9 @@ private class GoogleLocalFileServiceTest {
 
 	private static void coverFactories() {
 		GoogleLocalFileService localFileService = new GoogleLocalFileService();
-		System.assertNotEquals(null, localFileService.deleteGoogleFileRecord());
-		System.assertNotEquals(null, localFileService.retrieveGoogleFileHeaderDetails());
-		System.assertNotEquals(null, localFileService.stripInaccessibleRecords());
+		Assert.areNotEqual(null, localFileService.deleteGoogleFileRecord());
+		Assert.areNotEqual(null, localFileService.retrieveGoogleFileHeaderDetails());
+		Assert.areNotEqual(null, localFileService.stripInaccessibleRecords());
 	}
 
 	@IsTest
@@ -46,8 +46,8 @@ private class GoogleLocalFileServiceTest {
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F1').withDescription('D').insertRecord();
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(UserInfo.getUserId()).strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -71,8 +71,8 @@ private class GoogleLocalFileServiceTest {
 			.forUser(targetUser.Id)
 			.strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('View', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('View', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -93,8 +93,8 @@ private class GoogleLocalFileServiceTest {
 
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile).forUser(targetUser.Id).strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -124,8 +124,8 @@ private class GoogleLocalFileServiceTest {
 
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(targetUser.Id).strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('View', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('View', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -158,8 +158,8 @@ private class GoogleLocalFileServiceTest {
 			.forUser(targetUser.Id)
 			.strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -190,7 +190,7 @@ private class GoogleLocalFileServiceTest {
 			.forUser(targetUser.Id)
 			.strip();
 
-		System.assertEquals(0, visibleFiles.size());
+		Assert.areEqual(0, visibleFiles.size());
 	}
 
 	@IsTest
@@ -221,8 +221,8 @@ private class GoogleLocalFileServiceTest {
 
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(targetUser.Id).strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -231,7 +231,7 @@ private class GoogleLocalFileServiceTest {
 		coverFactories();
 
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFiles(new List<GoogleFile__c>()).strip();
-		System.assertEquals(0, visibleFiles.size());
+		Assert.areEqual(0, visibleFiles.size());
 	}
 
 	@IsTest
@@ -244,9 +244,9 @@ private class GoogleLocalFileServiceTest {
 
 		try {
 			new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(missingUserId).strip();
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleFileAccessResolver.GoogleFileAccessCheckException ex) {
-			System.assert(ex.getMessage().contains('Target user was not found'));
+			Assert.isTrue(ex.getMessage().contains('Target user was not found'));
 		}
 	}
 
@@ -278,9 +278,9 @@ private class GoogleLocalFileServiceTest {
 		Boolean deleteResult = new GoogleLocalFileService().deleteGoogleFileRecord().setRecordId(localFile.Id).setCloudDeletion(false).save();
 		Test.stopTest();
 
-		System.assertEquals(true, deleteResult);
-		System.assertEquals(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
-		System.assertEquals(0, [SELECT count() FROM GoogleFileVersion__c WHERE GoogleFileId__c = :localFile.Id]);
+		Assert.areEqual(true, deleteResult);
+		Assert.areEqual(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
+		Assert.areEqual(0, [SELECT count() FROM GoogleFileVersion__c WHERE GoogleFileId__c = :localFile.Id]);
 	}
 
 	@IsTest
@@ -312,9 +312,9 @@ private class GoogleLocalFileServiceTest {
 		Boolean deleteResult = new GoogleLocalFileService().deleteGoogleFileRecord().setRecordId(localFile.Id).setCloudDeletion(true).save();
 		Test.stopTest();
 
-		System.assertEquals(true, deleteResult);
-		System.assertEquals(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
-		System.assertEquals(0, [SELECT count() FROM GoogleFileVersion__c WHERE GoogleFileId__c = :localFile.Id]);
+		Assert.areEqual(true, deleteResult);
+		Assert.areEqual(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
+		Assert.areEqual(0, [SELECT count() FROM GoogleFileVersion__c WHERE GoogleFileId__c = :localFile.Id]);
 	}
 
 	@IsTest
@@ -440,7 +440,7 @@ private class GoogleLocalFileServiceTest {
 		GoogleFile__c createdFile = new GoogleLocalFileService().createGoogleFileRecord(request);
 		Test.stopTest();
 
-		System.assertNotEquals(null, createdFile);
+		Assert.areNotEqual(null, createdFile);
 	}
 
 	@IsTest
@@ -499,8 +499,8 @@ private class GoogleLocalFileServiceTest {
 			.forUser(privilegedUser.Id)
 			.strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('View', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('View', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -522,8 +522,8 @@ private class GoogleLocalFileServiceTest {
 			.forUser(privilegedUser.Id)
 			.strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -544,8 +544,8 @@ private class GoogleLocalFileServiceTest {
 			.forUser(privilegedUser.Id)
 			.strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -567,7 +567,7 @@ private class GoogleLocalFileServiceTest {
 			.forUser(otherUser.Id)
 			.strip();
 
-		System.assertEquals(0, visibleFiles.size());
+		Assert.areEqual(0, visibleFiles.size());
 	}
 
 	@IsTest
@@ -585,11 +585,11 @@ private class GoogleLocalFileServiceTest {
 		GoogleFileExplorerResultDTO result = new GoogleLocalFileService().retrieveGoogleFiles(UserInfo.getUserId());
 		Test.stopTest();
 
-		System.assertEquals(true, result.isPrivileged);
+		Assert.areEqual(true, result.isPrivileged);
 
 		Map<Id, GoogleFile__c> filesById = new Map<Id, GoogleFile__c>(result.files);
-		System.assertEquals('Edit', filesById.get(ownedFile.Id).UserAccessLevel__c);
-		System.assertEquals('View', filesById.get(otherFile.Id).UserAccessLevel__c);
+		Assert.areEqual('Edit', filesById.get(ownedFile.Id).UserAccessLevel__c);
+		Assert.areEqual('View', filesById.get(otherFile.Id).UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -607,11 +607,11 @@ private class GoogleLocalFileServiceTest {
 		GoogleFileExplorerResultDTO result = new GoogleLocalFileService().retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO.firstPage());
 		Test.stopTest();
 
-		System.assertEquals(true, result.isPrivileged);
+		Assert.areEqual(true, result.isPrivileged);
 
 		Map<Id, GoogleFile__c> filesById = new Map<Id, GoogleFile__c>(result.files);
-		System.assertEquals('Edit', filesById.get(ownedFile.Id).UserAccessLevel__c);
-		System.assertEquals('Edit', filesById.get(otherFile.Id).UserAccessLevel__c);
+		Assert.areEqual('Edit', filesById.get(ownedFile.Id).UserAccessLevel__c);
+		Assert.areEqual('Edit', filesById.get(otherFile.Id).UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -623,16 +623,16 @@ private class GoogleLocalFileServiceTest {
 		request.sortField = 'fileName';
 		request.sortDirection = 'DESC';
 		String cursor = request.encodeCursorFrom(row);
-		System.assertNotEquals(null, cursor);
+		Assert.areNotEqual(null, cursor);
 
 		GoogleFileExplorerPageRequestDTO next = new GoogleFileExplorerPageRequestDTO();
 		next.sortField = 'fileName';
 		next.sortDirection = 'DESC';
 		next.cursor = cursor;
 
-		System.assertEquals(true, next.hasCursor());
-		System.assertEquals(row.Id, next.cursorId());
-		System.assertEquals(row.Name, (String) next.decodedCursorValue());
+		Assert.areEqual(true, next.hasCursor());
+		Assert.areEqual(row.Id, next.cursorId());
+		Assert.areEqual(row.Name, (String) next.decodedCursorValue());
 	}
 
 	private static void setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel floor) {

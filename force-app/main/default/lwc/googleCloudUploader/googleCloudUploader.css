@@ -191,6 +191,51 @@
 	margin-left: 5px;
 }
 
+.file-retry-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.file-retry-copy {
+    font-size: 0.8125rem;
+    color: var(--slds-g-color-neutral-base-30, #444444);
+}
+
+.file-retry-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.file-retry-action,
+.file-retry-dismiss {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.file-retry-action {
+    color: var(--slds-g-color-brand-base-40, #0176D3);
+}
+
+.file-retry-dismiss {
+    color: var(--slds-g-color-neutral-base-50, #747474);
+}
+
+.file-retry-action:hover,
+.file-retry-action:focus,
+.file-retry-dismiss:hover,
+.file-retry-dismiss:focus {
+    text-decoration: underline;
+}
+
 @media (max-width: 767px) {
     .dropzone {
         justify-content: center;

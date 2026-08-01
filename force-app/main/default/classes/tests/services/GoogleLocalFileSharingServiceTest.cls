@@ -42,14 +42,14 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleLocalFileSharingService service = new GoogleLocalFileSharingService();
 		GoogleSharingInfoDTO dto = service.fetchSharingDetails(f.Id);
 
-		System.assertNotEquals(null, dto);
-		System.assertEquals(f.Id, dto.fileId);
-		System.assertNotEquals(null, dto.owner);
-		System.assertEquals(UserInfo.getUserId(), dto.owner.Id);
-		System.assertNotEquals(null, dto.entitiesSharedTo);
-		System.assertEquals(0, dto.entitiesSharedTo.size());
-		System.assertNotEquals(null, dto.recordsSharedTo);
-		System.assertEquals(0, dto.recordsSharedTo.size());
+		Assert.areNotEqual(null, dto);
+		Assert.areEqual(f.Id, dto.fileId);
+		Assert.areNotEqual(null, dto.owner);
+		Assert.areEqual(UserInfo.getUserId(), dto.owner.Id);
+		Assert.areNotEqual(null, dto.entitiesSharedTo);
+		Assert.areEqual(0, dto.entitiesSharedTo.size());
+		Assert.areNotEqual(null, dto.recordsSharedTo);
+		Assert.areEqual(0, dto.recordsSharedTo.size());
 	}
 
 	@IsTest
@@ -80,19 +80,19 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleLocalFileSharingService service = new GoogleLocalFileSharingService();
 		GoogleSharingInfoDTO dto = service.fetchSharingDetails(f.Id);
 
-		System.assertNotEquals(null, dto);
-		System.assertEquals(f.Id, dto.fileId);
+		Assert.areNotEqual(null, dto);
+		Assert.areEqual(f.Id, dto.fileId);
 
-		System.assertNotEquals(null, dto.owner);
-		System.assertEquals(UserInfo.getUserId(), dto.owner.Id);
+		Assert.areNotEqual(null, dto.owner);
+		Assert.areEqual(UserInfo.getUserId(), dto.owner.Id);
 
-		System.assertNotEquals(null, dto.entitiesSharedTo);
-		System.assertEquals(1, dto.entitiesSharedTo.size());
-		System.assertEquals(u.Id, dto.entitiesSharedTo[0].UserOrGroupId);
+		Assert.areNotEqual(null, dto.entitiesSharedTo);
+		Assert.areEqual(1, dto.entitiesSharedTo.size());
+		Assert.areEqual(u.Id, dto.entitiesSharedTo[0].UserOrGroupId);
 
-		System.assertNotEquals(null, dto.recordsSharedTo);
-		System.assertEquals(1, dto.recordsSharedTo.size());
-		System.assertEquals(String.valueOf(linkedAccount.Id), dto.recordsSharedTo[0].LinkedObjectId__c);
+		Assert.areNotEqual(null, dto.recordsSharedTo);
+		Assert.areEqual(1, dto.recordsSharedTo.size());
+		Assert.areEqual(String.valueOf(linkedAccount.Id), dto.recordsSharedTo[0].LinkedObjectId__c);
 	}
 
 	@IsTest
@@ -184,7 +184,7 @@ private class GoogleLocalFileSharingServiceTest {
 			.createNewSharing(f.Id, 'User', u.Id, 'viewer');
 		Test.stopTest();
 
-		System.assertNotEquals(null, shareId);
+		Assert.areNotEqual(null, shareId);
 
 		GoogleFile__Share created = [
 			SELECT Id, ParentId, UserOrGroupId, AccessLevel, RowCause
@@ -193,10 +193,10 @@ private class GoogleLocalFileSharingServiceTest {
 			LIMIT 1
 		];
 
-		System.assertEquals(f.Id, created.ParentId);
-		System.assertEquals(u.Id, created.UserOrGroupId);
-		System.assertEquals('Read', created.AccessLevel);
-		System.assertEquals(
+		Assert.areEqual(f.Id, created.ParentId);
+		Assert.areEqual(u.Id, created.UserOrGroupId);
+		Assert.areEqual('Read', created.AccessLevel);
+		Assert.areEqual(
 			String.valueOf(Schema.GoogleFile__Share.RowCause.Manual),
 			String.valueOf(created.RowCause)
 		);
@@ -214,7 +214,7 @@ private class GoogleLocalFileSharingServiceTest {
 			.createNewSharing(f.Id, 'User', u.Id, 'Collaborator');
 		Test.stopTest();
 
-		System.assertNotEquals(null, shareId);
+		Assert.areNotEqual(null, shareId);
 
 		GoogleFile__Share created = [
 			SELECT Id, AccessLevel
@@ -222,7 +222,7 @@ private class GoogleLocalFileSharingServiceTest {
 			WHERE Id = :shareId
 			LIMIT 1
 		];
-		System.assertEquals('Edit', created.AccessLevel);
+		Assert.areEqual('Edit', created.AccessLevel);
 	}
 
 	@IsTest
@@ -234,12 +234,12 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			Id shareId = new GoogleLocalFileSharingService()
 				.createNewSharing(null, 'User', u.Id, 'viewer');
-			System.assertEquals(null, shareId);
+			Assert.areEqual(null, shareId);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertNotEquals(null, ex);
+			Assert.areNotEqual(null, ex);
 		}
 
-		System.assertEquals(0, [
+		Assert.areEqual(0, [
 			SELECT count()
 			FROM GoogleFile__Share
 			WHERE UserOrGroupId = :u.Id
@@ -255,9 +255,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.createNewSharing(f.Id, 'User', null, 'viewer');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to share'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to share'));
 		}
 	}
 
@@ -271,9 +271,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.createNewSharing(f.Id, 'User', u.Id, '   ');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to share'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to share'));
 		}
 	}
 
@@ -287,9 +287,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.createNewSharing(f.Id, 'User', u.Id, 'admin');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to share'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to share'));
 		}
 	}
 
@@ -313,7 +313,7 @@ private class GoogleLocalFileSharingServiceTest {
 			.deleteExistingSharing(f.Id, u.Id);
 		Test.stopTest();
 
-		System.assertEquals(0, [
+		Assert.areEqual(0, [
 			SELECT count()
 			FROM GoogleFile__Share
 			WHERE ParentId = :f.Id AND UserOrGroupId = :u.Id
@@ -330,9 +330,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.deleteExistingSharing(f.Id, u.Id);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to remove sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to remove sharing'));
 		}
 	}
 
@@ -356,7 +356,7 @@ private class GoogleLocalFileSharingServiceTest {
 			.deleteExistingSharing(f.Id, fakeAccountId);
 		Test.stopTest();
 
-		System.assertEquals(0, [
+		Assert.areEqual(0, [
 			SELECT count()
 			FROM GoogleFileLink__c
 			WHERE Id = :link.Id
@@ -373,9 +373,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.deleteExistingSharing(f.Id, fakeAccountId);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to remove sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to remove sharing'));
 		}
 	}
 
@@ -405,7 +405,7 @@ private class GoogleLocalFileSharingServiceTest {
 			WHERE Id = :sh.Id
 			LIMIT 1
 		];
-		System.assertEquals('Edit', updated.AccessLevel);
+		Assert.areEqual('Edit', updated.AccessLevel);
 	}
 
 	@IsTest
@@ -426,9 +426,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.modifyExistingSharingAccess(f.Id, u.Id, null);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -442,9 +442,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.modifyExistingSharingAccess(f.Id, u.Id, 'viewer');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -475,8 +475,8 @@ private class GoogleLocalFileSharingServiceTest {
 			WHERE Id = :link.Id
 			LIMIT 1
 		];
-		System.assertEquals('Collaborator', updated.ShareType__c);
-		System.assertEquals('InternalUsers', updated.Visibility__c);
+		Assert.areEqual('Collaborator', updated.ShareType__c);
+		Assert.areEqual('InternalUsers', updated.Visibility__c);
 	}
 
 	@IsTest
@@ -498,9 +498,9 @@ private class GoogleLocalFileSharingServiceTest {
 			GoogleLocalFileSharingService service = new GoogleLocalFileSharingService();
 			service.modifyExistingSharingAccess(f.Id, fakeAccountId, ' ');
 			service.modifyExistingSharingVisibility(f.Id, fakeAccountId, null);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -514,9 +514,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.modifyExistingSharingAccess(f.Id, fakeAccountId, 'Viewer');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -538,9 +538,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.modifyExistingSharingAccess(f.Id, fakeAccountId, 'NotARealType');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -562,9 +562,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.modifyExistingSharingVisibility(f.Id, fakeAccountId, 'Public');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 

@@ -42,6 +42,27 @@
                 </div>
             </template>
         </div>
+
+        <template lwc:if={hasFailedUploads}>
+            <div class="upload-retry-banner" role="status" aria-live="polite">
+                <div class="upload-retry-copy">
+                    {failedUploadsMessage}
+                </div>
+                <div class="upload-retry-actions">
+                    <lightning-button
+                        label="Retry"
+                        variant="brand"
+                        onclick={handleRetryThroughApex}>
+                    </lightning-button>
+                    <lightning-button
+                        label="Dismiss"
+                        variant="neutral"
+                        class="slds-m-left_x-small"
+                        onclick={handleDismissFailedUploads}>
+                    </lightning-button>
+                </div>
+            </div>
+        </template>
     </lightning-modal-body>
 
     <lightning-modal-footer>

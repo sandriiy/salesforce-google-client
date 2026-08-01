@@ -25,6 +25,14 @@ public without sharing class GoogleFileAccessResolver {
 	public class GoogleFileAccessCheckException extends Exception {}
 	public enum AccessLevel { View, Edit }
 
+	@TestVisible
+	private static AccessLevel privilegedFloorOverride;
+	@TestVisible
+	private static Boolean privilegedFloorOverrideSet = false;
+
+	private AccessLevel memoFloor;
+	private Boolean floorResolved = false;
+
 	public List<GoogleFile__c> resolveAccessibleFiles(List<GoogleFile__c> inputFiles, Id targetUserId) {
 		return resolveAccessibleFiles(inputFiles, targetUserId, null);
 	}
@@ -111,6 +119,43 @@ public without sharing class GoogleFileAccessResolver {
 
 		if (candidateFiles.isEmpty()) return new List<GoogleFile__c>();
 		return resolveAccessibleFiles(candidateFiles, targetUserId);
+	}
+
+	public AccessLevel privilegedFloor() {
+		if (floorResolved) return memoFloor;
+		floorResolved = true;
+
+		if (privilegedFloorOverrideSet) {
+			memoFloor = privilegedFloorOverride;
+			return memoFloor;
+		}
+
+		if (FeatureManagement.checkPermission(GoogleCloudConstants.PERMISSION_EDIT_ALL_ACCESS)) {
+			memoFloor = AccessLevel.Edit;
+		} else if (FeatureManagement.checkPermission(GoogleCloudConstants.PERMISSION_VIEW_ALL_ACCESS)) {
+			memoFloor = AccessLevel.View;
+		} else {
+			memoFloor = null;
+		}
+
+		return memoFloor;
+	}
+
+	public List<GoogleFile__c> resolveFilePage(GoogleFileExplorerPageRequestDTO request, List<String> additionalVersionFields) {
+		GoogleFileSelector selector = GoogleFileSelector.query()
+			.withAllFields()
+			.withCreatedByName()
+			.withLatestVersionSubquery(additionalVersionFields)
+			.bySearchTerm(request.searchTerm)
+			.orderByFieldThenId(request.sortPath(), request.sortDirection);
+
+		Id cursorId = request.cursorId();
+		if (cursorId != null) {
+			selector.afterKeyset(request.sortPath(), request.decodedCursorValue(), cursorId, request.sortDirection);
+		}
+
+		List<GoogleFile__c> page = (List<GoogleFile__c>) selector.limitTo(request.effectivePageSize() + 1).toList();
+		return resolveAccessibleFiles(page, UserInfo.getUserId());
 	}
 
 	public List<GoogleFileLink__c> resolveAccessibleRecordLinks(List<GoogleFileLink__c> inputLinks, Id targetUserId) {
@@ -338,6 +383,7 @@ public without sharing class GoogleFileAccessResolver {
 
 	private List<GoogleFile__c> resolveAccessibleFilesInternal(List<GoogleFile__c> files, Id userId, Boolean isInternalUser, Map<Id, Id> fileIdToOwnerId, Map<Id, List<GoogleFile__Share>> fileIdToShares, Map<Id, List<GoogleFileLink__c>> fileIdToLinks, Map<Id, UserRecordAccess> parentAccessByRecordId) {
 		List<GoogleFile__c> accessibleFiles = new List<GoogleFile__c>();
+		AccessLevel floor = isInternalUser ? privilegedFloor() : null;
 
 		for (GoogleFile__c localFile : files) {
 			if (localFile == null || localFile.Id == null) continue;
@@ -351,6 +397,10 @@ public without sharing class GoogleFileAccessResolver {
 				fileIdToLinks.get(localFile.Id),
 				parentAccessByRecordId
 			);
+
+			if (floor != null) {
+				resolvedAccess = pickHigherAccess(resolvedAccess, floor);
+			}
 
 			if (resolvedAccess != null) {
 				localFile.UserAccessLevel__c = toAccessLevelString(resolvedAccess);

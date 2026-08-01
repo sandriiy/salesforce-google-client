@@ -30,9 +30,15 @@ public with sharing class GoogleCloudFilesController {
 	}
 
 	@AuraEnabled
-	public static List<GoogleFile__c> retrieveAllGoogleFiles() {
+	public static GoogleFileExplorerResultDTO retrieveAllGoogleFiles() {
 		GoogleLocalFileService recordService = new GoogleLocalFileService();
 		return recordService.retrieveGoogleFiles(UserInfo.getUserId());
+	}
+
+	@AuraEnabled
+	public static GoogleFileExplorerResultDTO retrieveAllGoogleFilesPage(GoogleFileExplorerPageRequestDTO request) {
+		GoogleLocalFileService recordService = new GoogleLocalFileService();
+		return recordService.retrieveGoogleFilesPage(request);
 	}
 
 	@AuraEnabled(cacheable=true)

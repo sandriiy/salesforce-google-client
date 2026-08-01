@@ -191,4 +191,39 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
         );
         return this;
     }
+
+    public GoogleFileSelector withCreatedByName() {
+        with('CreatedBy.Name');
+        return this;
+    }
+
+    public GoogleFileSelector bySearchTerm(String term) {
+        if (String.isBlank(term)) return this;
+        whereAre(GSOQL.Filter.with(GoogleFile__c.Name).contains(term));
+        return this;
+    }
+
+    public GoogleFileSelector orderByFieldThenId(String sortPath, String direction) {
+        String normalized = 'DESC'.equalsIgnoreCase(direction) ? 'DESC' : 'ASC';
+        orderBy(sortPath, normalized);
+        orderBy('Id', normalized);
+        return this;
+    }
+
+    public GoogleFileSelector afterKeyset(String sortPath, Object lastValue, Id lastId, String direction) {
+        Boolean descending = 'DESC'.equalsIgnoreCase(direction);
+        GSOQL.Filter primary = descending
+            ? GSOQL.Filter.with(sortPath).lessThan(lastValue)
+            : GSOQL.Filter.with(sortPath).greaterThan(lastValue);
+        GSOQL.Filter tieBreaker = descending
+            ? GSOQL.Filter.id().lessThan(lastId)
+            : GSOQL.Filter.id().greaterThan(lastId);
+        whereAre(
+            GSOQL.FilterGroup.anyConditionMatching()
+                .add(primary)
+                .add(GSOQL.FilterGroup.add(GSOQL.Filter.with(sortPath).equal(lastValue)).add(tieBreaker))
+        );
+		
+        return this;
+    }
 }

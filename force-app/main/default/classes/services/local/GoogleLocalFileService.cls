@@ -54,15 +54,44 @@ public without sharing class GoogleLocalFileService {
         }
     }
 	
-	public List<GoogleFile__c> retrieveGoogleFiles(Id userId) {
+	public GoogleFileExplorerResultDTO retrieveGoogleFiles(Id userId) {
+		if (new GoogleFileAccessResolver().privilegedFloor() != null) {
+			return retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO.firstPage());
+		}
+
 		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
 		try {
 			List<String> additionalVersionFields = new GoogleFileExplorerColumnResolver().resolveAdditionalVersionFields();
-			return accessResolver.resolveAccessibleFilesForUser(userId, additionalVersionFields);
+			List<GoogleFile__c> files = accessResolver.resolveAccessibleFilesForUser(userId, additionalVersionFields);
+
+			Boolean hasMore = files.size() > GoogleCloudConstants.EXPLORER_STANDARD_LIMIT;
+			while (files.size() > GoogleCloudConstants.EXPLORER_STANDARD_LIMIT) {
+				files.remove(files.size() - 1);
+			}
+
+			return new GoogleFileExplorerResultDTO(files, hasMore, false, null);
 		} catch (Exception ex) {
 			Logger.error('Retrieve Google File Records (Local): ' + userId + ', message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
             Logger.saveLog();
             throw new GoogleLocalFileException('Unable to create the file record. Please try again or contact your system administrator');
+		}
+	}
+
+	public GoogleFileExplorerResultDTO retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO request) {
+		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
+		try {
+			List<String> additionalVersionFields = new GoogleFileExplorerColumnResolver().resolveAdditionalVersionFields();
+			List<GoogleFile__c> page = accessResolver.resolveFilePage(request, additionalVersionFields);
+
+			Boolean hasMore = page.size() > request.effectivePageSize();
+			if (hasMore) page.remove(page.size() - 1);
+
+			String nextCursor = (hasMore && !page.isEmpty()) ? request.encodeCursorFrom(page.get(page.size() - 1)) : null;
+			return new GoogleFileExplorerResultDTO(page, hasMore, true, nextCursor);
+		} catch (Exception ex) {
+			Logger.error('Retrieve Google File Page (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileException('Unable to retrieve files. Please try again or contact your system administrator');
 		}
 	}
 

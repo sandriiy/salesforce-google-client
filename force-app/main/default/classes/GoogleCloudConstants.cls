@@ -83,6 +83,10 @@ public class GoogleCloudConstants {
 
 	public static final String FILE_COLUMN_TITLE = 'title';
 	public static final Integer MAX_FILE_EXPLORER_COLUMNS = 7;
+	public static final Integer EXPLORER_STANDARD_LIMIT = 10000;
+	public static final Integer EXPLORER_PAGE_SIZE = 50;
+	public static final String PERMISSION_VIEW_ALL_ACCESS = 'GoogleClientViewAllAccess';
+	public static final String PERMISSION_EDIT_ALL_ACCESS = 'GoogleClientEditAllAccess';
 	public static final Set<String> FILE_EXPLORER_COLUMNS = new Set<String>{
 		'title', 'type', 'size', 'owner', 'fileOwner', 'createdDate', 'lastModified', 'isLinked', 'access', 'summary'
 	};

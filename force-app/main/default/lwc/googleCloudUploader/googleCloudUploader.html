@@ -102,6 +102,16 @@
                                 </div>
                             </template>
 
+                            <template lwc:elseif={file.canRetryThroughApex}>
+                                <lightning-icon
+                                    icon-name="utility:warning"
+                                    size="x-small"
+                                    variant="warning"
+                                    alternative-text="Upload incomplete"
+                                    title="Upload incomplete">
+                                </lightning-icon>
+                            </template>
+
                             <template lwc:else>
                                 <div class="inline-spinner-container">
                                     <lightning-spinner
@@ -115,11 +125,23 @@
                     </div>
 
                     <div if:false={file.localId} class="slds-m-top_small">
-                        <lightning-progress-bar
-                            class="file-progress"
-                            size="x-small"
-                            value={file.progress}>
-                        </lightning-progress-bar>
+                        <template lwc:if={file.canRetryThroughApex}>
+                            <div class="file-retry-row">
+                                <span class="file-retry-copy">Unable to complete the upload.</span>
+                                <span class="file-retry-actions">
+                                    <button type="button" class="file-retry-action" onclick={handleRetryThroughApex}>Retry?</button>
+                                    <button type="button" class="file-retry-dismiss" onclick={handleDiscardFailedUpload}>Dismiss</button>
+                                </span>
+                            </div>
+                        </template>
+
+                        <template lwc:else>
+                            <lightning-progress-bar
+                                class="file-progress"
+                                size="x-small"
+                                value={file.progress}>
+                            </lightning-progress-bar>
+                        </template>
                     </div>
                 </article>
             </template>

@@ -33,10 +33,10 @@ private class GoogleCloudFileIntelligenceCtrlTest {
 		intelligenceState = GoogleCloudFileIntelligenceController.retrieveFileIntelligenceState(fileVersion.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, intelligenceState);
-		System.assertEquals(fileVersion.Id, intelligenceState.versionId);
-		System.assertEquals(false, intelligenceState.hasSummary);
-		System.assertEquals(true, intelligenceState.isIntelligenceEligible);
+		Assert.areNotEqual(null, intelligenceState);
+		Assert.areEqual(fileVersion.Id, intelligenceState.versionId);
+		Assert.areEqual(false, intelligenceState.hasSummary);
+		Assert.areEqual(true, intelligenceState.isIntelligenceEligible);
 	}
 
 	@IsTest
@@ -64,10 +64,10 @@ private class GoogleCloudFileIntelligenceCtrlTest {
 			result = GoogleCloudFileIntelligenceController.answerFileQuestion(fileVersion.Id, 'What does this file cover?');
 		Test.stopTest();
 
-		System.assertNotEquals(null, result);
-		System.assertEquals(true, result.success);
-		System.assertEquals('QUESTION', result.operationType);
-		System.assertEquals('Gemini', result.provider);
-		System.assertEquals('OK', result.text);
+		Assert.areNotEqual(null, result);
+		Assert.areEqual(true, result.success);
+		Assert.areEqual('QUESTION', result.operationType);
+		Assert.areEqual('Gemini', result.provider);
+		Assert.areEqual('OK', result.text);
 	}
 }

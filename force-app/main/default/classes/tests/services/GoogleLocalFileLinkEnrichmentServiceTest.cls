@@ -26,13 +26,13 @@ private class GoogleLocalFileLinkEnrichmentServiceTest {
 	@IsTest
 	private static void testApplyLinkedRecordAttributesPositiveNull() {
 		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
-		System.assertEquals(null, enrichmentService.applyLinkedRecordAttributes(null));
+		Assert.areEqual(null, enrichmentService.applyLinkedRecordAttributes(null));
 	}
 
 	@IsTest
 	private static void testApplyLinkedRecordAttributesPositiveEmpty() {
 		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
-		System.assertEquals(0, enrichmentService.applyLinkedRecordAttributes(new List<GoogleFileLink__c>()).size());
+		Assert.areEqual(0, enrichmentService.applyLinkedRecordAttributes(new List<GoogleFileLink__c>()).size());
 	}
 
 	@IsTest
@@ -83,6 +83,6 @@ private class GoogleLocalFileLinkEnrichmentServiceTest {
 
 		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
 
-		System.assertEquals('Resolved Account Name', enrichmentService.resolveLinkedRecordName(linkedRecord.Id));
+		Assert.areEqual('Resolved Account Name', enrichmentService.resolveLinkedRecordName(linkedRecord.Id));
 	}
 }

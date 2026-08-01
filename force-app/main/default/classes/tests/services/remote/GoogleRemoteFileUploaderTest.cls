@@ -77,6 +77,87 @@ private class GoogleRemoteFileUploaderTest {
 	}
 
 	@IsTest
+	private static void testInitializeResumableSessionPositive() {
+		configureMultiDrive(new List<String>{ PRIMARY_FOLDER });
+		GoogleCloudTestFactory.initMocks();
+
+		Test.startTest();
+		GoogleRemoteFileUploader.GoogleResumableSessionResult result = new GoogleRemoteFileUploader().initializeResumableSession('large.bin', 'application/octet-stream');
+		Test.stopTest();
+
+		Assert.isNotNull(result);
+		Assert.isNotNull(result.sessionUri, 'A resumable session must return the upload URI Google issued');
+		Assert.areEqual(PRIMARY_FOLDER, result.folderId);
+	}
+
+	@IsTest
+	private static void testInitializeResumableSessionPositiveFallsOverOnTeamDriveLimit() {
+		configureMultiDrive(new List<String>{ PRIMARY_FOLDER, SECONDARY_FOLDER });
+
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('POST')
+				.queryContains('uploadtype=resumable')
+				.bodyContains(PRIMARY_FOLDER)
+		).thenReturnStatus(403, buildCapacityErrorBody('teamDriveFileLimitExceeded'));
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+
+		Test.startTest();
+		GoogleRemoteFileUploader.GoogleResumableSessionResult result = new GoogleRemoteFileUploader().initializeResumableSession('large.bin', 'application/octet-stream');
+		Test.stopTest();
+
+		Assert.areEqual(SECONDARY_FOLDER, result.folderId, 'Capacity fallover must still pick the next drive when the session is opened up front');
+	}
+
+	@IsTest
+	private static void testInitializeResumableSessionNegativeAllDrivesExhausted() {
+		configureMultiDrive(new List<String>{ PRIMARY_FOLDER, SECONDARY_FOLDER });
+
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('POST')
+				.queryContains('uploadtype=resumable')
+		).thenReturnStatus(403, buildCapacityErrorBody('storageQuotaExceeded'));
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+
+		try {
+			Test.startTest();
+			new GoogleRemoteFileUploader().initializeResumableSession('large.bin', 'application/octet-stream');
+			Test.stopTest();
+			Assert.fail('Exhausting every configured drive must surface a clear message');
+		} catch (GoogleRemoteFileUploader.GoogleRemoteFileUploaderException ex) {
+			Assert.isTrue(ex.getMessage().contains('All configured shared drives are full'), ex.getMessage());
+		}
+	}
+
+	@IsTest
+	private static void testInitializeResumableSessionNegativeNonCapacityErrorPropagates() {
+		configureMultiDrive(new List<String>{ PRIMARY_FOLDER, SECONDARY_FOLDER });
+
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('POST')
+				.queryContains('uploadtype=resumable')
+		).thenReturnStatus(401, buildAuthErrorBody());
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+
+		try {
+			Test.startTest();
+			new GoogleRemoteFileUploader().initializeResumableSession('large.bin', 'application/octet-stream');
+			Test.stopTest();
+			Assert.fail('A non-capacity failure must not silently fall over to another drive');
+		} catch (GoogleRemoteFileUploader.GoogleRemoteFileUploaderException ex) {
+			Assert.isTrue(ex.getMessage().contains('Unable to start the file upload'), ex.getMessage());
+		}
+	}
+
+	@IsTest
 	private static void testUploadFilePositiveFallsOverOnTeamDriveLimit() {
 		configureMultiDrive(new List<String>{ PRIMARY_FOLDER, SECONDARY_FOLDER });
 

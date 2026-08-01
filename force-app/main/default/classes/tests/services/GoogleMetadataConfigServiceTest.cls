@@ -50,10 +50,29 @@ private class GoogleMetadataConfigServiceTest {
 	}
 
 	@IsTest
+	private static void testIsDirectBrowserUploadEnabledNegativeDefaultsToFalse() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		Assert.isFalse(svc.isDirectBrowserUploadEnabled(), 'A field that is empty after an upgrade must keep the standard upload path');
+	}
+
+	@IsTest
+	private static void testIsDirectBrowserUploadEnabledPositiveWhenOptedIn() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client',
+			IsDirectBrowserUploadEnabled__c = true
+		);
+
+		Assert.isTrue(new GoogleMetadataConfigService().isDirectBrowserUploadEnabled());
+	}
+
+	@IsTest
 	private static void testConstructorPositiveConfigExists() {
 		GoogleMetadataConfigService.configRecordOverride = buildConfig(false);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
-		System.assertNotEquals(null, svc.getConfig());
+		Assert.areNotEqual(null, svc.getConfig());
 	}
 
 	@IsTest
@@ -66,7 +85,7 @@ private class GoogleMetadataConfigServiceTest {
 		svc.saveConfig(new Map<String, Object>());
 		Test.stopTest();
 
-		System.assert(true);
+		Assert.isTrue(true);
 	}
 
 	@IsTest
@@ -83,7 +102,7 @@ private class GoogleMetadataConfigServiceTest {
 		svc.saveConfig(changes);
 		Test.stopTest();
 
-		System.assert(true);
+		Assert.isTrue(true);
 	}
 
 	@IsTest
@@ -98,9 +117,9 @@ private class GoogleMetadataConfigServiceTest {
 		Test.startTest();
 		try {
 			svc.saveConfig(changes);
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleMetadataConfigService.GoogleMetadataConfigException ex) {
-			System.assert(ex.getMessage().contains('Failed to save Google Client configuration'));
+			Assert.isTrue(ex.getMessage().contains('Failed to save Google Client configuration'));
 		}
 		Test.stopTest();
 	}
@@ -120,7 +139,7 @@ private class GoogleMetadataConfigServiceTest {
 		Id result = svc.saveConfig(changes);
 		Test.stopTest();
 
-		System.assertNotEquals(null, result, 'Should return a deployment Id when creating a new record');
+		Assert.areNotEqual(null, result, 'Should return a deployment Id when creating a new record');
 	}
 
 	@IsTest
@@ -131,9 +150,9 @@ private class GoogleMetadataConfigServiceTest {
 			MaxDeleteChainSize__c = 3
 		);
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
-		System.assertNotEquals(null, svc.isPreviewDisabled());
-		System.assertNotEquals(null, svc.getBigFileSizeInBytes());
-		System.assertNotEquals(null, svc.getDeleteChainSize());
+		Assert.areNotEqual(null, svc.isPreviewDisabled());
+		Assert.areNotEqual(null, svc.getBigFileSizeInBytes());
+		Assert.areNotEqual(null, svc.getDeleteChainSize());
 	}
 
 	@IsTest

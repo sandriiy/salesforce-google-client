@@ -23,6 +23,8 @@ export default class GoogleCloudUploader extends LightningElement {
 	@track isLoading = true;
     @track files = [];
 
+	apexRetryHandlers = new Map();
+
 	connectedCallback() {
 		this.loadFiles();
 	}
@@ -113,7 +115,49 @@ export default class GoogleCloudUploader extends LightningElement {
 				}
 			}
 		}).catch(error => {
-			this.removeFileById(newFilePlaceholder.id);
+			this.handleLargeUploadFailure(error, newFilePlaceholder);
+		});
+	}
+
+	handleLargeUploadFailure(error, filePlaceholder) {
+		if (error?.canRetryThroughApex) {
+			this.apexRetryHandlers.set(filePlaceholder.id, error.retryThroughApex);
+
+			const fileIndex = this.files.findIndex(file => file.id === filePlaceholder.id);
+			if (fileIndex !== -1) {
+				this.files[fileIndex] = { ...this.files[fileIndex], canRetryThroughApex: true };
+			}
+
+			return;
+		}
+
+		this.removeFileById(filePlaceholder.id);
+
+		showToast(
+			this,
+			DEFAULT_OOPS_MESSAGE,
+			DEFAULT_FILE_UPLOAD_FAILURE,
+			'error'
+		);
+	}
+
+	handleRetryThroughApex(event) {
+		event.stopPropagation();
+
+		const parentContainer = event.target.closest('article[data-id]');
+		const filePlaceholderId = parentContainer.getAttribute('data-id');
+
+		const retryThroughApex = this.apexRetryHandlers.get(filePlaceholderId);
+		this.apexRetryHandlers.delete(filePlaceholderId);
+		if (!retryThroughApex) return;
+
+		const fileIndex = this.files.findIndex(file => file.id === filePlaceholderId);
+		if (fileIndex !== -1) {
+			this.files[fileIndex] = { ...this.files[fileIndex], canRetryThroughApex: false, progress: '0' };
+		}
+
+		retryThroughApex().catch(() => {
+			this.removeFileById(filePlaceholderId);
 
 			showToast(
 				this,
@@ -122,6 +166,16 @@ export default class GoogleCloudUploader extends LightningElement {
 				'error'
 			);
 		});
+	}
+
+	handleDiscardFailedUpload(event) {
+		event.stopPropagation();
+
+		const parentContainer = event.target.closest('article[data-id]');
+		const filePlaceholderId = parentContainer.getAttribute('data-id');
+
+		this.apexRetryHandlers.delete(filePlaceholderId);
+		this.removeFileById(filePlaceholderId);
 	}
 
     handleFileUpload(selectedFile) {

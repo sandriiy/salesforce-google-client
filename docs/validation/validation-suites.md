@@ -755,4 +755,43 @@ Files uploaded before `Enable AI File Intelligence` was enabled are not expected
 
 Use this when you want to validate what was added/changed, without running a full suite.
 
+### Direct Browser Upload
+
+Log in as Admin.
+
+- [ ] Before enabling anything, upload a large file from the Uploader, from Attachments, and from File Explorer, and confirm all three behave exactly as before
+- [ ] Confirm the `GoogleDriveDirectUpload` CSP Trusted Site exists and is active in Setup
+- [ ] Enable `Direct Browser Upload` in Advanced → File Management and save
+- [ ] Run `Test connection` and confirm it succeeds
+- [ ] Confirm no `google-client-connection-test.tmp` file was left behind in Google Drive
+- [ ] Deactivate the CSP Trusted Site, reload the page, run `Test connection`, and confirm it reports that the browser could not reach Google
+- [ ] Reactivate the CSP Trusted Site
+
+Log in as Internal User A.
+
+- [ ] Upload a 5 MB file from the Uploader and confirm the progress bar advances and the record is created
+- [ ] Upload a 100 MB file and confirm it completes and lands in the configured folder
+- [ ] Upload a file smaller than 2 MB and confirm it is unaffected
+- [ ] Upload a file smaller than 16 MB, so the whole file is a single chunk, and confirm it completes without any error shown
+- [ ] Upload a new version of an existing file and confirm versioning is correct
+- [ ] Confirm folder structure, preview, and AI summary behave the same as for a standard upload
+- [ ] Upload several files at once from Attachments and confirm every file completes
+- [ ] Deactivate the CSP Trusted Site, reload, upload a large file from the Uploader, and confirm the file card offers a retry through Salesforce
+- [ ] Accept the retry and confirm the file uploads and the record is created
+- [ ] Upload another large file in the same browser session and confirm it goes straight through Salesforce without prompting again
+- [ ] Repeat the deactivated-CSP case from Attachments and confirm the retry prompt appears at the bottom of the upload window
+- [ ] Dismiss the retry prompt instead of accepting it, and confirm the upload window can still be closed with Done
+- [ ] Reactivate the CSP Trusted Site
+- [ ] Disable the network mid-upload, restore it, and confirm the upload resumes without user action
+
+Log in as External User E.
+
+- [ ] Upload a large file from an Experience Cloud page and confirm it completes
+- [ ] Confirm the uploaded file respects Visibility and is not exposed beyond the expected users
+
+Log in as Admin.
+
+- [ ] Turn `Direct Browser Upload` back off and confirm large uploads still work from all three components
+- [ ] Confirm logs tagged `Google Client for Salesforce` show the expected direct upload outcomes and no unexpected errors
+
 <br>

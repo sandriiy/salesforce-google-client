@@ -90,4 +90,10 @@ public class GoogleCloudConstants {
 	public static final Set<String> FILE_EXPLORER_COLUMNS = new Set<String>{
 		'title', 'type', 'size', 'owner', 'fileOwner', 'createdDate', 'lastModified', 'isLinked', 'access', 'summary'
 	};
+
+	public static final Long DIRECT_UPLOAD_CHUNK_ALIGNMENT = 262144L;
+	public static final String DIRECT_UPLOAD_OUTCOME_FAILED = 'failed';
+	public static final String DIRECT_UPLOAD_OUTCOME_BLOCKED = 'blocked';
+	public static final String DIRECT_UPLOAD_OUTCOME_RECOVERED = 'recovered';
+	public static final String DIRECT_UPLOAD_OUTCOME_CANCELLED = 'cancelled';
 }

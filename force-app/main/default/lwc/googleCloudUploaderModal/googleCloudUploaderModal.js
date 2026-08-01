@@ -20,6 +20,9 @@ export default class GoogleCloudUploaderModal extends LightningModal {
     @track files = [];
     @track awaitingClosure = false;
     @track locallyProcessedIds = [];
+    @track failedUploads = [];
+
+    apexRetryHandlers = new Map();
 
     @wire(getRecord, { recordId: USER_ID, fields: [USER_NAME_FIELD] })
     userRecord;
@@ -69,13 +72,72 @@ export default class GoogleCloudUploaderModal extends LightningModal {
                 }
             }
         }).catch(error => {
-			showToast(
-				this,
-				UNABLE_TO_UPLOAD_MESSAGE,
-				DEFAULT_FILE_UPLOAD_FAILURE,
-				'error'
-			);
+			this.handleLargeUploadFailure(error, newFilePlaceholder);
 		});
+    }
+
+    handleLargeUploadFailure(error, filePlaceholder) {
+        if (error?.canRetryThroughApex) {
+            this.apexRetryHandlers.set(filePlaceholder.id, error.retryThroughApex);
+            this.failedUploads = [...this.failedUploads, { id: filePlaceholder.id, name: filePlaceholder.name }];
+            return;
+        }
+
+        showToast(
+            this,
+            UNABLE_TO_UPLOAD_MESSAGE,
+            DEFAULT_FILE_UPLOAD_FAILURE,
+            'error'
+        );
+    }
+
+    handleRetryThroughApex() {
+        const pendingRetries = this.failedUploads;
+        this.failedUploads = [];
+
+        pendingRetries.forEach(failedUpload => {
+            const retryThroughApex = this.apexRetryHandlers.get(failedUpload.id);
+            this.apexRetryHandlers.delete(failedUpload.id);
+            if (!retryThroughApex) return;
+
+            retryThroughApex().catch(() => {
+                this.discardFailedUpload(failedUpload.id);
+
+                showToast(
+                    this,
+                    UNABLE_TO_UPLOAD_MESSAGE,
+                    DEFAULT_FILE_UPLOAD_FAILURE,
+                    'error'
+                );
+            });
+        });
+    }
+
+    handleDismissFailedUploads() {
+        const dismissedUploads = this.failedUploads;
+        this.failedUploads = [];
+
+        dismissedUploads.forEach(failedUpload => {
+            this.apexRetryHandlers.delete(failedUpload.id);
+            this.discardFailedUpload(failedUpload.id);
+        });
+
+        showToast(
+            this,
+            UNABLE_TO_UPLOAD_MESSAGE,
+            DEFAULT_FILE_UPLOAD_FAILURE,
+            'error'
+        );
+    }
+
+    discardFailedUpload(fileId) {
+        const fileIndex = this.files.findIndex(file => file.id === fileId);
+        if (fileIndex !== -1) {
+            this.files.splice(fileIndex, 1);
+        }
+
+        this.locallyProcessedIds.push(fileId);
+        this.handleCloseRequest();
     }
 
     handleFileUpload(selectedFile) {
@@ -141,6 +203,18 @@ export default class GoogleCloudUploaderModal extends LightningModal {
             this.locallyProcessedIds.push(file.id);
             this.handleCloseRequest();
 		}
+    }
+
+    get hasFailedUploads() {
+        return this.failedUploads.length > 0;
+    }
+
+    get failedUploadsMessage() {
+        if (this.failedUploads.length === 1) {
+            return `“${this.failedUploads[0].name}” couldn’t be uploaded. Try again with a different approach?`;
+        }
+
+        return `${this.failedUploads.length} files couldn’t be uploaded. Try again with a different approach?`;
     }
 
     get fileCountLabel() {

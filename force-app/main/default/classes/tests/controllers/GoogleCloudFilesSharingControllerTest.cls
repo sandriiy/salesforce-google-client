@@ -55,8 +55,8 @@ private class GoogleCloudFilesSharingControllerTest {
 		GoogleSharingInfoDTO sharingInfo = GoogleCloudFilesSharingController.fetchSharingDetails(localFile.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, sharingInfo);
-		System.assertEquals(localFile.Id, sharingInfo.fileId);
+		Assert.areNotEqual(null, sharingInfo);
+		Assert.areEqual(localFile.Id, sharingInfo.fileId);
 	}
 
 	@IsTest
@@ -75,7 +75,7 @@ private class GoogleCloudFilesSharingControllerTest {
 		);
 		Test.stopTest();
 
-		System.assertNotEquals(null, createdShareId);
+		Assert.areNotEqual(null, createdShareId);
 
 		GoogleFile__Share createdShare = [
 			SELECT Id, ParentId, UserOrGroupId, AccessLevel, RowCause
@@ -84,10 +84,10 @@ private class GoogleCloudFilesSharingControllerTest {
 			LIMIT 1
 		];
 
-		System.assertEquals(localFile.Id, createdShare.ParentId);
-		System.assertEquals(targetUser.Id, createdShare.UserOrGroupId);
-		System.assertEquals('Read', createdShare.AccessLevel);
-		System.assertEquals(String.valueOf(Schema.GoogleFile__Share.RowCause.Manual), String.valueOf(createdShare.RowCause));
+		Assert.areEqual(localFile.Id, createdShare.ParentId);
+		Assert.areEqual(targetUser.Id, createdShare.UserOrGroupId);
+		Assert.areEqual('Read', createdShare.AccessLevel);
+		Assert.areEqual(String.valueOf(Schema.GoogleFile__Share.RowCause.Manual), String.valueOf(createdShare.RowCause));
 	}
 
 	@IsTest
@@ -115,7 +115,7 @@ private class GoogleCloudFilesSharingControllerTest {
 			WHERE Id = :existingShare.Id
 			LIMIT 1
 		];
-		System.assertEquals('Edit', updatedShare.AccessLevel);
+		Assert.areEqual('Edit', updatedShare.AccessLevel);
 	}
 
 	@IsTest
@@ -143,7 +143,7 @@ private class GoogleCloudFilesSharingControllerTest {
 			WHERE Id = :fileLink.Id
 			LIMIT 1
 		];
-		System.assertEquals('InternalUsers', updatedLink.Visibility__c);
+		Assert.areEqual('InternalUsers', updatedLink.Visibility__c);
 	}
 
 	@IsTest
@@ -164,7 +164,7 @@ private class GoogleCloudFilesSharingControllerTest {
 		GoogleCloudFilesSharingController.deleteExistingSharing(localFile.Id, targetUser.Id);
 		Test.stopTest();
 
-		System.assertEquals(0, [
+		Assert.areEqual(0, [
 			SELECT count()
 			FROM GoogleFile__Share
 			WHERE ParentId = :localFile.Id AND UserOrGroupId = :targetUser.Id
@@ -190,7 +190,7 @@ private class GoogleCloudFilesSharingControllerTest {
 		GoogleCloudFilesSharingController.deleteExistingSharing(localFile.Id, linkedAccountId);
 		Test.stopTest();
 
-		System.assertEquals(0, [
+		Assert.areEqual(0, [
 			SELECT count()
 			FROM GoogleFileLink__c
 			WHERE Id = :fileLink.Id
@@ -226,10 +226,10 @@ private class GoogleCloudFilesSharingControllerTest {
 			LIMIT 1
 		];
 
-		System.assert(String.isNotBlank(reloaded.PublicLink__c));
-		System.assertNotEquals(null, reloaded.PublicLinkExpirationDate__c);
-		System.assert(String.isNotBlank(reloaded.PublicLinkPermissionId__c));
-		System.assertEquals('Pending Expiration', reloaded.PublicLinkStatus__c);
+		Assert.isTrue(String.isNotBlank(reloaded.PublicLink__c));
+		Assert.areNotEqual(null, reloaded.PublicLinkExpirationDate__c);
+		Assert.isTrue(String.isNotBlank(reloaded.PublicLinkPermissionId__c));
+		Assert.areEqual('Pending Expiration', reloaded.PublicLinkStatus__c);
 	}
 
 	@IsTest
@@ -263,10 +263,10 @@ private class GoogleCloudFilesSharingControllerTest {
 			LIMIT 1
 		];
 
-		System.assertEquals(null, reloaded.PublicLink__c);
-		System.assertEquals(null, reloaded.PublicLinkExpirationDate__c);
-		System.assertEquals(null, reloaded.PublicLinkPermissionId__c);
-		System.assertEquals('None', reloaded.PublicLinkStatus__c);
+		Assert.areEqual(null, reloaded.PublicLink__c);
+		Assert.areEqual(null, reloaded.PublicLinkExpirationDate__c);
+		Assert.areEqual(null, reloaded.PublicLinkPermissionId__c);
+		Assert.areEqual('None', reloaded.PublicLinkStatus__c);
 	}
 
 	@IsTest
@@ -406,6 +406,6 @@ private class GoogleCloudFilesSharingControllerTest {
 		Boolean isDomainConfigured = GoogleCloudFilesSharingController.isPublicLinkDomain();
 		Test.stopTest();
 
-		System.assertNotEquals(null, isDomainConfigured);
+		Assert.areNotEqual(null, isDomainConfigured);
 	}
 }

@@ -383,6 +383,14 @@
     flex: 0 0 auto;
 }
 
+.tab-toggle-probe {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+}
+
 .ui-section {
     background: #ffffff;
     border: 1px solid rgba(1, 118, 211, 0.18);

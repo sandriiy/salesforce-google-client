@@ -48,7 +48,7 @@ private class GoogleLocalFileVersionServiceTest {
 		String base64Body = new GoogleLocalFileVersionService().downloadFileBase64Body(localFileVersion.Id);
 		Test.stopTest();
 
-		System.assert(String.isNotBlank(base64Body));
+		Assert.isTrue(String.isNotBlank(base64Body));
 	}
 
 	@IsTest
@@ -69,7 +69,7 @@ private class GoogleLocalFileVersionServiceTest {
 		String base64Body = new GoogleLocalFileVersionService().downloadFileBase64Body(localFileVersion.Id, 0L, 10L);
 		Test.stopTest();
 
-		System.assert(String.isNotBlank(base64Body));
+		Assert.isTrue(String.isNotBlank(base64Body));
 	}
 
 	@IsTest

@@ -7,3 +7,29 @@
     border-top: 1px solid #d8dde6;
     margin: 0.5rem 0;
 }
+
+.upload-retry-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 1rem;
+    padding: 12px 14px 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--slds-g-color-border-base-1, #E5E5E5);
+    background: var(--slds-g-color-surface-container-1, #F3F3F3);
+}
+
+.upload-retry-copy {
+    min-width: 0;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    font-weight: 500;
+    color: #1F1F1F;
+}
+
+.upload-retry-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}

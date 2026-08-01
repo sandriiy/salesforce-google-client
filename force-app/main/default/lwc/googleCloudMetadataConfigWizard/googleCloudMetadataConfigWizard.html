@@ -130,6 +130,37 @@
                                             </div>
                                         </div>
 
+                                        <div class="tab-toggle-header slds-m-top_medium">
+                                            <div class="tab-toggle-copy">
+                                                <div class="tab-toggle-title">Direct Browser Upload</div>
+                                                <div class="tab-toggle-subtitle">Send large files straight from the browser to Google Drive instead of routing every chunk through Salesforce. Uploads are noticeably faster, and anything that cannot be sent directly falls back to the standard upload.</div>
+
+                                                <template lwc:if={isDirectUploadSaved}>
+                                                    <div class="tab-toggle-probe">
+                                                        <lightning-button
+                                                            label="Test connection"
+                                                            variant="neutral"
+                                                            onclick={handleDirectUploadProbe}
+                                                            disabled={isDirectUploadProbeRunning}>
+                                                        </lightning-button>
+                                                        <span lwc:if={directUploadProbeMessage} class={directUploadProbeClass}>{directUploadProbeMessage}</span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                            <div class="tab-toggle-control">
+                                                <lightning-input
+                                                    type="toggle"
+                                                    variant="label-hidden"
+                                                    checked={draft.isDirectBrowserUploadEnabled}
+                                                    onchange={handleToggle}
+                                                    data-field="isDirectBrowserUploadEnabled"
+                                                    label="Enable Direct Browser Upload"
+                                                    message-toggle-active=""
+                                                    message-toggle-inactive="">
+                                                </lightning-input>
+                                            </div>
+                                        </div>
+
                                         <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_medium">
                                             <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                                                 <lightning-input

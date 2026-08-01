@@ -469,13 +469,175 @@ private class GoogleLocalFileServiceTest {
 
 		System.runAs(targetUser) {
 			Test.startTest();
-			List<GoogleFile__c> accessibleFiles = new GoogleLocalFileService().retrieveGoogleFiles(UserInfo.getUserId());
+			GoogleFileExplorerResultDTO result = new GoogleLocalFileService().retrieveGoogleFiles(UserInfo.getUserId());
 			Test.stopTest();
 
+			List<GoogleFile__c> accessibleFiles = result.files;
 			Assert.areEqual(1, accessibleFiles.size());
 			Assert.areEqual(localFile.Id, accessibleFiles[0].Id);
 			Assert.areEqual('Edit', accessibleFiles[0].UserAccessLevel__c);
 		}
+	}
+
+	@IsTest
+	private static void testViewAllFloorGrantsViaStrip() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		User fileOwner = GoogleCloudTestFactory.newUser();
+		User privilegedUser = GoogleCloudTestFactory.newUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Unlinked File')
+			.withDescription('D')
+			.withOwner(fileOwner.Id)
+			.insertRecord();
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.View);
+
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
+			.forFile(localFile.Id)
+			.forUser(privilegedUser.Id)
+			.strip();
+
+		System.assertEquals(1, visibleFiles.size());
+		System.assertEquals('View', visibleFiles[0].UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testEditAllFloorGrantsEditViaStrip() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		User fileOwner = GoogleCloudTestFactory.newUser();
+		User privilegedUser = GoogleCloudTestFactory.newUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Unlinked File')
+			.withOwner(fileOwner.Id)
+			.insertRecord();
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.Edit);
+
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
+			.forFile(localFile.Id)
+			.forUser(privilegedUser.Id)
+			.strip();
+
+		System.assertEquals(1, visibleFiles.size());
+		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testFloorDoesNotDowngradeOwner() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		User privilegedUser = GoogleCloudTestFactory.newUser();
+		GoogleFile__c ownedFile = GoogleCloudTestFactory.file()
+			.withName('Owned File')
+			.withOwner(privilegedUser.Id)
+			.insertRecord();
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.View);
+
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
+			.forFile(ownedFile.Id)
+			.forUser(privilegedUser.Id)
+			.strip();
+
+		System.assertEquals(1, visibleFiles.size());
+		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testNoFloorRemainsRestricted() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		User fileOwner = GoogleCloudTestFactory.newUser();
+		User otherUser = GoogleCloudTestFactory.newUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Unlinked File')
+			.withOwner(fileOwner.Id)
+			.insertRecord();
+
+		setPrivilegedFloor(null);
+
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
+			.forFile(localFile.Id)
+			.forUser(otherUser.Id)
+			.strip();
+
+		System.assertEquals(0, visibleFiles.size());
+	}
+
+	@IsTest
+	private static void testExplorerPrivilegedFirstPage() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		User otherOwner = GoogleCloudTestFactory.newUser();
+		GoogleFile__c ownedFile = GoogleCloudTestFactory.file().withName('Owned File').insertRecord();
+		GoogleFile__c otherFile = GoogleCloudTestFactory.file().withName('Other File').withOwner(otherOwner.Id).insertRecord();
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.View);
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = new GoogleLocalFileService().retrieveGoogleFiles(UserInfo.getUserId());
+		Test.stopTest();
+
+		System.assertEquals(true, result.isPrivileged);
+
+		Map<Id, GoogleFile__c> filesById = new Map<Id, GoogleFile__c>(result.files);
+		System.assertEquals('Edit', filesById.get(ownedFile.Id).UserAccessLevel__c);
+		System.assertEquals('View', filesById.get(otherFile.Id).UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testPrivilegedPageStampsEditFloor() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		User otherOwner = GoogleCloudTestFactory.newUser();
+		GoogleFile__c ownedFile = GoogleCloudTestFactory.file().withName('Owned Page File').insertRecord();
+		GoogleFile__c otherFile = GoogleCloudTestFactory.file().withName('Other Page File').withOwner(otherOwner.Id).insertRecord();
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.Edit);
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = new GoogleLocalFileService().retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO.firstPage());
+		Test.stopTest();
+
+		System.assertEquals(true, result.isPrivileged);
+
+		Map<Id, GoogleFile__c> filesById = new Map<Id, GoogleFile__c>(result.files);
+		System.assertEquals('Edit', filesById.get(ownedFile.Id).UserAccessLevel__c);
+		System.assertEquals('Edit', filesById.get(otherFile.Id).UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testCursorEncodeDecodeRoundTrip() {
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('Cursor File').insertRecord();
+		GoogleFile__c row = [SELECT Id, Name FROM GoogleFile__c WHERE Id = :localFile.Id];
+
+		GoogleFileExplorerPageRequestDTO request = new GoogleFileExplorerPageRequestDTO();
+		request.sortField = 'fileName';
+		request.sortDirection = 'DESC';
+		String cursor = request.encodeCursorFrom(row);
+		System.assertNotEquals(null, cursor);
+
+		GoogleFileExplorerPageRequestDTO next = new GoogleFileExplorerPageRequestDTO();
+		next.sortField = 'fileName';
+		next.sortDirection = 'DESC';
+		next.cursor = cursor;
+
+		System.assertEquals(true, next.hasCursor());
+		System.assertEquals(row.Id, next.cursorId());
+		System.assertEquals(row.Name, (String) next.decodedCursorValue());
+	}
+
+	private static void setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel floor) {
+		GoogleFileAccessResolver.privilegedFloorOverrideSet = true;
+		GoogleFileAccessResolver.privilegedFloorOverride = floor;
 	}
 
 	@IsTest

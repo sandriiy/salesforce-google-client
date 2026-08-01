@@ -3,6 +3,8 @@ import { formatDateAsDDMMYYYY_HHMM } from 'c/googleCloudUtils';
 const MAX_FILE_EXPLORER_COLUMNS = 7;
 const DEFAULT_FILE_EXPLORER_COLUMNS = 'title;isLinked;access;owner;lastModified';
 
+const SERVER_SORTABLE_KEYS = new Set(['title', 'isLinked', 'owner', 'fileOwner', 'lastModified', 'createdDate']);
+
 const FILE_EXPLORER_COLUMN_CATALOG = [
     {
         key: 'title',
@@ -146,13 +148,14 @@ const buildEffectiveColumns = (resolvedColumns) => {
         .filter(Boolean);
 };
 
-const buildDatatableColumns = (resolvedColumns) => {
+const buildDatatableColumns = (resolvedColumns, isPrivileged = false) => {
     return buildEffectiveColumns(resolvedColumns).map((column) => {
+        const serverSortable = SERVER_SORTABLE_KEYS.has(column.key);
         const columnDefinition = {
             label: column.label,
             fieldName: column.fieldName,
             type: column.type,
-            sortable: column.sortable !== false
+            sortable: isPrivileged ? serverSortable : column.sortable !== false
         };
 
         if (column.wrapText) {
@@ -237,6 +240,7 @@ export {
     FILE_EXPLORER_COLUMN_OPTIONS,
     DEFAULT_FILE_EXPLORER_COLUMNS,
     MAX_FILE_EXPLORER_COLUMNS,
+    SERVER_SORTABLE_KEYS,
     buildDatatableColumns,
     buildStandardColumnValues,
     buildCustomColumnValues,

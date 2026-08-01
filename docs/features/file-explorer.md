@@ -49,6 +49,8 @@ Beyond the File Explorer, Google Files can also be found through Salesforce **gl
 
 The file list loads **progressively**: an initial set of rows is shown right away, and more rows are appended automatically as you scroll toward the bottom of the table. This keeps the tab responsive when you have access to a large number of files. Searching, filtering, and sorting always apply across **all** of your files.
 
+Administrators with the **Google Client: View All Files** or **Google Client: Edit All Files** permission browse **all** Google Files here, in a single **All Files** view. Because the list can be very large, it uses true server-side pagination: files load in pages as you scroll, and search and sorting run on the server. Users without either permission see only the files they can access, capped at 10,000 with a hint to use global search if there are more.
+
 ## Uploading Files from File Explorer
 
 You can upload files using **Upload Files**. However, any file uploaded from this tab will be **not linked to any Salesforce record** (**Is Linked? = No**).

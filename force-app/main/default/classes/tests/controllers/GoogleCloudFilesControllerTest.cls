@@ -44,10 +44,10 @@ private class GoogleCloudFilesControllerTest {
 		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
-		List<GoogleFile__c> allFiles = GoogleCloudFilesController.retrieveAllGoogleFiles();
+		GoogleFileExplorerResultDTO result = GoogleCloudFilesController.retrieveAllGoogleFiles();
 		Test.stopTest();
 
-		System.assertNotEquals(null, allFiles);
+		System.assertNotEquals(null, result.files);
 	}
 
 	@IsTest

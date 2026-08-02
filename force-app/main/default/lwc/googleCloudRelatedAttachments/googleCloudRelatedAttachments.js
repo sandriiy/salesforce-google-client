@@ -62,7 +62,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@wire(getObjectInfo, { objectApiName: '$sobjectApiName' })
 	wiredObjectInfo({ data, error }) {
 		if (data) {
-			this.recordIdentifierNames = (data.nameFields || []).map((nameField) => `${this.sobjectApiName}.${nameField}`);
+			this.recordIdentifierNames = this.resolveDisplayNameFields(data).map((nameField) => `${this.sobjectApiName}.${nameField}`);
 			this.recordIdentifierValue = null;
 		} else if (error) {
 			this.recordIdentifierNames = [];
@@ -231,6 +231,20 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 	handlePreviewCloseReset(event) {
 		this.isNewFileVersionUpload = false;
+	}
+
+	resolveDisplayNameFields(objectInfo) {
+		const nameFields = objectInfo.nameFields || [];
+		const fieldsByApiName = objectInfo.fields || {};
+
+		for (const nameField of nameFields) {
+			const fieldInfo = fieldsByApiName[nameField];
+
+			if (fieldInfo?.compound) return [nameField];
+			if (fieldInfo?.compoundFieldName) return [fieldInfo.compoundFieldName];
+		}
+
+		return nameFields;
 	}
 
 	resolveRecordIdentifierValue(recordInfo) {

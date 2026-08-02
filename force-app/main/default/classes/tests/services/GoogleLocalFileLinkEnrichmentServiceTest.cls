@@ -85,4 +85,24 @@ private class GoogleLocalFileLinkEnrichmentServiceTest {
 
 		Assert.areEqual('Resolved Account Name', enrichmentService.resolveLinkedRecordName(linkedRecord.Id));
 	}
+
+	@IsTest
+	private static void testResolveLinkedRecordNamePositiveCompoundName() {
+		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
+
+		Assert.areEqual(UserInfo.getName(), enrichmentService.resolveLinkedRecordName(UserInfo.getUserId()));
+	}
+
+	@IsTest
+	private static void testApplyLinkedRecordAttributesPositiveCompoundName() {
+		GoogleFileLink__c compoundNameLink = new GoogleFileLink__c(
+			LinkedObjectType__c = 'User',
+			LinkedObjectId__c = UserInfo.getUserId()
+		);
+
+		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
+		enrichmentService.applyLinkedRecordAttributes(new List<GoogleFileLink__c>{ compoundNameLink });
+
+		Assert.areEqual(UserInfo.getName(), compoundNameLink.LinkedObjectName__c);
+	}
 }

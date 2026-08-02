@@ -149,7 +149,7 @@ private class GoogleFileExplorerColumnResolverTest {
 		List<GoogleFileColumnDTO> columns = new GoogleFileExplorerColumnResolver().resolveColumns();
 		Test.stopTest();
 
-		Assert.areEqual(GoogleCloudConstants.MAX_FILE_EXPLORER_COLUMNS, columns.size());
+		Assert.areEqual(GoogleCloudConstants.FILE_EXPLORER_MAX_COLUMNS, columns.size());
 		Assert.areEqual('title', columns[0].key);
 	}
 }

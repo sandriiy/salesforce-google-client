@@ -88,11 +88,21 @@ public without sharing class GoogleFileShortcutPlacementCommand {
 	private String resolveEffectiveRootFolderId(GoogleFileVersion__c latestVersion) {
 		if (latestVersion == null) return null;
 
-		if (String.isNotBlank(latestVersion.GoogleDriveFolderId__c)) {
-			return latestVersion.GoogleDriveFolderId__c;
+		String currentFolderId = String.isNotBlank(latestVersion.GoogleDriveFolderId__c)
+			? latestVersion.GoogleDriveFolderId__c
+			: fetchCurrentParentFromDrive(latestVersion.GoogleDriveFileId__c);
+
+		return isConfiguredUploadRootFolder(currentFolderId) ? currentFolderId : null;
+	}
+
+	private Boolean isConfiguredUploadRootFolder(String folderId) {
+		if (String.isBlank(folderId)) return false;
+
+		for (String uploadFolderId : metadataService.getAllUploadFolderIds()) {
+			if (folderId.equals(uploadFolderId)) return true;
 		}
 
-		return fetchCurrentParentFromDrive(latestVersion.GoogleDriveFileId__c);
+		return false;
 	}
 
 	private String fetchCurrentParentFromDrive(String googleDriveFileId) {

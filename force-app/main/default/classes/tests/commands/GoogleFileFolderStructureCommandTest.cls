@@ -50,6 +50,21 @@ private class GoogleFileFolderStructureCommandTest {
 		return driveMock;
 	}
 
+	private static GoogleDriveHttpMock buildDuplicateFoldersMock(List<String> folderIds) {
+		List<String> serializedFolders = new List<String>();
+		for (String folderId : folderIds) {
+			serializedFolders.add('{"id":"' + folderId + '","name":"Duplicate Folder"}');
+		}
+
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.queryContains('appProperties')
+		).thenReturnStatus(200, '{"files":[' + String.join(serializedFolders, ',') + ']}');
+		return driveMock;
+	}
+
 	@IsTest
 	private static void testEnsureFolderPositiveBlankStructure() {
 		GoogleCloudTestFactory.initMocks();
@@ -198,5 +213,130 @@ private class GoogleFileFolderStructureCommandTest {
 		Test.stopTest();
 
 		Assert.areEqual('EXISTING_FALLBACK_FOLDER', folderId);
+	}
+
+	@IsTest
+	private static void testEnsureFolderPositiveCachedFolderSkipsDriveCallouts() {
+		GoogleDriveHttpMock driveMock = buildMissingFolderMock();
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
+		folderCache.putFolderId(folderCache.buildFolderKey('ROOT_FOLDER_01', linkedRecordId), 'CACHED_FOLDER_01');
+
+		Test.startTest();
+		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecordId);
+		Test.stopTest();
+
+		Assert.areEqual('CACHED_FOLDER_01', folderId);
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'A cached folder must never reach Google Drive');
+	}
+
+	@IsTest
+	private static void testEnsureFolderPositiveRepeatedResolutionSearchesOnce() {
+		GoogleDriveHttpMock driveMock = buildMissingFolderMock();
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GoogleFileFolderStructureCommand folderStructureCommand = new GoogleFileFolderStructureCommand();
+
+		Test.startTest();
+		String firstFolderId = folderStructureCommand.ensureFolder(linkedRecordId);
+		Integer calloutsAfterFirstResolution = driveMock.getCapturedRequests().size();
+		String secondFolderId = folderStructureCommand.ensureFolder(linkedRecordId);
+		Test.stopTest();
+
+		Assert.areEqual(firstFolderId, secondFolderId);
+		Assert.areEqual(calloutsAfterFirstResolution, driveMock.getCapturedRequests().size(), 'A repeated resolution must be served from memory');
+	}
+
+	@IsTest
+	private static void testEnsureFolderPositiveAdoptsSameFolderAmongDuplicates() {
+		GoogleCloudTestFactory.initMocks(buildDuplicateFoldersMock(new List<String>{ 'FOLDER_C', 'FOLDER_A', 'FOLDER_B' }));
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+
+		Test.startTest();
+		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecordId);
+		String repeatedFolderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecordId);
+		Test.stopTest();
+
+		Assert.areEqual('FOLDER_A', folderId);
+		Assert.areEqual('FOLDER_A', repeatedFolderId, 'Duplicated folders must resolve to the same folder every time');
+	}
+
+	@IsTest
+	private static void testEnsureFolderNegativeDefersWhileAnotherTransactionCreates() {
+		GoogleDriveHttpMock driveMock = buildMissingFolderMock();
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
+		folderCache.markPending(folderCache.buildFolderKey('ROOT_FOLDER_01', linkedRecordId));
+
+		GoogleFileFolderStructureCommand folderStructureCommand = new GoogleFileFolderStructureCommand();
+
+		Test.startTest();
+		String folderId = folderStructureCommand.ensureFolder(linkedRecordId);
+		Test.stopTest();
+
+		Assert.isNull(folderId);
+		Assert.isTrue(folderStructureCommand.isResolutionDeferred(), 'A pending claim must defer instead of creating a second folder');
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'A deferred resolution must not touch Google Drive');
+	}
+
+	@IsTest
+	private static void testEnsureFolderPositiveIgnoresPendingClaimOnFinalAttempt() {
+		GoogleCloudTestFactory.initMocks(buildMissingFolderMock());
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
+		folderCache.markPending(folderCache.buildFolderKey('ROOT_FOLDER_01', linkedRecordId));
+
+		GoogleFileFolderStructureCommand folderStructureCommand = new GoogleFileFolderStructureCommand().ignorePendingClaims();
+
+		Test.startTest();
+		String folderId = folderStructureCommand.ensureFolder(linkedRecordId);
+		Test.stopTest();
+
+		Assert.isNotNull(folderId);
+		Assert.isFalse(folderStructureCommand.isResolutionDeferred());
+	}
+
+	@IsTest
+	private static void testEnsureFolderPositiveResolvesWhenCacheIsUnavailable() {
+		GoogleCloudTestFactory.initMocks(buildExistingFolderMock('EXISTING_FOLDER_01'));
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+		GoogleCacheDriveFolderService.cacheProviderOverride = new GoogleInMemoryCacheProvider(true);
+
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+
+		Test.startTest();
+		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecordId);
+		Test.stopTest();
+
+		Assert.areEqual('EXISTING_FOLDER_01', folderId, 'Folder placement must keep working without Platform Cache');
+	}
+
+	@IsTest
+	private static void testEvictResolvedFoldersPositiveClearsCachedFolder() {
+		GoogleCloudTestFactory.initMocks(buildExistingFolderMock('EXISTING_FOLDER_01'));
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GoogleFileFolderStructureCommand folderStructureCommand = new GoogleFileFolderStructureCommand();
+
+		Test.startTest();
+		folderStructureCommand.ensureFolder(linkedRecordId);
+		folderStructureCommand.evictResolvedFolders();
+		Test.stopTest();
+
+		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
+		Assert.isNull(folderCache.getFolderId(folderCache.buildFolderKey('ROOT_FOLDER_01', linkedRecordId)));
 	}
 }

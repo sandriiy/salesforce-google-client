@@ -124,7 +124,7 @@ private class GoogleCloudDirectUploadControllerTest {
 
 		Test.startTest();
 		GoogleCloudDirectUploadController.reportDirectUploadOutcome(
-			GoogleCloudConstants.DIRECT_UPLOAD_OUTCOME_BLOCKED,
+			GoogleDirectUploadService.OUTCOME_BLOCKED,
 			'bytes 0-16777215 attempt 1 status 0'
 		);
 		Test.stopTest();

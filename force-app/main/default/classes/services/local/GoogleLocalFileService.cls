@@ -64,8 +64,8 @@ public without sharing class GoogleLocalFileService {
 			List<String> additionalVersionFields = new GoogleFileExplorerColumnResolver().resolveAdditionalVersionFields();
 			List<GoogleFile__c> files = accessResolver.resolveAccessibleFilesForUser(userId, additionalVersionFields);
 
-			Boolean hasMore = files.size() > GoogleCloudConstants.EXPLORER_STANDARD_LIMIT;
-			while (files.size() > GoogleCloudConstants.EXPLORER_STANDARD_LIMIT) {
+			Boolean hasMore = files.size() > GoogleCloudConstants.FILE_EXPLORER_STANDARD_LIMIT;
+			while (files.size() > GoogleCloudConstants.FILE_EXPLORER_STANDARD_LIMIT) {
 				files.remove(files.size() - 1);
 			}
 

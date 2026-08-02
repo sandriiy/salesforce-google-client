@@ -1,5 +1,5 @@
 import { LightningElement, api, track, wire } from 'lwc';
-import { saveGoogleFileLocally, uploadInChunks, upload } from 'c/googleCloudUploadUtils';
+import { saveGoogleFileLocally, uploadInChunks, upload, prefetchUploadFolderStructure } from 'c/googleCloudUploadUtils';
 import { BIG_FILE_SIZE } from 'c/googleCloudUploadUtils';
 import { DEFAULT_OOPS_MESSAGE, DEFAULT_FILE_UPLOAD_FAILURE, DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
 import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension } from 'c/googleCloudUtils';
@@ -46,6 +46,8 @@ export default class GoogleCloudUploader extends LightningElement {
 				this.isNewFileVersionUpload = false;
 				this.handleFilesRefresh();
 			} else {
+				prefetchUploadFolderStructure(this.recordId);
+
 				allowedFiles.forEach(allowedFile => {
 					if (allowedFile.size > BIG_FILE_SIZE) {
 						this.handleLargeFileUpload(allowedFile);

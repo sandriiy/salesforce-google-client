@@ -11,6 +11,16 @@ All notable changes to this project will be documented in this file.
 - Test connection action in Advanced → File Management that verifies the service account, upload folder, and browser connection without leaving a file in Google Drive.
 - Retry through Salesforce prompt in the Uploader and in the Attachments and File Explorer upload window when a direct upload cannot complete.
 
+### Changed
+
+- The Google Drive folder for a record is now resolved once per upload — while the files are transferring, so it never delays the upload starting — and reused by every file of that upload instead of being resolved separately for each file.
+
+### Fixed
+
+- Duplicated Google Drive folders could be created for the same record when several files, or several users, were uploaded to that record at the same time. A resolved folder is now remembered in the `GoogleCloudClient` Platform Cache partition, so Google Client no longer depends on Google Drive search returning a folder it has just created. Allocating Org Cache to that partition is what guarantees a single folder per record — see Known Issues.
+- Records that already have duplicated folders now consistently receive every new file into the same one of those folders, instead of scattering files across them.
+- Attaching an existing file to a record that had no Google Drive folder yet created the record folder nested inside the folder the attached file already lived in, instead of under the configured upload folder, so no folder appeared for that record and its shortcut was placed out of reach. The record folder is now always resolved under a configured upload folder.
+
 ## [2.0.0] - 2026-06-14
 
 ### Added

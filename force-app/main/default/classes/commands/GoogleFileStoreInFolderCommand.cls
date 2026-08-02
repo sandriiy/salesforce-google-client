@@ -36,7 +36,12 @@ public without sharing class GoogleFileStoreInFolderCommand {
         this.uowRef = uowRef;
     }
 
-    public void placeFile(GoogleFileRelocationRequestDTO request) {
+    public GoogleFileStoreInFolderCommand ignorePendingFolderClaims() {
+        this.folderStructureCommand.ignorePendingClaims();
+        return this;
+    }
+
+    public Boolean placeFile(GoogleFileRelocationRequestDTO request) {
         if (request == null) {
             Logger.error('Folder Placement Job Failed --> request is null').addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
             throw new GoogleFileStoreInFolderCommandException('Folder Placement Job Failed, request is empty');
@@ -61,19 +66,18 @@ public without sharing class GoogleFileStoreInFolderCommand {
 
         if (remoteFileIds == null || String.isBlank(remoteFileIds.googleDriveFileId)) {
             Logger.error('Folder Placement Job Failed --> Remote GoogleDriveFileId is blank' + ', VersionId=' + String.valueOf(request.localGoogleFileVersionId)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			return;
+			return true;
         }
 
         String effectiveRootFolderId = resolveEffectiveRootFolderId(remoteFileIds, primaryRootFolderId);
-        if (String.isBlank(effectiveRootFolderId)) return;
+        if (String.isBlank(effectiveRootFolderId)) return true;
 
         Id relatedRecordId = loadRelatedRecordId(request);
-        String destinationFolderId = folderStructureCommand.findExistingFolder(effectiveRootFolderId, request.initiatorUserId, relatedRecordId);
+        String destinationFolderId = folderStructureCommand.ensureFolder(effectiveRootFolderId, request.initiatorUserId, relatedRecordId);
+
         if (String.isBlank(destinationFolderId)) {
-            destinationFolderId = folderStructureCommand.ensureFolder(effectiveRootFolderId, request.initiatorUserId, relatedRecordId);
+            return !folderStructureCommand.isResolutionDeferred();
         }
-		
-        if (String.isBlank(destinationFolderId)) return;
 
         List<String> foldersToDetach = new List<String>{effectiveRootFolderId};
 
@@ -93,6 +97,8 @@ public without sharing class GoogleFileStoreInFolderCommand {
                 .setSupportsAllDrives(true)
                 .execute();
         } catch (Exception e) {
+            folderStructureCommand.evictResolvedFolders();
+
             Logger.error(
                 'Folder Placement Job Failed --> Move failed' +
                 ', SourceFileId=' + String.valueOf(remoteFileIds.googleDriveFileId) +
@@ -104,7 +110,7 @@ public without sharing class GoogleFileStoreInFolderCommand {
         }
 
         String resultingGoogleDriveFileId = movedFile == null ? null : movedFile.id;
-        if (String.isBlank(resultingGoogleDriveFileId)) return;
+        if (String.isBlank(resultingGoogleDriveFileId)) return true;
 
         if (!String.isBlank(remoteFileIds.googleWorkspaceFileId)) {
             moveRemoteFile(remoteFileIds.googleWorkspaceFileId, foldersToDetach, destinationFolderId);
@@ -115,6 +121,8 @@ public without sharing class GoogleFileStoreInFolderCommand {
             resultingGoogleDriveFileId,
             destinationFolderId
         );
+
+        return true;
     }
 
     private String moveRemoteFile(String remoteFileId, List<String> uploadParentFolderIds, String destinationFolderId) {

@@ -34,13 +34,13 @@ public class GoogleCloudTestFactory {
 	}
 
 	public static void initMocks() {
-		Test.setMock(HttpCalloutMock.class, new GoogleDriveHttpMock().withDefaultHappyPath());
-		GoogleClientApiProvider.authorizerClassNameOverride = TEST_AUTHORIZER_CLASS_NAME;
+		initMocks(new GoogleDriveHttpMock().withDefaultHappyPath());
 	}
 
 	public static void initMocks(HttpCalloutMock httpMock) {
 		Test.setMock(HttpCalloutMock.class, httpMock);
 		GoogleClientApiProvider.authorizerClassNameOverride = TEST_AUTHORIZER_CLASS_NAME;
+		GoogleCacheDriveFolderService.cacheProviderOverride = new GoogleInMemoryCacheProvider();
 	}
 
 	public static User newUser() {
@@ -146,6 +146,7 @@ public class GoogleCloudTestFactory {
 		public VersionBuilder withType(String v) { r.Type__c = v; return this; }
 		public VersionBuilder withSize(Long v) { r.Size__c = v; return this; }
 		public VersionBuilder withDriveId(String v) { r.GoogleDriveFileId__c = v; return this; }
+		public VersionBuilder withFolderId(String v) { r.GoogleDriveFolderId__c = v; return this; }
 		public VersionBuilder withDocsId(String v) { r.GoogleDocsFileId__c = v; return this; }
 		public VersionBuilder withPublicLink(String v) { r.PublicLink__c = v; return this; }
 		public VersionBuilder withPublicLinkPermissionId(String v) { r.PublicLinkPermissionId__c = v; return this; }

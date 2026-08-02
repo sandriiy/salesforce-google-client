@@ -55,7 +55,13 @@ Shortcut behavior depends on the configured structure:
 
 ## Processing Time
 
-Folder creation and structuring is handled by an **asynchronous job**. After upload or existing-file attachment, it can take **around 1 minute** for the final folder structure or shortcut to appear in Google Drive.
+The destination folder is resolved — and created when it does not exist yet — **once per upload**, while the files are transferring, so every file of the same upload shares one folder. Moving the uploaded file into that folder is still handled by an **asynchronous job**, so after upload or existing-file attachment it can take **around 1 minute** for the file, folder structure, or shortcut to appear in its final place in Google Drive.
+
+!!! tip "Allocate Org Cache for reliable folder placement"
+
+    A resolved folder is remembered in the **GoogleCloudClient** Platform Cache partition, because Google Drive search does not immediately return a folder that was just created. Orgs without purchased or trial cache receive **0 storage** for that partition, which disables the memory and can lead to duplicated record folders under heavy concurrent uploads.
+
+    Set **Org Cache** to at least `1` MB in **Setup → Platform Cache → GoogleCloudClient**. See [Known Issues](../help/known-issues.md) for the full steps.
 
 ## How It Looks in Google Drive
 

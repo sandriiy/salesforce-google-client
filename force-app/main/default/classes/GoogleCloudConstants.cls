@@ -81,19 +81,12 @@ public class GoogleCloudConstants {
 	public static final String STRUCTURE_USER_RECORD = '{User}-{Record}';
 	public static final String STRUCTURE_RECORD_USER = '{Record}-{User}';
 
-	public static final String FILE_COLUMN_TITLE = 'title';
-	public static final Integer MAX_FILE_EXPLORER_COLUMNS = 7;
-	public static final Integer EXPLORER_STANDARD_LIMIT = 10000;
-	public static final Integer EXPLORER_PAGE_SIZE = 50;
-	public static final String PERMISSION_VIEW_ALL_ACCESS = 'GoogleClientViewAllAccess';
-	public static final String PERMISSION_EDIT_ALL_ACCESS = 'GoogleClientEditAllAccess';
+	// File Explorer constants used to change its appearance (column display, pagination etc).
 	public static final Set<String> FILE_EXPLORER_COLUMNS = new Set<String>{
 		'title', 'type', 'size', 'owner', 'fileOwner', 'createdDate', 'lastModified', 'isLinked', 'access', 'summary'
 	};
-
-	public static final Long DIRECT_UPLOAD_CHUNK_ALIGNMENT = 262144L;
-	public static final String DIRECT_UPLOAD_OUTCOME_FAILED = 'failed';
-	public static final String DIRECT_UPLOAD_OUTCOME_BLOCKED = 'blocked';
-	public static final String DIRECT_UPLOAD_OUTCOME_RECOVERED = 'recovered';
-	public static final String DIRECT_UPLOAD_OUTCOME_CANCELLED = 'cancelled';
+	public static final String FILE_EXPLORER_COLUMN_TITLE = 'title';
+	public static final Integer FILE_EXPLORER_MAX_COLUMNS = 7;
+	public static final Integer FILE_EXPLORER_STANDARD_LIMIT = 10000;
+	public static final Integer FILE_EXPLORER_PAGE_SIZE = 50;
 }

@@ -53,7 +53,7 @@ public with sharing class GoogleFileExplorerPageRequestDTO {
 	}
 
 	public Integer effectivePageSize() {
-		return (pageSize == null || pageSize <= 0) ? GoogleCloudConstants.EXPLORER_PAGE_SIZE : pageSize;
+		return (pageSize == null || pageSize <= 0) ? GoogleCloudConstants.FILE_EXPLORER_PAGE_SIZE : pageSize;
 	}
 
 	public Boolean hasCursor() {

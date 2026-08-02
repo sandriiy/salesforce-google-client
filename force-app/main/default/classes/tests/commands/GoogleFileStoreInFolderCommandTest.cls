@@ -164,6 +164,118 @@ private class GoogleFileStoreInFolderCommandTest {
 		Assert.areEqual('MOVED_FILE_01', updated.GoogleDriveFileId__c);
 	}
 
+	private static GoogleFileRelocationRequestDTO buildPlacementRequest(Id linkedRecordId, String driveFileId) {
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('Placement File')
+			.insertRecord();
+
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('Placement File.pdf')
+			.withType('application/pdf')
+			.withSize(1)
+			.withDriveId(driveFileId)
+			.withFolderId('ROOT_FOLDER_01')
+			.insertRecord();
+
+		GoogleFileLink__c link = GoogleCloudTestFactory.link()
+			.forFile(parentFile.Id)
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('Account')
+			.insertRecord();
+
+		return new GoogleFileRelocationRequestDTO(
+			UserInfo.getUserId(),
+			parentFile.Id,
+			localFileVersion.Id,
+			link.Id
+		);
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveManyFilesShareOneFolderResolution() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.queryContains('appProperties')
+		).thenReturnStatus(200, '{"files":[{"id":"SHARED_FOLDER_01","name":"Existing Folder"}]}');
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('PATCH')
+		).thenReturnStatus(200, '{"id":"MOVED_FILE_01"}');
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		List<GoogleFileRelocationRequestDTO> requests = new List<GoogleFileRelocationRequestDTO>{
+			buildPlacementRequest(linkedRecordId, 'GD_SHARED_1'),
+			buildPlacementRequest(linkedRecordId, 'GD_SHARED_2'),
+			buildPlacementRequest(linkedRecordId, 'GD_SHARED_3')
+		};
+
+		IGoogleUnitOfWork uow = buildUow();
+		GoogleFileStoreInFolderCommand storeInFolderCommand = new GoogleFileStoreInFolderCommand(uow);
+
+		Test.startTest();
+		for (GoogleFileRelocationRequestDTO request : requests) {
+			Assert.isTrue(storeInFolderCommand.placeFile(request));
+		}
+		uow.commitWork(true);
+		Test.stopTest();
+
+		Integer folderSearchCallouts = 0;
+		for (GoogleDriveHttpMock.CapturedRequest capturedRequest : driveMock.getCapturedRequests()) {
+			if (capturedRequest.endpoint != null && capturedRequest.endpoint.contains('appProperties')) {
+				folderSearchCallouts++;
+			}
+		}
+
+		Assert.areEqual(1, folderSearchCallouts, 'Every file of the same record must reuse a single folder resolution');
+
+		for (GoogleFileVersion__c placedVersion : [SELECT GoogleDriveFolderId__c FROM GoogleFileVersion__c]) {
+			Assert.areEqual('SHARED_FOLDER_01', placedVersion.GoogleDriveFolderId__c);
+		}
+	}
+
+	@IsTest
+	private static void testPlaceFileNegativeDefersWhileAnotherTransactionCreatesFolder() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.queryContains('appProperties')
+		).thenReturnStatus(200, '{"files":[]}');
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		GoogleFileRelocationRequestDTO request = buildPlacementRequest(linkedRecordId, 'GD_DEFERRED_1');
+
+		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
+		folderCache.markPending(folderCache.buildFolderKey('ROOT_FOLDER_01', linkedRecordId));
+
+		IGoogleUnitOfWork uow = buildUow();
+
+		Test.startTest();
+		Boolean isSettled = new GoogleFileStoreInFolderCommand(uow).placeFile(request);
+		uow.commitWork(true);
+		Test.stopTest();
+
+		Assert.isFalse(isSettled, 'A deferred placement must be reported so the job can retry it');
+
+		GoogleFileVersion__c untouchedVersion = [
+			SELECT GoogleDriveFolderId__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :request.localGoogleFileVersionId
+			LIMIT 1
+		];
+
+		Assert.areEqual('ROOT_FOLDER_01', untouchedVersion.GoogleDriveFolderId__c, 'A deferred file must stay in the upload root until the retry places it');
+	}
+
 	@IsTest
 	private static void testPlaceFilePositiveExistingFolder() {
 		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();

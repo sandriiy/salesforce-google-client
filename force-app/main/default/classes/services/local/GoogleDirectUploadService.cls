@@ -24,6 +24,16 @@
 public without sharing class GoogleDirectUploadService {
 	public class GoogleDirectUploadException extends Exception {}
 
+	private static final Long CHUNK_ALIGNMENT = 262144L;
+	@TestVisible
+	private static final String OUTCOME_FAILED = 'failed';
+	@TestVisible
+	private static final String OUTCOME_BLOCKED = 'blocked';
+	@TestVisible
+	private static final String OUTCOME_RECOVERED = 'recovered';
+	@TestVisible
+	private static final String OUTCOME_CANCELLED = 'cancelled';
+
 	private final GoogleMetadataConfigService metadataService;
 	private GoogleRemoteFileUploader remoteUploader;
 
@@ -39,7 +49,7 @@ public without sharing class GoogleDirectUploadService {
 	public static Long resolveBrowserByteLimit(Long totalBytes) {
 		if (totalBytes == null || totalBytes <= 0) return 0;
 
-		Long alignment = GoogleCloudConstants.DIRECT_UPLOAD_CHUNK_ALIGNMENT;
+		Long alignment = CHUNK_ALIGNMENT;
 		Long alignedLimit = (totalBytes / alignment) * alignment;
 
 		if (alignedLimit >= totalBytes) {
@@ -106,11 +116,11 @@ public without sharing class GoogleDirectUploadService {
 	}
 
 	public void reportOutcome(String outcome, String diagnostics) {
-		String normalizedOutcome = String.isBlank(outcome) ? GoogleCloudConstants.DIRECT_UPLOAD_OUTCOME_FAILED : outcome;
+		String normalizedOutcome = String.isBlank(outcome) ? OUTCOME_FAILED : outcome;
 		String logMessage = 'Direct Browser Upload --> Outcome=' + normalizedOutcome + ', Details=' + String.valueOf(diagnostics);
 
-		Boolean isExpectedOutcome = normalizedOutcome == GoogleCloudConstants.DIRECT_UPLOAD_OUTCOME_RECOVERED
-			|| normalizedOutcome == GoogleCloudConstants.DIRECT_UPLOAD_OUTCOME_CANCELLED;
+		Boolean isExpectedOutcome = normalizedOutcome == OUTCOME_RECOVERED
+			|| normalizedOutcome == OUTCOME_CANCELLED;
 
 		if (isExpectedOutcome) {
 			Logger.info(logMessage).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);

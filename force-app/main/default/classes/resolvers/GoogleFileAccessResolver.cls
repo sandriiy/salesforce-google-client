@@ -25,6 +25,9 @@ public without sharing class GoogleFileAccessResolver {
 	public class GoogleFileAccessCheckException extends Exception {}
 	public enum AccessLevel { View, Edit }
 
+	private static final String PERMISSION_VIEW_ALL_ACCESS = 'GoogleClientViewAllAccess';
+	private static final String PERMISSION_EDIT_ALL_ACCESS = 'GoogleClientEditAllAccess';
+
 	@TestVisible
 	private static AccessLevel privilegedFloorOverride;
 	@TestVisible
@@ -130,9 +133,9 @@ public without sharing class GoogleFileAccessResolver {
 			return memoFloor;
 		}
 
-		if (FeatureManagement.checkPermission(GoogleCloudConstants.PERMISSION_EDIT_ALL_ACCESS)) {
+		if (FeatureManagement.checkPermission(PERMISSION_EDIT_ALL_ACCESS)) {
 			memoFloor = AccessLevel.Edit;
-		} else if (FeatureManagement.checkPermission(GoogleCloudConstants.PERMISSION_VIEW_ALL_ACCESS)) {
+		} else if (FeatureManagement.checkPermission(PERMISSION_VIEW_ALL_ACCESS)) {
 			memoFloor = AccessLevel.View;
 		} else {
 			memoFloor = null;

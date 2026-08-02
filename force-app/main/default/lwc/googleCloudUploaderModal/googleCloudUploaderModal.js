@@ -4,7 +4,7 @@ import { getRecord, getFieldValue } from 'lightning/uiRecordApi';
 import USER_ID from '@salesforce/user/Id';
 import USER_NAME_FIELD from '@salesforce/schema/User.Name';
 
-import { saveGoogleFileLocally, saveGoogleFileVersionLocally, uploadInChunks, upload } from 'c/googleCloudUploadUtils';
+import { saveGoogleFileLocally, saveGoogleFileVersionLocally, uploadInChunks, upload, prefetchUploadFolderStructure } from 'c/googleCloudUploadUtils';
 import { BIG_FILE_SIZE } from 'c/googleCloudUploadUtils';
 import { DEFAULT_FILE_UPLOAD_FAILURE } from 'c/googleCloudUtils';
 import { isEmpty, showToast, createNewFilePlaceholder } from 'c/googleCloudUtils';
@@ -33,6 +33,8 @@ export default class GoogleCloudUploaderModal extends LightningModal {
 
     handleFilesUpload() {
         if (!isEmpty(this.inputFiles)) {
+            prefetchUploadFolderStructure(this.recordId);
+
             this.inputFiles.forEach(inputFile => {
 				if (inputFile.size > BIG_FILE_SIZE) {
 					this.handleLargeFileUpload(inputFile);

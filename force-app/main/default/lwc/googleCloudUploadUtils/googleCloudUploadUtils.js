@@ -21,7 +21,7 @@ const RESUMABLE_INCOMPLETE_STATUS = 308;
 const OUTCOME_FAILED = 'failed';
 const OUTCOME_BLOCKED = 'blocked';
 const OUTCOME_RECOVERED = 'recovered';
-const ensuredFolderRecordIds = new Set();
+const folderStructurePromisesByRecordId = new Map();
 
 let directUploadSettingsPromise;
 let isDirectUploadUnavailable = false;
@@ -70,8 +70,32 @@ export async function upload(fileId, file, options) {
 	onSuccess(uploadedFileId, getParentFolderId(uploaderParentFolderId), fileId);
 }
 
+/**
+ * Start resolving, and creating when missing, the Google Drive folder that every file of this upload belongs in.
+ * Call this as soon as files are selected and never await it, so the folder is resolved while the files upload.
+ * The resolution is awaited later, just before the Salesforce records are created.
+ *
+ * @param {string} recordId - The Salesforce record the files are being uploaded to.
+ */
+export function prefetchUploadFolderStructure(recordId) {
+    if (!recordId || folderStructurePromisesByRecordId.has(recordId)) return;
+
+    folderStructurePromisesByRecordId.set(
+        recordId,
+        ensureNewGoogleFileFolderStructure({ relatedRecordId: recordId })
+            .catch(() => folderStructurePromisesByRecordId.delete(recordId))
+    );
+}
+
+async function awaitUploadFolderStructure(recordId) {
+    if (!recordId) return;
+
+    prefetchUploadFolderStructure(recordId);
+    await folderStructurePromisesByRecordId.get(recordId);
+}
+
 export async function saveGoogleFileLocally(recordId, file, uploadSource) {
-    ensureGoogleDriveFolderStructure(recordId);
+    await awaitUploadFolderStructure(recordId);
 
     return await saveNewGoogleFileLocally({
         recordId: recordId,
@@ -343,13 +367,6 @@ function describeError(error) {
     if (!error) return 'unknown error';
     if (error.body?.message) return error.body.message;
     return error.message || 'unknown error';
-}
-
-const ensureGoogleDriveFolderStructure = (recordId) => {
-    if (!recordId || ensuredFolderRecordIds.has(recordId)) return;
-
-	ensuredFolderRecordIds.add(recordId);
-    ensureNewGoogleFileFolderStructure({ relatedRecordId: recordId });
 }
 
 const getParentFolderId = (uploaderParentFolderId) => {

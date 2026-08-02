@@ -221,7 +221,7 @@ private class GoogleDirectUploadServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
-		buildService().reportOutcome(GoogleCloudConstants.DIRECT_UPLOAD_OUTCOME_BLOCKED, 'bytes 0-16777215 attempt 1 status 0');
+		buildService().reportOutcome(GoogleDirectUploadService.OUTCOME_BLOCKED, 'bytes 0-16777215 attempt 1 status 0');
 		Test.stopTest();
 
 		Assert.isTrue(true, 'Reporting an outcome must never surface an error to the uploading user');
@@ -233,7 +233,7 @@ private class GoogleDirectUploadServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		Test.startTest();
-		buildService().reportOutcome(GoogleCloudConstants.DIRECT_UPLOAD_OUTCOME_RECOVERED, 'retried once');
+		buildService().reportOutcome(GoogleDirectUploadService.OUTCOME_RECOVERED, 'retried once');
 		Test.stopTest();
 
 		Assert.isTrue(true, 'A recovered upload is informational, not an error');

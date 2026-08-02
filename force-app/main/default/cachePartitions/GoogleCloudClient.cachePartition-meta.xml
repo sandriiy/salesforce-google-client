@@ -3,15 +3,15 @@
     <isDefaultPartition>false</isDefaultPartition>
     <masterLabel>GoogleCloudClient</masterLabel>
     <platformCachePartitionTypes>
-        <allocatedCapacity>1</allocatedCapacity>
-        <allocatedPartnerCapacity>1</allocatedPartnerCapacity>
+        <allocatedCapacity>2</allocatedCapacity>
+        <allocatedPartnerCapacity>0</allocatedPartnerCapacity>
         <allocatedPurchasedCapacity>0</allocatedPurchasedCapacity>
         <allocatedTrialCapacity>0</allocatedTrialCapacity>
         <cacheType>Organization</cacheType>
     </platformCachePartitionTypes>
     <platformCachePartitionTypes>
-        <allocatedCapacity>1</allocatedCapacity>
-        <allocatedPartnerCapacity>1</allocatedPartnerCapacity>
+        <allocatedCapacity>2</allocatedCapacity>
+        <allocatedPartnerCapacity>0</allocatedPartnerCapacity>
         <allocatedPurchasedCapacity>0</allocatedPurchasedCapacity>
         <allocatedTrialCapacity>0</allocatedTrialCapacity>
         <cacheType>Session</cacheType>

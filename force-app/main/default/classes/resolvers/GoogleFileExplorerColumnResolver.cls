@@ -81,9 +81,9 @@ public without sharing class GoogleFileExplorerColumnResolver {
 		List<String> orderedTokens = new List<String>();
 		Set<String> seen = new Set<String>();
 
-		if (!seen.contains(GoogleCloudConstants.FILE_COLUMN_TITLE)) {
-			orderedTokens.add(GoogleCloudConstants.FILE_COLUMN_TITLE);
-			seen.add(GoogleCloudConstants.FILE_COLUMN_TITLE);
+		if (!seen.contains(GoogleCloudConstants.FILE_EXPLORER_COLUMN_TITLE)) {
+			orderedTokens.add(GoogleCloudConstants.FILE_EXPLORER_COLUMN_TITLE);
+			seen.add(GoogleCloudConstants.FILE_EXPLORER_COLUMN_TITLE);
 		}
 
 		for (String token : googleConfig.getFileExplorerColumns()) {
@@ -95,7 +95,7 @@ public without sharing class GoogleFileExplorerColumnResolver {
 			orderedTokens.add(trimmed);
 			seen.add(dedupeKey);
 
-			if (orderedTokens.size() >= GoogleCloudConstants.MAX_FILE_EXPLORER_COLUMNS) break;
+			if (orderedTokens.size() >= GoogleCloudConstants.FILE_EXPLORER_MAX_COLUMNS) break;
 		}
 
 		return orderedTokens;

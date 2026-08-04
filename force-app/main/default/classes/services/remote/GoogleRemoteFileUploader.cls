@@ -34,37 +34,163 @@ public without sharing class GoogleRemoteFileUploader {
 
     public GoogleFileEntity uploadFile(String fileName, String contentToUpload) {
 		Blob decodedBlob = EncodingUtil.base64Decode(contentToUpload);
-		List<String> parentFolders = metadataService.getTargetFolderResolver().resolveUploadFolderId();
+		List<String> candidateFolders = resolveCandidateFolders();
+		Integer candidateCount = candidateFolders.size();
 
-		try {
-			return this.remoteGoogleDrive.files().multipartCreate()
-				.setFileName(fileName)
-				.setBody(contentToUpload)
-				.setParentFolders(parentFolders)
-				.setSupportsAllDrives(true)
-				.setFields('id, name, parents')
-				.execute();
-		} catch (Exception ex) {
-			throw new GoogleRemoteFileUploaderException('Unable to upload the file. Please try again or contact your system administrator.');
+		for (Integer i = 0; i < candidateCount; i++) {
+			String candidateFolderId = candidateFolders[i];
+			Boolean hasNextCandidate = (i + 1) < candidateCount;
+
+			try {
+				return this.remoteGoogleDrive.files().multipartCreate()
+					.setFileName(fileName)
+					.setBody(contentToUpload)
+					.setParentFolders(new List<String>{candidateFolderId})
+					.setSupportsAllDrives(true)
+					.setFields('id, name, parents')
+					.execute();
+			} catch (Exception ex) {
+				if (hasNextCandidate && GoogleDriveCapacityErrorClassifier.isCapacityExhaustedError(ex)) {
+					logCapacityFallover('Upload File', fileName, candidateFolderId, ex);
+					continue;
+				}
+
+				if (!hasNextCandidate && candidateCount > 1 && GoogleDriveCapacityErrorClassifier.isCapacityExhaustedError(ex)) {
+					logCapacityFallover('Upload File', fileName, candidateFolderId, ex);
+					throw new GoogleRemoteFileUploaderException('All configured shared drives are full. Please contact your system administrator.');
+				}
+
+				throw new GoogleRemoteFileUploaderException('Unable to upload the file. Please try again or contact your system administrator.');
+			}
 		}
+
+		throw new GoogleRemoteFileUploaderException('Unable to upload the file. Please try again or contact your system administrator.');
+	}
+
+	public GoogleResumableSessionResult initializeResumableSession(String fileName, String mimeType) {
+		List<String> candidateFolders = resolveCandidateFolders();
+		Integer candidateCount = candidateFolders.size();
+
+		for (Integer i = 0; i < candidateCount; i++) {
+			String candidateFolderId = candidateFolders[i];
+			Boolean hasNextCandidate = (i + 1) < candidateCount;
+
+			try {
+				GoogleResumableFileBuilder sessionBuilder = this.remoteGoogleDrive.files().resumableCreate()
+					.setFileName(fileName)
+					.setParentFolders(new List<String>{candidateFolderId})
+					.setSupportsAllDrives(true)
+					.setFields('id, name, parents');
+
+				if (String.isNotBlank(mimeType)) {
+					sessionBuilder.setMimeType(mimeType);
+				}
+
+				GoogleBigFileEntity initializedSession = sessionBuilder.initialize();
+				return new GoogleResumableSessionResult(initializedSession.resumableSessionId, candidateFolderId);
+			} catch (Exception ex) {
+				if (hasNextCandidate && GoogleDriveCapacityErrorClassifier.isCapacityExhaustedError(ex)) {
+					logCapacityFallover('Initialize Resumable Session', fileName, candidateFolderId, ex);
+					continue;
+				}
+
+				if (!hasNextCandidate && candidateCount > 1 && GoogleDriveCapacityErrorClassifier.isCapacityExhaustedError(ex)) {
+					logCapacityFallover('Initialize Resumable Session', fileName, candidateFolderId, ex);
+					throw new GoogleRemoteFileUploaderException('All configured shared drives are full. Please contact your system administrator.');
+				}
+
+				throw new GoogleRemoteFileUploaderException('Unable to start the file upload. Please try again or contact your system administrator.');
+			}
+		}
+
+		throw new GoogleRemoteFileUploaderException('Unable to start the file upload. Please try again or contact your system administrator.');
 	}
 
 	public GoogleBigFileEntity uploadBigFilePartial(String fileName, String chunkToUpload, String resumableSessionId, Long startByte, Long totalBytes) {
 		Blob decodedBlob = EncodingUtil.base64Decode(chunkToUpload);
-		List<String> parentFolders = metadataService.getTargetFolderResolver().resolveUploadFolderId();
 
+		if (String.isNotBlank(resumableSessionId)) {
+			return executeBigFileChunk(fileName, decodedBlob, resumableSessionId, startByte, totalBytes, resolveCandidateFolders());
+		}
+
+		List<String> candidateFolders = resolveCandidateFolders();
+		Integer candidateCount = candidateFolders.size();
+
+		for (Integer i = 0; i < candidateCount; i++) {
+			String candidateFolderId = candidateFolders[i];
+			Boolean hasNextCandidate = (i + 1) < candidateCount;
+
+			try {
+				return this.remoteGoogleDrive.files().resumableCreate()
+					.setExistingSessionUri(resumableSessionId)
+					.setFileName(fileName)
+					.setParentFolders(new List<String>{candidateFolderId})
+					.setSupportsAllDrives(true)
+					.setStartByte(startByte)
+					.setTotalBytes(totalBytes)
+					.setBody(decodedBlob)
+					.setFields('id, name, parents')
+					.execute();
+			} catch (Exception ex) {
+				if (hasNextCandidate && GoogleDriveCapacityErrorClassifier.isCapacityExhaustedError(ex)) {
+					logCapacityFallover('Upload Large File', fileName, candidateFolderId, ex);
+					continue;
+				}
+
+				if (!hasNextCandidate && candidateCount > 1 && GoogleDriveCapacityErrorClassifier.isCapacityExhaustedError(ex)) {
+					logCapacityFallover('Upload Large File', fileName, candidateFolderId, ex);
+					throw new GoogleRemoteFileUploaderException('All configured shared drives are full. Please contact your system administrator.');
+				}
+
+				throw new GoogleRemoteFileUploaderException('Unable to upload the file chunk. Please try again or contact your system administrator.');
+			}
+		}
+
+		throw new GoogleRemoteFileUploaderException('Unable to upload the file chunk. Please try again or contact your system administrator.');
+	}
+
+	private GoogleBigFileEntity executeBigFileChunk(String fileName, Blob decodedBlob, String resumableSessionId, Long startByte, Long totalBytes, List<String> candidateFolders) {
 		try {
 			return this.remoteGoogleDrive.files().resumableCreate()
 				.setExistingSessionUri(resumableSessionId)
 				.setFileName(fileName)
-				.setParentFolders(parentFolders)
+				.setParentFolders(candidateFolders.isEmpty() ? new List<String>() : new List<String>{candidateFolders[0]})
 				.setSupportsAllDrives(true)
 				.setStartByte(startByte)
 				.setTotalBytes(totalBytes)
 				.setBody(decodedBlob)
+				.setFields('id, name, parents')
 				.execute();
 		} catch (Exception ex) {
 			throw new GoogleRemoteFileUploaderException('Unable to upload the file chunk. Please try again or contact your system administrator.');
+		}
+	}
+
+	private List<String> resolveCandidateFolders() {
+		List<String> candidates = metadataService.getTargetFolderResolver().resolveUploadFolderCandidates();
+		if (candidates == null || candidates.isEmpty()) {
+			return new List<String>{metadataService.getDefaultUploadFolderId()};
+		}
+		return candidates;
+	}
+
+	private void logCapacityFallover(String action, String fileName, String folderId, Exception ex) {
+		String reason = GoogleDriveCapacityErrorClassifier.extractReason(ex);
+		Logger.info(
+			action + ' Fallover --> Shared drive is full' +
+			', FolderId=' + String.valueOf(folderId) +
+			', FileName=' + String.valueOf(fileName) +
+			', Reason=' + String.valueOf(reason)
+		).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+	}
+
+	public class GoogleResumableSessionResult {
+		public String sessionUri;
+		public String folderId;
+
+		public GoogleResumableSessionResult(String sessionUri, String folderId) {
+			this.sessionUri = sessionUri;
+			this.folderId = folderId;
 		}
 	}
 }

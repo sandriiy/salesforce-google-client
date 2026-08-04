@@ -24,6 +24,28 @@
 public without sharing class GoogleFileAccessResolver {
 	public class GoogleFileAccessCheckException extends Exception {}
 	public enum AccessLevel { View, Edit }
+	public enum OwnershipScope { AnyOwner, OwnedByUser, NotOwnedByUser }
+
+	private static final String PERMISSION_VIEW_ALL_ACCESS = 'GoogleClientViewAllAccess';
+	private static final String PERMISSION_EDIT_ALL_ACCESS = 'GoogleClientEditAllAccess';
+
+	private static final Integer HAS_MORE_FLAG_ROW = 1;
+	private static final Integer MAX_SHARED_CANDIDATE_IDS = 5000;
+	private static final Integer MAX_CANDIDATE_FILES = 10000;
+	@TestVisible
+	private static Integer WIDE_SCAN_SIZE = 1000;
+	private static final Integer DEFAULT_PAGE_SIZE = 50;
+	private static final Integer MAX_PAGE_SIZE = 200;
+	private static final String DEFAULT_SORT_PATH = 'LastModifiedDate';
+
+	@TestVisible
+	private static AccessLevel privilegedFloorOverride;
+	@TestVisible
+	private static Boolean privilegedFloorOverrideSet = false;
+
+	private AccessLevel memoFloor;
+	private Boolean floorResolved = false;
+	private Map<Id, Set<Id>> memoPrincipalIdsByUserId = new Map<Id, Set<Id>>();
 
 	public List<GoogleFile__c> resolveAccessibleFiles(List<GoogleFile__c> inputFiles, Id targetUserId) {
 		return resolveAccessibleFiles(inputFiles, targetUserId, null);
@@ -41,72 +63,183 @@ public without sharing class GoogleFileAccessResolver {
 
 		Map<Id, Id> fileIdToOwnerId = loadFileOwners(fileIds, inputFiles);
 
-		Set<Id> ownedFileIds = new Set<Id>();
 		Set<Id> nonOwnedFileIds = new Set<Id>();
 
 		for (Id fileId : fileIds) {
 			Id ownerId = fileIdToOwnerId.get(fileId);
-			if (ownerId != null && ownerId == targetUserId) {
-				ownedFileIds.add(fileId);
-			} else {
+			if (ownerId == null || ownerId != targetUserId) {
 				nonOwnedFileIds.add(fileId);
 			}
 		}
 
-		List<GoogleFile__c> accessibleFiles = new List<GoogleFile__c>();
+		Map<Id, List<GoogleFile__Share>> fileIdToShares = new Map<Id, List<GoogleFile__Share>>();
+		Map<Id, List<GoogleFileLink__c>> fileIdToLinks = new Map<Id, List<GoogleFileLink__c>>();
+		Map<Id, GoogleRecordAccessDTO> parentAccessByRecordId = new Map<Id, GoogleRecordAccessDTO>();
 
-		if (!ownedFileIds.isEmpty()) {
-			for (GoogleFile__c fileRecord : inputFiles) {
-				if (fileRecord != null && fileRecord.Id != null && ownedFileIds.contains(fileRecord.Id)) {
-					fileRecord.UserAccessLevel__c = toAccessLevelString(AccessLevel.Edit);
-					accessibleFiles.add(fileRecord);
-				}
-			}
+		if (!nonOwnedFileIds.isEmpty()) {
+			fileIdToShares = loadSharesForUserAndGroups(nonOwnedFileIds, targetUserId);
+
+			Logger.info('Files Access Check: ' + fileIdToOwnerId.keySet()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+			LinkCompilationResult linkData = scopedRecordLinks == null
+				? loadLinks(nonOwnedFileIds)
+				: compileLinks(scopedRecordLinks, nonOwnedFileIds);
+			fileIdToLinks = linkData.linksByFileId;
+			parentAccessByRecordId = loadUserRecordAccess(targetUserId, linkData.linkedRecordIds);
 		}
 
-		if (nonOwnedFileIds.isEmpty()) {
-			return accessibleFiles;
-		}
-
-		Map<Id, List<GoogleFile__Share>> fileIdToShares = loadSharesForUserAndGroups(nonOwnedFileIds, targetUserId);
-
-		Logger.info('Files Access Check: ' + fileIdToOwnerId.keySet()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-
-		LinkCompilationResult linkData = scopedRecordLinks == null
-			? loadLinks(nonOwnedFileIds)
-			: compileLinks(scopedRecordLinks, nonOwnedFileIds);
-		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, linkData.linkedRecordIds);
-
-		List<GoogleFile__c> nonOwnedFiles = new List<GoogleFile__c>();
-		for (GoogleFile__c fileRecord : inputFiles) {
-			if (fileRecord != null && fileRecord.Id != null && nonOwnedFileIds.contains(fileRecord.Id)) {
-				nonOwnedFiles.add(fileRecord);
-			}
-		}
-
-		accessibleFiles.addAll(
-			resolveAccessibleFilesInternal(
-				nonOwnedFiles,
-				targetUserId,
-				isInternalUser,
-				fileIdToOwnerId,
-				fileIdToShares,
-				linkData.linksByFileId,
-				parentAccessByRecordId
-			)
+		return resolveAccessibleFilesInternal(
+			inputFiles,
+			targetUserId,
+			isInternalUser,
+			fileIdToOwnerId,
+			fileIdToShares,
+			fileIdToLinks,
+			parentAccessByRecordId
 		);
-
-		return accessibleFiles;
 	}
 
+	/**
+	 * Deprecated. Use resolveFilePage(...) instead.
+	 */
 	public List<GoogleFile__c> resolveAccessibleFilesForUser(Id targetUserId) {
+		return resolveAccessibleFilesForUser(targetUserId, new List<String>());
+	}
+
+	public List<GoogleFile__c> resolveAccessibleFilesForUser(Id targetUserId, List<String> additionalVersionFields) {
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
 
 		Set<Id> userAndGroupIds = resolvePrincipalIds(targetUserId);
-		List<GoogleFile__c> candidateFiles = resolveAccessibleCandidateFiles(targetUserId, userAndGroupIds);
+		List<GoogleFile__c> candidateFiles = resolveAccessibleCandidateFiles(targetUserId, userAndGroupIds, additionalVersionFields);
 
 		if (candidateFiles.isEmpty()) return new List<GoogleFile__c>();
 		return resolveAccessibleFiles(candidateFiles, targetUserId);
+	}
+
+	public AccessLevel privilegedFloor() {
+		if (floorResolved) return memoFloor;
+		floorResolved = true;
+
+		if (privilegedFloorOverrideSet) {
+			memoFloor = privilegedFloorOverride;
+			return memoFloor;
+		}
+
+		if (FeatureManagement.checkPermission(PERMISSION_EDIT_ALL_ACCESS)) {
+			memoFloor = AccessLevel.Edit;
+		} else if (FeatureManagement.checkPermission(PERMISSION_VIEW_ALL_ACCESS)) {
+			memoFloor = AccessLevel.View;
+		} else {
+			memoFloor = null;
+		}
+
+		return memoFloor;
+	}
+
+	public FilePage resolveFilePage(FilePageCriteria criteria) {
+		return resolveFilePage(criteria, UserInfo.getUserId());
+	}
+
+	public FilePage resolveFilePage(FilePageCriteria criteria, Id targetUserId) {
+		if (criteria == null) criteria = new FilePageCriteria();
+		if (targetUserId == null) targetUserId = UserInfo.getUserId();
+
+		Integer pageSize = criteria.effectivePageSize();
+		FilePage page = scanForAccessibleRecords(criteria, targetUserId, pageSize, pageSize);
+
+		if (page.records.size() >= pageSize || !page.hasMore) return page;
+		return scanForAccessibleRecords(criteria, targetUserId, pageSize, WIDE_SCAN_SIZE);
+	}
+
+	private FilePage scanForAccessibleRecords(FilePageCriteria criteria, Id targetUserId, Integer pageSize, Integer scanSize) {
+		List<GoogleFile__c> candidates = (List<GoogleFile__c>) buildPageSelector(criteria, targetUserId)
+			.limitTo(scanSize + HAS_MORE_FLAG_ROW)
+			.toList();
+
+		Boolean sourceExhausted = candidates.size() <= scanSize;
+		if (!sourceExhausted) candidates.remove(candidates.size() - 1);
+
+		GoogleFile__c lastScannedRow = candidates.isEmpty() ? null : candidates.get(candidates.size() - 1);
+		List<GoogleFile__c> accessibleRecords = resolveAccessibleFiles(candidates, targetUserId);
+
+		FilePage page = new FilePage();
+		page.hasMore = accessibleRecords.size() > pageSize || !sourceExhausted;
+
+		while (accessibleRecords.size() > pageSize) {
+			accessibleRecords.remove(accessibleRecords.size() - 1);
+		}
+
+		page.records = accessibleRecords;
+		page.cursorRow = accessibleRecords.isEmpty() ? lastScannedRow : accessibleRecords.get(accessibleRecords.size() - 1);
+		return page;
+	}
+
+	private GoogleFileSelector buildPageSelector(FilePageCriteria criteria, Id targetUserId) {
+		GoogleFileSelector selector = GoogleFileSelector.query()
+			.withAllFields()
+			.withCreatedByName()
+			.withLatestVersionSubquery(criteria.additionalVersionFields)
+			.bySearchTerm(criteria.searchTerm);
+
+		if (privilegedFloor() == null) {
+			applyOwnershipScope(selector, criteria.ownerScope, targetUserId);
+			selector.byAccessibleCandidates(targetUserId, resolveSharedFileIds(targetUserId));
+		}
+
+		selector.orderByFieldThenId(criteria.effectiveSortPath(), criteria.sortDirection);
+
+		if (criteria.cursorId != null) {
+			selector.afterKeyset(criteria.effectiveSortPath(), criteria.cursorValue, criteria.cursorId, criteria.sortDirection);
+		}
+
+		return selector;
+	}
+
+	private void applyOwnershipScope(GoogleFileSelector selector, OwnershipScope scope, Id targetUserId) {
+		if (scope == OwnershipScope.OwnedByUser) selector.byOwner(targetUserId);
+		else if (scope == OwnershipScope.NotOwnedByUser) selector.byOwnerOtherThan(targetUserId);
+	}
+
+	private Set<Id> resolveSharedFileIds(Id targetUserId) {
+		Set<Id> sharedFileIds = new Set<Id>();
+
+		for (GoogleFile__Share shareRecord : (List<GoogleFile__Share>) GoogleFileShareSelector.query()
+			.withBaseFields()
+			.byPrincipalIds(resolvePrincipalIds(targetUserId))
+			.excludingOwnerShares()
+			.limitTo(MAX_SHARED_CANDIDATE_IDS)
+			.toList()
+		) {
+			sharedFileIds.add(shareRecord.ParentId);
+		}
+
+		return sharedFileIds;
+	}
+
+	public class FilePageCriteria {
+		public Integer pageSize;
+		public String sortPath;
+		public String sortDirection = 'DESC';
+		public String searchTerm;
+		public Object cursorValue;
+		public Id cursorId;
+		public OwnershipScope ownerScope = OwnershipScope.AnyOwner;
+		public List<String> additionalVersionFields = new List<String>();
+
+		public Integer effectivePageSize() {
+			if (pageSize == null || pageSize <= 0) return DEFAULT_PAGE_SIZE;
+			return Math.min(pageSize, MAX_PAGE_SIZE);
+		}
+
+		public String effectiveSortPath() {
+			return String.isBlank(sortPath) ? DEFAULT_SORT_PATH : sortPath;
+		}
+	}
+
+	public class FilePage {
+		public List<GoogleFile__c> records = new List<GoogleFile__c>();
+		public GoogleFile__c cursorRow;
+		public Boolean hasMore = false;
 	}
 
 	public List<GoogleFileLink__c> resolveAccessibleRecordLinks(List<GoogleFileLink__c> inputLinks, Id targetUserId) {
@@ -115,7 +248,7 @@ public without sharing class GoogleFileAccessResolver {
 
 		User targetUser = loadTargetUser(targetUserId);
 		Boolean isInternalUser = isInternalUserType(targetUser.UserType);
-		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, extractLinkedRecordIds(inputLinks));
+		Map<Id, GoogleRecordAccessDTO> parentAccessByRecordId = loadUserRecordAccess(targetUserId, extractLinkedRecordIds(inputLinks));
 		List<GoogleFileLink__c> accessibleLinks = new List<GoogleFileLink__c>();
 
 		for (GoogleFileLink__c linkRecord : inputLinks) {
@@ -131,7 +264,7 @@ public without sharing class GoogleFileAccessResolver {
 		if (inputLinks == null || inputLinks.isEmpty()) return new List<GoogleFileLink__c>();
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
 
-		Map<Id, UserRecordAccess> parentAccessByRecordId = loadUserRecordAccess(targetUserId, extractLinkedRecordIds(inputLinks));
+		Map<Id, GoogleRecordAccessDTO> parentAccessByRecordId = loadUserRecordAccess(targetUserId, extractLinkedRecordIds(inputLinks));
 		List<GoogleFileLink__c> readableLinks = new List<GoogleFileLink__c>();
 
 		for (GoogleFileLink__c linkRecord : inputLinks) {
@@ -170,12 +303,11 @@ public without sharing class GoogleFileAccessResolver {
 	}
 
 	private User loadTargetUser(Id userId) {
-		List<User> rows = [
-			SELECT Id, UserType
-			FROM User
-			WHERE Id = :userId
-			LIMIT 1
-		];
+		List<User> rows = (List<User>) GoogleUserSelector.query()
+			.withTypeFields()
+			.byUserId(userId)
+			.limitTo(1)
+			.toList();
 
 		if (rows.isEmpty()) {
 			throw new GoogleFileAccessCheckException('Target user was not found: ' + userId);
@@ -199,11 +331,7 @@ public without sharing class GoogleFileAccessResolver {
 		}
 
 		if (!missingOwnerFileIds.isEmpty()) {
-			for (GoogleFile__c row : [
-				SELECT Id, OwnerId
-				FROM GoogleFile__c
-				WHERE Id IN :missingOwnerFileIds
-			]) {
+			for (GoogleFile__c row : (List<GoogleFile__c>) GoogleFileSelector.query().withOwnerOnly().byIds(missingOwnerFileIds).toList()) {
 				fileIdToOwnerId.put(row.Id, row.OwnerId);
 			}
 		}
@@ -215,12 +343,11 @@ public without sharing class GoogleFileAccessResolver {
 		Set<Id> principalIds = resolvePrincipalIds(userId);
 
 		Map<Id, List<GoogleFile__Share>> sharesByFileId = new Map<Id, List<GoogleFile__Share>>();
-		List<GoogleFile__Share> shares = [
-			SELECT Id, ParentId, UserOrGroupId, AccessLevel, RowCause
-			FROM GoogleFile__Share
-			WHERE ParentId IN :fileIds
-			AND UserOrGroupId IN :principalIds
-		];
+		List<GoogleFile__Share> shares = (List<GoogleFile__Share>) GoogleFileShareSelector.query()
+			.withBaseFields()
+			.byParentIds(fileIds)
+			.byPrincipalIds(principalIds)
+			.toList();
 
 		for (GoogleFile__Share shareRecord : shares) {
 			if (!sharesByFileId.containsKey(shareRecord.ParentId)) {
@@ -233,50 +360,59 @@ public without sharing class GoogleFileAccessResolver {
 	}
 
 	private Set<Id> resolvePrincipalIds(Id userId) {
+		if (memoPrincipalIdsByUserId.containsKey(userId)) {
+			return memoPrincipalIdsByUserId.get(userId);
+		}
+
 		Set<Id> principalIds = new Set<Id>();
 		principalIds.add(userId);
 
-		for (GroupMember groupMember : [
-			SELECT GroupId, Group.Type
-			FROM GroupMember
-			WHERE UserOrGroupId = :userId
-			AND Group.Type IN ('Regular', 'Queue')
-		]) {
+		for (GroupMember groupMember : (List<GroupMember>) GoogleGroupMemberSelector.query()
+			.withGroupFields()
+			.byMemberId(userId)
+			.byShareableGroupTypes()
+			.toList()
+		) {
 			principalIds.add(groupMember.GroupId);
 		}
 
+		memoPrincipalIdsByUserId.put(userId, principalIds);
 		return principalIds;
 	}
 
-	private List<GoogleFile__c> resolveAccessibleCandidateFiles(Id targetUserId, Set<Id> userAndGroupIds) {
+	private List<GoogleFile__c> resolveAccessibleCandidateFiles(Id targetUserId, Set<Id> userAndGroupIds, List<String> additionalVersionFields) {
 		Map<Id, GoogleFile__c> candidateFilesById = new Map<Id, GoogleFile__c>();
 
         candidateFilesById.putAll((Map<Id, GoogleFile__c>) GoogleFileSelector.query()
             .withAllFields()
-            .withLatestVersionSubquery()
+            .withLatestVersionSubquery(additionalVersionFields)
             .byOwner(targetUserId)
+			.orderByCreatedDesc()
+            .limitTo(MAX_CANDIDATE_FILES + HAS_MORE_FLAG_ROW)
             .toMap());
 
         candidateFilesById.putAll((Map<Id, GoogleFile__c>) GoogleFileSelector.query()
 			.withAllFields()
-			.withLatestVersionSubquery()
+			.withLatestVersionSubquery(additionalVersionFields)
 			.bySharedToUserOrGroups(userAndGroupIds)
+			.orderByCreatedDesc()
+			.limitTo(MAX_CANDIDATE_FILES + HAS_MORE_FLAG_ROW)
 			.toMap());
 
         candidateFilesById.putAll((Map<Id, GoogleFile__c>) GoogleFileSelector.query()
             .withAllFields()
-            .withLatestVersionSubquery()
+            .withLatestVersionSubquery(additionalVersionFields)
             .byDirectLinkForInternalVisibility()
 			.orderByCreatedDesc()
-            .limitTo(10000)
+            .limitTo(MAX_CANDIDATE_FILES + HAS_MORE_FLAG_ROW)
             .toMap());
 
 		candidateFilesById.putAll((Map<Id, GoogleFile__c>) GoogleFileSelector.query()
 			.withAllFields()
-			.withLatestVersionSubquery()
+			.withLatestVersionSubquery(additionalVersionFields)
 			.byInferredRecordLinks()
 			.orderByCreatedDesc()
-			.limitTo(10000)
+			.limitTo(MAX_CANDIDATE_FILES + HAS_MORE_FLAG_ROW)
 			.toMap());
 
 		if (candidateFilesById.isEmpty()) return new List<GoogleFile__c>();
@@ -314,26 +450,13 @@ public without sharing class GoogleFileAccessResolver {
 		return compileLinks(fileLinks, fileIds);
 	}
 
-	private Map<Id, UserRecordAccess> loadUserRecordAccess(Id userId, Set<Id> recordIds) {
-		Map<Id, UserRecordAccess> recordAccessByRecordId = new Map<Id, UserRecordAccess>();
-		if (recordIds.isEmpty()) {
-			return recordAccessByRecordId;
-		}
-
-		for (UserRecordAccess userAccess : [
-			SELECT RecordId, HasReadAccess, HasEditAccess
-			FROM UserRecordAccess
-			WHERE UserId = :userId
-			AND RecordId IN :recordIds
-		]) {
-			recordAccessByRecordId.put(userAccess.RecordId, userAccess);
-		}
-
-		return recordAccessByRecordId;
+	private Map<Id, GoogleRecordAccessDTO> loadUserRecordAccess(Id userId, Set<Id> recordIds) {
+		return new GoogleRecordAccessResolver().resolveAccess(userId, recordIds);
 	}
 
-	private List<GoogleFile__c> resolveAccessibleFilesInternal(List<GoogleFile__c> files, Id userId, Boolean isInternalUser, Map<Id, Id> fileIdToOwnerId, Map<Id, List<GoogleFile__Share>> fileIdToShares, Map<Id, List<GoogleFileLink__c>> fileIdToLinks, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+	private List<GoogleFile__c> resolveAccessibleFilesInternal(List<GoogleFile__c> files, Id userId, Boolean isInternalUser, Map<Id, Id> fileIdToOwnerId, Map<Id, List<GoogleFile__Share>> fileIdToShares, Map<Id, List<GoogleFileLink__c>> fileIdToLinks, Map<Id, GoogleRecordAccessDTO> parentAccessByRecordId) {
 		List<GoogleFile__c> accessibleFiles = new List<GoogleFile__c>();
+		AccessLevel floor = isInternalUser ? privilegedFloor() : null;
 
 		for (GoogleFile__c localFile : files) {
 			if (localFile == null || localFile.Id == null) continue;
@@ -348,6 +471,10 @@ public without sharing class GoogleFileAccessResolver {
 				parentAccessByRecordId
 			);
 
+			if (floor != null) {
+				resolvedAccess = pickHigherAccess(resolvedAccess, floor);
+			}
+
 			if (resolvedAccess != null) {
 				localFile.UserAccessLevel__c = toAccessLevelString(resolvedAccess);
 				accessibleFiles.add(localFile);
@@ -357,7 +484,7 @@ public without sharing class GoogleFileAccessResolver {
 		return accessibleFiles;
 	}
 
-	private AccessLevel resolveFileAccess(Id fileId,Id userId, Boolean isInternalUser, Id ownerId, List<GoogleFile__Share> shares, List<GoogleFileLink__c> links, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+	private AccessLevel resolveFileAccess(Id fileId,Id userId, Boolean isInternalUser, Id ownerId, List<GoogleFile__Share> shares, List<GoogleFileLink__c> links, Map<Id, GoogleRecordAccessDTO> parentAccessByRecordId) {
 		if (ownerId != null && ownerId == userId) {
 			return AccessLevel.Edit;
 		}
@@ -388,7 +515,7 @@ public without sharing class GoogleFileAccessResolver {
 		return resolved;
 	}
 
-	private AccessLevel resolveBestAccessFromLinks(List<GoogleFileLink__c> links, Boolean isInternalUser, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+	private AccessLevel resolveBestAccessFromLinks(List<GoogleFileLink__c> links, Boolean isInternalUser, Map<Id, GoogleRecordAccessDTO> parentAccessByRecordId) {
 		if (links == null || links.isEmpty()) return null;
 
 		AccessLevel resolved = null;
@@ -405,7 +532,7 @@ public without sharing class GoogleFileAccessResolver {
 		return resolved;
 	}
 
-	private AccessLevel resolveLinkAccess(GoogleFileLink__c link, Boolean isInternalUser, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+	private AccessLevel resolveLinkAccess(GoogleFileLink__c link, Boolean isInternalUser, Map<Id, GoogleRecordAccessDTO> parentAccessByRecordId) {
 		if (link == null || !grantsVisibility(link.Visibility__c, isInternalUser)) {
 			return null;
 		}
@@ -418,9 +545,9 @@ public without sharing class GoogleFileAccessResolver {
 		return shareAccessLevel == 'Read' ? AccessLevel.View : AccessLevel.Edit;
 	}
 
-	private AccessLevel mapLinkAccessLevel(GoogleFileLink__c link, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+	private AccessLevel mapLinkAccessLevel(GoogleFileLink__c link, Map<Id, GoogleRecordAccessDTO> parentAccessByRecordId) {
 		if (link == null) return null;
-		UserRecordAccess linkedRecordAccess = loadLinkedRecordAccess(link, parentAccessByRecordId);
+		GoogleRecordAccessDTO linkedRecordAccess = loadLinkedRecordAccess(link, parentAccessByRecordId);
 
 		if (link.ShareType__c == 'None') {
 			return null;
@@ -438,7 +565,7 @@ public without sharing class GoogleFileAccessResolver {
 		return null;
 	}
 
-	private UserRecordAccess loadLinkedRecordAccess(GoogleFileLink__c link, Map<Id, UserRecordAccess> parentAccessByRecordId) {
+	private GoogleRecordAccessDTO loadLinkedRecordAccess(GoogleFileLink__c link, Map<Id, GoogleRecordAccessDTO> parentAccessByRecordId) {
 		if (link == null || parentAccessByRecordId == null || String.isBlank(link.LinkedObjectId__c)) {
 			return null;
 		}
@@ -446,8 +573,8 @@ public without sharing class GoogleFileAccessResolver {
 		return parentAccessByRecordId.get((Id) link.LinkedObjectId__c);
 	}
 
-	private Boolean hasReadableParentAccess(UserRecordAccess userRecordAccess) {
-		return userRecordAccess != null && userRecordAccess.HasReadAccess;
+	private Boolean hasReadableParentAccess(GoogleRecordAccessDTO userRecordAccess) {
+		return userRecordAccess != null && userRecordAccess.hasReadAccess == true;
 	}
 
 	private AccessLevel pickHigherAccess(AccessLevel current, AccessLevel candidate) {
@@ -488,10 +615,10 @@ public without sharing class GoogleFileAccessResolver {
 		return false;
 	}
 
-	private AccessLevel inferLevelFromParent(UserRecordAccess userRecordAccess) {
+	private AccessLevel inferLevelFromParent(GoogleRecordAccessDTO userRecordAccess) {
 		if (userRecordAccess == null) return null;
-		if (userRecordAccess.HasEditAccess) return AccessLevel.Edit;
-		if (userRecordAccess.HasReadAccess) return AccessLevel.View;
+		if (userRecordAccess.hasEditAccess == true) return AccessLevel.Edit;
+		if (userRecordAccess.hasReadAccess == true) return AccessLevel.View;
 		return null;
 	}
 

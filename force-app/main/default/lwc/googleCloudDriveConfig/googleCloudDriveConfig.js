@@ -5,6 +5,17 @@ import QUICK_SETUP_LINK from '@salesforce/label/c.GoogleClientQuickSetupLink';
 
 const STRUCTURE_ORDER_SEPARATOR = '-';
 const QUICK_SETUP_URL = QUICK_SETUP_LINK;
+const UPLOAD_FOLDER_SEPARATOR = ';';
+const MAX_UPLOAD_FOLDERS = 10;
+const VALIDITY_KEY_DUPLICATES = 'upload-folder-duplicates';
+const DUPLICATE_ERROR_MESSAGE = 'This folder identification (ID) is already used in another row';
+const DUPLICATE_AGGREGATE_MESSAGE = 'Folder identification (ID) values must be unique across all rows';
+
+const STEP = {
+    auth: 'auth',
+    locations: 'locations',
+    structure: 'structure'
+};
 
 const STRUCTURE_TOKEN = {
     user: 'User',
@@ -17,9 +28,13 @@ export default class GoogleCloudDriveConfig extends LightningElement {
     @api busy = false;
     @api isLoading = false;
 
-    currentStep = 'auth';
+    currentStep = STEP.auth;
     draggingKey = null;
     dropTargetKey = null;
+    draggingUploadFolderIndex = null;
+    dropTargetUploadFolderIndex = null;
+    localUploadFolderRows = null;
+    lastReportedHasDuplicates = null;
 
     @api reportValidity() {
         const inputs = Array.from(this.template.querySelectorAll('lightning-input, lightning-radio-group'));
@@ -33,12 +48,23 @@ export default class GoogleCloudDriveConfig extends LightningElement {
         return isValid;
     }
 
+    renderedCallback() {
+        this.reconcileLocalUploadFolderRows();
+        this.evaluateUploadFolderValidity();
+    }
+
     dispatchFieldChange(field, value) {
         this.dispatchEvent(new CustomEvent('fieldchange', { detail: { field, value } }));
     }
 
     dispatchAction(name) {
         this.dispatchEvent(new CustomEvent(name));
+    }
+
+    notifyValidityChange(key, isValid, message) {
+        this.dispatchEvent(new CustomEvent('validitychange', {
+            detail: { key, isValid, message }
+        }));
     }
 
     openQuickSetupGuide() {
@@ -66,8 +92,8 @@ export default class GoogleCloudDriveConfig extends LightningElement {
         const step = event.currentTarget?.dataset?.step;
         if (!step) return;
 
-        if (step === 'folder' && !this.authorizationStepComplete) {
-            this.currentStep = 'auth';
+        if (step !== STEP.auth && !this.authorizationStepComplete) {
+            this.currentStep = STEP.auth;
             this.dispatchAction('steperror');
             return;
         }
@@ -75,17 +101,26 @@ export default class GoogleCloudDriveConfig extends LightningElement {
         this.currentStep = step;
     }
 
-    goToFolderStep() {
+    goToAuthStep() {
+        this.currentStep = STEP.auth;
+    }
+
+    goToLocationsStep() {
         if (!this.authorizationStepComplete) {
             this.dispatchAction('steperror');
             return;
         }
 
-        this.currentStep = 'folder';
+        this.currentStep = STEP.locations;
     }
 
-    goToAuthStep() {
-        this.currentStep = 'auth';
+    goToStructureStep() {
+        if (!this.authorizationStepComplete) {
+            this.dispatchAction('steperror');
+            return;
+        }
+
+        this.currentStep = STEP.structure;
     }
 
     handleAuthPrimaryAction() {
@@ -93,6 +128,7 @@ export default class GoogleCloudDriveConfig extends LightningElement {
             this.handleSaveValidate();
             return;
         }
+		
         this.handleValidate();
     }
 
@@ -109,6 +145,9 @@ export default class GoogleCloudDriveConfig extends LightningElement {
     }
 
     handleRevert() {
+        this.localUploadFolderRows = null;
+        this.lastReportedHasDuplicates = null;
+        this.notifyValidityChange(VALIDITY_KEY_DUPLICATES, true, null);
         this.dispatchAction('revert');
     }
 
@@ -182,6 +221,216 @@ export default class GoogleCloudDriveConfig extends LightningElement {
     resetDragState() {
         this.draggingKey = null;
         this.dropTargetKey = null;
+    }
+
+    handleUploadFolderChange(event) {
+        const index = Number(event.currentTarget?.dataset?.index);
+        if (!Number.isInteger(index)) return;
+
+        this.ensureLocalRowsInitialized();
+        if (index < 0 || index >= this.localUploadFolderRows.length) return;
+
+        const nextValue = event.target.value == null ? '' : event.target.value;
+        const nextRows = this.localUploadFolderRows.map((v, i) => (i === index ? nextValue : v));
+        this.localUploadFolderRows = nextRows;
+        this.persistUploadFolders(nextRows);
+    }
+
+    handleUploadFolderMoveUp(event) {
+        const index = Number(event.currentTarget?.dataset?.index);
+        this.moveUploadFolderRow(index, -1);
+    }
+
+    handleUploadFolderMoveDown(event) {
+        const index = Number(event.currentTarget?.dataset?.index);
+        this.moveUploadFolderRow(index, 1);
+    }
+
+    handleUploadFolderRemove(event) {
+        const index = Number(event.currentTarget?.dataset?.index);
+        if (!Number.isInteger(index) || index <= 0) return;
+
+        this.ensureLocalRowsInitialized();
+        if (index >= this.localUploadFolderRows.length) return;
+
+        const nextRows = this.localUploadFolderRows.filter((_, i) => i !== index);
+        this.localUploadFolderRows = nextRows;
+        this.persistUploadFolders(nextRows);
+    }
+
+    handleUploadFolderAdd() {
+        this.ensureLocalRowsInitialized();
+        if (this.localUploadFolderRows.length >= MAX_UPLOAD_FOLDERS) return;
+
+        const nextRows = [...this.localUploadFolderRows, ''];
+        this.localUploadFolderRows = nextRows;
+        this.persistUploadFolders(nextRows);
+    }
+
+    handleUploadFolderDragStart(event) {
+        const index = Number(event.currentTarget?.dataset?.index);
+        this.ensureLocalRowsInitialized();
+
+        if (!Number.isInteger(index) || index === 0 || this.localUploadFolderRows.length <= 2) {
+            event.preventDefault();
+            return;
+        }
+
+        this.draggingUploadFolderIndex = index;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(index));
+    }
+
+    handleUploadFolderDragOver(event) {
+        if (this.draggingUploadFolderIndex === null) return;
+
+        const index = Number(event.currentTarget?.dataset?.index);
+        if (!Number.isInteger(index) || index === 0 || index === this.draggingUploadFolderIndex) return;
+
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        this.dropTargetUploadFolderIndex = index;
+    }
+
+    handleUploadFolderDrop(event) {
+        event.preventDefault();
+
+        const fromIndex = this.draggingUploadFolderIndex;
+        const toIndex = Number(event.currentTarget?.dataset?.index);
+        this.resetUploadFolderDragState();
+
+        if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex) || fromIndex === toIndex) return;
+        if (fromIndex === 0 || toIndex === 0) return;
+
+        this.ensureLocalRowsInitialized();
+        const rows = this.localUploadFolderRows;
+        if (fromIndex < 0 || fromIndex >= rows.length || toIndex < 0 || toIndex >= rows.length) return;
+
+        const nextRows = [...rows];
+        const [moved] = nextRows.splice(fromIndex, 1);
+        nextRows.splice(toIndex, 0, moved);
+        this.localUploadFolderRows = nextRows;
+        this.persistUploadFolders(nextRows);
+    }
+
+    handleUploadFolderDragEnd() {
+        this.resetUploadFolderDragState();
+    }
+
+    resetUploadFolderDragState() {
+        this.draggingUploadFolderIndex = null;
+        this.dropTargetUploadFolderIndex = null;
+    }
+
+    moveUploadFolderRow(index, direction) {
+        if (!Number.isInteger(index) || index <= 0) return;
+
+        this.ensureLocalRowsInitialized();
+        const rows = this.localUploadFolderRows;
+        const targetIndex = index + direction;
+        if (targetIndex <= 0 || targetIndex >= rows.length) return;
+
+        const nextRows = [...rows];
+        const temp = nextRows[targetIndex];
+        nextRows[targetIndex] = nextRows[index];
+        nextRows[index] = temp;
+        this.localUploadFolderRows = nextRows;
+        this.persistUploadFolders(nextRows);
+    }
+
+    persistUploadFolders(rows) {
+        const primaryValue = rows.length ? rows[0] : '';
+        const additionalValues = rows.length ? rows.slice(1) : [];
+        const primaryTrimmed = asString(primaryValue).trim();
+        const additionalSerialized = additionalValues
+            .map((v) => asString(v).trim())
+            .filter((v) => v.length > 0)
+            .join(UPLOAD_FOLDER_SEPARATOR);
+
+        this.dispatchFieldChange('defaultGoogleUploadFolderId', primaryTrimmed);
+        this.dispatchFieldChange('additionalGoogleUploadFolderIds', additionalSerialized);
+    }
+
+    ensureLocalRowsInitialized() {
+        if (this.localUploadFolderRows !== null) return;
+        this.localUploadFolderRows = this.deriveRowsFromDraft();
+    }
+
+    deriveRowsFromDraft() {
+        const primary = asString(this.draft?.defaultGoogleUploadFolderId);
+        const additionalRaw = asString(this.draft?.additionalGoogleUploadFolderIds);
+        const additionalItems = additionalRaw.length
+            ? additionalRaw
+                .split(UPLOAD_FOLDER_SEPARATOR)
+                .map((v) => asString(v).trim())
+                .filter((v) => v.length > 0)
+            : [];
+        return [primary, ...additionalItems];
+    }
+
+    reconcileLocalUploadFolderRows() {
+        const draftRows = this.deriveRowsFromDraft();
+
+        if (this.localUploadFolderRows === null) {
+            this.localUploadFolderRows = draftRows;
+            return;
+        }
+
+        const localFilteredKey = JSON.stringify(this.filteredLocalRows(this.localUploadFolderRows));
+        const draftKey = JSON.stringify(draftRows);
+
+        if (localFilteredKey !== draftKey) {
+            this.localUploadFolderRows = draftRows;
+        }
+    }
+
+    filteredLocalRows(rows) {
+        if (!rows || !rows.length) return [];
+        const [primary, ...rest] = rows;
+        return [
+            asString(primary).trim(),
+            ...rest.map((v) => asString(v).trim()).filter((v) => v.length > 0)
+        ];
+    }
+
+    evaluateUploadFolderValidity() {
+        const inputs = Array.from(this.template.querySelectorAll('lightning-input[data-role="upload-folder-input"]'));
+        if (!inputs.length) {
+            if (this.lastReportedHasDuplicates !== null) {
+                this.lastReportedHasDuplicates = null;
+                this.notifyValidityChange(VALIDITY_KEY_DUPLICATES, true, null);
+            }
+            return;
+        }
+
+        const counts = new Map();
+        inputs.forEach((el) => {
+            const v = asString(el.value).trim();
+            if (!v) return;
+            counts.set(v, (counts.get(v) || 0) + 1);
+        });
+
+        let hasDuplicates = false;
+        inputs.forEach((el) => {
+            const v = asString(el.value).trim();
+            const isDup = v.length > 0 && counts.get(v) > 1;
+            if (isDup) {
+                hasDuplicates = true;
+                if (typeof el.setCustomValidity === 'function') el.setCustomValidity(DUPLICATE_ERROR_MESSAGE);
+            } else if (typeof el.setCustomValidity === 'function') {
+                el.setCustomValidity('');
+            }
+            if (typeof el.reportValidity === 'function') el.reportValidity();
+        });
+
+        if (this.lastReportedHasDuplicates !== hasDuplicates) {
+            this.lastReportedHasDuplicates = hasDuplicates;
+            this.notifyValidityChange(
+                VALIDITY_KEY_DUPLICATES,
+                !hasDuplicates,
+                hasDuplicates ? DUPLICATE_AGGREGATE_MESSAGE : null
+            );
+        }
     }
 
     applyStructureEnabledState(key, enabled) {
@@ -289,6 +538,68 @@ export default class GoogleCloudDriveConfig extends LightningElement {
         return 'admin';
     }
 
+    get uploadFolderRows() {
+        const rows = this.localUploadFolderRows !== null ? this.localUploadFolderRows : this.deriveRowsFromDraft();
+        const total = rows.length;
+
+        return rows.map((value, index) => {
+            const isPrimary = index === 0;
+            const isDragging = this.draggingUploadFolderIndex === index;
+            const isDropTarget =
+                this.dropTargetUploadFolderIndex === index &&
+                this.draggingUploadFolderIndex !== null &&
+                this.draggingUploadFolderIndex !== index;
+
+            const containerClass = [
+                'upload-folder-item',
+                isPrimary ? 'is-primary' : '',
+                !isPrimary && total > 2 ? 'drag-cursor' : '',
+                isDragging ? 'is-dragging' : '',
+                isDropTarget ? 'is-drop-target' : ''
+            ]
+                .filter(Boolean)
+                .join(' ');
+
+            return {
+                key: `upload-folder-${index}`,
+                index,
+                value,
+                isPrimary,
+                showControls: !isPrimary,
+                title: isPrimary
+                    ? 'Default Location (ID)'
+                    : `Folder Location (ID) #${index + 1}`,
+                placeholder: isPrimary
+                    ? 'e.g. 1a2B3cD4eF5g...'
+                    : 'Fallback Google Drive folder ID',
+                required: isPrimary,
+                draggable: !isPrimary && total > 2,
+                disableMoveUp: isPrimary || total <= 2 || index === 1,
+                disableMoveDown: isPrimary || total <= 2 || index === total - 1,
+                containerClass
+            };
+        });
+    }
+
+    get canAddUploadFolder() {
+        const rows = this.localUploadFolderRows !== null ? this.localUploadFolderRows : this.deriveRowsFromDraft();
+        return rows.length < MAX_UPLOAD_FOLDERS;
+    }
+
+    get addUploadFolderDisabled() {
+        return this.busy || !this.canAddUploadFolder;
+    }
+
+    get uploadFolderCountLabel() {
+        const rows = this.localUploadFolderRows !== null ? this.localUploadFolderRows : this.deriveRowsFromDraft();
+        return `${rows.length} of ${MAX_UPLOAD_FOLDERS} folder IDs configured`;
+    }
+
+    get hasMultipleUploadFolders() {
+        const rows = this.localUploadFolderRows !== null ? this.localUploadFolderRows : this.deriveRowsFromDraft();
+        return rows.filter((v) => asString(v).trim().length > 0).length > 1;
+    }
+
     get authModeOptions() {
         return [
             { label: 'Admin setup (recommended for most orgs)', value: 'admin' },
@@ -300,8 +611,12 @@ export default class GoogleCloudDriveConfig extends LightningElement {
         return `step-button ${this.isAuthStep ? 'is-active' : ''}`;
     }
 
-    get folderStepClass() {
-        return `step-button ${this.isFolderStep ? 'is-active' : ''}`;
+    get locationsStepClass() {
+        return `step-button ${this.isLocationsStep ? 'is-active' : ''}`;
+    }
+
+    get structureStepClass() {
+        return `step-button ${this.isStructureStep ? 'is-active' : ''}`;
     }
 
     get isDeveloperMode() {
@@ -342,11 +657,15 @@ export default class GoogleCloudDriveConfig extends LightningElement {
     }
 
     get isAuthStep() {
-        return this.currentStep === 'auth';
+        return this.currentStep === STEP.auth;
     }
 
-    get isFolderStep() {
-        return this.currentStep === 'folder';
+    get isLocationsStep() {
+        return this.currentStep === STEP.locations;
+    }
+
+    get isStructureStep() {
+        return this.currentStep === STEP.structure;
     }
 
     get folderStructureTokens() {

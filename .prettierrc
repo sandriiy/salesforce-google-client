@@ -1,7 +1,8 @@
 {
   "trailingComma": "none",
-  "useTabs": true,
+  "useTabs": false,
   "tabWidth": 4,
+  "endOfLine": "auto",
   "plugins": [
     "prettier-plugin-apex",
     "@prettier/plugin-xml"

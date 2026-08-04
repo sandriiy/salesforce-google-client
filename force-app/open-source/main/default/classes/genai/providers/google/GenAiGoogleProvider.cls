@@ -29,8 +29,6 @@ public with sharing class GenAiGoogleProvider implements IGenAiProvider {
     }
 
     public GenAiResponse parse(HttpResponse response) {
-		System.debug('RESPONSE');
-		System.debug(response.getBody());
         if (adapter == null) {
             throw new GenAiConfigurationException('Google adapter is required.');
         }

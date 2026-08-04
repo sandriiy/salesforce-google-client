@@ -106,10 +106,16 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
         return this;
     }
 
+    public GoogleFileSelector withOwnerOnly() {
+        with(GoogleFile__c.Id, GoogleFile__c.OwnerId);
+        return this;
+    }
+
     public GoogleFileSelector withAllFields() {
         with(BASE_FIELDS);
         with(DETAIL_FIELDS);
 		with(ROLL_UP_FIELDS);
+        with('Owner.Name');
         return this;
     }
 
@@ -124,11 +130,19 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
     }
 
     public GoogleFileSelector withLatestVersionSubquery() {
+        return withLatestVersionSubquery(new List<String>());
+    }
+
+    public GoogleFileSelector withLatestVersionSubquery(List<String> additionalFields) {
         GSOQL.SubQuery latestVersion = GSOQL.SubQuery.of('GoogleFileVersions__r')
             .with(GoogleFileVersionSelector.BASE_FIELDS)
             .with('CreatedBy', new List<SObjectField>{ User.Name })
             .orderBy(GoogleFileVersion__c.CreatedDate).sortDesc()
             .setLimit(1);
+
+        if (additionalFields != null && !additionalFields.isEmpty()) {
+            latestVersion.with(String.join(additionalFields, ','));
+        }
 
         with(latestVersion);
         return this;
@@ -180,6 +194,93 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
                     )
             )
         );
+        return this;
+    }
+
+    public GoogleFileSelector withCreatedByName() {
+        with('CreatedBy.Name');
+        return this;
+    }
+
+    public GoogleFileSelector bySearchTerm(String term) {
+        if (String.isBlank(term)) return this;
+
+        String escapedTerm = escapeLikePattern(term);
+        whereAre(
+            GSOQL.Filter.id().isIn(
+                GSOQL.InnerJoin.of(GoogleFileVersion__c.SObjectType)
+                    .with(GoogleFileVersion__c.GoogleFileId__c)
+                    .whereAre(
+                        GSOQL.FilterGroup
+                            .add(GSOQL.Filter.with(GoogleFileVersion__c.IsLatestFile__c).isTrue())
+                            .add(
+                                GSOQL.FilterGroup.anyConditionMatching()
+                                    .add(GSOQL.Filter.with(GoogleFileVersion__c.Name).contains(escapedTerm))
+                                    .add(GSOQL.Filter.with(GoogleFileVersion__c.Summary__c).contains(escapedTerm))
+                            )
+                    )
+            )
+        );
+
+        return this;
+    }
+
+    public GoogleFileSelector byAccessibleCandidates(Id targetUserId, Set<Id> sharedFileIds) {
+        GSOQL.FilterGroup candidateSources = GSOQL.FilterGroup.anyConditionMatching()
+            .add(GSOQL.Filter.with(GoogleFile__c.OwnerId).equal(targetUserId))
+            .add(GSOQL.Filter.with(GoogleFile__c.NumberOfLinks__c).greaterThan(0));
+
+        if (sharedFileIds != null && !sharedFileIds.isEmpty()) {
+            candidateSources.add(GSOQL.Filter.id().isIn(new List<Id>(sharedFileIds)));
+        }
+
+        whereAre(candidateSources);
+        return this;
+    }
+
+    public GoogleFileSelector byOwnerOtherThan(Id userId) {
+        whereAre(GSOQL.Filter.with(GoogleFile__c.OwnerId).notEqual(userId));
+        return this;
+    }
+
+    private String escapeLikePattern(String term) {
+        return term.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_');
+    }
+
+    public GoogleFileSelector orderByFieldThenId(String sortPath, String direction) {
+        String normalized = 'DESC'.equalsIgnoreCase(direction) ? 'DESC' : 'ASC';
+        orderBy(sortPath, normalized);
+        nullsLast();
+        orderBy('Id', normalized);
+        nullsLast();
+        return this;
+    }
+
+    public GoogleFileSelector afterKeyset(String sortPath, Object lastValue, Id lastId, String direction) {
+        Boolean descending = 'DESC'.equalsIgnoreCase(direction);
+
+        if (lastValue == null) {
+            whereAre(
+                GSOQL.FilterGroup
+                    .add(GSOQL.Filter.with(sortPath).equal(null))
+                    .add(descending ? GSOQL.Filter.id().lessThan(lastId) : GSOQL.Filter.id().greaterThan(lastId))
+            );
+
+            return this;
+        }
+
+        GSOQL.Filter primary = descending
+            ? GSOQL.Filter.with(sortPath).lessThan(lastValue)
+            : GSOQL.Filter.with(sortPath).greaterThan(lastValue);
+        GSOQL.Filter tieBreaker = descending
+            ? GSOQL.Filter.id().lessThan(lastId)
+            : GSOQL.Filter.id().greaterThan(lastId);
+        whereAre(
+            GSOQL.FilterGroup.anyConditionMatching()
+                .add(primary)
+                .add(GSOQL.FilterGroup.add(GSOQL.Filter.with(sortPath).equal(lastValue)).add(tieBreaker))
+        );
+		
         return this;
     }
 }

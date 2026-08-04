@@ -71,16 +71,7 @@ public without sharing class GoogleLocalFileLinkEnrichmentService {
             if (objectType == null) continue;
             
             Schema.DescribeSObjectResult objectDescribe = objectType.getDescribe();
-            Map<String, Schema.SObjectField> fieldsByApiName = objectDescribe.fields.getMap();
-
-            String nameFieldApiName;
-            for (Schema.SObjectField fieldToken : fieldsByApiName.values()) {
-                Schema.DescribeFieldResult fieldDescribe = fieldToken.getDescribe();
-                if (fieldDescribe.isNameField()) {
-                    nameFieldApiName = fieldDescribe.getName();
-                    break;
-                }
-            }
+            String nameFieldApiName = resolveNameFieldApiName(objectDescribe.fields.getMap());
 
             if (!String.isBlank(nameFieldApiName)) {
                 nameFieldByObjectApiName.put(objectApiName, nameFieldApiName);
@@ -88,6 +79,22 @@ public without sharing class GoogleLocalFileLinkEnrichmentService {
         }
 
         return nameFieldByObjectApiName;
+    }
+
+    private String resolveNameFieldApiName(Map<String, Schema.SObjectField> fieldsByApiName) {
+        String singleNameFieldApiName;
+
+        for (Schema.SObjectField fieldToken : fieldsByApiName.values()) {
+            Schema.DescribeFieldResult fieldDescribe = fieldToken.getDescribe();
+            if (!fieldDescribe.isNameField()) continue;
+
+            String compoundParentApiName = fieldDescribe.getCompoundFieldName();
+            if (String.isNotBlank(compoundParentApiName)) return compoundParentApiName;
+
+            if (String.isBlank(singleNameFieldApiName)) singleNameFieldApiName = fieldDescribe.getName();
+        }
+
+        return singleNameFieldApiName;
     }
 
     private Map<Id, SObject> loadLinkedRecordsById(List<GoogleFileLink__c> fileLinks, Map<String, String> nameFieldByObjectApiName) {

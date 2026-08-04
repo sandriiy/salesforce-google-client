@@ -31,20 +31,14 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
     public GoogleLocalFileVersionLifecycleService() {
         this.googleConfig = new GoogleMetadataConfigService();
         this.versionContextResolver = new GoogleFileVersionContextResolver();
-        this.uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
-            GoogleFile__c.SObjectType,
-            GoogleFileVersion__c.SObjectType
-        });
+        this.uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
     }
 
     public GoogleLocalFileVersionLifecycleService(IGoogleUnitOfWork injectedUow) {
         this.googleConfig = new GoogleMetadataConfigService();
         this.versionContextResolver = new GoogleFileVersionContextResolver();
         this.uow = injectedUow == null
-            ? new GoogleCloudUnitOfWork(new List<SObjectType>{
-                GoogleFile__c.SObjectType,
-                GoogleFileVersion__c.SObjectType
-            })
+            ? new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER)
             : injectedUow;
     }
 

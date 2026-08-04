@@ -31,10 +31,10 @@ private class GoogleCloudFilesViewControllerTest {
 		GoogleFileHeaderInfoDTO headerInfo = GoogleCloudFilesViewController.fetchFileHeaderDetails(null);
 		Test.stopTest();
 
-		System.assertNotEquals(null, headerInfo);
-		System.assertEquals(null, headerInfo.name);
-		System.assertNotEquals(null, headerInfo.compactFields);
-		System.assertEquals(0, headerInfo.compactFields.size());
+		Assert.areNotEqual(null, headerInfo);
+		Assert.areEqual(null, headerInfo.name);
+		Assert.areNotEqual(null, headerInfo.compactFields);
+		Assert.areEqual(0, headerInfo.compactFields.size());
 	}
 
 	@IsTest
@@ -45,9 +45,9 @@ private class GoogleCloudFilesViewControllerTest {
 			Test.startTest();
 			GoogleCloudFilesViewController.fetchFileHeaderDetails('a0B000000000001AAA');
 			Test.stopTest();
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (Exception ex) {
-			System.assert(String.isNotBlank(ex.getMessage()));
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
 		}
 	}
 
@@ -68,7 +68,7 @@ private class GoogleCloudFilesViewControllerTest {
 		GoogleFileHeaderInfoDTO headerInfo = GoogleCloudFilesViewController.fetchFileHeaderDetails(localFile.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, headerInfo);
+		Assert.areNotEqual(null, headerInfo);
 	}
 
 	@IsTest
@@ -97,9 +97,9 @@ private class GoogleCloudFilesViewControllerTest {
 		List<GoogleFileVersion__c> fileVersions = GoogleCloudFilesViewController.retrieveLocalGoogleFileVersions(parentFile.Id);
 		Test.stopTest();
 
-		System.assertNotEquals(null, fileVersions);
-		System.assertEquals(1, fileVersions.size());
-		System.assertEquals(firstVersion.Id, fileVersions[0].Id);
+		Assert.areNotEqual(null, fileVersions);
+		Assert.areEqual(1, fileVersions.size());
+		Assert.areEqual(firstVersion.Id, fileVersions[0].Id);
 	}
 
 	@IsTest
@@ -110,9 +110,9 @@ private class GoogleCloudFilesViewControllerTest {
 			Test.startTest();
 			GoogleCloudFilesViewController.retrieveLocalGoogleFileVersions('a0B000000000001AAA');
 			Test.stopTest();
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (Exception ex) {
-			System.assert(String.isNotBlank(ex.getMessage()));
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
 		}
 	}
 }

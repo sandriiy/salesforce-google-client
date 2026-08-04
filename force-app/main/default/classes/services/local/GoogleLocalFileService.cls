@@ -27,20 +27,12 @@ public without sharing class GoogleLocalFileService {
     private final IGoogleUnitOfWork uow;
 
     public GoogleLocalFileService() {
-        this.uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
-            GoogleFile__c.SObjectType,
-			GoogleFileLink__c.SObjectType,
-			GoogleFileVersion__c.SObjectType
-        });
+        this.uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
     }
 
     public GoogleLocalFileService(IGoogleUnitOfWork injectedUow) {
         this.uow = injectedUow == null
-            ? new GoogleCloudUnitOfWork(new List<SObjectType>{
-                GoogleFile__c.SObjectType,
-				GoogleFileLink__c.SObjectType,
-				GoogleFileVersion__c.SObjectType
-            })
+            ? new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER)
             : injectedUow;
     }
 
@@ -54,6 +46,9 @@ public without sharing class GoogleLocalFileService {
         }
     }
 	
+	/**
+	 * Deprecated. Use retrieveFileExplorerFiles(Id) instead.
+	 */
 	public List<GoogleFile__c> retrieveGoogleFiles(Id userId) {
 		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
 		try {
@@ -63,6 +58,48 @@ public without sharing class GoogleLocalFileService {
             Logger.saveLog();
             throw new GoogleLocalFileException('Unable to create the file record. Please try again or contact your system administrator');
 		}
+	}
+
+	public GoogleFileExplorerResultDTO retrieveFileExplorerFiles(Id userId) {
+		return retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO.firstPage(), userId);
+	}
+
+	public GoogleFileExplorerResultDTO retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO request) {
+		return retrieveGoogleFilesPage(request, UserInfo.getUserId());
+	}
+
+	public GoogleFileExplorerResultDTO retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO request, Id userId) {
+		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
+		try {
+			GoogleFileAccessResolver.FilePage page = accessResolver.resolveFilePage(buildPageCriteria(request), userId);
+
+			String nextCursor = (page.hasMore && page.cursorRow != null) ? request.encodeCursorFrom(page.cursorRow) : null;
+			Boolean isPrivileged = accessResolver.privilegedFloor() != null;
+			return new GoogleFileExplorerResultDTO(page.records, page.hasMore, isPrivileged, nextCursor);
+		} catch (Exception ex) {
+			Logger.error('Retrieve Google File Page (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileException('Unable to retrieve files. Please try again or contact your system administrator');
+		}
+	}
+
+	private GoogleFileAccessResolver.FilePageCriteria buildPageCriteria(GoogleFileExplorerPageRequestDTO request) {
+		GoogleFileAccessResolver.FilePageCriteria criteria = new GoogleFileAccessResolver.FilePageCriteria();
+		criteria.pageSize = request.effectivePageSize();
+		criteria.sortPath = request.sortPath();
+		if (String.isNotBlank(request.sortDirection)) criteria.sortDirection = request.sortDirection;
+		criteria.searchTerm = request.searchTerm;
+		criteria.cursorValue = request.decodedCursorValue();
+		criteria.cursorId = request.cursorId();
+		criteria.ownerScope = resolveOwnershipScope(request.bucket);
+		criteria.additionalVersionFields = new GoogleFileExplorerColumnResolver().resolveAdditionalVersionFields();
+		return criteria;
+	}
+
+	private GoogleFileAccessResolver.OwnershipScope resolveOwnershipScope(String bucket) {
+		if (GoogleCloudConstants.FILE_EXPLORER_BUCKET_OWNED.equals(bucket)) return GoogleFileAccessResolver.OwnershipScope.OwnedByUser;
+		if (GoogleCloudConstants.FILE_EXPLORER_BUCKET_SHARED.equals(bucket)) return GoogleFileAccessResolver.OwnershipScope.NotOwnedByUser;
+		return GoogleFileAccessResolver.OwnershipScope.AnyOwner;
 	}
 
 	public void ensureGoogleDriveFolderStructure(Id relatedRecordId) {
@@ -194,35 +231,28 @@ public without sharing class GoogleLocalFileService {
 	public void updateGoogleFileDetails(List<GoogleFileUpdateRequestDTO> requests) {
 		if (requests == null || requests.isEmpty()) return;
 		
-		List<SObject> recordsToUpdate = new List<SObject>();
+		Boolean hasUpdates = false;
 		for (GoogleFileUpdateRequestDTO request : requests) {
-			GoogleFileUpdateCommand updateCommand = new GoogleFileUpdateCommand(request.localGoogleFileRecord, request.localGoogleFileVersionRecord);
+			GoogleFileUpdateCommand updateCommand = new GoogleFileUpdateCommand(uow, request.localGoogleFileRecord, request.localGoogleFileVersionRecord);
 			GoogleFileUpdateCommand.GoogleFileUpdateResult updateResult = updateCommand
 				.changeFileNameTo(request.fileName)
 				.changeFileVersionNameTo(request.fileVersionName)
 				.changeFileDescriptionTo(request.fileDescription)
 				.build();
 
-			if (updateResult.localGoogleFileToUpdate != null) {
-				recordsToUpdate.add(updateResult.localGoogleFileToUpdate);
-			}
-
-			if (updateResult.localGoogleFileVersionToUpdate != null) {
-				recordsToUpdate.add(updateResult.localGoogleFileVersionToUpdate);
+			if (updateResult.localGoogleFileToUpdate != null || updateResult.localGoogleFileVersionToUpdate != null) {
+				hasUpdates = true;
 			}
 		}
 
-		if (recordsToUpdate.isEmpty()) {
-			return;
-		} else {
-			try {
-				uow.registerDirty(recordsToUpdate);
-				uow.commitWork(true);
-			} catch (DmlException ex) {
-				Logger.error('Update Google File Details (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-				Logger.saveLog();
-				throw new GoogleLocalFileException('Unable to update file details. Please try again or contact your system administrator');
-			}
+		if (!hasUpdates) return;
+
+		try {
+			uow.commitWork(true);
+		} catch (Exception ex) {
+			Logger.error('Update Google File Details (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileException('Unable to update file details. Please try again or contact your system administrator');
 		}
 	}
 

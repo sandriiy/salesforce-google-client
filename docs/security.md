@@ -122,4 +122,23 @@ From this, it calculates a final **User Access Level**:
 
 If multiple rules apply, the system always chooses the **highest** access level the user qualifies for.
 
+## Administrators: View-All and Edit-All Permissions
+
+Google Client ships two **custom permissions** that grant elevated access to every Google File. They are **not assigned by default** — an administrator adds them to a permission set or profile for the users who need them.
+
+- **Google Client: View All Files** (`GoogleClientViewAllAccess`) — the user gets **at least View** on every File.
+- **Google Client: Edit All Files** (`GoogleClientEditAllAccess`) — the user gets **Edit** on every File.
+
+This is a **floor, not an override**: it only ever *raises* access, never lowers it. A File owner still keeps **Edit**, and a collaborator keeps whatever level they were granted; the permission simply guarantees a minimum for every other File. Users **without** either permission are evaluated exactly as before.
+
+For safety, the floor applies to **internal users only**. An external (Experience Cloud) user who somehow holds one of these permissions still honors the internal-vs-external visibility rules and never sees internal-only Files.
+
+## Finding Files with Global Search
+
+Google Files can be found through Salesforce **global search**, the same search box you use to find any other record.
+
+Because global search follows Salesforce’s standard sharing, results include the Files you **own** or that have been **directly shared** with you. Files you can reach only through **record-based access** (a File Link on a record you can see) may not appear in global search, but they remain available through the **File Explorer** and the record components.
+
+When you open a File from a search result, the security layer described above runs again before anything is shown. Search never bypasses these checks: if you are not allowed to see a File, opening it simply shows a “no access” message.
+
 <br>

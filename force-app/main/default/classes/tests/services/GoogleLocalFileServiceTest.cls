@@ -31,11 +31,22 @@ private class GoogleLocalFileServiceTest {
 		return config;
 	}
 
+	private static List<GoogleFile__c> stripForRecord(Id localFileId, Id relatedRecordId, Id targetUserId) {
+		List<GoogleFileLink__c> scopedLinks = new GoogleFileLinkPlacementResolver().resolveLinks(relatedRecordId, null);
+		if (scopedLinks.isEmpty()) return new List<GoogleFile__c>();
+
+		return new GoogleFileAccessCheckCommand()
+			.forFile(localFileId)
+			.forRecordLinks(scopedLinks)
+			.forUser(targetUserId)
+			.strip();
+	}
+
 	private static void coverFactories() {
 		GoogleLocalFileService localFileService = new GoogleLocalFileService();
-		System.assertNotEquals(null, localFileService.deleteGoogleFileRecord());
-		System.assertNotEquals(null, localFileService.retrieveGoogleFileHeaderDetails());
-		System.assertNotEquals(null, localFileService.stripInaccessibleRecords());
+		Assert.areNotEqual(null, localFileService.deleteGoogleFileRecord());
+		Assert.areNotEqual(null, localFileService.retrieveGoogleFileHeaderDetails());
+		Assert.areNotEqual(null, localFileService.stripInaccessibleRecords());
 	}
 
 	@IsTest
@@ -46,8 +57,8 @@ private class GoogleLocalFileServiceTest {
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F1').withDescription('D').insertRecord();
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(UserInfo.getUserId()).strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -55,24 +66,20 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User targetUser = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F2').withDescription('D').insertRecord();
 
-		GoogleFile__Share shareRecord = new GoogleFile__Share(
-			ParentId = localFile.Id,
-			UserOrGroupId = targetUser.Id,
-			AccessLevel = 'Read',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
-		insert shareRecord;
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(localFile.Id).sharedWith(targetUserId).withAccessLevel('Read').build()
+		});
 
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
 			.forFile(new GoogleFile__c(Id = localFile.Id))
-			.forUser(targetUser.Id)
+			.forUser(targetUserId)
 			.strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('View', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('View', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -80,21 +87,17 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User targetUser = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F3').withDescription('D').insertRecord();
 
-		GoogleFile__Share shareRecord = new GoogleFile__Share(
-			ParentId = localFile.Id,
-			UserOrGroupId = targetUser.Id,
-			AccessLevel = 'Edit',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
-		insert shareRecord;
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(localFile.Id).sharedWith(targetUserId).withAccessLevel('Edit').build()
+		});
 
-		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile).forUser(targetUser.Id).strip();
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile).forUser(targetUserId).strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -102,15 +105,15 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account linkedAccount = new Account(Name = 'Linked View Account', OwnerId = targetUser.Id);
-		insert linkedAccount;
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(linkedRecordId, true, true);
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F4').withDescription('D').insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(linkedAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
 			.insertRecord();
@@ -122,10 +125,10 @@ private class GoogleLocalFileServiceTest {
 		];
 		GSOQL.mock(GoogleFileLinkSelector.MOCK_ID).thenReturn(fileLinks);
 
-		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(targetUser.Id).strip();
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(targetUserId).strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('View', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('View', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -133,15 +136,15 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account linkedAccount = new Account(Name = 'Linked Edit Account', OwnerId = targetUser.Id);
-		insert linkedAccount;
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(linkedRecordId, true, true);
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F5').withDescription('D').insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(linkedAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Collaborator')
 			.withVisibility('InternalUsers')
 			.insertRecord();
@@ -155,11 +158,11 @@ private class GoogleLocalFileServiceTest {
 
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
 			.forFile(new GoogleFile__c(Id = localFile.Id))
-			.forUser(targetUser.Id)
+			.forUser(targetUserId)
 			.strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -167,13 +170,13 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User targetUser = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F5_NoRecordAccess').withDescription('D').insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(GoogleCloudTestFactory.fakeId(Account.SObjectType))
-			.withLinkedType('Account')
+			.withLinkedRecord(GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType))
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
 			.insertRecord();
@@ -187,10 +190,10 @@ private class GoogleLocalFileServiceTest {
 
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
 			.forFile(localFile.Id)
-			.forUser(targetUser.Id)
+			.forUser(targetUserId)
 			.strip();
 
-		System.assertEquals(0, visibleFiles.size());
+		Assert.areEqual(0, visibleFiles.size());
 	}
 
 	@IsTest
@@ -198,9 +201,9 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account linkedAccount = new Account(Name = 'A1', OwnerId = targetUser.Id);
-		insert linkedAccount;
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(linkedRecordId, true, true);
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('F6').withDescription('D').insertRecord();
 
@@ -208,8 +211,8 @@ private class GoogleLocalFileServiceTest {
 			.forFile(localFile.Id)
 			.withShareType('InferredFromRecord')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(linkedAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		List<GoogleFileLink__c> fileLinks = [
@@ -219,10 +222,10 @@ private class GoogleLocalFileServiceTest {
 		];
 		GSOQL.mock(GoogleFileLinkSelector.MOCK_ID).thenReturn(fileLinks);
 
-		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(targetUser.Id).strip();
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(targetUserId).strip();
 
-		System.assertEquals(1, visibleFiles.size());
-		System.assertEquals('Edit', visibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -231,7 +234,7 @@ private class GoogleLocalFileServiceTest {
 		coverFactories();
 
 		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand().forFiles(new List<GoogleFile__c>()).strip();
-		System.assertEquals(0, visibleFiles.size());
+		Assert.areEqual(0, visibleFiles.size());
 	}
 
 	@IsTest
@@ -244,9 +247,9 @@ private class GoogleLocalFileServiceTest {
 
 		try {
 			new GoogleFileAccessCheckCommand().forFile(localFile.Id).forUser(missingUserId).strip();
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleFileAccessResolver.GoogleFileAccessCheckException ex) {
-			System.assert(ex.getMessage().contains('Target user was not found'));
+			Assert.isTrue(ex.getMessage().contains('Target user was not found'));
 		}
 	}
 
@@ -278,9 +281,9 @@ private class GoogleLocalFileServiceTest {
 		Boolean deleteResult = new GoogleLocalFileService().deleteGoogleFileRecord().setRecordId(localFile.Id).setCloudDeletion(false).save();
 		Test.stopTest();
 
-		System.assertEquals(true, deleteResult);
-		System.assertEquals(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
-		System.assertEquals(0, [SELECT count() FROM GoogleFileVersion__c WHERE GoogleFileId__c = :localFile.Id]);
+		Assert.areEqual(true, deleteResult);
+		Assert.areEqual(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
+		Assert.areEqual(0, [SELECT count() FROM GoogleFileVersion__c WHERE GoogleFileId__c = :localFile.Id]);
 	}
 
 	@IsTest
@@ -312,9 +315,9 @@ private class GoogleLocalFileServiceTest {
 		Boolean deleteResult = new GoogleLocalFileService().deleteGoogleFileRecord().setRecordId(localFile.Id).setCloudDeletion(true).save();
 		Test.stopTest();
 
-		System.assertEquals(true, deleteResult);
-		System.assertEquals(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
-		System.assertEquals(0, [SELECT count() FROM GoogleFileVersion__c WHERE GoogleFileId__c = :localFile.Id]);
+		Assert.areEqual(true, deleteResult);
+		Assert.areEqual(0, [SELECT count() FROM GoogleFile__c WHERE Id = :localFile.Id]);
+		Assert.areEqual(0, [SELECT count() FROM GoogleFileVersion__c WHERE GoogleFileId__c = :localFile.Id]);
 	}
 
 	@IsTest
@@ -323,7 +326,7 @@ private class GoogleLocalFileServiceTest {
 		GoogleFileCloudFolderJob.skipExecution = true;
 		coverFactories();
 
-		Id parentRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id parentRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ new GoogleFile__c(Name = 'Any') });
 
@@ -383,7 +386,7 @@ private class GoogleLocalFileServiceTest {
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 		GoogleFileCloudFolderJob.skipExecution = false;
 
-		Id parentRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id parentRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ new GoogleFile__c(Name = 'Any') });
 
 		GoogleFileCreateRequestDTO request = new GoogleFileCreateRequestDTO();
@@ -440,7 +443,7 @@ private class GoogleLocalFileServiceTest {
 		GoogleFile__c createdFile = new GoogleLocalFileService().createGoogleFileRecord(request);
 		Test.stopTest();
 
-		System.assertNotEquals(null, createdFile);
+		Assert.areNotEqual(null, createdFile);
 	}
 
 	@IsTest
@@ -448,34 +451,240 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User fileOwner = GoogleCloudTestFactory.newUser();
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account accessibleAccount = new Account(Name = 'Accessible Account', OwnerId = targetUser.Id);
-		insert accessibleAccount;
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id accessibleRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(accessibleRecordId, true, true);
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('Record Shared File')
 			.withDescription('D')
-			.withOwner(fileOwner.Id)
 			.insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(accessibleAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(accessibleRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('InferredFromRecord')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
-		System.runAs(targetUser) {
-			Test.startTest();
-			List<GoogleFile__c> accessibleFiles = new GoogleLocalFileService().retrieveGoogleFiles(UserInfo.getUserId());
-			Test.stopTest();
+		GoogleFileExplorerPageRequestDTO request = GoogleFileExplorerPageRequestDTO.firstPage();
+		request.bucket = GoogleCloudConstants.FILE_EXPLORER_BUCKET_SHARED;
 
-			Assert.areEqual(1, accessibleFiles.size());
-			Assert.areEqual(localFile.Id, accessibleFiles[0].Id);
-			Assert.areEqual('Edit', accessibleFiles[0].UserAccessLevel__c);
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = new GoogleLocalFileService().retrieveGoogleFilesPage(request, targetUserId);
+		GoogleFileExplorerResultDTO ownedView = new GoogleLocalFileService().retrieveFileExplorerFiles(targetUserId);
+		Test.stopTest();
+
+		List<GoogleFile__c> accessibleFiles = result.files;
+		Assert.areEqual(1, accessibleFiles.size());
+		Assert.areEqual(localFile.Id, accessibleFiles[0].Id);
+		Assert.areEqual('Edit', accessibleFiles[0].UserAccessLevel__c);
+		Assert.areEqual(0, ownedView.files.size(), 'A file owned by somebody else must not appear in the Owned bucket');
+	}
+
+	@IsTest
+	private static void testViewAllFloorGrantsViaStrip() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		Id privilegedUserId = GoogleCloudTestFactory.mockInternalUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Unlinked File')
+			.withDescription('D')
+			.insertRecord();
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.View);
+
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
+			.forFile(localFile.Id)
+			.forUser(privilegedUserId)
+			.strip();
+
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('View', visibleFiles[0].UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testEditAllFloorGrantsEditViaStrip() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		Id privilegedUserId = GoogleCloudTestFactory.mockInternalUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Unlinked File')
+			.insertRecord();
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.Edit);
+
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
+			.forFile(localFile.Id)
+			.forUser(privilegedUserId)
+			.strip();
+
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testFloorDoesNotDowngradeOwner() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		Id privilegedUserId = UserInfo.getUserId();
+		GoogleFile__c ownedFile = GoogleCloudTestFactory.file()
+			.withName('Owned File')
+			.insertRecord();
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.View);
+
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
+			.forFile(ownedFile.Id)
+			.forUser(privilegedUserId)
+			.strip();
+
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual('Edit', visibleFiles[0].UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testNoFloorRemainsRestricted() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		Id otherUserId = GoogleCloudTestFactory.mockInternalUser();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Unlinked File')
+			.insertRecord();
+
+		setPrivilegedFloor(null);
+
+		List<GoogleFile__c> visibleFiles = new GoogleFileAccessCheckCommand()
+			.forFile(localFile.Id)
+			.forUser(otherUserId)
+			.strip();
+
+		Assert.areEqual(0, visibleFiles.size());
+	}
+
+	@IsTest
+	private static void testExplorerPrivilegedFirstPage() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		Id otherOwnerId = GoogleCloudTestFactory.fakeId(User.SObjectType);
+		GoogleFile__c ownedFile = new GoogleFile__c(Id = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), Name = 'Owned File', OwnerId = UserInfo.getUserId());
+		GoogleFile__c otherFile = new GoogleFile__c(Id = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), Name = 'Other File', OwnerId = otherOwnerId);
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ ownedFile, otherFile });
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.View);
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = new GoogleLocalFileService().retrieveFileExplorerFiles(UserInfo.getUserId());
+		Test.stopTest();
+
+		Assert.areEqual(true, result.isPrivileged);
+
+		Assert.areEqual(2, result.files.size());
+		Assert.areEqual(ownedFile.Id, result.files[0].Id, 'The queried order must be preserved on the way back to the client');
+		Assert.areEqual('Edit', result.files[0].UserAccessLevel__c);
+		Assert.areEqual(otherFile.Id, result.files[1].Id);
+		Assert.areEqual('View', result.files[1].UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testPrivilegedPageStampsEditFloor() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		Id otherOwnerId = GoogleCloudTestFactory.fakeId(User.SObjectType);
+		GoogleFile__c ownedFile = new GoogleFile__c(Id = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), Name = 'Owned Page File', OwnerId = UserInfo.getUserId());
+		GoogleFile__c otherFile = new GoogleFile__c(Id = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), Name = 'Other Page File', OwnerId = otherOwnerId);
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ ownedFile, otherFile });
+
+		setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.Edit);
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = new GoogleLocalFileService().retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO.firstPage());
+		Test.stopTest();
+
+		Assert.areEqual(true, result.isPrivileged);
+
+		Map<Id, GoogleFile__c> filesById = new Map<Id, GoogleFile__c>(result.files);
+		Assert.areEqual('Edit', filesById.get(ownedFile.Id).UserAccessLevel__c);
+		Assert.areEqual('Edit', filesById.get(otherFile.Id).UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testPageSizeIsClampedToTheSupportedMaximum() {
+		GoogleFileExplorerPageRequestDTO request = GoogleFileExplorerPageRequestDTO.firstPage();
+		request.pageSize = 45000;
+
+		Assert.areEqual(
+			GoogleCloudConstants.FILE_EXPLORER_MAX_PAGE_SIZE,
+			request.effectivePageSize(),
+			'A client must not be able to request an unbounded page'
+		);
+
+		request.pageSize = null;
+		Assert.areEqual(GoogleCloudConstants.FILE_EXPLORER_PAGE_SIZE, request.effectivePageSize());
+	}
+
+	@IsTest
+	private static void testExplorerPagesThroughEveryAccessibleFileWithoutRepeats() {
+		GoogleCloudTestFactory.initMocks();
+		coverFactories();
+
+		List<GoogleFile__c> seededFiles = new List<GoogleFile__c>();
+		for (Integer i = 0; i < 5; i++) {
+			seededFiles.add(GoogleCloudTestFactory.file().withName('Paged File ' + i).insertRecord());
 		}
+
+		Set<Id> seenFileIds = new Set<Id>();
+		GoogleFileExplorerPageRequestDTO request = GoogleFileExplorerPageRequestDTO.firstPage();
+		request.pageSize = 2;
+
+		GoogleLocalFileService recordService = new GoogleLocalFileService();
+		for (Integer page = 0; page < 5; page++) {
+			GoogleFileExplorerResultDTO result = recordService.retrieveGoogleFilesPage(request);
+
+			for (GoogleFile__c pagedFile : result.files) {
+				Assert.isTrue(seenFileIds.add(pagedFile.Id), 'Keyset paging must never return the same file twice');
+			}
+
+			if (!result.hasMore) break;
+
+			Assert.areNotEqual(null, result.nextCursor, 'hasMore must always be accompanied by a usable cursor');
+			request.cursor = result.nextCursor;
+		}
+
+		Assert.areEqual(seededFiles.size(), seenFileIds.size(), 'Paging must reach every accessible file');
+	}
+
+	@IsTest
+	private static void testCursorEncodeDecodeRoundTrip() {
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('Cursor File').insertRecord();
+		GoogleFile__c row = [SELECT Id, Name FROM GoogleFile__c WHERE Id = :localFile.Id];
+
+		GoogleFileExplorerPageRequestDTO request = new GoogleFileExplorerPageRequestDTO();
+		request.sortField = 'fileName';
+		request.sortDirection = 'DESC';
+		String cursor = request.encodeCursorFrom(row);
+		Assert.areNotEqual(null, cursor);
+
+		GoogleFileExplorerPageRequestDTO next = new GoogleFileExplorerPageRequestDTO();
+		next.sortField = 'fileName';
+		next.sortDirection = 'DESC';
+		next.cursor = cursor;
+
+		Assert.areEqual(true, next.hasCursor());
+		Assert.areEqual(row.Id, next.cursorId());
+		Assert.areEqual(row.Name, (String) next.decodedCursorValue());
+	}
+
+	private static void setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel floor) {
+		GoogleFileAccessResolver.privilegedFloorOverrideSet = true;
+		GoogleFileAccessResolver.privilegedFloorOverride = floor;
 	}
 
 	@IsTest
@@ -483,29 +692,27 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User fileOwner = GoogleCloudTestFactory.newUser();
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account editableAccount = new Account(Name = 'Editable Account', OwnerId = targetUser.Id);
-		insert editableAccount;
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id editableRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(editableRecordId, true, true);
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('Multi Link File')
 			.withDescription('D')
-			.withOwner(fileOwner.Id)
 			.insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(GoogleCloudTestFactory.fakeId(Account.SObjectType))
-			.withLinkedType('Account')
+			.withLinkedRecord(GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType))
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('InternalUsers')
 			.insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(editableAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(editableRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('InferredFromRecord')
 			.withVisibility('AllUsers')
 			.insertRecord();
@@ -513,7 +720,7 @@ private class GoogleLocalFileServiceTest {
 		Test.startTest();
 		List<GoogleFile__c> accessibleFiles = new GoogleFileAccessCheckCommand()
 			.forFile(localFile.Id)
-			.forUser(targetUser.Id)
+			.forUser(targetUserId)
 			.strip();
 		Test.stopTest();
 
@@ -526,15 +733,13 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User fileOwner = GoogleCloudTestFactory.newUser();
-		User sharedUser = GoogleCloudTestFactory.newUser();
-		Account relatedAccount = new Account(Name = 'None Visibility Account', OwnerId = fileOwner.Id);
-		insert relatedAccount;
+		Id sharedUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id relatedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(relatedRecordId, true, true);
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('None Visible File')
 			.withDescription('D')
-			.withOwner(fileOwner.Id)
 			.insertRecord();
 
 		GoogleCloudTestFactory.version()
@@ -545,34 +750,32 @@ private class GoogleLocalFileServiceTest {
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(relatedAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(relatedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('None')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
-		insert new GoogleFile__Share(
-			ParentId = localFile.Id,
-			UserOrGroupId = sharedUser.Id,
-			AccessLevel = 'Read',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(localFile.Id).sharedWith(sharedUserId).withAccessLevel('Read').build()
+		});
 
-		System.runAs(fileOwner) {
-			List<GoogleFile__c> ownerFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(relatedAccount.Id, null, 10);
+		List<GoogleFile__c> ownerFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(relatedRecordId, null, 10);
 
-			Assert.areEqual(1, ownerFiles.size());
-			Assert.areEqual(localFile.Id, ownerFiles[0].Id);
-			Assert.areEqual('Edit', ownerFiles[0].UserAccessLevel__c);
-		}
+		Assert.areEqual(1, ownerFiles.size());
+		Assert.areEqual(localFile.Id, ownerFiles[0].Id);
+		Assert.areEqual('Edit', ownerFiles[0].UserAccessLevel__c);
 
-		System.runAs(sharedUser) {
-			List<GoogleFile__c> sharedFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(relatedAccount.Id, null, 10);
+		List<GoogleFileLink__c> scopedLinks = new GoogleFileLinkPlacementResolver().resolveLinks(relatedRecordId, null);
+		List<GoogleFile__c> sharedFiles = new GoogleFileAccessCheckCommand()
+			.forFile(localFile.Id)
+			.forRecordLinks(scopedLinks)
+			.forUser(sharedUserId)
+			.strip();
 
-			Assert.areEqual(1, sharedFiles.size());
-			Assert.areEqual(localFile.Id, sharedFiles[0].Id);
-			Assert.areEqual('View', sharedFiles[0].UserAccessLevel__c);
-		}
+		Assert.areEqual(1, sharedFiles.size());
+		Assert.areEqual(localFile.Id, sharedFiles[0].Id);
+		Assert.areEqual('View', sharedFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -580,16 +783,15 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User fileOwner = GoogleCloudTestFactory.newUser();
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account hiddenAccount = new Account(Name = 'Hidden None Account', OwnerId = fileOwner.Id);
-		Account accessibleAccount = new Account(Name = 'Accessible Viewer Account', OwnerId = targetUser.Id);
-		insert new List<Account>{ hiddenAccount, accessibleAccount };
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id hiddenRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		Id accessibleRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(hiddenRecordId, true, true);
+		GoogleCloudTestFactory.grantRecordAccess(accessibleRecordId, true, true);
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('None Scoped File')
 			.withDescription('D')
-			.withOwner(fileOwner.Id)
 			.insertRecord();
 
 		GoogleCloudTestFactory.version()
@@ -600,31 +802,29 @@ private class GoogleLocalFileServiceTest {
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(hiddenAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(hiddenRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('None')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(accessibleAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(accessibleRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
-		System.runAs(targetUser) {
-			Test.startTest();
-			List<GoogleFile__c> hiddenFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(hiddenAccount.Id, null, 10);
-			List<GoogleFile__c> visibleFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(accessibleAccount.Id, null, 10);
-			Test.stopTest();
+		Test.startTest();
+		List<GoogleFile__c> hiddenFiles = stripForRecord(localFile.Id, hiddenRecordId, targetUserId);
+		List<GoogleFile__c> visibleFiles = stripForRecord(localFile.Id, accessibleRecordId, targetUserId);
+		Test.stopTest();
 
-			Assert.areEqual(0, hiddenFiles.size());
-			Assert.areEqual(1, visibleFiles.size());
-			Assert.areEqual(localFile.Id, visibleFiles[0].Id);
-			Assert.areEqual('View', visibleFiles[0].UserAccessLevel__c);
-		}
+		Assert.areEqual(0, hiddenFiles.size());
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual(localFile.Id, visibleFiles[0].Id);
+		Assert.areEqual('View', visibleFiles[0].UserAccessLevel__c);
 	}
 
 	@IsTest
@@ -632,16 +832,14 @@ private class GoogleLocalFileServiceTest {
 		GoogleCloudTestFactory.initMocks();
 		coverFactories();
 
-		User fileOwner = GoogleCloudTestFactory.newUser();
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account accessibleAccount = new Account(Name = 'Visible Related Account', OwnerId = targetUser.Id);
-		insert accessibleAccount;
-		Id hiddenAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id accessibleRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(accessibleRecordId, true, true);
+		Id hiddenRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('Scoped Visibility File')
 			.withDescription('D')
-			.withOwner(fileOwner.Id)
 			.insertRecord();
 
 		GoogleCloudTestFactory.version()
@@ -652,29 +850,27 @@ private class GoogleLocalFileServiceTest {
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(accessibleAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(accessibleRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(hiddenAccountId)
-			.withLinkedType('Account')
+			.withLinkedRecord(hiddenRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
-		System.runAs(targetUser) {
-			Test.startTest();
-			List<GoogleFile__c> visibleFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(accessibleAccount.Id, null, 10);
-			List<GoogleFile__c> hiddenFiles = new GoogleLocalFileService().retrieveGoogleFilesForRelatedRecord(hiddenAccountId, null, 10);
-			Test.stopTest();
+		Test.startTest();
+		List<GoogleFile__c> visibleFiles = stripForRecord(localFile.Id, accessibleRecordId, targetUserId);
+		List<GoogleFile__c> hiddenFiles = stripForRecord(localFile.Id, hiddenRecordId, targetUserId);
+		Test.stopTest();
 
-			Assert.areEqual(1, visibleFiles.size());
-			Assert.areEqual(localFile.Id, visibleFiles[0].Id);
-			Assert.areEqual(0, hiddenFiles.size());
-		}
+		Assert.areEqual(1, visibleFiles.size());
+		Assert.areEqual(localFile.Id, visibleFiles[0].Id);
+		Assert.areEqual(0, hiddenFiles.size());
 	}
 }

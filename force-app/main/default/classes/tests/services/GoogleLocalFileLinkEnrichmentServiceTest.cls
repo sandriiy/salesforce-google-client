@@ -26,13 +26,13 @@ private class GoogleLocalFileLinkEnrichmentServiceTest {
 	@IsTest
 	private static void testApplyLinkedRecordAttributesPositiveNull() {
 		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
-		System.assertEquals(null, enrichmentService.applyLinkedRecordAttributes(null));
+		Assert.areEqual(null, enrichmentService.applyLinkedRecordAttributes(null));
 	}
 
 	@IsTest
 	private static void testApplyLinkedRecordAttributesPositiveEmpty() {
 		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
-		System.assertEquals(0, enrichmentService.applyLinkedRecordAttributes(new List<GoogleFileLink__c>()).size());
+		Assert.areEqual(0, enrichmentService.applyLinkedRecordAttributes(new List<GoogleFileLink__c>()).size());
 	}
 
 	@IsTest
@@ -78,11 +78,30 @@ private class GoogleLocalFileLinkEnrichmentServiceTest {
 
 	@IsTest
 	private static void testResolveLinkedRecordNamePositive() {
-		Account linkedRecord = new Account(Name = 'Resolved Account Name');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Resolved Record Name');
 
 		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
 
-		System.assertEquals('Resolved Account Name', enrichmentService.resolveLinkedRecordName(linkedRecord.Id));
+		Assert.areEqual('Resolved Record Name', enrichmentService.resolveLinkedRecordName(linkedRecordId));
+	}
+
+	@IsTest
+	private static void testResolveLinkedRecordNamePositiveCompoundName() {
+		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
+
+		Assert.areEqual(UserInfo.getName(), enrichmentService.resolveLinkedRecordName(UserInfo.getUserId()));
+	}
+
+	@IsTest
+	private static void testApplyLinkedRecordAttributesPositiveCompoundName() {
+		GoogleFileLink__c compoundNameLink = new GoogleFileLink__c(
+			LinkedObjectType__c = 'User',
+			LinkedObjectId__c = UserInfo.getUserId()
+		);
+
+		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
+		enrichmentService.applyLinkedRecordAttributes(new List<GoogleFileLink__c>{ compoundNameLink });
+
+		Assert.areEqual(UserInfo.getName(), compoundNameLink.LinkedObjectName__c);
 	}
 }

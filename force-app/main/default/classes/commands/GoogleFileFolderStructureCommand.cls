@@ -26,15 +26,41 @@ public without sharing class GoogleFileFolderStructureCommand {
 
 	private static final String FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 	private static final String APP_PROPERTY_RECORD_ID = 'record-id';
+	private static final String TARGET_TYPE_USER = 'User';
+	private static final String TARGET_TYPE_RECORD = 'Record';
+	private static final Integer SEARCH_MAX_RESULT = 25;
 
 	private final GoogleDrive remoteGoogleDrive;
 	private final GoogleMetadataConfigService metadataService;
 	private final GoogleLocalFileLinkEnrichmentService linkEnrichmentService;
+	private final GoogleCacheDriveFolderService folderCache;
+	private final Map<String, String> resolvedFolderIdsByKey = new Map<String, String>();
+
+	private Boolean isResolutionDeferred = false;
+	private Boolean ignoresPendingClaims = false;
 
 	public GoogleFileFolderStructureCommand() {
 		this.remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
 		this.metadataService = new GoogleMetadataConfigService();
 		this.linkEnrichmentService = new GoogleLocalFileLinkEnrichmentService();
+		this.folderCache = new GoogleCacheDriveFolderService();
+	}
+
+	public GoogleFileFolderStructureCommand ignorePendingClaims() {
+		this.ignoresPendingClaims = true;
+		return this;
+	}
+
+	public Boolean isResolutionDeferred() {
+		return this.isResolutionDeferred == true;
+	}
+
+	public void evictResolvedFolders() {
+		for (String folderKey : this.resolvedFolderIdsByKey.keySet()) {
+			this.folderCache.evict(folderKey);
+		}
+
+		this.resolvedFolderIdsByKey.clear();
 	}
 
 	public String ensureFolder(Id relatedRecordId) {
@@ -45,28 +71,38 @@ public without sharing class GoogleFileFolderStructureCommand {
 		return resolveFolderId(initiatorUserId, relatedRecordId, true);
 	}
 
+	public String ensureFolder(String rootFolderId, Id initiatorUserId, Id relatedRecordId) {
+		return resolveFolderId(rootFolderId, initiatorUserId, relatedRecordId, true);
+	}
+
 	public String findExistingFolder(Id initiatorUserId, Id relatedRecordId) {
 		return resolveFolderId(initiatorUserId, relatedRecordId, false);
+	}
+
+	public String findExistingFolder(String rootFolderId, Id initiatorUserId, Id relatedRecordId) {
+		return resolveFolderId(rootFolderId, initiatorUserId, relatedRecordId, false);
 	}
 
 	private String resolveFolderId(Id initiatorUserId, Id relatedRecordId, Boolean createIfMissing) {
 		List<String> uploadParentFolderIds = metadataService.getTargetFolderResolver().resolveUploadFolderId();
 		String rootFolderId = getFirstFolderId(uploadParentFolderIds);
+		return resolveFolderId(rootFolderId, initiatorUserId, relatedRecordId, createIfMissing);
+	}
+
+	private String resolveFolderId(String rootFolderId, Id initiatorUserId, Id relatedRecordId, Boolean createIfMissing) {
+		this.isResolutionDeferred = false;
 		if (String.isBlank(rootFolderId)) return null;
 
 		String folderStructure = metadataService.getGoogleDriveFolderStructure();
 		if (String.isBlank(folderStructure)) return null;
 
-		FolderTargets folderTargets = buildFolderTargets(initiatorUserId, relatedRecordId);
-		return resolveDestinationFolderId(folderStructure, rootFolderId, initiatorUserId, folderTargets.userFolderName, folderTargets.relatedRecordId, folderTargets.recordFolderName, createIfMissing);
+		return resolveDestinationFolderId(folderStructure, rootFolderId, initiatorUserId, relatedRecordId, createIfMissing);
 	}
 
-	private FolderTargets buildFolderTargets(Id initiatorUserId, Id relatedRecordId) {
-		FolderTargets targets = new FolderTargets();
-		targets.relatedRecordId = relatedRecordId;
-		targets.userFolderName = buildUserFolderName(initiatorUserId);
-		targets.recordFolderName = buildRecordFolderName(relatedRecordId);
-		return targets;
+	private String buildFolderName(String folderTargetType, Id uniqueIdValue) {
+		return folderTargetType == TARGET_TYPE_USER
+			? buildUserFolderName(uniqueIdValue)
+			: buildRecordFolderName(uniqueIdValue);
 	}
 
 	private String buildUserFolderName(Id userId) {
@@ -84,12 +120,11 @@ public without sharing class GoogleFileFolderStructureCommand {
 	private User loadUser(Id userId) {
 		if (userId == null) return null;
 
-		List<User> users = [
-			SELECT Id, FirstName, LastName
-			FROM User
-			WHERE Id = :userId
-			LIMIT 1
-		];
+		List<User> users = (List<User>) GoogleUserSelector.query()
+			.withNameFields()
+			.byUserId(userId)
+			.limitTo(1)
+			.toList();
 
 		return users.isEmpty() ? null : users[0];
 	}
@@ -104,48 +139,92 @@ public without sharing class GoogleFileFolderStructureCommand {
 		return objectApiName + ' : ' + (String.isBlank(recordName) ? 'Unknown Record' : recordName);
 	}
 
-	private String resolveDestinationFolderId(String folderStructure, String rootFolderId, Id userId, String userFolderName, Id recordId, String recordFolderName, Boolean createIfMissing) {
+	private String resolveDestinationFolderId(String folderStructure, String rootFolderId, Id userId, Id recordId, Boolean createIfMissing) {
 		if (String.isBlank(folderStructure)) return null;
 
 		if (folderStructure == GoogleCloudConstants.STRUCTURE_USER) {
-			return resolveFolder(rootFolderId, userFolderName, userId, createIfMissing);
+			return resolveFolder(rootFolderId, TARGET_TYPE_USER, userId, createIfMissing);
 		}
 
 		if (folderStructure == GoogleCloudConstants.STRUCTURE_RECORD) {
 			if (recordId == null) return null;
-			return resolveFolder(rootFolderId, recordFolderName, recordId, createIfMissing);
+			return resolveFolder(rootFolderId, TARGET_TYPE_RECORD, recordId, createIfMissing);
 		}
 
 		if (folderStructure == GoogleCloudConstants.STRUCTURE_USER_RECORD) {
 			if (recordId == null) return null;
-			String userFolderId = resolveFolder(rootFolderId, userFolderName, userId, createIfMissing);
+			String userFolderId = resolveFolder(rootFolderId, TARGET_TYPE_USER, userId, createIfMissing);
 			if (String.isBlank(userFolderId)) return null;
 
-			return resolveFolder(userFolderId, recordFolderName, recordId, createIfMissing);
+			return resolveFolder(userFolderId, TARGET_TYPE_RECORD, recordId, createIfMissing);
 		}
 
 		if (folderStructure == GoogleCloudConstants.STRUCTURE_RECORD_USER) {
 			if (recordId == null) return null;
-			String recordFolderId = resolveFolder(rootFolderId, recordFolderName, recordId, createIfMissing);
+			String recordFolderId = resolveFolder(rootFolderId, TARGET_TYPE_RECORD, recordId, createIfMissing);
 			if (String.isBlank(recordFolderId)) return null;
 
-			return resolveFolder(recordFolderId, userFolderName, userId, createIfMissing);
+			return resolveFolder(recordFolderId, TARGET_TYPE_USER, userId, createIfMissing);
 		}
 
 		return null;
 	}
 
-	private String resolveFolder(String parentFolderId, String folderName, Id uniqueIdValue, Boolean createIfMissing) {
+	private String resolveFolder(String parentFolderId, String folderTargetType, Id uniqueIdValue, Boolean createIfMissing) {
 		if (String.isBlank(parentFolderId) || uniqueIdValue == null) return null;
+
+		String folderKey = this.folderCache.buildFolderKey(parentFolderId, uniqueIdValue);
+		if (this.resolvedFolderIdsByKey.containsKey(folderKey)) {
+			return this.resolvedFolderIdsByKey.get(folderKey);
+		}
+
+		String cachedFolderId = this.folderCache.getFolderId(folderKey);
+		if (String.isNotBlank(cachedFolderId)) {
+			return rememberFolder(folderKey, cachedFolderId);
+		}
+
+		if (this.ignoresPendingClaims != true && this.folderCache.isPending(folderKey)) {
+			this.isResolutionDeferred = true;
+
+			Logger.info(
+				'Folder Structure --> Deferred, another transaction is creating the folder' +
+				', ParentFolderId=' + String.valueOf(parentFolderId) +
+				', UniqueId=' + String.valueOf(uniqueIdValue)
+			).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+			return null;
+		}
 
 		String existingFolderId = findFolderIdByUniqueId(parentFolderId, uniqueIdValue);
 		if (String.isNotBlank(existingFolderId)) {
-			return existingFolderId;
+			this.folderCache.putFolderId(folderKey, existingFolderId);
+			return rememberFolder(folderKey, existingFolderId);
 		}
 
 		if (createIfMissing != true) return null;
 
-		return createFolder(parentFolderId, folderName, uniqueIdValue);
+		this.folderCache.markPending(folderKey);
+
+		String createdFolderId;
+		try {
+			createdFolderId = createFolder(parentFolderId, buildFolderName(folderTargetType, uniqueIdValue), uniqueIdValue);
+		} catch (Exception ex) {
+			this.folderCache.evict(folderKey);
+			throw ex;
+		}
+
+		if (String.isBlank(createdFolderId)) {
+			this.folderCache.evict(folderKey);
+			return null;
+		}
+
+		this.folderCache.putFolderId(folderKey, createdFolderId);
+		return rememberFolder(folderKey, createdFolderId);
+	}
+
+	private String rememberFolder(String folderKey, String folderId) {
+		this.resolvedFolderIdsByKey.put(folderKey, folderId);
+		return folderId;
 	}
 
 	private String findFolderIdByUniqueId(String parentFolderId, Id uniqueIdValue) {
@@ -158,17 +237,28 @@ public without sharing class GoogleFileFolderStructureCommand {
 		query += 'and appProperties has { key=\'' + APP_PROPERTY_RECORD_ID + '\' and value=\'' + escapedUniqueId + '\' }';
 
 		GoogleFileSearchResult searchResult = remoteGoogleDrive.files().search()
-			.setMaxResult(1)
+			.setMaxResult(SEARCH_MAX_RESULT)
 			.setSearchQuery(query)
 			.setSearchOnAllDrives(true)
 			.setFields('files(id,name)')
 			.execute();
 
-		if (searchResult != null && searchResult.files != null && !searchResult.files.isEmpty()) {
-			return searchResult.files[0].id;
+		if (searchResult == null || searchResult.files == null) return null;
+
+		return selectAdoptableFolderId(searchResult.files);
+	}
+
+	private String selectAdoptableFolderId(List<GoogleFileEntity> matchingFolders) {
+		String adoptedFolderId = null;
+
+		for (GoogleFileEntity matchingFolder : matchingFolders) {
+			if (matchingFolder == null || String.isBlank(matchingFolder.id)) continue;
+			if (adoptedFolderId == null || matchingFolder.id.compareTo(adoptedFolderId) < 0) {
+				adoptedFolderId = matchingFolder.id;
+			}
 		}
 
-		return null;
+		return adoptedFolderId;
 	}
 
 	private String createFolder(String parentFolderId, String folderName, Id uniqueIdValue) {
@@ -204,9 +294,4 @@ public without sharing class GoogleFileFolderStructureCommand {
 		return value.replace('\\', '\\\\').replace('\'', '\\\'');
 	}
 
-	private class FolderTargets {
-		public String userFolderName;
-		public String recordFolderName;
-		public Id relatedRecordId;
-	}
 }

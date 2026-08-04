@@ -23,6 +23,15 @@
  */
 @IsTest
 private class GoogleLocalFileSharingServiceTest {
+	private static List<GoogleFileLink__c> readableLinksFor(Id localFileId, Id targetUserId) {
+		List<GoogleFileLink__c> allLinks = (List<GoogleFileLink__c>) GoogleFileLinkSelector.query()
+			.withBaseFields()
+			.byParentId(localFileId)
+			.toList();
+
+		return new GoogleFileAccessResolver().resolveReadableRecordLinks(allLinks, targetUserId);
+	}
+
 	private static GoogleClientConfig__mdt buildFolderConfig(String uploadFolderId, String folderStructure) {
 		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
 		config.DefaultGoogleUploadFolderId__c = uploadFolderId;
@@ -42,161 +51,143 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleLocalFileSharingService service = new GoogleLocalFileSharingService();
 		GoogleSharingInfoDTO dto = service.fetchSharingDetails(f.Id);
 
-		System.assertNotEquals(null, dto);
-		System.assertEquals(f.Id, dto.fileId);
-		System.assertNotEquals(null, dto.owner);
-		System.assertEquals(UserInfo.getUserId(), dto.owner.Id);
-		System.assertNotEquals(null, dto.entitiesSharedTo);
-		System.assertEquals(0, dto.entitiesSharedTo.size());
-		System.assertNotEquals(null, dto.recordsSharedTo);
-		System.assertEquals(0, dto.recordsSharedTo.size());
+		Assert.areNotEqual(null, dto);
+		Assert.areEqual(f.Id, dto.fileId);
+		Assert.areNotEqual(null, dto.owner);
+		Assert.areEqual(UserInfo.getUserId(), dto.owner.Id);
+		Assert.areNotEqual(null, dto.entitiesSharedTo);
+		Assert.areEqual(0, dto.entitiesSharedTo.size());
+		Assert.areNotEqual(null, dto.recordsSharedTo);
+		Assert.areEqual(0, dto.recordsSharedTo.size());
 	}
 
 	@IsTest
 	private static void testFetchSharingDetailsPositiveIncludeAll() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
-		Account linkedAccount = new Account(Name = 'Visible Linked Account');
-		insert linkedAccount;
+		Id targetUserId = GoogleCloudTestFactory.otherUserId();
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(linkedRecordId, true, true);
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('RS2').withDescription('D').insertRecord();
 
-		GoogleFile__Share sh = new GoogleFile__Share(
-			ParentId = f.Id,
-			UserOrGroupId = u.Id,
-			AccessLevel = 'Read',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
-		insert sh;
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(f.Id).sharedWith(targetUserId).withAccessLevel('Read').build()
+		});
 
 		GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(linkedAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		GoogleLocalFileSharingService service = new GoogleLocalFileSharingService();
 		GoogleSharingInfoDTO dto = service.fetchSharingDetails(f.Id);
 
-		System.assertNotEquals(null, dto);
-		System.assertEquals(f.Id, dto.fileId);
+		Assert.areNotEqual(null, dto);
+		Assert.areEqual(f.Id, dto.fileId);
 
-		System.assertNotEquals(null, dto.owner);
-		System.assertEquals(UserInfo.getUserId(), dto.owner.Id);
+		Assert.areNotEqual(null, dto.owner);
+		Assert.areEqual(UserInfo.getUserId(), dto.owner.Id);
 
-		System.assertNotEquals(null, dto.entitiesSharedTo);
-		System.assertEquals(1, dto.entitiesSharedTo.size());
-		System.assertEquals(u.Id, dto.entitiesSharedTo[0].UserOrGroupId);
+		Assert.areNotEqual(null, dto.entitiesSharedTo);
+		Assert.areEqual(1, dto.entitiesSharedTo.size());
+		Assert.areEqual(targetUserId, dto.entitiesSharedTo[0].UserOrGroupId);
 
-		System.assertNotEquals(null, dto.recordsSharedTo);
-		System.assertEquals(1, dto.recordsSharedTo.size());
-		System.assertEquals(String.valueOf(linkedAccount.Id), dto.recordsSharedTo[0].LinkedObjectId__c);
+		Assert.areNotEqual(null, dto.recordsSharedTo);
+		Assert.areEqual(1, dto.recordsSharedTo.size());
+		Assert.areEqual(String.valueOf(linkedRecordId), dto.recordsSharedTo[0].LinkedObjectId__c);
 	}
 
 	@IsTest
 	private static void testFetchSharingDetailsFiltersInaccessibleRecordLinks() {
 		GoogleCloudTestFactory.initMocks();
 
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account linkedAccount = new Account(Name = 'Sharing Visible Account', OwnerId = targetUser.Id);
-		insert linkedAccount;
-		Id hiddenAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(linkedRecordId, true, true);
+		Id hiddenRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('RS_Filtered').withDescription('D').insertRecord();
 
-		insert new GoogleFile__Share(
-			ParentId = localFile.Id,
-			UserOrGroupId = targetUser.Id,
-			AccessLevel = 'Edit',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(localFile.Id).sharedWith(targetUserId).withAccessLevel('Edit').build()
+		});
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(linkedAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(hiddenAccountId)
-			.withLinkedType('Account')
+			.withLinkedRecord(hiddenRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
-		System.runAs(targetUser) {
-			Test.startTest();
-			GoogleSharingInfoDTO dto = new GoogleLocalFileSharingService().fetchSharingDetails(localFile.Id);
-			Test.stopTest();
+		Test.startTest();
+		GoogleSharingInfoDTO dto = new GoogleLocalFileSharingService().fetchSharingDetails(localFile.Id);
+		Test.stopTest();
 
-			Assert.areEqual(2, dto.recordsSharedTo.size());
-			Assert.areEqual(String.valueOf(linkedAccount.Id), dto.recordsSharedTo[0].LinkedObjectId__c);
-		}
+		Assert.areEqual(2, dto.recordsSharedTo.size());
+		Assert.areEqual(String.valueOf(linkedRecordId), dto.recordsSharedTo[0].LinkedObjectId__c);
 	}
 
 	@IsTest
 	private static void testFetchSharingDetailsIncludesNoneRecordLinksForEditableUser() {
 		GoogleCloudTestFactory.initMocks();
 
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Id linkedAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('RS_None').withDescription('D').insertRecord();
 
-		insert new GoogleFile__Share(
-			ParentId = localFile.Id,
-			UserOrGroupId = targetUser.Id,
-			AccessLevel = 'Edit',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(localFile.Id).sharedWith(targetUserId).withAccessLevel('Edit').build()
+		});
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(linkedAccountId)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('None')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
-		System.runAs(targetUser) {
-			Test.startTest();
-			GoogleSharingInfoDTO dto = new GoogleLocalFileSharingService().fetchSharingDetails(localFile.Id);
-			Test.stopTest();
+		Test.startTest();
+		GoogleSharingInfoDTO dto = new GoogleLocalFileSharingService().fetchSharingDetails(localFile.Id);
+		Test.stopTest();
 
-			Assert.areEqual(1, dto.recordsSharedTo.size());
-			Assert.areEqual(String.valueOf(linkedAccountId), dto.recordsSharedTo[0].LinkedObjectId__c);
-			Assert.areEqual('None', dto.recordsSharedTo[0].ShareType__c);
-		}
+		Assert.areEqual(1, dto.recordsSharedTo.size());
+		Assert.areEqual(String.valueOf(linkedRecordId), dto.recordsSharedTo[0].LinkedObjectId__c);
+		Assert.areEqual('None', dto.recordsSharedTo[0].ShareType__c);
 	}
 
 	@IsTest
 	private static void testCreateSharingPositiveViewer() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS1').withDescription('D').insertRecord();
 
+		GoogleCapturingUnitOfWork uow = new GoogleCapturingUnitOfWork();
+
 		Test.startTest();
-		Id shareId = new GoogleLocalFileSharingService()
-			.createNewSharing(f.Id, 'User', u.Id, 'viewer');
+		new GoogleLocalFileSharingService(uow).createNewSharing(f.Id, 'User', targetUserId, 'viewer');
 		Test.stopTest();
 
-		System.assertNotEquals(null, shareId);
+		Assert.areEqual(1, uow.registeredNew.size());
+		Assert.areEqual(1, uow.commitCount);
 
-		GoogleFile__Share created = [
-			SELECT Id, ParentId, UserOrGroupId, AccessLevel, RowCause
-			FROM GoogleFile__Share
-			WHERE Id = :shareId
-			LIMIT 1
-		];
-
-		System.assertEquals(f.Id, created.ParentId);
-		System.assertEquals(u.Id, created.UserOrGroupId);
-		System.assertEquals('Read', created.AccessLevel);
-		System.assertEquals(
+		GoogleFile__Share created = (GoogleFile__Share) uow.firstNew();
+		Assert.areEqual(f.Id, created.ParentId);
+		Assert.areEqual(targetUserId, created.UserOrGroupId);
+		Assert.areEqual('Read', created.AccessLevel);
+		Assert.areEqual(
 			String.valueOf(Schema.GoogleFile__Share.RowCause.Manual),
 			String.valueOf(created.RowCause)
 		);
@@ -206,43 +197,37 @@ private class GoogleLocalFileSharingServiceTest {
 	private static void testCreateSharingPositiveCollaborator() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS2').withDescription('D').insertRecord();
 
+		GoogleCapturingUnitOfWork uow = new GoogleCapturingUnitOfWork();
+
 		Test.startTest();
-		Id shareId = new GoogleLocalFileSharingService()
-			.createNewSharing(f.Id, 'User', u.Id, 'Collaborator');
+		new GoogleLocalFileSharingService(uow).createNewSharing(f.Id, 'User', targetUserId, 'Collaborator');
 		Test.stopTest();
 
-		System.assertNotEquals(null, shareId);
-
-		GoogleFile__Share created = [
-			SELECT Id, AccessLevel
-			FROM GoogleFile__Share
-			WHERE Id = :shareId
-			LIMIT 1
-		];
-		System.assertEquals('Edit', created.AccessLevel);
+		Assert.areEqual(1, uow.registeredNew.size());
+		Assert.areEqual('Edit', ((GoogleFile__Share) uow.firstNew()).AccessLevel);
 	}
 
 	@IsTest
 	private static void testCreateSharingNegativeNullFileId() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 
 		try {
 			Id shareId = new GoogleLocalFileSharingService()
-				.createNewSharing(null, 'User', u.Id, 'viewer');
-			System.assertEquals(null, shareId);
+				.createNewSharing(null, 'User', targetUserId, 'viewer');
+			Assert.areEqual(null, shareId);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertNotEquals(null, ex);
+			Assert.areNotEqual(null, ex);
 		}
 
-		System.assertEquals(0, [
+		Assert.areEqual(0, [
 			SELECT count()
 			FROM GoogleFile__Share
-			WHERE UserOrGroupId = :u.Id
+			WHERE UserOrGroupId = :targetUserId
 		]);
 	}
 
@@ -255,9 +240,9 @@ private class GoogleLocalFileSharingServiceTest {
 		try {
 			new GoogleLocalFileSharingService()
 				.createNewSharing(f.Id, 'User', null, 'viewer');
-			System.assert(false);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to share'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to share'));
 		}
 	}
 
@@ -265,15 +250,15 @@ private class GoogleLocalFileSharingServiceTest {
 	private static void testCreateSharingNegativeBlankAccess() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS4').withDescription('D').insertRecord();
 
 		try {
 			new GoogleLocalFileSharingService()
-				.createNewSharing(f.Id, 'User', u.Id, '   ');
-			System.assert(false);
+				.createNewSharing(f.Id, 'User', targetUserId, '   ');
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to share'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to share'));
 		}
 	}
 
@@ -281,15 +266,15 @@ private class GoogleLocalFileSharingServiceTest {
 	private static void testCreateSharingNegativeBadAccess() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('CS5').withDescription('D').insertRecord();
 
 		try {
 			new GoogleLocalFileSharingService()
-				.createNewSharing(f.Id, 'User', u.Id, 'admin');
-			System.assert(false);
+				.createNewSharing(f.Id, 'User', targetUserId, 'admin');
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to share'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to share'));
 		}
 	}
 
@@ -297,42 +282,37 @@ private class GoogleLocalFileSharingServiceTest {
 	private static void testDeleteSharingPositiveUser() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS1').withDescription('D').insertRecord();
 
-		GoogleFile__Share sh = new GoogleFile__Share(
-			ParentId = f.Id,
-			UserOrGroupId = u.Id,
-			AccessLevel = 'Read',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
-		insert sh;
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(f.Id).sharedWith(targetUserId).withAccessLevel('Read').build()
+		});
+
+		GoogleCapturingUnitOfWork uow = new GoogleCapturingUnitOfWork();
 
 		Test.startTest();
-		new GoogleLocalFileSharingService()
-			.deleteExistingSharing(f.Id, u.Id);
+		new GoogleLocalFileSharingService(uow).deleteExistingSharing(f.Id, targetUserId);
 		Test.stopTest();
 
-		System.assertEquals(0, [
-			SELECT count()
-			FROM GoogleFile__Share
-			WHERE ParentId = :f.Id AND UserOrGroupId = :u.Id
-		]);
+		Assert.areEqual(1, uow.registeredDeleted.size());
+		Assert.areEqual(1, uow.commitCount);
+		Assert.areEqual(targetUserId, ((GoogleFile__Share) uow.firstDeleted()).UserOrGroupId);
 	}
 
 	@IsTest
 	private static void testDeleteSharingNegativeUserShareMissing() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS2').withDescription('D').insertRecord();
 
 		try {
 			new GoogleLocalFileSharingService()
-				.deleteExistingSharing(f.Id, u.Id);
-			System.assert(false);
+				.deleteExistingSharing(f.Id, targetUserId);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to remove sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to remove sharing'));
 		}
 	}
 
@@ -341,22 +321,22 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS3').withDescription('D').insertRecord();
-		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id fakeRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(fakeAccountId)
-			.withLinkedType('Account')
+			.withLinkedRecord(fakeRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		Test.startTest();
 		new GoogleLocalFileSharingService()
-			.deleteExistingSharing(f.Id, fakeAccountId);
+			.deleteExistingSharing(f.Id, fakeRecordId);
 		Test.stopTest();
 
-		System.assertEquals(0, [
+		Assert.areEqual(0, [
 			SELECT count()
 			FROM GoogleFileLink__c
 			WHERE Id = :link.Id
@@ -368,14 +348,14 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('DS4').withDescription('D').insertRecord();
-		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id fakeRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		try {
 			new GoogleLocalFileSharingService()
-				.deleteExistingSharing(f.Id, fakeAccountId);
-			System.assert(false);
+				.deleteExistingSharing(f.Id, fakeRecordId);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to remove sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to remove sharing'));
 		}
 	}
 
@@ -383,52 +363,41 @@ private class GoogleLocalFileSharingServiceTest {
 	private static void testModifySharingPositiveUser() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('MS1').withDescription('D').insertRecord();
 
-		GoogleFile__Share sh = new GoogleFile__Share(
-			ParentId = f.Id,
-			UserOrGroupId = u.Id,
-			AccessLevel = 'Read',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
-		insert sh;
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(f.Id).sharedWith(targetUserId).withAccessLevel('Read').build()
+		});
+
+		GoogleCapturingUnitOfWork uow = new GoogleCapturingUnitOfWork();
 
 		Test.startTest();
-		new GoogleLocalFileSharingService()
-			.modifyExistingSharingAccess(f.Id, u.Id, 'Collaborator');
+		new GoogleLocalFileSharingService(uow).modifyExistingSharingAccess(f.Id, targetUserId, 'Collaborator');
 		Test.stopTest();
 
-		GoogleFile__Share updated = [
-			SELECT AccessLevel
-			FROM GoogleFile__Share
-			WHERE Id = :sh.Id
-			LIMIT 1
-		];
-		System.assertEquals('Edit', updated.AccessLevel);
+		Assert.areEqual(1, uow.registeredDirty.size());
+		Assert.areEqual(1, uow.commitCount);
+		Assert.areEqual('Edit', ((GoogleFile__Share) uow.firstDirty()).AccessLevel);
 	}
 
 	@IsTest
 	private static void testModifySharingNegativeMissingAccess() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('MS2').withDescription('D').insertRecord();
 
-		GoogleFile__Share sh = new GoogleFile__Share(
-			ParentId = f.Id,
-			UserOrGroupId = u.Id,
-			AccessLevel = 'Read',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
-		insert sh;
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(f.Id).sharedWith(targetUserId).withAccessLevel('Read').build()
+		});
 
 		try {
 			new GoogleLocalFileSharingService()
-				.modifyExistingSharingAccess(f.Id, u.Id, null);
-			System.assert(false);
+				.modifyExistingSharingAccess(f.Id, targetUserId, null);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -436,15 +405,15 @@ private class GoogleLocalFileSharingServiceTest {
 	private static void testModifySharingNegativeUserShareMissing() {
 		GoogleCloudTestFactory.initMocks();
 
-		User u = GoogleCloudTestFactory.newUser();
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('MS3').withDescription('D').insertRecord();
 
 		try {
 			new GoogleLocalFileSharingService()
-				.modifyExistingSharingAccess(f.Id, u.Id, 'viewer');
-			System.assert(false);
+				.modifyExistingSharingAccess(f.Id, targetUserId, 'viewer');
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -453,20 +422,20 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML1').withDescription('D').insertRecord();
-		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id fakeRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(fakeAccountId)
-			.withLinkedType('Account')
+			.withLinkedRecord(fakeRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		Test.startTest();
 		GoogleLocalFileSharingService service = new GoogleLocalFileSharingService();
-		service.modifyExistingSharingAccess(f.Id, fakeAccountId, 'Collaborator');
-		service.modifyExistingSharingVisibility(f.Id, fakeAccountId, 'InternalUsers');
+		service.modifyExistingSharingAccess(f.Id, fakeRecordId, 'Collaborator');
+		service.modifyExistingSharingVisibility(f.Id, fakeRecordId, 'InternalUsers');
 		Test.stopTest();
 
 		GoogleFileLink__c updated = [
@@ -475,8 +444,8 @@ private class GoogleLocalFileSharingServiceTest {
 			WHERE Id = :link.Id
 			LIMIT 1
 		];
-		System.assertEquals('Collaborator', updated.ShareType__c);
-		System.assertEquals('InternalUsers', updated.Visibility__c);
+		Assert.areEqual('Collaborator', updated.ShareType__c);
+		Assert.areEqual('InternalUsers', updated.Visibility__c);
 	}
 
 	@IsTest
@@ -484,23 +453,23 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML2').withDescription('D').insertRecord();
-		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id fakeRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(fakeAccountId)
-			.withLinkedType('Account')
+			.withLinkedRecord(fakeRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		try {
 			GoogleLocalFileSharingService service = new GoogleLocalFileSharingService();
-			service.modifyExistingSharingAccess(f.Id, fakeAccountId, ' ');
-			service.modifyExistingSharingVisibility(f.Id, fakeAccountId, null);
-			System.assert(false);
+			service.modifyExistingSharingAccess(f.Id, fakeRecordId, ' ');
+			service.modifyExistingSharingVisibility(f.Id, fakeRecordId, null);
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -509,14 +478,14 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML3').withDescription('D').insertRecord();
-		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id fakeRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		try {
 			new GoogleLocalFileSharingService()
-				.modifyExistingSharingAccess(f.Id, fakeAccountId, 'Viewer');
-			System.assert(false);
+				.modifyExistingSharingAccess(f.Id, fakeRecordId, 'Viewer');
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -525,22 +494,22 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML4').withDescription('D').insertRecord();
-		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id fakeRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(fakeAccountId)
-			.withLinkedType('Account')
+			.withLinkedRecord(fakeRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		try {
 			new GoogleLocalFileSharingService()
-				.modifyExistingSharingAccess(f.Id, fakeAccountId, 'NotARealType');
-			System.assert(false);
+				.modifyExistingSharingAccess(f.Id, fakeRecordId, 'NotARealType');
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -549,22 +518,22 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleCloudTestFactory.initMocks();
 
 		GoogleFile__c f = GoogleCloudTestFactory.file().withName('ML5').withDescription('D').insertRecord();
-		Id fakeAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id fakeRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		GoogleCloudTestFactory.link()
 			.forFile(f.Id)
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
-			.withLinkedRecord(fakeAccountId)
-			.withLinkedType('Account')
+			.withLinkedRecord(fakeRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		try {
 			new GoogleLocalFileSharingService()
-				.modifyExistingSharingVisibility(f.Id, fakeAccountId, 'Public');
-			System.assert(false);
+				.modifyExistingSharingVisibility(f.Id, fakeRecordId, 'Public');
+			Assert.isTrue(false);
 		} catch (GoogleLocalFileSharingService.GoogleLocalFileSharingException ex) {
-			System.assertEquals(true, ex.getMessage().contains('Unable to update sharing'));
+			Assert.areEqual(true, ex.getMessage().contains('Unable to update sharing'));
 		}
 	}
 
@@ -572,81 +541,70 @@ private class GoogleLocalFileSharingServiceTest {
 	private static void testRetrieveLinkedRecordsFiltersInaccessibleRecordLinks() {
 		GoogleCloudTestFactory.initMocks();
 
-		User fileOwner = GoogleCloudTestFactory.newUser();
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account linkedAccount = new Account(Name = 'Linked Record Visible', OwnerId = targetUser.Id);
-		insert linkedAccount;
-		Id hiddenAccountId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(linkedRecordId, true, true);
+		Id hiddenRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('Linked Records Filtered')
 			.withDescription('D')
-			.withOwner(fileOwner.Id)
 			.insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(linkedAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(hiddenAccountId)
-			.withLinkedType('Account')
+			.withLinkedRecord(hiddenRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('Viewer')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
-		System.runAs(targetUser) {
-			Test.startTest();
-			List<GoogleFileLink__c> linkedRecords = new GoogleLocalFileSharingService().retrieveLinkedRecords(localFile.Id);
-			Test.stopTest();
+		Test.startTest();
+		List<GoogleFileLink__c> linkedRecords = readableLinksFor(localFile.Id, targetUserId);
+		Test.stopTest();
 
-			Assert.areEqual(1, linkedRecords.size());
-			Assert.areEqual(String.valueOf(linkedAccount.Id), linkedRecords[0].LinkedObjectId__c);
-		}
+		Assert.areEqual(1, linkedRecords.size());
+		Assert.areEqual(String.valueOf(linkedRecordId), linkedRecords[0].LinkedObjectId__c);
 	}
 
 	@IsTest
 	private static void testRetrieveLinkedRecordsIncludesReadableNoneLinks() {
 		GoogleCloudTestFactory.initMocks();
 
-		User fileOwner = GoogleCloudTestFactory.newUser();
-		User targetUser = GoogleCloudTestFactory.newUser();
-		Account linkedAccount = new Account(Name = 'Linked Record None Visible', OwnerId = targetUser.Id);
-		insert linkedAccount;
+		Id targetUserId = GoogleCloudTestFactory.mockInternalUser();
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(linkedRecordId, true, true);
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('Linked Records None Visible')
 			.withDescription('D')
-			.withOwner(fileOwner.Id)
 			.insertRecord();
 
-		insert new GoogleFile__Share(
-			ParentId = localFile.Id,
-			UserOrGroupId = targetUser.Id,
-			AccessLevel = 'Read',
-			RowCause = Schema.GoogleFile__Share.RowCause.Manual
-		);
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>{
+			GoogleCloudTestFactory.share().forFile(localFile.Id).sharedWith(targetUserId).withAccessLevel('Read').build()
+		});
 
 		GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(linkedAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.withShareType('None')
 			.withVisibility('AllUsers')
 			.insertRecord();
 
-		System.runAs(targetUser) {
-			Test.startTest();
-			List<GoogleFileLink__c> linkedRecords = new GoogleLocalFileSharingService().retrieveLinkedRecords(localFile.Id);
-			Test.stopTest();
+		Test.startTest();
+		List<GoogleFileLink__c> linkedRecords = readableLinksFor(localFile.Id, targetUserId);
+		Test.stopTest();
 
-			Assert.areEqual(1, linkedRecords.size());
-			Assert.areEqual(String.valueOf(linkedAccount.Id), linkedRecords[0].LinkedObjectId__c);
-			Assert.areEqual('None', linkedRecords[0].ShareType__c);
-		}
+		Assert.areEqual(1, linkedRecords.size());
+		Assert.areEqual(String.valueOf(linkedRecordId), linkedRecords[0].LinkedObjectId__c);
+		Assert.areEqual('None', linkedRecords[0].ShareType__c);
 	}
 
 	@IsTest
@@ -655,8 +613,7 @@ private class GoogleLocalFileSharingServiceTest {
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 		GoogleFileCloudShortcutJob.skipExecution = true;
 
-		Account relatedAccount = new Account(Name = 'Attach Shortcut Account');
-		insert relatedAccount;
+		Id relatedRecordId = GoogleCloudTestFactory.linkedRecord('Attach Shortcut Record');
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('Attach Shortcut File')
@@ -669,7 +626,7 @@ private class GoogleLocalFileSharingServiceTest {
 			.insertRecord();
 
 		Test.startTest();
-		Id linkId = new GoogleLocalFileSharingService().attachExistingFileToRecord(localFile.Id, relatedAccount.Id, 'Notes & Attachments');
+		Id linkId = new GoogleLocalFileSharingService().attachExistingFileToRecord(localFile.Id, relatedRecordId, 'Notes & Attachments');
 		Test.stopTest();
 
 		Assert.isNotNull(linkId);
@@ -677,7 +634,7 @@ private class GoogleLocalFileSharingServiceTest {
 			SELECT count()
 			FROM GoogleFileLink__c
 			WHERE GoogleFileId__c = :localFile.Id
-			AND LinkedObjectId__c = :String.valueOf(relatedAccount.Id)
+			AND LinkedObjectId__c = :String.valueOf(relatedRecordId)
 		]);
 	}
 }

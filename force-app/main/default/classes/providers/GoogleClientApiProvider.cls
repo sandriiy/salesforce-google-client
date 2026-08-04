@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 public with sharing class GoogleClientApiProvider {
-	private final String DETAULT_ERROR_HANDLER = 'GoogleFileWebErrorHandler';
+	private final String DEFAULT_ERROR_HANDLER = 'GoogleFileWebErrorHandler';
 	private final String DEFAULT_TOKEN_CACHE_NAME = 'accessToken';
 	private final String DEFAULT_AGENT_NAME = 'Apex Client 1/1';
 
@@ -47,7 +47,7 @@ public with sharing class GoogleClientApiProvider {
 	public GoogleDrive retrieveGoogleDriveClient() {
 		GoogleCredential googleDriveCredentials = retrieveGoogleCredential();
 		return new GoogleDrive(googleDriveCredentials, DEFAULT_AGENT_NAME)
-			.withFailureStrategy(DETAULT_ERROR_HANDLER);
+			.withFailureStrategy(DEFAULT_ERROR_HANDLER);
 	}
 
 	public GoogleCredential retrieveGoogleClientCreds() {

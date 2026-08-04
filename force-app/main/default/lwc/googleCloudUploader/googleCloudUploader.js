@@ -1,7 +1,8 @@
 import { LightningElement, api, track, wire } from 'lwc';
-import { saveGoogleFileLocally, uploadInChunks, upload } from 'c/googleCloudUploadUtils';
+import { saveGoogleFileLocally, uploadInChunks, upload, prefetchUploadFolderStructure } from 'c/googleCloudUploadUtils';
 import { BIG_FILE_SIZE } from 'c/googleCloudUploadUtils';
 import { DEFAULT_OOPS_MESSAGE, DEFAULT_FILE_UPLOAD_FAILURE, DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
+import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
 import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension } from 'c/googleCloudUtils';
 import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
 
@@ -17,11 +18,13 @@ export default class GoogleCloudUploader extends LightningElement {
     @api allowMultipleFiles;
 	@api maxFileCount;
 
-	@track isAccessible = true; // false when the user does not have permission
+	@track isAccessible = hasGoogleClientUserAccess === true;
 	@track isNewFileVersionUpload = false;
 	@track isDropzoneActive = false;
 	@track isLoading = true;
     @track files = [];
+
+	apexRetryHandlers = new Map();
 
 	connectedCallback() {
 		this.loadFiles();
@@ -44,6 +47,8 @@ export default class GoogleCloudUploader extends LightningElement {
 				this.isNewFileVersionUpload = false;
 				this.handleFilesRefresh();
 			} else {
+				prefetchUploadFolderStructure(this.recordId);
+
 				allowedFiles.forEach(allowedFile => {
 					if (allowedFile.size > BIG_FILE_SIZE) {
 						this.handleLargeFileUpload(allowedFile);
@@ -113,7 +118,49 @@ export default class GoogleCloudUploader extends LightningElement {
 				}
 			}
 		}).catch(error => {
-			this.removeFileById(newFilePlaceholder.id);
+			this.handleLargeUploadFailure(error, newFilePlaceholder);
+		});
+	}
+
+	handleLargeUploadFailure(error, filePlaceholder) {
+		if (error?.canRetryThroughApex) {
+			this.apexRetryHandlers.set(filePlaceholder.id, error.retryThroughApex);
+
+			const fileIndex = this.files.findIndex(file => file.id === filePlaceholder.id);
+			if (fileIndex !== -1) {
+				this.files[fileIndex] = { ...this.files[fileIndex], canRetryThroughApex: true };
+			}
+
+			return;
+		}
+
+		this.removeFileById(filePlaceholder.id);
+
+		showToast(
+			this,
+			DEFAULT_OOPS_MESSAGE,
+			DEFAULT_FILE_UPLOAD_FAILURE,
+			'error'
+		);
+	}
+
+	handleRetryThroughApex(event) {
+		event.stopPropagation();
+
+		const parentContainer = event.target.closest('article[data-id]');
+		const filePlaceholderId = parentContainer.getAttribute('data-id');
+
+		const retryThroughApex = this.apexRetryHandlers.get(filePlaceholderId);
+		this.apexRetryHandlers.delete(filePlaceholderId);
+		if (!retryThroughApex) return;
+
+		const fileIndex = this.files.findIndex(file => file.id === filePlaceholderId);
+		if (fileIndex !== -1) {
+			this.files[fileIndex] = { ...this.files[fileIndex], canRetryThroughApex: false, progress: '0' };
+		}
+
+		retryThroughApex().catch(() => {
+			this.removeFileById(filePlaceholderId);
 
 			showToast(
 				this,
@@ -122,6 +169,16 @@ export default class GoogleCloudUploader extends LightningElement {
 				'error'
 			);
 		});
+	}
+
+	handleDiscardFailedUpload(event) {
+		event.stopPropagation();
+
+		const parentContainer = event.target.closest('article[data-id]');
+		const filePlaceholderId = parentContainer.getAttribute('data-id');
+
+		this.apexRetryHandlers.delete(filePlaceholderId);
+		this.removeFileById(filePlaceholderId);
 	}
 
     handleFileUpload(selectedFile) {

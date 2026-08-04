@@ -1,3 +1,26 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 public with sharing class GoogleCloudFilesController {
 	@AuraEnabled
 	public static String fetchFileAccess(Id localGoogleFileId) {
@@ -29,10 +52,32 @@ public with sharing class GoogleCloudFilesController {
 		}
 	}
 
+	/**
+	 * Deprecated. Use retrieveFileExplorerFiles() instead.
+	 */
 	@AuraEnabled
 	public static List<GoogleFile__c> retrieveAllGoogleFiles() {
 		GoogleLocalFileService recordService = new GoogleLocalFileService();
 		return recordService.retrieveGoogleFiles(UserInfo.getUserId());
+	}
+
+	@AuraEnabled
+	public static GoogleFileExplorerResultDTO retrieveFileExplorerFiles() {
+		GoogleLocalFileService recordService = new GoogleLocalFileService();
+		return recordService.retrieveFileExplorerFiles(UserInfo.getUserId());
+	}
+
+	@AuraEnabled
+	public static GoogleFileExplorerResultDTO retrieveAllGoogleFilesPage(String sortField, String sortDirection, String searchTerm, String cursor, Integer pageSize, String bucket) {
+		GoogleLocalFileService recordService = new GoogleLocalFileService();
+		return recordService.retrieveGoogleFilesPage(
+			GoogleFileExplorerPageRequestDTO.of(sortField, sortDirection, searchTerm, cursor, pageSize, bucket)
+		);
+	}
+
+	@AuraEnabled(cacheable=true)
+	public static List<GoogleFileColumnDTO> retrieveFileExplorerColumns() {
+		return new GoogleFileExplorerColumnResolver().resolveColumns();
 	}
 
 	@AuraEnabled

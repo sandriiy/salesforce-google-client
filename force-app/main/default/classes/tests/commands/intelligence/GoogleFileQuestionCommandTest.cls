@@ -1,3 +1,26 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 @IsTest
 private class GoogleFileQuestionCommandTest {
 	private class GenAiClientStub implements IGenAiClient {
@@ -16,6 +39,36 @@ private class GoogleFileQuestionCommandTest {
 		public GenAiResponse generate(GenAiRequest request) {
 			this.capturedRequest = request;
 			return this.response;
+		}
+	}
+
+	private class RecordingSafetyGuard implements IGoogleAiPromptSafetyGuard {
+		private GoogleAiPromptContext capturedRequestContext;
+		private GoogleAiPromptContext capturedResponseContext;
+		private GoogleAiResponseSnapshot capturedResponseSnapshot;
+		private String capturedWrappedPrompt;
+		private final GoogleAiPromptSafetyDecision requestDecision;
+		private final GoogleAiResponseSafetyDecision responseDecision;
+
+		private RecordingSafetyGuard(GoogleAiPromptSafetyDecision requestDecision, GoogleAiResponseSafetyDecision responseDecision) {
+			this.requestDecision = requestDecision;
+			this.responseDecision = responseDecision;
+		}
+
+		public String wrapSystemPrompt(GoogleAiPromptContext context) {
+			this.capturedWrappedPrompt = '[wrapped] ' + (context == null || context.rawSystemPrompt == null ? '' : context.rawSystemPrompt);
+			return this.capturedWrappedPrompt;
+		}
+
+		public GoogleAiPromptSafetyDecision inspectRequest(GoogleAiPromptContext context) {
+			this.capturedRequestContext = context;
+			return this.requestDecision;
+		}
+
+		public GoogleAiResponseSafetyDecision inspectResponse(GoogleAiPromptContext context, GoogleAiResponseSnapshot response) {
+			this.capturedResponseContext = context;
+			this.capturedResponseSnapshot = response;
+			return this.responseDecision;
 		}
 	}
 
@@ -149,5 +202,170 @@ private class GoogleFileQuestionCommandTest {
 		Assert.isTrue(result.success);
 		Assert.areEqual('The file covers revenue planning and staffing updates...', result.text);
 		Assert.areEqual('MAX_TOKENS', result.finishReason);
+	}
+
+	@IsTest
+	private static void testAnswerQuestionGuardBlocksRequestNoCalloutMade() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('QCMD4')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('QCMD4.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(2048)
+			.withDocsId('DOCS_QCMD_4')
+			.insertRecord();
+
+		RecordingSafetyGuard stubGuard = new RecordingSafetyGuard(
+			GoogleAiPromptSafetyDecision.block(GoogleAiPromptSafetyDecision.REASON_INJECTION, 'Blocked by stub guard'),
+			GoogleAiResponseSafetyDecision.allow()
+		);
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+		GoogleAiPromptSafetyGuardFactory.cachedGuard = stubGuard;
+
+		GenAiClientStub clientStub = new GenAiClientStub('Should not be called', 'STOP');
+		Integer calloutsBefore;
+		Integer calloutsAfter;
+		GoogleFileAnalysisResultDTO result;
+
+		Test.startTest();
+			calloutsBefore = Limits.getCallouts();
+			result = new GoogleFileQuestionCommand().answerQuestion(
+				version.Id,
+				'What does this file cover?',
+				'Gemini',
+				'gemini-2.0-flash',
+				clientStub
+			);
+			calloutsAfter = Limits.getCallouts();
+		Test.stopTest();
+
+		Assert.isTrue(result.blocked);
+		Assert.areEqual('Blocked by stub guard', result.errorMessage);
+		Assert.areEqual(calloutsBefore, calloutsAfter);
+		Assert.isNull(clientStub.capturedRequest);
+	}
+
+	@IsTest
+	private static void testAnswerQuestionGuardBlocksResponseAfterCallout() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('QCMD5')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('QCMD5.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(2048)
+			.withDocsId('DOCS_QCMD_5')
+			.insertRecord();
+
+		RecordingSafetyGuard stubGuard = new RecordingSafetyGuard(
+			GoogleAiPromptSafetyDecision.allow(),
+			GoogleAiResponseSafetyDecision.block(GoogleAiResponseSafetyDecision.REASON_SECRET_LEAK, 'Response blocked by stub')
+		);
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+		GoogleAiPromptSafetyGuardFactory.cachedGuard = stubGuard;
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileQuestionCommand().answerQuestion(
+				version.Id,
+				'What does this file cover?',
+				'Gemini',
+				'gemini-2.0-flash',
+				new GenAiClientStub('The file contains AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456ab', 'STOP')
+			);
+		Test.stopTest();
+
+		Assert.isTrue(result.blocked);
+		Assert.areNotEqual(true, result.success);
+		Assert.isNull(result.text);
+		Assert.areEqual('Response blocked by stub', result.errorMessage);
+	}
+
+	@IsTest
+	private static void testAnswerQuestionGuardSanitizedTextReplacesResponse() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('QCMD6')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('QCMD6.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(2048)
+			.withDocsId('DOCS_QCMD_6')
+			.insertRecord();
+
+		GoogleAiResponseSafetyDecision sanitizedDecision = GoogleAiResponseSafetyDecision.allow();
+		sanitizedDecision.sanitizedText = 'Sanitized answer from stub';
+		RecordingSafetyGuard stubGuard = new RecordingSafetyGuard(
+			GoogleAiPromptSafetyDecision.allow(),
+			sanitizedDecision
+		);
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+		GoogleAiPromptSafetyGuardFactory.cachedGuard = stubGuard;
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileQuestionCommand().answerQuestion(
+				version.Id,
+				'What does this file cover?',
+				'Gemini',
+				'gemini-2.0-flash',
+				new GenAiClientStub('Original AI text', 'STOP')
+			);
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual('Sanitized answer from stub', result.text);
+	}
+
+	@IsTest
+	private static void testAnswerQuestionWrappedSystemPromptReachesGenAiClient() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('QCMD7')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('QCMD7.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(2048)
+			.withDocsId('DOCS_QCMD_7')
+			.insertRecord();
+
+		RecordingSafetyGuard stubGuard = new RecordingSafetyGuard(
+			GoogleAiPromptSafetyDecision.allow(),
+			GoogleAiResponseSafetyDecision.allow()
+		);
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+		GoogleAiPromptSafetyGuardFactory.cachedGuard = stubGuard;
+
+		GenAiClientStub clientStub = new GenAiClientStub('Benign answer', 'STOP');
+		Test.startTest();
+			new GoogleFileQuestionCommand().answerQuestion(
+				version.Id,
+				'What does this file cover?',
+				'Gemini',
+				'gemini-2.0-flash',
+				clientStub
+			);
+		Test.stopTest();
+
+		Assert.isNotNull(stubGuard.capturedWrappedPrompt);
+		Assert.isTrue(stubGuard.capturedWrappedPrompt.startsWith('[wrapped]'));
+		Assert.isNotNull(clientStub.capturedRequest);
 	}
 }

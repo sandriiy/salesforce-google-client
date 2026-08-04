@@ -39,7 +39,7 @@ private class GoogleFileUpdateCommandTest {
 			.insertRecord();
 
 		Test.startTest();
-		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(file, version)
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
 			.changeFileNameTo('New')
 			.changeFileVersionNameTo('Old')
 			.build();
@@ -65,7 +65,7 @@ private class GoogleFileUpdateCommandTest {
 			.insertRecord();
 
 		Test.startTest();
-		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(file, version)
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
 			.changeFileVersionNameTo('New')
 			.build();
 		Test.stopTest();
@@ -90,7 +90,7 @@ private class GoogleFileUpdateCommandTest {
 			.insertRecord();
 
 		Test.startTest();
-		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(file, version)
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
 			.changeFileDescriptionTo('new desc')
 			.build();
 		Test.stopTest();
@@ -114,7 +114,7 @@ private class GoogleFileUpdateCommandTest {
 			.insertRecord();
 
 		Test.startTest();
-		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(file, version)
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
 			.changeFileNameTo('Same')
 			.changeFileVersionNameTo('Same')
 			.build();
@@ -139,7 +139,7 @@ private class GoogleFileUpdateCommandTest {
 			.insertRecord();
 
 		Test.startTest();
-		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(file, version)
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
 			.changeFileNameTo('')
 			.changeFileVersionNameTo('  ')
 			.build();
@@ -167,7 +167,7 @@ private class GoogleFileUpdateCommandTest {
 		for (Integer i = 0; i < 100; i++) longName += 'A';
 
 		Test.startTest();
-		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(file, version)
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
 			.changeFileNameTo(longName)
 			.build();
 		Test.stopTest();
@@ -192,7 +192,7 @@ private class GoogleFileUpdateCommandTest {
 			.insertRecord();
 
 		Test.startTest();
-		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(file, version)
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
 			.changeFileNameTo('Renamed')
 			.build();
 		Test.stopTest();
@@ -216,7 +216,7 @@ private class GoogleFileUpdateCommandTest {
 			.insertRecord();
 
 		Test.startTest();
-		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(file, version)
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
 			.changeFileNameTo('File.xlsx')
 			.changeFileVersionNameTo('File')
 			.build();

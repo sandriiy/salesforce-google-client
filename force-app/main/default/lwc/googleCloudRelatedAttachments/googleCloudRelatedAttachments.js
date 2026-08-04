@@ -20,6 +20,7 @@ import {
 	extractFileExtension
 } from 'c/googleCloudUtils';
 import { DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
+import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
 import retrieveGoogleFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit';
 
 const UNABLE_TO_UPLOAD_MESSAGE = 'Unable to upload file(s)';
@@ -41,7 +42,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@api fileTypes;
 	@api maximumSizeMb;
 
-	@track isAccessible = true; // false when the user does not have permission
+	@track isAccessible = hasGoogleClientUserAccess === true;
 	@track isNewFileVersionUpload = false;
 	@track subscription;
 	@track tabInfo;
@@ -62,7 +63,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@wire(getObjectInfo, { objectApiName: '$sobjectApiName' })
 	wiredObjectInfo({ data, error }) {
 		if (data) {
-			this.recordIdentifierNames = (data.nameFields || []).map((nameField) => `${this.sobjectApiName}.${nameField}`);
+			this.recordIdentifierNames = this.resolveDisplayNameFields(data).map((nameField) => `${this.sobjectApiName}.${nameField}`);
 			this.recordIdentifierValue = null;
 		} else if (error) {
 			this.recordIdentifierNames = [];
@@ -231,6 +232,20 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 	handlePreviewCloseReset(event) {
 		this.isNewFileVersionUpload = false;
+	}
+
+	resolveDisplayNameFields(objectInfo) {
+		const nameFields = objectInfo.nameFields || [];
+		const fieldsByApiName = objectInfo.fields || {};
+
+		for (const nameField of nameFields) {
+			const fieldInfo = fieldsByApiName[nameField];
+
+			if (fieldInfo?.compound) return [nameField];
+			if (fieldInfo?.compoundFieldName) return [fieldInfo.compoundFieldName];
+		}
+
+		return nameFields;
 	}
 
 	resolveRecordIdentifierValue(recordInfo) {

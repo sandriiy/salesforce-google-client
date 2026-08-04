@@ -22,6 +22,9 @@
  * SOFTWARE.
  */
 public inherited sharing class GoogleFileLinkedRecordSelector {
+    @TestVisible
+    private static final String MOCK_ID = 'GoogleFileLinkedRecordSelector';
+
     public static Map<Id, SObject> selectByIds(Set<Id> recordIds, List<String> fieldApiNames) {
         Map<Id, SObject> recordsById = new Map<Id, SObject>();
         if (recordIds == null || recordIds.isEmpty()) {
@@ -39,19 +42,23 @@ public inherited sharing class GoogleFileLinkedRecordSelector {
             if (!sObjectTypeToIds.containsKey(objectType)) {
                 sObjectTypeToIds.put(objectType, new Set<Id>());
             }
-			
+
             sObjectTypeToIds.get(objectType).add(recordId);
         }
 
         for (Schema.SObjectType objectType : sObjectTypeToIds.keySet()) {
             String objectApiName = objectType.getDescribe().getName();
+            Set<Id> objectRecordIds = sObjectTypeToIds.get(objectType);
 
-			Set<Id> objectRecordIds = sObjectTypeToIds.get(objectType);
-            String soql = 'SELECT ' + String.join(fieldsToSelect, ', ') +
-                ' FROM ' + objectApiName +
-                ' WHERE Id IN :objectRecordIds';
+            List<SObject> records = GSOQL.of(objectApiName)
+                .with(fieldsToSelect)
+                .whereAre(GSOQL.Filter.id().isIn(objectRecordIds))
+                .systemMode()
+                .withoutSharing()
+                .mockId(MOCK_ID)
+                .toList();
 
-            for (SObject record : Database.query(soql)) {
+            for (SObject record : records) {
                 recordsById.put((Id) record.get('Id'), record);
             }
         }

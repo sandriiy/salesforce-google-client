@@ -1,48 +1,59 @@
 # AI & Intelligence
 
-Google Client includes an optional AI layer that helps users understand documents without leaving Salesforce.
+Google Client includes an optional AI layer that helps people understand documents without leaving Salesforce — and without opening them.
 
-When configured, Google Client can generate short document summaries, store them on the Salesforce file version, and let users ask questions about the opened file from the preview window.
-
-The core Google Drive experience does not depend on AI. Upload, preview, download, sharing, public links, folder structure, file reuse, and versioning continue to work when File Intelligence is disabled or not configured.
+It does two things: it writes a short summary of every file, and it answers questions about the file a user is looking at.
 
 ![AI summary and Q&A panel](../../assets/images/client_preview_summary_and_question.png)
 
-## What It Enables
+## What It Adds
 
-With File Intelligence enabled, Google Client can:
+<div class="grid cards" markdown>
 
-- Generate a short business-facing summary for supported documents
-- Store the summary in Salesforce on the file version
-- Show the summary where supported, including hover experiences and the preview sidebar
-- Let users ask questions about the current file from the preview window
-- Return answers based on the document content that Google Client can export for analysis
+- **[Document Summaries](summaries.md)**
 
-## File Q&A
+    A short description of what each file contains, generated in the background and stored in Salesforce, so users can tell files apart from a list.
 
-File Q&A is available from the preview window when:
+- **[File Q&A](file-qa.md)**
 
-- File Intelligence is enabled
-- Gemini Developer API or Agent Platform is configured and validates successfully
-- Q&A is available for the selected file
-- The user has access to the file
+    Ask a question about the open document and get the answer in the preview window, instead of reading the whole file to find one clause.
 
-Users ask questions in Salesforce and receive answers based on the current file content. This is useful for contracts, reports, requirements, proposals, statements of work, and other business documents where users need the answer faster than they need the full document.
+</div>
 
-## Supported Providers
+## How It Works
 
-Google Client supports two AI connection options:
+Google Client analyzes a converted copy of the file rather than the original upload, which is how a Word document, a spreadsheet, and a PDF can all be handled the same way. The original file in Google Drive is never modified.
 
-**Gemini Developer API** uses an API key from Google AI Studio. It is the fastest option for development, sandboxes, and internal evaluation.
+Summaries are generated in the background after an upload, so nobody waits for one. Questions are answered on demand while the preview is open.
 
-**Agent Platform** uses your Google Cloud project and the same service account model already used for Google Drive. It is the recommended fit for UAT and production environments where teams want stronger Google Cloud controls.
+Everything goes to the AI provider **you** configure, in **your** Google account, and nowhere else. Google Client does not run a model of its own and does not route content through any third party.
 
-## Admin Controls
+## What Is Protected
 
-Admins control the AI behavior from the Google Client app. Configuration includes provider selection, model name, enablement, summary prompt, question prompt, and question output token limit.
+Every question is inspected before it leaves Salesforce, and every answer before it is shown. This protects against attempts to talk the model out of its instructions — asking it to ignore its rules, reveal its configuration, or answer about something other than the open file — and against answers that leak a credential or invent personal data.
 
-This keeps the output aligned with your organization’s language and cost expectations without changing the core file management experience.
+The protection is on from the moment File Intelligence is enabled, at a **Standard** strictness that suits most organizations. It can be tightened, loosened, or replaced with your own Apex implementation.
 
-Full setup instructions are on the [Configure AI & Intelligence](../../setup/configure-intelligence.md) page.
+📘 See [AI Prompt Security](safety.md) for the modes and the extension point.
+
+## Choosing a Provider
+
+| | Gemini Developer API | Agent Platform |
+|---|---|---|
+| **Authentication** | An API key from Google AI Studio | The service account already used for Drive |
+| **Google Cloud project** | Not required | Required, with billing active |
+| **Best for** | Development, sandboxes, internal evaluation | UAT and production |
+
+Both provide the same features. Agent Platform is the stronger enterprise fit because it puts AI usage under the same Google Cloud project controls, billing, and audit as the rest of your integration.
+
+## It Is Optional
+
+The core Google Drive experience does not depend on AI. Upload, preview, download, sharing, public links, folder structure, file reuse, and versioning all work exactly the same when File Intelligence is disabled or was never configured — the AI controls are simply not shown.
+
+## Where to Go Next
+
+- [Configure AI & Intelligence](../../setup/configure-intelligence.md) — connect a provider
+- [AI Intelligence settings](../../config/advanced/ai-intelligence.md) — prompts and answer length
+- [Safety & Customization](../../config/advanced/safety-customization.md) — the safety mode setting
 
 <br>

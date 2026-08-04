@@ -24,12 +24,32 @@
             </div>
 
             <div class="slds-page-header__col-actions">
-                <div class="slds-page-header__controls">
+                <div class="slds-page-header__controls gcdc-file-explorer-controls">
+                    <div class="slds-page-header__control gcdc-file-explorer-search">
+                        <lightning-input
+                            type="search"
+                            variant="label-hidden"
+                            placeholder="Search files..."
+                            value={searchTerm}
+                            onchange={handleSearch}
+                            label="Search files">
+                        </lightning-input>
+                    </div>
                     <div class="slds-page-header__control">
                         <lightning-button
                             label="Upload Files"
                             onclick={handleUploadClick}
                         ></lightning-button>
+                    </div>
+                    <div class="slds-page-header__control">
+                        <lightning-button-icon
+                            icon-name="utility:refresh"
+                            variant="border-filled"
+                            alternative-text="Refresh"
+                            title="Refresh"
+                            onclick={handleRefresh}
+                            disabled={isLoading}>
+                        </lightning-button-icon>
                     </div>
                 </div>
             </div>
@@ -41,16 +61,24 @@
     <div class="gcdc-file-explorer-container slds-p-around_none">
         <div class="gcdc-file-explorer-layout">
             <aside class="gcdc-file-explorer-left-nav slds-border_right" style="margin-top: -1rem;">
-                <lightning-vertical-navigation selected-item={selectedNavKey} onselect={handleNavSelect}>
+                <lightning-vertical-navigation selected-item={navSelectedItem} onselect={handleNavSelect}>
                     <lightning-vertical-navigation-section>
-                        <lightning-vertical-navigation-item
-                            label="Owned by Me"
-                            name="owned">
-                        </lightning-vertical-navigation-item>
-                        <lightning-vertical-navigation-item
-                            label="Shared with Me"
-                            name="shared">
-                        </lightning-vertical-navigation-item>
+                        <template lwc:if={isPrivileged}>
+                            <lightning-vertical-navigation-item
+                                label="All Files"
+                                name="all">
+                            </lightning-vertical-navigation-item>
+                        </template>
+                        <template lwc:else>
+                            <lightning-vertical-navigation-item
+                                label="Owned by Me"
+                                name="owned">
+                            </lightning-vertical-navigation-item>
+                            <lightning-vertical-navigation-item
+                                label="Shared with Me"
+                                name="shared">
+                            </lightning-vertical-navigation-item>
+                        </template>
                     </lightning-vertical-navigation-section>
                 </lightning-vertical-navigation>
             </aside>
@@ -71,10 +99,21 @@
                             hide-checkbox-column
                             sorted-by={sortedBy}
                             sorted-direction={sortedDirection}
+                            enable-infinite-loading={enableInfiniteLoading}
+                            load-more-offset="200"
+                            is-loading={isLoadingMore}
+                            onloadmore={handleLoadMore}
                             onsort={handleSort}
                             ontitleclick={handleTitleClick}
+                            onuserclick={handleUserClick}
                             class="gcdc-file-explorer-table"
                         ></c-google-cloud-file-explorer-data-table>
+
+                        <template lwc:if={hasNoSearchResults}>
+                            <p class="slds-text-body_regular slds-text-align_center slds-p-around_medium gcdc-file-explorer-empty">
+                                No files match your search.
+                            </p>
+                        </template>
                     </div>
                 </template>
             </main>

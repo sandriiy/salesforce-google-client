@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsDirectBrowserUploadEnabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Controls whether large files are sent from the browser straight to Google Drive instead of routing every chunk through Apex. Leave this off to keep the standard upload behavior.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Sends large files from the browser straight to Google Drive, which is noticeably faster. Leave this off to keep the standard upload behavior.</inlineHelpText>
+    <label>Is Direct Browser Upload Enabled?</label>
+    <type>Checkbox</type>
+</CustomField>

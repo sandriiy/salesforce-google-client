@@ -25,6 +25,29 @@ If you run into something unexpected, check the list below. If your issue isn't 
 
     This allocates minimal cache and resolves the issue.
 
+??? info "Duplicated Google Drive folders are created for the same record"
+
+    **When does it happen?**
+
+    With a **Folder Structure** configured, a record can end up with more than one Drive folder (most visibly when several users upload to the same record at the same moment).
+
+    **Root Cause**
+
+    Google Drive's search index is *eventually consistent*: a folder that was created moments ago is not always returned by a search yet, especially on a Drive holding a large number of items. When each file resolved its own folder, the search for the next file found nothing and created a second folder.
+
+    Google Client now resolves the folder **once per upload**, starting as soon as the files are selected so it resolves while the content is still transferring, and remembers the result in the **Platform Cache** partition named **GoogleCloudClient**. Every file in that upload reuses the same folder, so Google Client never has to ask Drive for a folder it just created.
+
+    **Fix — allocate Org Cache**
+
+    1. Go to **Setup**
+    2. Search for **Platform Cache**
+    3. Click into the partition named **GoogleCloudClient**
+    4. Click **Edit**
+    5. Under **Provider Free**, set: **Session Cache** = `1` and **Org Cache** = `1`
+    6. Save
+
+    Uploads and folder placement keep working correctly whether or not cache is allocated — allocating **Org Cache** is what guarantees a single folder per record.
+
 ??? info ""Google Client Config" record shows a deprecation warning after upgrading to v1.3.0"
 
     **When does it happen?**

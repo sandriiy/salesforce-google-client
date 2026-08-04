@@ -1,11 +1,24 @@
 import { LightningElement, api, wire } from 'lwc';
 import { gql, graphql } from 'lightning/uiGraphQLApi';
 import { isEmpty, showToast, normalizeError, extractGraphValue } from 'c/googleCloudUtils';
+import {
+    FILE_EXPLORER_COLUMN_OPTIONS,
+    DEFAULT_FILE_EXPLORER_COLUMNS,
+    MAX_FILE_EXPLORER_COLUMNS
+} from 'c/googleCloudFileExplorerColumns';
 
 import checkConfig from '@salesforce/apex/GoogleCloudConfigController.validateLatestMetadataDeploy';
 import validateDriveConfig from '@salesforce/apex/GoogleCloudConfigController.validateDriveMetadataConfig';
 import validateIntelligenceConfig from '@salesforce/apex/GoogleCloudConfigController.validateIntelligenceMetadataConfig';
 import saveConfig from '@salesforce/apex/GoogleCloudConfigController.saveMetadataConfig';
+import initializeDirectUpload from '@salesforce/apex/GoogleCloudDirectUploadController.initializeDirectUpload';
+import reportDirectUploadOutcome from '@salesforce/apex/GoogleCloudDirectUploadController.reportDirectUploadOutcome';
+
+const PROBE_FILE_NAME = 'google-client-connection-test.tmp';
+const PROBE_TOTAL_BYTES = 1048576;
+const PROBE_CHUNK_BYTES = 262144;
+const PROBE_TIMEOUT_MS = 30000;
+const RESUMABLE_INCOMPLETE_STATUS = 308;
 
 const CONFIG_DEV_NAME = 'GoogleClient';
 const CONFIG_SECTIONS = [
@@ -42,9 +55,11 @@ const QUERY = gql`
                             CustomGoogleCertificate__c { value }
 
                             DefaultGoogleUploadFolderId__c { value }
+                            AdditionalGoogleUploadFolderIds__c { value }
                             DefaultBigFileSize__c { value }
                             OrganizationalDomain__c { value }
                             IsFilePreviewDisabled__c { value }
+                            IsDirectBrowserUploadEnabled__c { value }
                             MaxDeleteChainSize__c { value }
                             CustomGoogleUploadFolderStructure__c { value }
 
@@ -56,6 +71,10 @@ const QUERY = gql`
                             CustomSummaryPrompt__c { value }
                             CustomQuestionPrompt__c { value }
                             QuestionMaxOutputTokens__c { value }
+                            AiSafetyMode__c { value }
+                            CustomAiPromptSafetyGuardClass__c { value }
+
+                            FileExplorerColumns__c { value }
                         }
                     }
                 }
@@ -69,6 +88,23 @@ const DEPLOY_STATUS_DELAY_MS = 1000;
 const DEFAULT_BIG_FILE_SIZE = 2097152;
 const DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 const DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
+const DEFAULT_AI_SAFETY_MODE = 'Standard';
+const AI_SAFETY_MODE_OPTIONS = [
+    { label: 'Strict', value: 'Strict' },
+    { label: 'Standard', value: 'Standard' },
+    { label: 'Relaxed', value: 'Relaxed' },
+    { label: 'Off', value: 'Off' }
+];
+const ADVANCED_TAB_FILE_MANAGEMENT = 'fileManagement';
+const ADVANCED_TAB_USER_INTERFACE = 'userInterface';
+const ADVANCED_TAB_AI_INTELLIGENCE = 'aiIntelligence';
+const ADVANCED_TAB_SAFETY_CUSTOMIZATION = 'safetyCustomization';
+const ADVANCED_TAB_KEYS = [ADVANCED_TAB_FILE_MANAGEMENT, ADVANCED_TAB_USER_INTERFACE, ADVANCED_TAB_AI_INTELLIGENCE, ADVANCED_TAB_SAFETY_CUSTOMIZATION];
+const FILE_EXPLORER_REQUIRED_COLUMNS = ['title'];
+const FILE_EXPLORER_COLUMNS_OVERFLOW_MESSAGE = `You can display up to ${MAX_FILE_EXPLORER_COLUMNS} columns.`;
+const SAFETY_MODE_GUIDE_URL = 'https://sandriiy.github.io/salesforce-google-client/features/artificial-intelligence/safety/';
+const UI_FILE_EXPLORER_URL = 'https://sandriiy.github.io/salesforce-google-client/features/file-explorer/';
+const CUSTOM_GUARD_GUIDE_URL = 'https://sandriiy.github.io/salesforce-google-client/features/artificial-intelligence/safety/#ownguard';
 const DEFAULT_SUMMARY_PROMPT = 'Create a very short summary of the provided document content that starts with "This file describes". Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief.';
 const DEFAULT_QUESTION_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
 
@@ -84,10 +120,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         customGoogleServiceAccount: '',
         customGoogleCertificate: '',
         defaultGoogleUploadFolderId: '',
+        additionalGoogleUploadFolderIds: '',
         customGoogleUploadFolderStructure: '',
         organizationalDomain: '',
         defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
         isFilePreviewDisabled: false,
+        isDirectBrowserUploadEnabled: false,
         maxDeleteChainSize: DEFAULT_MAX_DELETE_CHAIN_SIZE,
         customGeminiApiKey: '',
         customModelName: '',
@@ -96,14 +134,23 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         isFileIntelligenceEnabled: false,
         customSummaryPrompt: DEFAULT_SUMMARY_PROMPT,
         customQuestionPrompt: DEFAULT_QUESTION_PROMPT,
-        questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS
+        questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
+        aiSafetyMode: DEFAULT_AI_SAFETY_MODE,
+        customAiPromptSafetyGuardClass: '',
+        fileExplorerColumns: ''
     };
 
     errorMessage = '';
+    customColumnDraft = '';
     configRegistry = CONFIG_SECTIONS;
     selectedConfigKey = CONFIG_SECTIONS?.[0]?.key || 'drive';
     isConfigMenuOpen = false;
     viewMode = 'main';
+    activeAdvancedTab = ADVANCED_TAB_FILE_MANAGEMENT;
+    validationIssues = new Map();
+    isDirectUploadProbeRunning = false;
+    directUploadProbeSucceeded = false;
+    directUploadProbeMessage = '';
 
     connectedCallback() {
         this.initActiveConfigComponent();
@@ -187,6 +234,13 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.viewMode = this.isAdvancedView ? 'main' : 'advanced';
     }
 
+    handleAdvancedStepClick(event) {
+        const nextTab = event?.currentTarget?.dataset?.step;
+        if (nextTab && ADVANCED_TAB_KEYS.includes(nextTab)) {
+            this.activeAdvancedTab = nextTab;
+        }
+    }
+
     handleFieldChange(event) {
         const { field, value } = event.detail || {};
         if (!field) {
@@ -201,6 +255,23 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     handleStepError() {
         showToast(this, 'Incomplete setup', 'Complete Authorization before moving to Folder structure', 'warning');
+    }
+
+    handleValidityChange(event) {
+        const detail = event?.detail || {};
+        const { key, isValid, message } = detail;
+        if (!key) return;
+
+        if (isValid) {
+            this.validationIssues.delete(key);
+        } else {
+            this.validationIssues.set(key, message || 'Invalid input');
+        }
+    }
+
+    firstTrackedValidationMessage() {
+        if (!this.validationIssues || this.validationIssues.size === 0) return null;
+        return this.validationIssues.values().next().value;
     }
 
     handleChangeNumber(event) {
@@ -231,6 +302,66 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         }
 
         this.draft = nextDraft;
+    }
+
+    async handleDirectUploadProbe() {
+        this.isDirectUploadProbeRunning = true;
+        this.directUploadProbeSucceeded = false;
+        this.directUploadProbeMessage = 'Testing…';
+
+        let session;
+        try {
+            session = await initializeDirectUpload({
+                fileName: PROBE_FILE_NAME,
+                mimeType: 'application/octet-stream',
+                totalBytes: PROBE_TOTAL_BYTES
+            });
+        } catch (error) {
+            this.directUploadProbeMessage = `Google rejected the upload session. Check the service account and upload folder configuration. (${normalizeError(error)})`;
+            this.isDirectUploadProbeRunning = false;
+            return;
+        }
+
+        const probeStatus = await this.sendDirectUploadProbeChunk(session.sessionUri);
+
+        if (probeStatus === RESUMABLE_INCOMPLETE_STATUS) {
+            this.directUploadProbeSucceeded = true;
+            this.directUploadProbeMessage = 'Direct browser upload is ready!';
+        } else if (probeStatus === 0) {
+            this.directUploadProbeMessage = 'The browser could not reach Google. Check that the CSP Trusted Site for https://www.googleapis.com is active!';
+        } else {
+            this.directUploadProbeMessage = `Google returned an unexpected response (${probeStatus}). Check the service account and upload folder configuration!`;
+        }
+
+        this.discardDirectUploadProbe(session.sessionUri);
+        this.isDirectUploadProbeRunning = false;
+    }
+
+    sendDirectUploadProbeChunk(sessionUri) {
+        return new Promise((resolve) => {
+            const request = new XMLHttpRequest();
+            request.open('PUT', sessionUri, true);
+            request.timeout = PROBE_TIMEOUT_MS;
+            request.setRequestHeader('Content-Range', `bytes 0-${PROBE_CHUNK_BYTES - 1}/${PROBE_TOTAL_BYTES}`);
+
+            request.onload = () => resolve(request.status);
+            request.onerror = () => resolve(request.status);
+            request.ontimeout = () => resolve(0);
+
+            request.send(new Blob([new Uint8Array(PROBE_CHUNK_BYTES)]));
+        });
+    }
+
+    discardDirectUploadProbe(sessionUri) {
+        const request = new XMLHttpRequest();
+        request.open('DELETE', sessionUri, true);
+        request.onerror = () => {};
+        request.send();
+
+        reportDirectUploadOutcome({
+            outcome: 'cancelled',
+            diagnostics: 'connection test'
+        }).catch(() => {});
     }
 
     async handleSave() {
@@ -277,7 +408,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
                 hasPersistedRecord: true
             };
 
-            if (alsoValidate) {
+            if (alsoValidate && !this.isAdvancedView) {
                 const didValidate = await this.runValidation({ skipInitialSave: true, showSkippedMessage: false });
                 if (!didValidate) {
                     showToast(this, 'Configuration Saved', 'Configuration was saved successfully', 'success');
@@ -293,6 +424,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     }
 
     validateInputsBeforeSave() {
+        const trackedMessage = this.firstTrackedValidationMessage();
+        if (trackedMessage) {
+            showToast(this, 'Invalid Fields', trackedMessage, 'error');
+            return false;
+        }
+
         const configComponent = this.refs.configComponent;
 
         if (!this.isAdvancedView && configComponent && typeof configComponent.reportValidity === 'function') {
@@ -303,7 +440,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             }
         }
 
-        if (this.isAdvancedView && this.hasInputErrors('.advanced-container lightning-input, .advanced-container lightning-textarea')) {
+        if (this.isAdvancedView && this.hasInputErrors('.advanced-container lightning-input, .advanced-container lightning-textarea, .advanced-container lightning-dual-listbox')) {
+            this.focusFailingAdvancedTab();
             return false;
         }
 
@@ -417,10 +555,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGoogleServiceAccount: null,
             customGoogleCertificate: null,
             defaultGoogleUploadFolderId: null,
+            additionalGoogleUploadFolderIds: '',
             customGoogleUploadFolderStructure: '',
             organizationalDomain: '',
             defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
             isFilePreviewDisabled: false,
+            isDirectBrowserUploadEnabled: false,
             maxDeleteChainSize: DEFAULT_MAX_DELETE_CHAIN_SIZE,
             customGeminiApiKey: '',
             customModelName: '',
@@ -429,7 +569,10 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             isFileIntelligenceEnabled: false,
             customSummaryPrompt: '',
             customQuestionPrompt: '',
-            questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS
+            questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
+            aiSafetyMode: '',
+            customAiPromptSafetyGuardClass: '',
+            fileExplorerColumns: ''
         };
     }
 
@@ -442,10 +585,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGoogleServiceAccount: extractGraphValue(recordNode?.CustomGoogleServiceAccount__c),
             customGoogleCertificate: extractGraphValue(recordNode?.CustomGoogleCertificate__c),
             defaultGoogleUploadFolderId: extractGraphValue(recordNode?.DefaultGoogleUploadFolderId__c),
+            additionalGoogleUploadFolderIds: extractGraphValue(recordNode?.AdditionalGoogleUploadFolderIds__c) || '',
             customGoogleUploadFolderStructure: extractGraphValue(recordNode?.CustomGoogleUploadFolderStructure__c) || '',
             organizationalDomain: extractGraphValue(recordNode?.OrganizationalDomain__c) || '',
             defaultBigFileSize: this.toNumberOrNull(extractGraphValue(recordNode?.DefaultBigFileSize__c)),
             isFilePreviewDisabled: !!extractGraphValue(recordNode?.IsFilePreviewDisabled__c),
+            isDirectBrowserUploadEnabled: !!extractGraphValue(recordNode?.IsDirectBrowserUploadEnabled__c),
             maxDeleteChainSize: this.toNumberOrNull(extractGraphValue(recordNode?.MaxDeleteChainSize__c)),
             customGeminiApiKey: extractGraphValue(recordNode?.CustomGeminiApiKey__c) || '',
             customModelName: extractGraphValue(recordNode?.CustomModelName__c) || '',
@@ -454,7 +599,10 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             isFileIntelligenceEnabled: !!extractGraphValue(recordNode?.IsFileIntelligenceEnabled__c),
             customSummaryPrompt: extractGraphValue(recordNode?.CustomSummaryPrompt__c) || '',
             customQuestionPrompt: extractGraphValue(recordNode?.CustomQuestionPrompt__c) || '',
-            questionMaxOutputTokens: this.toNumberOrNull(extractGraphValue(recordNode?.QuestionMaxOutputTokens__c))
+            questionMaxOutputTokens: this.toNumberOrNull(extractGraphValue(recordNode?.QuestionMaxOutputTokens__c)),
+            aiSafetyMode: extractGraphValue(recordNode?.AiSafetyMode__c) || '',
+            customAiPromptSafetyGuardClass: extractGraphValue(recordNode?.CustomAiPromptSafetyGuardClass__c) || '',
+            fileExplorerColumns: extractGraphValue(recordNode?.FileExplorerColumns__c) || ''
         };
     }
 
@@ -466,10 +614,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGoogleServiceAccount: serverSnapshot.customGoogleServiceAccount || '',
             customGoogleCertificate: serverSnapshot.customGoogleCertificate || '',
             defaultGoogleUploadFolderId: serverSnapshot.defaultGoogleUploadFolderId || '',
+            additionalGoogleUploadFolderIds: serverSnapshot.additionalGoogleUploadFolderIds || '',
             customGoogleUploadFolderStructure: serverSnapshot.customGoogleUploadFolderStructure || '',
             organizationalDomain: serverSnapshot.organizationalDomain || '',
             defaultBigFileSize: serverSnapshot.defaultBigFileSize,
             isFilePreviewDisabled: !!serverSnapshot.isFilePreviewDisabled,
+            isDirectBrowserUploadEnabled: !!serverSnapshot.isDirectBrowserUploadEnabled,
             maxDeleteChainSize: serverSnapshot.maxDeleteChainSize,
             customGeminiApiKey: serverSnapshot.customGeminiApiKey || '',
             customModelName: serverSnapshot.customModelName || '',
@@ -478,7 +628,10 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             isFileIntelligenceEnabled: !!serverSnapshot.isFileIntelligenceEnabled,
             customSummaryPrompt: serverSnapshot.customSummaryPrompt || '',
             customQuestionPrompt: serverSnapshot.customQuestionPrompt || '',
-            questionMaxOutputTokens: serverSnapshot.questionMaxOutputTokens
+            questionMaxOutputTokens: serverSnapshot.questionMaxOutputTokens,
+            aiSafetyMode: serverSnapshot.aiSafetyMode || '',
+            customAiPromptSafetyGuardClass: serverSnapshot.customAiPromptSafetyGuardClass || '',
+            fileExplorerColumns: serverSnapshot.fileExplorerColumns || ''
         });
     }
 
@@ -501,9 +654,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'CustomGoogleServiceAccount__c', serverState.customGoogleServiceAccount, draftState.customGoogleServiceAccount);
         this.putIfChanged(changed, 'CustomGoogleCertificate__c', serverState.customGoogleCertificate, draftState.customGoogleCertificate);
         this.putIfChanged(changed, 'DefaultGoogleUploadFolderId__c', serverState.defaultGoogleUploadFolderId, draftState.defaultGoogleUploadFolderId);
+        this.putIfChanged(changed, 'AdditionalGoogleUploadFolderIds__c', serverState.additionalGoogleUploadFolderIds, draftState.additionalGoogleUploadFolderIds);
         this.putIfChanged(changed, 'OrganizationalDomain__c', serverState.organizationalDomain, draftState.organizationalDomain);
         this.putIfChanged(changed, 'DefaultBigFileSize__c', serverState.defaultBigFileSize, draftState.defaultBigFileSize);
         this.putIfChanged(changed, 'IsFilePreviewDisabled__c', !!serverState.isFilePreviewDisabled, !!draftState.isFilePreviewDisabled);
+        this.putIfChanged(changed, 'IsDirectBrowserUploadEnabled__c', !!serverState.isDirectBrowserUploadEnabled, !!draftState.isDirectBrowserUploadEnabled);
         this.putIfChanged(changed, 'MaxDeleteChainSize__c', serverState.maxDeleteChainSize, draftState.maxDeleteChainSize);
         this.putIfChanged(changed, 'CustomGoogleUploadFolderStructure__c', serverState.customGoogleUploadFolderStructure, draftState.customGoogleUploadFolderStructure);
         this.putIfChanged(changed, 'CustomGeminiApiKey__c', serverState.customGeminiApiKey, draftState.customGeminiApiKey);
@@ -514,6 +669,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'CustomSummaryPrompt__c', serverState.customSummaryPrompt, draftState.customSummaryPrompt);
         this.putIfChanged(changed, 'CustomQuestionPrompt__c', serverState.customQuestionPrompt, draftState.customQuestionPrompt);
         this.putIfChanged(changed, 'QuestionMaxOutputTokens__c', serverState.questionMaxOutputTokens, draftState.questionMaxOutputTokens);
+        this.putIfChanged(changed, 'AiSafetyMode__c', serverState.aiSafetyMode, draftState.aiSafetyMode);
+        this.putIfChanged(changed, 'CustomAiPromptSafetyGuardClass__c', serverState.customAiPromptSafetyGuardClass, draftState.customAiPromptSafetyGuardClass);
+        this.putIfChanged(changed, 'FileExplorerColumns__c', serverState.fileExplorerColumns, draftState.fileExplorerColumns);
 
         return changed;
     }
@@ -524,10 +682,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customGoogleServiceAccount: draftState.customGoogleServiceAccount || '',
             customGoogleCertificate: draftState.customGoogleCertificate || '',
             defaultGoogleUploadFolderId: draftState.defaultGoogleUploadFolderId || '',
+            additionalGoogleUploadFolderIds: draftState.additionalGoogleUploadFolderIds || '',
             customGoogleUploadFolderStructure: draftState.customGoogleUploadFolderStructure || '',
             organizationalDomain: draftState.organizationalDomain || '',
             defaultBigFileSize: draftState.defaultBigFileSize,
             isFilePreviewDisabled: !!draftState.isFilePreviewDisabled,
+            isDirectBrowserUploadEnabled: !!draftState.isDirectBrowserUploadEnabled,
             maxDeleteChainSize: draftState.maxDeleteChainSize,
             customGeminiApiKey: draftState.customGeminiApiKey || '',
             customModelName: draftState.customModelName || '',
@@ -536,7 +696,10 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             isFileIntelligenceEnabled: !!draftState.isFileIntelligenceEnabled,
             customSummaryPrompt: draftState.customSummaryPrompt || '',
             customQuestionPrompt: draftState.customQuestionPrompt || '',
-            questionMaxOutputTokens: draftState.questionMaxOutputTokens
+            questionMaxOutputTokens: draftState.questionMaxOutputTokens,
+            aiSafetyMode: draftState.aiSafetyMode || '',
+            customAiPromptSafetyGuardClass: draftState.customAiPromptSafetyGuardClass || '',
+            fileExplorerColumns: draftState.fileExplorerColumns || ''
         };
     }
 
@@ -613,6 +776,17 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return false;
     }
 
+    focusFailingAdvancedTab() {
+        for (const tabKey of ADVANCED_TAB_KEYS) {
+            const inputs = Array.from(this.template.querySelectorAll(`[data-tab="${tabKey}"] lightning-input, [data-tab="${tabKey}"] lightning-textarea, [data-tab="${tabKey}"] lightning-dual-listbox`));
+            const hasInvalid = inputs.some((input) => typeof input.checkValidity === 'function' && !input.checkValidity());
+            if (hasInvalid) {
+                this.activeAdvancedTab = tabKey;
+                return;
+            }
+        }
+    }
+
     get hasError() {
         return !isEmpty(this.errorMessage);
     }
@@ -679,6 +853,150 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return !this.isIntelligenceEnabled;
     }
 
+    get aiSafetyModeOptions() {
+        return AI_SAFETY_MODE_OPTIONS;
+    }
+
+    get effectiveAiSafetyMode() {
+        return this.draft?.aiSafetyMode || DEFAULT_AI_SAFETY_MODE;
+    }
+
+	get uiFileExplorerUrl() {
+        return UI_FILE_EXPLORER_URL;
+    }
+
+    get safetyModeGuideUrl() {
+        return SAFETY_MODE_GUIDE_URL;
+    }
+
+    get customGuardGuideUrl() {
+        return CUSTOM_GUARD_GUIDE_URL;
+    }
+
+    advancedStepButtonClass(tabKey) {
+        return this.activeAdvancedTab === tabKey ? 'advanced-step-button is-active' : 'advanced-step-button';
+    }
+
+    advancedTabPanelClass(tabKey) {
+        return this.activeAdvancedTab === tabKey ? 'advanced-tab-panel' : 'advanced-tab-panel is-hidden';
+    }
+
+    get fileManagementStepClass() {
+        return this.advancedStepButtonClass(ADVANCED_TAB_FILE_MANAGEMENT);
+    }
+
+    get aiIntelligenceStepClass() {
+        return this.advancedStepButtonClass(ADVANCED_TAB_AI_INTELLIGENCE);
+    }
+
+    get safetyCustomizationStepClass() {
+        return this.advancedStepButtonClass(ADVANCED_TAB_SAFETY_CUSTOMIZATION);
+    }
+
+    get fileManagementPanelClass() {
+        return this.advancedTabPanelClass(ADVANCED_TAB_FILE_MANAGEMENT);
+    }
+
+    get isDirectUploadSaved() {
+        return !!this.server?.isDirectBrowserUploadEnabled;
+    }
+
+    get directUploadProbeClass() {
+        let toneClass = 'slds-text-color_weak';
+        if (!this.isDirectUploadProbeRunning) {
+            toneClass = this.directUploadProbeSucceeded ? 'slds-text-color_success' : 'slds-text-color_error';
+        }
+
+        return `slds-text-body_small ${toneClass}`;
+    }
+
+    get aiIntelligencePanelClass() {
+        return this.advancedTabPanelClass(ADVANCED_TAB_AI_INTELLIGENCE);
+    }
+
+    get safetyCustomizationPanelClass() {
+        return this.advancedTabPanelClass(ADVANCED_TAB_SAFETY_CUSTOMIZATION);
+    }
+
+    get userInterfaceStepClass() {
+        return this.advancedStepButtonClass(ADVANCED_TAB_USER_INTERFACE);
+    }
+
+    get userInterfacePanelClass() {
+        return this.advancedTabPanelClass(ADVANCED_TAB_USER_INTERFACE);
+    }
+
+    get maxFileExplorerColumns() {
+        return MAX_FILE_EXPLORER_COLUMNS;
+    }
+
+    get requiredFileExplorerColumns() {
+        return FILE_EXPLORER_REQUIRED_COLUMNS;
+    }
+
+    get fileExplorerColumnsOverflowMessage() {
+        return FILE_EXPLORER_COLUMNS_OVERFLOW_MESSAGE;
+    }
+
+    get selectedFileExplorerColumns() {
+        return this.splitColumns(this.draft?.fileExplorerColumns);
+    }
+
+    get fileExplorerColumnOptions() {
+        const catalogValues = new Set(FILE_EXPLORER_COLUMN_OPTIONS.map((option) => option.value));
+        const customOptions = this.selectedFileExplorerColumns
+            .filter((columnKey) => !catalogValues.has(columnKey))
+            .map((columnKey) => ({ label: columnKey, value: columnKey }));
+
+        return [...FILE_EXPLORER_COLUMN_OPTIONS, ...customOptions];
+    }
+
+    handleColumnsChange(event) {
+        const selectedValues = event.detail?.value || [];
+        this.draft = {
+            ...this.draft,
+            fileExplorerColumns: selectedValues.join(';')
+        };
+    }
+
+    handleCustomColumnDraftChange(event) {
+        this.customColumnDraft = event.target.value || '';
+    }
+
+    handleAddCustomColumn() {
+        const token = this.customColumnDraft.trim();
+        if (isEmpty(token)) {
+            return;
+        }
+
+        const currentColumns = this.selectedFileExplorerColumns;
+        const alreadyPresent = currentColumns.some((columnKey) => columnKey.toLowerCase() === token.toLowerCase());
+        if (alreadyPresent) {
+            showToast(this, 'Column already added', `“${token}” is already in the list`, 'info');
+            this.customColumnDraft = '';
+            return;
+        }
+
+        if (currentColumns.length >= MAX_FILE_EXPLORER_COLUMNS) {
+            showToast(this, 'Too many columns', FILE_EXPLORER_COLUMNS_OVERFLOW_MESSAGE, 'error');
+            return;
+        }
+
+        this.draft = {
+            ...this.draft,
+            fileExplorerColumns: [...currentColumns, token].join(';')
+        };
+        this.customColumnDraft = '';
+    }
+
+    splitColumns(rawColumns) {
+        const source = isEmpty(rawColumns) ? DEFAULT_FILE_EXPLORER_COLUMNS : rawColumns;
+        return source
+            .split(';')
+            .map((columnKey) => columnKey.trim())
+            .filter((columnKey) => columnKey.length > 0);
+    }
+
     get isDirty() {
         if (!this.server) {
             return false;
@@ -692,10 +1010,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.customGoogleServiceAccount || '') !== (draftState.customGoogleServiceAccount || '') ||
             (serverState.customGoogleCertificate || '') !== (draftState.customGoogleCertificate || '') ||
             (serverState.defaultGoogleUploadFolderId || '') !== (draftState.defaultGoogleUploadFolderId || '') ||
+            (serverState.additionalGoogleUploadFolderIds || '') !== (draftState.additionalGoogleUploadFolderIds || '') ||
             (serverState.customGoogleUploadFolderStructure || '') !== (draftState.customGoogleUploadFolderStructure || '') ||
             (serverState.organizationalDomain || '') !== (draftState.organizationalDomain || '') ||
             (serverState.defaultBigFileSize ?? null) !== (draftState.defaultBigFileSize ?? null) ||
             (!!serverState.isFilePreviewDisabled !== !!draftState.isFilePreviewDisabled) ||
+            (!!serverState.isDirectBrowserUploadEnabled !== !!draftState.isDirectBrowserUploadEnabled) ||
             (serverState.maxDeleteChainSize ?? null) !== (draftState.maxDeleteChainSize ?? null) ||
             (serverState.customGeminiApiKey || '') !== (draftState.customGeminiApiKey || '') ||
             (serverState.customModelName || '') !== (draftState.customModelName || '') ||
@@ -704,7 +1024,10 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (!!serverState.isFileIntelligenceEnabled !== !!draftState.isFileIntelligenceEnabled) ||
             (serverState.customSummaryPrompt || '') !== (draftState.customSummaryPrompt || '') ||
             (serverState.customQuestionPrompt || '') !== (draftState.customQuestionPrompt || '') ||
-            (serverState.questionMaxOutputTokens ?? null) !== (draftState.questionMaxOutputTokens ?? null)
+            (serverState.questionMaxOutputTokens ?? null) !== (draftState.questionMaxOutputTokens ?? null) ||
+            (serverState.aiSafetyMode || '') !== (draftState.aiSafetyMode || '') ||
+            (serverState.customAiPromptSafetyGuardClass || '') !== (draftState.customAiPromptSafetyGuardClass || '') ||
+            (serverState.fileExplorerColumns || '') !== (draftState.fileExplorerColumns || '')
         );
     }
 

@@ -29,6 +29,9 @@ public inherited sharing class GoogleMetadataConfigService {
 
 	public static final String DEFAULT_METADATA_DEPLOY_KEY = 'DefaultGoogleMetadataDeployerKey';
 	public static final String DEFAULT_AUTH_CLASS_NAME = 'DefaultGoogleDriveAuthorizer';
+	public static final String DEFAULT_AI_SAFETY_MODE = 'Standard';
+	public static final String DEFAULT_FILE_EXPLORER_COLUMNS = 'title;isLinked;access;owner;lastModified';
+	public static final Set<String> SUPPORTED_AI_SAFETY_MODES = new Set<String>{ 'Strict', 'Standard', 'Relaxed', 'Off' };
 	public static final Long DEFAULT_BIG_FILE_SIZE = 2097152L;
 	public static final Integer DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 	public static final Integer DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
@@ -51,14 +54,7 @@ public inherited sharing class GoogleMetadataConfigService {
 	public GoogleMetadataConfigService(IGoogleMetadataDeployer deployer) {
 		this.metadataDeployer = deployer;
 
-		if (configRecordOverride != null) {
-			this.configRecord = configRecordOverride;
-		} else {
-			Map<String, GoogleClientConfig__mdt> all = GoogleClientConfig__mdt.getAll();
-			this.configRecord = (all != null && !all.isEmpty())
-				? all.values()[0]
-				: new GoogleClientConfig__mdt();
-		}
+		this.configRecord = configRecordOverride != null ? configRecordOverride : resolveConfigRecord();
     }
 
     public Id saveConfig(Map<String, Object> fieldApiToValue) {
@@ -85,18 +81,74 @@ public inherited sharing class GoogleMetadataConfigService {
 		return configRecord.IsFilePreviewDisabled__c == true;
     }
 
+	public Boolean isDirectBrowserUploadEnabled() {
+		return configRecord.IsDirectBrowserUploadEnabled__c == true;
+	}
+
 	public Long getBigFileSizeInBytes() {
-		Long configuredValue = (Long) configRecord.DefaultBigFileSize__c;
-		return configuredValue == null ? DEFAULT_BIG_FILE_SIZE : configuredValue;
+		Decimal configuredValue = configRecord.DefaultBigFileSize__c;
+		return configuredValue == null ? DEFAULT_BIG_FILE_SIZE : configuredValue.longValue();
     }
 
 	public Integer getDeleteChainSize() {
-		Integer configuredValue = (Integer) configRecord.MaxDeleteChainSize__c;
-		return configuredValue == null ? DEFAULT_MAX_DELETE_CHAIN_SIZE : configuredValue;
+		Decimal configuredValue = configRecord.MaxDeleteChainSize__c;
+		return configuredValue == null ? DEFAULT_MAX_DELETE_CHAIN_SIZE : configuredValue.intValue();
     }
 
     public String getDefaultUploadFolderId() {
         return configRecord.DefaultGoogleUploadFolderId__c;
+    }
+
+    public List<String> getAdditionalUploadFolderIds() {
+        String raw = configRecord.AdditionalGoogleUploadFolderIds__c;
+        List<String> result = new List<String>();
+        if (String.isBlank(raw)) return result;
+
+        for (String token : raw.split(';')) {
+            if (token == null) continue;
+            String trimmed = token.trim();
+            if (String.isNotBlank(trimmed)) result.add(trimmed);
+        }
+
+        return result;
+    }
+
+    public List<String> getAllUploadFolderIds() {
+        List<String> ordered = new List<String>();
+        Set<String> seen = new Set<String>();
+
+        String primary = getDefaultUploadFolderId();
+        if (String.isNotBlank(primary)) {
+            String trimmedPrimary = primary.trim();
+            if (String.isNotBlank(trimmedPrimary)) {
+                ordered.add(trimmedPrimary);
+                seen.add(trimmedPrimary);
+            }
+        }
+
+        for (String additional : getAdditionalUploadFolderIds()) {
+            if (seen.contains(additional)) continue;
+            ordered.add(additional);
+            seen.add(additional);
+        }
+
+        return ordered;
+    }
+
+    public List<String> getFileExplorerColumns() {
+        String raw = configRecord.FileExplorerColumns__c;
+        if (String.isBlank(raw)) {
+            raw = DEFAULT_FILE_EXPLORER_COLUMNS;
+        }
+
+        List<String> result = new List<String>();
+        for (String token : raw.split(';')) {
+            if (token == null) continue;
+            String trimmed = token.trim();
+            if (String.isNotBlank(trimmed)) result.add(trimmed);
+        }
+
+        return result;
     }
 
     public String getGoogleDriveAuthorizerClassName() {
@@ -156,18 +208,48 @@ public inherited sharing class GoogleMetadataConfigService {
 	}
 
 	public Integer getQuestionMaxOutputTokens() {
-		Integer configuredValue = (Integer) configRecord.QuestionMaxOutputTokens__c;
-		return configuredValue == null ? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS : configuredValue;
+		Decimal configuredValue = configRecord.QuestionMaxOutputTokens__c;
+		return configuredValue == null ? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS : configuredValue.intValue();
+	}
+
+	public String getAiSafetyMode() {
+		String configuredValue = configRecord.AiSafetyMode__c;
+		if (String.isBlank(configuredValue)) {
+			return DEFAULT_AI_SAFETY_MODE;
+		}
+
+		return SUPPORTED_AI_SAFETY_MODES.contains(configuredValue) ? configuredValue : DEFAULT_AI_SAFETY_MODE;
+	}
+
+	public String getCustomAiPromptSafetyGuardClass() {
+		return configRecord.CustomAiPromptSafetyGuardClass__c;
 	}
 
 	public String getGoogleDriveDomain() {
         return configRecord.OrganizationalDomain__c;
     }
 
+	private GoogleClientConfig__mdt resolveConfigRecord() {
+		Map<String, GoogleClientConfig__mdt> configRecordsByDeveloperName = GoogleClientConfig__mdt.getAll();
+		if (configRecordsByDeveloperName == null || configRecordsByDeveloperName.isEmpty()) {
+			return new GoogleClientConfig__mdt();
+		}
+
+		GoogleClientConfig__mdt packagedRecord = configRecordsByDeveloperName.get(DEFAULT_RECORD_DEVELOPER_NAME);
+		if (packagedRecord != null) {
+			return packagedRecord;
+		}
+
+		return configRecordsByDeveloperName.size() == 1
+			? configRecordsByDeveloperName.values()[0]
+			: new GoogleClientConfig__mdt();
+	}
+
 	private Map<String, Object> applyManagedDefaults(Map<String, Object> fieldApiToValue) {
 		Map<String, Object> normalizedValues = new Map<String, Object>(fieldApiToValue);
 
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsFilePreviewDisabled__c', configRecord.IsFilePreviewDisabled__c, false);
+		applyBooleanDefaultIfMissing(normalizedValues, 'IsDirectBrowserUploadEnabled__c', configRecord.IsDirectBrowserUploadEnabled__c, false);
 		applyNumberDefaultIfMissing(normalizedValues, 'DefaultBigFileSize__c', configRecord.DefaultBigFileSize__c, DEFAULT_BIG_FILE_SIZE);
 		applyNumberDefaultIfMissing(normalizedValues, 'MaxDeleteChainSize__c', configRecord.MaxDeleteChainSize__c, DEFAULT_MAX_DELETE_CHAIN_SIZE);
 
@@ -176,6 +258,7 @@ public inherited sharing class GoogleMetadataConfigService {
 			applyStringDefaultIfMissing(normalizedValues, 'CustomSummaryPrompt__c', configRecord.CustomSummaryPrompt__c, DEFAULT_SUMMARY_PROMPT);
 			applyStringDefaultIfMissing(normalizedValues, 'CustomQuestionPrompt__c', configRecord.CustomQuestionPrompt__c, DEFAULT_QUESTION_PROMPT);
 			applyNumberDefaultIfMissing(normalizedValues, 'QuestionMaxOutputTokens__c', configRecord.QuestionMaxOutputTokens__c, DEFAULT_QUESTION_MAX_OUTPUT_TOKENS);
+			applyStringDefaultIfMissing(normalizedValues, 'AiSafetyMode__c', configRecord.AiSafetyMode__c, DEFAULT_AI_SAFETY_MODE);
 		}
 
 		return normalizedValues;

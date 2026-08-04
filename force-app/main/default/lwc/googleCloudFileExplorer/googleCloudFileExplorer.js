@@ -1,5 +1,7 @@
 import { LightningElement, track, wire } from 'lwc';
-import retrieveAllGoogleFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveAllGoogleFiles';
+import retrieveFileExplorerFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveFileExplorerFiles';
+import retrieveAllGoogleFilesPage from '@salesforce/apex/GoogleCloudFilesController.retrieveAllGoogleFilesPage';
+import retrieveFileExplorerColumns from '@salesforce/apex/GoogleCloudFilesController.retrieveFileExplorerColumns';
 import USER_ID from '@salesforce/user/Id';
 import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
 import {
@@ -12,8 +14,15 @@ import {
     asString,
     DEFAULT_FAILED_RETRIEVE_MESSAGE
 } from 'c/googleCloudUtils';
+import {
+    buildDatatableColumns,
+    buildStandardColumnValues,
+    buildCustomColumnValues,
+    resolveColumnLabel,
+    resolveDefaultSortFieldName
+} from 'c/googleCloudFileExplorerColumns';
 
-import { CurrentPageReference } from 'lightning/navigation';
+import { CurrentPageReference, NavigationMixin } from 'lightning/navigation';
 import { updateTabPresentation } from 'c/googleCloudCrossPlatformUtils';
 
 const TAB_FALLBACK_COMPONENT_NAME = 'c__googleCloudFileExplorer';
@@ -24,79 +33,44 @@ const TAB_MAX_RETRIES = 5;
 
 const NAV = {
     OWNED: 'owned',
-    SHARED: 'shared'
-};
-
-const COLUMN = {
-    TITLE: 'nameSort',
-    IS_LINKED: 'isLinkedSort',
-    ACCESS: 'accessSort',
-    OWNER: 'ownerNameSort',
-    LAST_MODIFIED: 'lastModifiedSort'
+    SHARED: 'shared',
+    ALL: 'all'
 };
 
 const UPLOAD_SOURCE = 'File Explorer';
 const UNABLE_TO_UPLOAD_MESSAGE = 'Unable to upload file(s)';
 
-export default class GoogleCloudFileExplorer extends LightningElement {
+const PAGE_SIZE = 50;
+const MAX_EMPTY_PAGE_FOLLOW_UPS = 5;
+const SEARCH_DEBOUNCE_MS = 300;
+const STORAGE_KEY_PREFIX = 'gcloud_explorer_';
+
+export default class GoogleCloudFileExplorer extends NavigationMixin(LightningElement) {
     @track isLoading = true;
     @track errorMessage = '';
     @track selectedNavKey = NAV.OWNED;
     @track isNewFileVersionUpload = false;
     @track activeActionFileId = null;
+    @track searchTerm = '';
 
     currentPageRef;
     tabInfo;
     hasAppliedTabPresentation = false;
 
-    allRows = [];
-    bucketOwned = [];
-    bucketShared = [];
+    resolvedColumns = [];
+    columns = [];
 
     sortedBy = 'lastModifiedDisplay';
     sortedDirection = 'desc';
 
-    columns = [
-        {
-            label: 'Title',
-            fieldName: 'fileName',
-            type: 'fileTitle',
-            sortable: true,
-            wrapText: true,
-            typeAttributes: {
-                label: { fieldName: 'fileName' },
-                title: { fieldName: 'fileName' },
-                rowId: { fieldName: 'localId' }
-            },
-            cellAttributes: {
-                alignment: 'left'
-            }
-        },
-        {
-            label: 'Is Linked?',
-            fieldName: 'isLinkedLabel',
-            type: 'text',
-            sortable: true
-        },
-        {
-            label: 'Access',
-            fieldName: 'accessLabel',
-            type: 'text',
-            sortable: true
-        },
-        {
-            label: 'Owner',
-            fieldName: 'ownerName',
-            type: 'text',
-            sortable: true
-        },
-        {
-            label: 'Last Modified Date',
-            fieldName: 'lastModifiedDisplay',
-            type: 'text',
-            sortable: true
-        }
-    ];
+    isLoadingMore = false;
+
+    @track isPrivileged = false;
+    serverRows = [];
+    nextCursor = null;
+    hasMoreServer = false;
+    requestToken = 0;
+    searchDebounceTimer;
 
     @wire(CurrentPageReference)
     wiredCurrentPageRef(pageRef) {
@@ -108,41 +82,57 @@ export default class GoogleCloudFileExplorer extends LightningElement {
         this.loadFiles();
     }
 
+    disconnectedCallback() {
+        if (this.searchDebounceTimer) {
+            clearTimeout(this.searchDebounceTimer);
+            this.searchDebounceTimer = undefined;
+        }
+    }
+
     get hasError() {
         return !isEmpty(this.errorMessage);
     }
 
     get pageTitle() {
+        if (this.isPrivileged) return 'All Files';
         if (this.selectedNavKey === NAV.OWNED) return 'Owned by Me';
         if (this.selectedNavKey === NAV.SHARED) return 'Shared with Me';
         return 'Unknown';
     }
 
+    get navSelectedItem() {
+        return this.isPrivileged ? NAV.ALL : this.selectedNavKey;
+    }
+
+    get defaultSortField() {
+        return resolveDefaultSortFieldName(this.resolvedColumns);
+    }
+
+    get storageKey() {
+        return `${STORAGE_KEY_PREFIX}${USER_ID}`;
+    }
+
     get visibleRows() {
-        return this.applySort(this.getSelectedBucket(), this.sortedBy, this.sortedDirection);
+        return this.serverRows;
+    }
+
+    get enableInfiniteLoading() {
+        return this.hasMoreServer;
     }
 
     get metaLine() {
-        const count = this.getSelectedBucket().length;
+        const count = this.serverRows.length;
+        const suffix = this.hasMoreServer ? '+' : '';
         const itemText = count === 1 ? 'item' : 'items';
-        return `${count} ${itemText} • Sorted by ${this.sortLabel}`;
+        return `${count}${suffix} ${itemText} • Sorted by ${this.sortLabel}`;
     }
 
     get sortLabel() {
-        switch (this.sortedBy) {
-            case 'fileName':
-                return 'Title';
-            case 'isLinkedLabel':
-                return 'Is Linked?';
-            case 'accessLabel':
-                return 'Access';
-            case 'ownerName':
-                return 'Owner';
-            case 'lastModifiedDisplay':
-                return 'Last Modified Date';
-            default:
-                return 'Last Modified Date';
-        }
+        return resolveColumnLabel(this.resolvedColumns, this.sortedBy) || 'Last Modified Date';
+    }
+
+    get hasNoSearchResults() {
+        return !this.hasError && !isEmpty(this.searchTerm) && this.serverRows.length === 0;
     }
 
     async loadFiles() {
@@ -150,18 +140,51 @@ export default class GoogleCloudFileExplorer extends LightningElement {
         this.errorMessage = '';
 
         try {
-            const result = await retrieveAllGoogleFiles();
-            const rawFiles = Array.isArray(result) ? result : [];
-            const rows = this.buildRows(rawFiles);
+            const [columnResult, filesResult] = await Promise.all([
+                this.loadColumns(),
+                retrieveFileExplorerFiles()
+            ]);
 
-            this.allRows = rows;
-            this.bucketOwned = rows.filter(row => row.ownerId === USER_ID);
-            this.bucketShared = rows.filter(row => row.ownerId && row.ownerId !== USER_ID);
+            this.isPrivileged = filesResult?.isPrivileged === true;
+            this.applyResolvedColumns(columnResult);
+
+            const restored = this.restoreExplorerState();
+            if (this.isNonDefaultContext(restored)) {
+                this.sortedBy = restored.sortField;
+                this.sortedDirection = restored.sortDirection || 'desc';
+                this.searchTerm = restored.searchTerm || '';
+                this.selectedNavKey = restored.bucket || NAV.OWNED;
+                await this.fetchServerPage(true);
+            } else {
+                this.serverRows = this.buildRows(Array.isArray(filesResult?.files) ? filesResult.files : []);
+                this.nextCursor = filesResult?.nextCursor || null;
+                this.hasMoreServer = filesResult?.hasMore === true;
+                this.persistExplorerState();
+            }
         } catch (error) {
             this.errorMessage = normalizeError(error) || DEFAULT_FAILED_RETRIEVE_MESSAGE;
             showToast(this, 'Unable to retrieve file(s)', this.errorMessage, 'error');
         } finally {
             this.isLoading = false;
+        }
+    }
+
+    async loadColumns() {
+        try {
+            return await retrieveFileExplorerColumns();
+        } catch (error) {
+            return [];
+        }
+    }
+
+    applyResolvedColumns(columnResult) {
+        this.resolvedColumns = Array.isArray(columnResult) ? columnResult : [];
+        this.columns = buildDatatableColumns(this.resolvedColumns);
+
+        const availableSortFields = this.columns.filter(column => column.sortable).map(column => column.fieldName);
+        if (!availableSortFields.includes(this.sortedBy)) {
+            this.sortedBy = resolveDefaultSortFieldName(this.resolvedColumns);
+            this.sortedDirection = 'desc';
         }
     }
 
@@ -171,25 +194,27 @@ export default class GoogleCloudFileExplorer extends LightningElement {
 
         return formattedFiles.map(file => {
             const rawRecord = rawByLocalId.get(file.localId);
+            const latestVersion = rawRecord?.GoogleFileVersions__r?.[0];
             const linksCount = Number(extractGraphValue(rawRecord?.NumberOfLinks__c) || 0);
             const isLinked = linksCount > 0;
-            const ownerName = asString(rawRecord?.CreatedBy?.Name) || (file.createdBy?.name || '');
-            const ownerId = asString(rawRecord?.CreatedById) || (file.createdBy?.id || '');
-            const accessLabel = asString(file.mode) || 'Viewer';
+            const createdByName = asString(rawRecord?.CreatedBy?.Name) || (file.createdBy?.name || '');
+            const createdById = asString(rawRecord?.CreatedById) || (file.createdBy?.id || '');
+            const fileOwner = asString(rawRecord?.Owner?.Name) || '';
+            const fileOwnerId = asString(rawRecord?.OwnerId) || '';
+            const accessLabel = asString(rawRecord?.UserAccessLevel__c) || 'View';
 
             return {
                 ...file,
+                ...buildStandardColumnValues(file),
+                ...buildCustomColumnValues(this.resolvedColumns, latestVersion),
                 fileName: file.name || 'Untitled',
-                nameSort: (file.name || 'Untitled').toLowerCase(),
                 isLinkedLabel: isLinked ? 'Yes' : 'No',
-                isLinkedSort: linksCount,
                 accessLabel,
-                accessSort: accessLabel.toLowerCase(),
-                ownerName,
-                ownerId,
-                ownerNameSort: (ownerName || '').toLowerCase(),
-                lastModifiedDisplay: formatDateAsDDMMYYYY_HHMM(file.lastModifiedDate),
-                lastModifiedSort: this.toTimestamp(file.lastModifiedDate)
+                createdByName,
+                createdById,
+                fileOwner,
+                fileOwnerId,
+                lastModifiedDisplay: formatDateAsDDMMYYYY_HHMM(file.lastModifiedDate)
             };
         });
     }
@@ -202,72 +227,56 @@ export default class GoogleCloudFileExplorer extends LightningElement {
         return byId;
     }
 
-    toTimestamp(value) {
-        const time = new Date(value).getTime();
-        return Number.isNaN(time) ? 0 : time;
-    }
-
-    getSelectedBucket() {
-        if (this.selectedNavKey === NAV.OWNED) return this.bucketOwned || [];
-        if (this.selectedNavKey === NAV.SHARED) return this.bucketShared || [];
-        return [];
-    }
-
     handleNavSelect(event) {
+        if (this.isPrivileged) return;
         this.selectedNavKey = event.detail.name;
+        this.searchTerm = '';
+        this.serverReload();
+    }
+
+    handleSearch(event) {
+        this.searchTerm = event.target.value || '';
+        this.debouncedServerReload();
+    }
+
+    handleUserClick(event) {
+        const userId = event.detail?.userId;
+        if (isEmpty(userId)) return;
+
+        this[NavigationMixin.Navigate]({
+            type: 'standard__recordPage',
+            attributes: {
+                recordId: userId,
+                actionName: 'view'
+            }
+        });
     }
 
     handleSort(event) {
         this.sortedBy = event.detail.fieldName;
         this.sortedDirection = event.detail.sortDirection;
+        this.serverReload();
     }
 
-    resolveSortKey(fieldName) {
-        switch (fieldName) {
-            case 'fileName':
-                return COLUMN.TITLE;
-            case 'isLinkedLabel':
-                return COLUMN.IS_LINKED;
-            case 'accessLabel':
-                return COLUMN.ACCESS;
-            case 'ownerName':
-                return COLUMN.OWNER;
-            case 'lastModifiedDisplay':
-                return COLUMN.LAST_MODIFIED;
-            default:
-                return COLUMN.LAST_MODIFIED;
-        }
+    handleLoadMore() {
+        if (this.isLoadingMore || this.isLoading || !this.hasMoreServer || !this.nextCursor) return;
+        this.loadMoreUntilRowsArrive();
     }
 
-    applySort(rows, fieldName, direction) {
-        const isDesc = direction === 'desc';
-        const sortKey = this.resolveSortKey(fieldName);
-        const sortedRows = [...(rows || [])];
+    async loadMoreUntilRowsArrive() {
+        const countBefore = this.serverRows.length;
+        let attempts = 0;
 
-        sortedRows.sort((leftRow, rightRow) => {
-            const leftValue = leftRow?.[sortKey];
-            const rightValue = rightRow?.[sortKey];
-
-            if (sortKey.endsWith('Sort')) {
-                if (typeof leftValue === 'number' || typeof rightValue === 'number') {
-                    const leftNumber = Number(leftValue || 0);
-                    const rightNumber = Number(rightValue || 0);
-                    return isDesc ? rightNumber - leftNumber : leftNumber - rightNumber;
-                }
-
-                const leftText = (leftValue ?? '').toString().toLowerCase();
-                const rightText = (rightValue ?? '').toString().toLowerCase();
-                if (leftText === rightText) return 0;
-                return isDesc ? (leftText < rightText ? 1 : -1) : (leftText < rightText ? -1 : 1);
-            }
-
-            const leftText = (leftValue ?? '').toString().toLowerCase();
-            const rightText = (rightValue ?? '').toString().toLowerCase();
-            if (leftText === rightText) return 0;
-            return isDesc ? (leftText < rightText ? 1 : -1) : (leftText < rightText ? -1 : 1);
-        });
-
-        return sortedRows;
+        do {
+            // eslint-disable-next-line no-await-in-loop
+            await this.fetchServerPage(false);
+            attempts++;
+        } while (
+            this.serverRows.length === countBefore &&
+            this.hasMoreServer &&
+            this.nextCursor &&
+            attempts < MAX_EMPTY_PAGE_FOLLOW_UPS
+        );
     }
 
     /**
@@ -395,6 +404,125 @@ export default class GoogleCloudFileExplorer extends LightningElement {
 
     handleFileEdit() {
         this.refreshExplorerData();
+    }
+
+    debouncedServerReload() {
+        if (this.searchDebounceTimer) {
+            clearTimeout(this.searchDebounceTimer);
+        }
+        // eslint-disable-next-line @lwc/lwc/no-async-operation
+        this.searchDebounceTimer = setTimeout(() => this.serverReload(), SEARCH_DEBOUNCE_MS);
+    }
+
+    async serverReload() {
+        this.nextCursor = null;
+        await this.fetchServerPage(true);
+    }
+
+    async fetchServerPage(reset) {
+        const token = ++this.requestToken;
+
+        if (reset) {
+            this.isLoading = true;
+        } else {
+            this.isLoadingMore = true;
+        }
+
+        try {
+            const result = await retrieveAllGoogleFilesPage({
+                sortField: this.sortedBy,
+                sortDirection: this.sortedDirection,
+                searchTerm: this.searchTerm,
+                cursor: reset ? null : this.nextCursor,
+                pageSize: PAGE_SIZE,
+                bucket: this.isPrivileged ? NAV.ALL : this.selectedNavKey
+            });
+            if (token !== this.requestToken) return;
+
+            const rows = this.buildRows(Array.isArray(result?.files) ? result.files : []);
+            this.serverRows = reset ? rows : this.appendUnique(this.serverRows, rows);
+            this.nextCursor = result?.nextCursor || null;
+            this.hasMoreServer = result?.hasMore === true;
+            this.persistExplorerState();
+        } catch (error) {
+            if (token !== this.requestToken) return;
+
+            this.errorMessage = normalizeError(error) || DEFAULT_FAILED_RETRIEVE_MESSAGE;
+            showToast(this, 'Unable to retrieve file(s)', this.errorMessage, 'error');
+        } finally {
+            if (token === this.requestToken) {
+                if (reset) {
+                    this.isLoading = false;
+                } else {
+                    this.isLoadingMore = false;
+                }
+            }
+        }
+    }
+
+    appendUnique(existing, incoming) {
+        const seen = new Set((existing || []).map(row => row.localId));
+        const merged = [...(existing || [])];
+        (incoming || []).forEach(row => {
+            if (!seen.has(row.localId)) {
+                seen.add(row.localId);
+                merged.push(row);
+            }
+        });
+        return merged;
+    }
+
+    handleRefresh() {
+        this.clearExplorerState();
+        this.serverReload();
+    }
+
+    isNonDefaultContext(state) {
+        if (!state) return false;
+        if (!isEmpty(state.searchTerm)) return true;
+        if (state.bucket && state.bucket !== NAV.OWNED) return true;
+        if (state.sortField && state.sortField !== this.defaultSortField) return true;
+        if (state.sortDirection && state.sortDirection !== 'desc') return true;
+        return false;
+    }
+
+    persistExplorerState() {
+        try {
+            const state = {
+                sortField: this.sortedBy,
+                sortDirection: this.sortedDirection,
+                searchTerm: this.searchTerm,
+                bucket: this.selectedNavKey
+            };
+            window.sessionStorage.setItem(this.storageKey, JSON.stringify(state));
+        } catch (error) {
+            // sessionStorage unavailable — continue in memory
+        }
+    }
+
+    restoreExplorerState() {
+        try {
+            const raw = window.sessionStorage.getItem(this.storageKey);
+            const state = raw ? JSON.parse(raw) : null;
+            if (!state) return null;
+
+            const knownSortFields = this.columns.map(column => column.fieldName);
+            if (state.sortField && !knownSortFields.includes(state.sortField)) {
+                state.sortField = this.defaultSortField;
+            }
+
+            return state;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    clearExplorerState() {
+        try {
+            window.sessionStorage.removeItem(this.storageKey);
+        } catch (error) {
+            // ignore
+        }
     }
 
     async refreshExplorerData() {

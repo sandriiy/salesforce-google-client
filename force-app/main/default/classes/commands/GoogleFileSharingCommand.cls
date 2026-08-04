@@ -103,21 +103,19 @@ public without sharing class GoogleFileSharingCommand {
 		}
 
 		public List<GoogleFile__Share> findUserOrGroupShares(Id localFileRecordId, Id shareToRecordId) {
-			return [
-				SELECT Id, AccessLevel
-				FROM GoogleFile__Share
-				WHERE ParentId = :localFileRecordId
-				AND UserOrGroupId = :shareToRecordId
-			];
+			return (List<GoogleFile__Share>) GoogleFileShareSelector.query()
+				.withBaseFields()
+				.byParentId(localFileRecordId)
+				.byPrincipalId(shareToRecordId)
+				.toList();
 		}
 
 		public List<GoogleFileLink__c> findRecordLinks(Id localFileRecordId, Id linkedRecordId) {
-			return [
-				SELECT Id, ShareType__c, Visibility__c
-				FROM GoogleFileLink__c
-				WHERE GoogleFileId__c = :localFileRecordId
-				AND LinkedObjectId__c = :linkedRecordId
-			];
+			return (List<GoogleFileLink__c>) GoogleFileLinkSelector.query()
+				.withBaseFields()
+				.byParentId(localFileRecordId)
+				.byLinkedObjectId(linkedRecordId)
+				.toList();
 		}
 
 		public void validateRecordLinkCreation(Id localFileRecordId, Id linkedRecordId, Id actingUserId) {
@@ -163,16 +161,7 @@ public without sharing class GoogleFileSharingCommand {
 				return false;
 			}
 
-			List<UserRecordAccess> userAccessRows = [
-				SELECT RecordId
-				FROM UserRecordAccess
-				WHERE UserId = :actingUserId
-				AND RecordId = :linkedRecordId
-				AND HasReadAccess = true
-				LIMIT 1
-			];
-
-			return !userAccessRows.isEmpty();
+			return new GoogleRecordAccessResolver().hasReadAccess(actingUserId, linkedRecordId);
 		}
 
 		public Boolean isUserOrGroup(Id shareToRecordId) {
@@ -284,12 +273,11 @@ public without sharing class GoogleFileSharingCommand {
 				return null;
 			}
 
-			List<User> owner = [
-				SELECT Id, Name, Email
-				FROM User
-				WHERE Id = :localFile.OwnerId
-				LIMIT 1
-			];
+			List<User> owner = (List<User>) GoogleUserSelector.query()
+				.withContactFields()
+				.byUserId(localFile.OwnerId)
+				.limitTo(1)
+				.toList();
 
 			return owner.isEmpty() ? null : owner[0];
 		}
@@ -299,11 +287,11 @@ public without sharing class GoogleFileSharingCommand {
 				return new List<GoogleFile__Share>();
 			}
 
-			return [
-				SELECT Id, UserOrGroupId, UserOrGroup.Name, RowCause, AccessLevel
-				FROM GoogleFile__Share
-				WHERE ParentId = :localFile.Id AND UserOrGroupId != :localFile.OwnerId
-			];
+			return (List<GoogleFile__Share>) GoogleFileShareSelector.query()
+				.withPrincipalName()
+				.byParentId(localFile.Id)
+				.excludingPrincipalId(localFile.OwnerId)
+				.toList();
 		}
 
 		private List<GoogleFileLink__c> getFileRecordsSharedTo(GoogleFile__c localFile) {

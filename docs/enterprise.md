@@ -41,13 +41,9 @@ The Enterprise package will continue to evolve in parallel with the open-source 
 
 Use the links below to install the current Enterprise managed package.
 
-<div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 16px;">
-  <a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000W3nZIAS" target="_blank" rel="noopener noreferrer">
-    <img src="https://img.shields.io/badge/Install%20Enterprise%20Beta-Sandbox-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Enterprise Beta in Sandbox">
-  </a>
-  <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000W3nZIAS" target="_blank" rel="noopener noreferrer">
-    <img src="https://img.shields.io/badge/Install%20Enterprise%20Beta-Production-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Enterprise Beta in Production">
-  </a>
+<div class="page-actions" markdown>
+[Install Beta in Sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000W3nZIAS){ .md-button .md-button--primary target="_blank" rel="noopener noreferrer" }
+[Install Beta in Production](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000W3nZIAS){ .md-button target="_blank" rel="noopener noreferrer" }
 </div>
 
 ### CLI Installation

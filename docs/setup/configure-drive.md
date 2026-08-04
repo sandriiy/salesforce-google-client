@@ -75,7 +75,15 @@ After authentication is configured:
 - Use a **Shared Drive** for centralized, team-managed access.
 - Maintain a dedicated root folder per environment (**Dev / UAT / Prod**).
 
+## Where to Go Next
+
+Google Workspace is now configured, and file management works end to end. These are optional from here:
+
+- [Folder Structure](../config/folder-structure.md) — organize uploads in Drive by user, by record, or both, instead of one flat folder
+- [Multiple Upload Folders](../config/multiple-drives.md) — add fallback destinations so uploads keep working when a drive reaches its capacity limit
+- [Advanced Settings](../config/advanced-settings.md) — preview, upload transport, public link scope, and File Explorer columns
+
 !!! note
-  Google Workspace is now configured. If you'd like to add document summaries and file Q&A, you can also set up the AI & Intelligence layer: [Configure AI & Intelligence](configure-intelligence.md)
+    Want document summaries and file Q&A as well? That is a separate, optional layer: [Configure AI & Intelligence](configure-intelligence.md)
 
 <br>

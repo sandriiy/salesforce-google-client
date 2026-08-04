@@ -31,6 +31,9 @@ Assign permissions based on the user’s role and responsibilities.
   </li>
 </ul>
 
+!!! note
+    The Google Client components only appear for users holding **Google Cloud Client User**. Without it, the Uploader and Attachments components stay hidden on the page instead of loading and failing.
+
 <h2>How to assign</h2>
 
 <ol>

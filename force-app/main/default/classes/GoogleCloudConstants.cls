@@ -5,6 +5,16 @@ public class GoogleCloudConstants {
 	public static final Integer MAX_SUMMARY_CHARACTERS = 255;
 	public static final Long MAX_SUMMARY_FILE_SIZE_BYTES = 5242880L;
 
+	// Unit of Work insert order for the package object graph (deletes run in reverse).
+	// GoogleFileLink__c must be inserted before GoogleFileVersion__c: the version trigger
+	// enqueues the folder placement job, which resolves the record folder from the link.
+	public static final List<SObjectType> DEFAULT_WRITE_ORDER = new List<SObjectType>{
+		GoogleFile__c.SObjectType,
+		GoogleFileLink__c.SObjectType,
+		GoogleFileVersion__c.SObjectType,
+		GoogleFile__Share.SObjectType
+	};
+
 	// Google Workspace target MIME types used when generating preview files.
 	public static final String GOOGLE_WORKSPACE_DOCUMENT_TYPE = 'application/vnd.google-apps.document';
 	public static final String GOOGLE_WORKSPACE_SPREADSHEET_TYPE = 'application/vnd.google-apps.spreadsheet';
@@ -87,6 +97,8 @@ public class GoogleCloudConstants {
 	};
 	public static final String FILE_EXPLORER_COLUMN_TITLE = 'title';
 	public static final Integer FILE_EXPLORER_MAX_COLUMNS = 7;
-	public static final Integer FILE_EXPLORER_STANDARD_LIMIT = 10000;
 	public static final Integer FILE_EXPLORER_PAGE_SIZE = 50;
+	public static final Integer FILE_EXPLORER_MAX_PAGE_SIZE = 200;
+	public static final String FILE_EXPLORER_BUCKET_OWNED = 'owned';
+	public static final String FILE_EXPLORER_BUCKET_SHARED = 'shared';
 }

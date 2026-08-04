@@ -6,7 +6,7 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientGithubLink</shortDescription>
-        <value>https://github.com/sandriiy/salesforce-google-drive-client</value>
+        <value>https://github.com/sandriiy/salesforce-google-client</value>
     </labels>
     <labels>
         <fullName>GoogleClientQuickSetupLink</fullName>
@@ -22,7 +22,7 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientReleaseNotesLink</shortDescription>
-        <value>https://github.com/sandriiy/salesforce-google-drive-client/releases</value>
+        <value>https://github.com/sandriiy/salesforce-google-client/releases</value>
     </labels>
     <labels>
         <fullName>GoogleClientReleaseTitle</fullName>
@@ -30,7 +30,7 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientReleaseTitle</shortDescription>
-        <value>Google Client v.2.0.0</value>
+        <value>Google Client v.2.1.0</value>
     </labels>
     <labels>
         <fullName>GoogleClientSupportEmail</fullName>

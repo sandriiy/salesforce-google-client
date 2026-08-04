@@ -33,16 +33,21 @@ There is no visible difference for end users, and no changes to how files move t
 
 - Store Salesforce files in Google Drive to reduce storage costs
 - Upload, attach existing files, preview, download, replace, and version files from Salesforce records
+- Send large files from the browser straight to Google Drive with optional Direct Browser Upload
+- Spread storage across multiple Google Drives, with automatic fallover when a drive reaches its capacity limit
 - Reuse the same Google file across multiple Salesforce records without duplicate uploads
 - Preview Google Drive files directly from Salesforce records, including large PDFs and images
 - Download supported previewable files in alternate formats
 - Organize files automatically in Google Drive using configurable folder structures
+- Find files through Salesforce global search, File Explorer, or by searching their AI-generated summaries
+- Configure which columns File Explorer shows, in the order that suits your team
 - Use files in Salesforce apps, Screen Flows, and Experience Cloud
 - Share files with users, groups, queues, and Experience Cloud users
 - Create public links with optional Google Workspace domain restrictions
 - Enforce Salesforce-based access before users can open, share, or modify files
+- Grant support and compliance staff org-wide file visibility with View-All and Edit-All permissions
 - Support compliance needs with audit logging, reports, and file activity visibility
-- Use optional Gemini or Agent Platform integration for document summaries and file Q&A
+- Use optional Gemini or Agent Platform integration for document summaries and file Q&A, with prompt and response safety inspection built in
 
 <br />
 
@@ -65,7 +70,7 @@ This client depends on two required packages, which **must be installed first**:
 <p>Use this option to test Google Client for Salesforce before installing it in production.</p>
 
 <p>
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000W3Z3IAK" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Sandbox-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Sandbox" height="52"></a>
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000XoFlIAK" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Sandbox-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Sandbox" height="52"></a>
 </p>
 
 <br />
@@ -75,7 +80,7 @@ This client depends on two required packages, which **must be installed first**:
 <p>Use this option when you are ready to install the package in your production org.</p>
 
 <p>
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000W3Z3IAK" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Production-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Production" height="52"></a>
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000XoFlIAK" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Production-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Production" height="52"></a>
 </p>
 
 </div>
@@ -85,7 +90,7 @@ This client depends on two required packages, which **must be installed first**:
 ### CLI Installation
 
 ```bash
-sf package install --wait 20 --security-type AdminsOnly --package 04tQy000000W3Z3IAK
+sf package install --wait 20 --security-type AdminsOnly --package 04tQy000000XoFlIAK
 ```
 
 <br />

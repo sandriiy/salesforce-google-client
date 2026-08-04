@@ -57,11 +57,7 @@ public with sharing class GoogleFileCloudFolderJob extends GQueueableJob.AllowsC
         if (skipExecution) return;
         if (this.requests.isEmpty()) return;
 
-        IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
-            GoogleFile__c.SObjectType,
-            GoogleFileVersion__c.SObjectType,
-            GoogleFileLink__c.SObjectType
-        });
+        IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
 
         List<GoogleFileRelocationRequestDTO> deferredRequests = new List<GoogleFileRelocationRequestDTO>();
 

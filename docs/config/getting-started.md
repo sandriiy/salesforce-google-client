@@ -42,10 +42,20 @@ Adds document summaries and file Q&A. Everything else works without it.
 
 ## 6. Tune How Files Are Handled
 
-Optional settings that change how Google Client stores and transfers files. Both are safe to leave alone — the defaults are what the package has always done.
+Optional settings that change how Google Client stores and transfers files. All of them are safe to leave alone — the defaults are what the package has always done.
 
 - [Folder Structure](folder-structure.md) — organize uploads in Drive by user, by record, or both, instead of one flat folder
+- [Multiple Upload Folders](multiple-drives.md) — add fallback destinations so uploads keep working when a drive reaches its capacity limit
 - [Direct Browser Upload](direct-browser-upload.md) — send large files from the browser straight to Google Drive for noticeably faster uploads
+
+## 7. Fine-Tune the Rest
+
+The **Advanced** screen in the Google Client app holds everything else, grouped into four tabs. Nothing here is required.
+
+- [File Management](advanced/file-management.md) — preview, upload transport, file size, deletion, and public link scope
+- [User Interface](advanced/user-interface.md) — which columns appear in File Explorer
+- [AI Intelligence](advanced/ai-intelligence.md) — prompts and answer length for summaries and questions
+- [Safety & Customization](advanced/safety-customization.md) — how strictly AI questions and answers are inspected
 
 ## Where to Go Next
 

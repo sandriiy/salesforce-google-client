@@ -21,6 +21,8 @@ All placeable Google Client components are added using the Lightning App Builder
 
 This opens the Lightning App Builder, where you can drag and configure components.
 
+![Google Client components in the Lightning App Builder](../assets/images/usage_lightning_app_builder.png)
+
 ## Components You Can Place
 
 Below is the list of components administrators should place manually, referenced by their visible labels in Lightning App Builder.
@@ -36,12 +38,12 @@ Provides full Google Drive file management for a Salesforce record in a familiar
 
 <strong>Configurable properties</strong>
 <ul>
-  <li><strong>Icon</strong> — Icon shown in the component header.</li>
+  <li><strong>Title Icon</strong> — Icon shown in the component header.</li>
   <li><strong>Title</strong> — Component title.</li>
-  <li><strong>Visible files count</strong> — Number of files shown before “View All” is required.</li>
-  <li><strong>Allow multiple files</strong> — Enables multi-file selection.</li>
-  <li><strong>Allowed file types</strong> — File extensions allowed for upload.</li>
-  <li><strong>Maximum file size (MB)</strong> — Upload size limit per file.</li>
+  <li><strong>Number of Visible Files</strong> — Number of files shown before “View All” is required.</li>
+  <li><strong>Allow Multiple Files?</strong> — Enables multi-file selection.</li>
+  <li><strong>Supported File Extensions</strong> — File extensions allowed for upload.</li>
+  <li><strong>Maximum File Size (MB)</strong> — Upload size limit per file.</li>
 </ul>
 
 <strong>Typical use</strong>
@@ -50,6 +52,8 @@ Provides full Google Drive file management for a Salesforce record in a familiar
   <li>Lets users upload new files or attach existing owned Google Client files to the record.</li>
   <li>Opens preview, sharing, public link, versioning, and file details flows from one familiar record component.</li>
 </ul>
+
+![Attachments component and its properties](../assets/images/usage_attachments_properties.png)
 
 ### Google Client: Uploader
 
@@ -62,10 +66,10 @@ Provides a dedicated upload interface for adding files to Google Drive from Sale
 
 <strong>Configurable properties</strong>
 <ul>
-  <li><strong>Supported file extensions</strong> — Allowed upload types.</li>
-  <li><strong>Maximum file size (MB)</strong> — Upload size limit.</li>
-  <li><strong>Allow multiple files</strong> — Enables bulk uploads.</li>
-  <li><strong>Maximum file count</strong> — Limits the number of files per upload.</li>
+  <li><strong>Supported File Extensions</strong> — Allowed upload types.</li>
+  <li><strong>Maximum File Size (MB)</strong> — Upload size limit.</li>
+  <li><strong>Allow Multiple Files?</strong> — Enables bulk uploads.</li>
+  <li><strong>Maximum Number of Files</strong> — Limits the number of files per upload.</li>
 </ul>
 
 <strong>Typical use</strong>
@@ -74,12 +78,28 @@ Provides a dedicated upload interface for adding files to Google Drive from Sale
   <li>Allows users to attach existing owned Google Client files when the component is used on a record page.</li>
 </ul>
 
+![Uploader component and its properties](../assets/images/usage_uploader_properties.png)
+
+### Google Client: Record Page Details
+
+Renders a single Google file with its preview, sharing, public link, download, versions, and linked Salesforce records.
+
+<strong>Where it can be used</strong>
+<ul>
+  <li>Record Pages. It shows a single Google file, so it only has something to display on a <strong>Google File</strong> record page.</li>
+</ul>
+
+<strong>Typical use</strong>
+<ul>
+  <li>Placement is normally unnecessary. Google Client already overrides the Google File <strong>View</strong> action with a page that hosts this component, so opening a file from global search or a direct link lands on it.</li>
+  <li>Place it manually only when building a custom Google File record page instead of the shipped one.</li>
+</ul>
+
 ## Components not available for direct placement
 
 The following components cannot be added manually in Lightning App Builder.
 
 <ul>
-  <li>Google Client: Record Page Details</li>
   <li>Preview, sharing, public link, and version modules</li>
   <li>Modal dialogs for delete, sharing, public link, attach existing files, download as, and file details</li>
 </ul>

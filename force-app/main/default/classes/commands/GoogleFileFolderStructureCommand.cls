@@ -120,12 +120,11 @@ public without sharing class GoogleFileFolderStructureCommand {
 	private User loadUser(Id userId) {
 		if (userId == null) return null;
 
-		List<User> users = [
-			SELECT Id, FirstName, LastName
-			FROM User
-			WHERE Id = :userId
-			LIMIT 1
-		];
+		List<User> users = (List<User>) GoogleUserSelector.query()
+			.withNameFields()
+			.byUserId(userId)
+			.limitTo(1)
+			.toList();
 
 		return users.isEmpty() ? null : users[0];
 	}

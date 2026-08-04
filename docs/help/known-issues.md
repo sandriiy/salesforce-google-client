@@ -35,7 +35,7 @@ If you run into something unexpected, check the list below. If your issue isn't 
 
     Google Drive's search index is *eventually consistent*: a folder that was created moments ago is not always returned by a search yet, especially on a Drive holding a large number of items. When each file resolved its own folder, the search for the next file found nothing and created a second folder.
 
-    Google Client now resolves the folder **once, before the upload begins**, and remembers the result in the **Platform Cache** partition named **GoogleCloudClient**, so it never has to ask Drive for a folder it just created.
+    Google Client now resolves the folder **once per upload**, starting as soon as the files are selected so it resolves while the content is still transferring, and remembers the result in the **Platform Cache** partition named **GoogleCloudClient**. Every file in that upload reuses the same folder, so Google Client never has to ask Drive for a folder it just created.
 
     **Fix — allocate Org Cache**
 

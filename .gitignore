@@ -14,6 +14,9 @@ deploy-options.json
 # LWC Jest coverage reports
 coverage/
 
+# Apex test run output
+.apex-test-results/
+
 # Logs
 logs
 *.log

@@ -25,6 +25,7 @@ theme:
   features:
     - navigation.tabs
     - navigation.sections
+    - navigation.indexes
     - navigation.top
     - toc.follow
     - search.suggest
@@ -58,8 +59,12 @@ extra_css:
 nav:
   - Overview:
       - Home: index.md
+      - Getting Started: config/getting-started.md
       - Prerequisites: prerequisites.md
       - Install & Upgrade: install-overview.md
+      - Changelog: changelog.md
+      - Enterprise:
+        - Managed Package: enterprise.md
       - Quality Assurance:
         - Validation Log: validation/release-validation-log.md
         - Validation Suites: validation/validation-suites.md
@@ -70,15 +75,9 @@ nav:
       - Configure Google Workspace: setup/configure-drive.md
       - Configure AI & Intelligence: setup/configure-intelligence.md
       - Permissions: setup/permissions.md
-
-  - Usage:
-      - Configure Components (Core Clouds): usage/core-clouds.md
-      - Configure Components (Experience Cloud): usage/experience-cloud.md
-
-  - Config & Settings:
-      - Getting Started: config/getting-started.md
-      - Folder Structure: config/folder-structure.md
-      - Direct Browser Upload: config/direct-browser-upload.md
+      - Placement:
+        - Configure Components (Core Clouds): usage/core-clouds.md
+        - Configure Components (Experience Cloud): usage/experience-cloud.md
 
   - Features:
       - File Explorer: features/file-explorer.md
@@ -90,16 +89,28 @@ nav:
       - Audit & Logging: features/audit.md
       - Flows & Automation:
           - Uploader in Screen Flows: features/flows-automation/uploader-screen-flows.md
-      - Artificial Intelligence:
-          - Overview: features/artificial-intelligence/overview.md
+      - AI & Intelligence:
+          - features/artificial-intelligence/overview.md
+          - Document Summaries: features/artificial-intelligence/summaries.md
+          - File Q&A: features/artificial-intelligence/file-qa.md
+          - AI Prompt Security: features/artificial-intelligence/safety.md
 
-  - Enterprise: enterprise.md
-
-  - Media:
-      - Videos: media/videos.md
-      - Articles: media/articles.md
+  - Settings:
+      - Folder Structure: config/folder-structure.md
+      - Multiple Upload Folders: config/multiple-drives.md
+      - Direct Browser Upload: config/direct-browser-upload.md
+      - Advanced Settings:
+          - config/advanced-settings.md
+          - File Management: config/advanced/file-management.md
+          - User Interface: config/advanced/user-interface.md
+          - AI Intelligence: config/advanced/ai-intelligence.md
+          - Safety & Customization: config/advanced/safety-customization.md
 
   - Security: security.md
+
+  - Resources:
+      - Videos: media/videos.md
+      - Articles: media/articles.md
 
   - Help:
       - Known Issues & Fixes: help/known-issues.md

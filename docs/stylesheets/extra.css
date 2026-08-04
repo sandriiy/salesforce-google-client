@@ -52,3 +52,40 @@
 .task-list-control {
 	margin-left: 4px;
 }
+
+.md-typeset__table {
+	display: block;
+	width: 100%;
+}
+
+.md-typeset table:not([class]) {
+	display: table;
+	width: 100%;
+}
+
+.page-actions {
+	margin: 1.4rem 0 2rem;
+	text-align: center;
+}
+
+.page-actions .md-button {
+	margin: 0.3rem;
+	min-width: 13rem;
+}
+
+.video-embed {
+	position: relative;
+	aspect-ratio: 16 / 9;
+	margin: 1.2em 0 0.8em;
+	border-radius: 12px;
+	overflow: hidden;
+	background: #000000;
+}
+
+.video-embed iframe {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	border: 0;
+}

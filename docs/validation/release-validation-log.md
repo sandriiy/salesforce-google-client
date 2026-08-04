@@ -2,7 +2,106 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
-???+ example "Release v2.0.0"
+???+ example "Release v2.1.0"
+
+    ### Validation Suite Used
+    - [ ] Full Validation Suite
+    - [X] Quick Regression Suite
+    - [X] Targeted Regression Suite
+
+    ### Release Changes
+    - [X] Change 1: The upgrade lands on an already configured org without disturbing it, and the Advanced screen is now split into four tabs.
+
+        - [X] Existing Google Drive, folder structure, and AI settings are unchanged after the upgrade.
+        - [X] Settings introduced in this release are empty, and the app behaves exactly as it did before.
+        - [X] Advanced opens on File Management, User Interface, AI Intelligence, and Safety & Customization, and each tab renders without errors.
+        - [-] Org Cache is allocated to the `GoogleCloudClient` Platform Cache partition.
+
+    - [X] Change 2: Administrators choose which columns appear in File Explorer and in what order.
+
+        - [X] Columns can be selected and reordered in Advanced → User Interface, and the selection is saved.
+        - [X] Title stays first and cannot be removed, and no more than 7 columns can be selected.
+        - [X] A valid Google File Version field API name added as a custom column shows its values in the list.
+        - [X] An invalid field API name renders an empty column and the list still loads.
+        - [X] Restoring the default selection brings back the original columns.
+
+    - [X] Change 3: File Explorer loads long lists progressively, and search and sorting apply to every accessible file.
+
+        - [X] The first page renders without loading the whole list, and more rows are appended when scrolling to the bottom.
+        - [X] Scrolling to the end of a long list produces no repeated rows and no missing rows.
+        - [X] Searching by part of a file name finds files that had not been loaded yet.
+        - [X] Sorting by Title and by Last Modified Date stays correct across page boundaries.
+        - [X] Type, Size, Summary, and Access cannot be sorted.
+        - [X] The Owner column shows the real owner as a name, including for a file owned by a public group or a queue.
+
+    - [X] Change 4: View All and Edit All custom permissions give a support or compliance user visibility of every file.
+
+        - [X] With `Google Client: View All Files` assigned, a single All Files view replaces Owned and Shared, and files owned by other users are listed with View access.
+        - [X] Search and sorting work across that whole list.
+        - [X] With `Google Client: Edit All Files` assigned instead, access shows Edit and edit-level actions are available on a file owned by someone else.
+        - [X] An external user gains nothing from either permission.
+        - [X] Removing both assignments returns the user to Owned and Shared, and other users' files disappear again.
+
+    - [X] Change 5: Google Files are returned by Salesforce global search and open on the Google Client file details page.
+
+        - [X] A file is returned by global search and opens on the Google Client page rather than a standard record layout.
+        - [X] Standard record buttons and the highlights panel are not shown.
+        - [X] The same page opens when the file URL is entered directly.
+        - [X] A user without access to the file cannot open it by URL.
+        - [X] The Salesforce record name is shown in full on the file details page and in Linked Records, including for a record whose name is assembled from several fields, such as a Contact.
+
+    - [X] Change 6: One Google Drive folder is created per record, even when several files or several users arrive at once.
+
+        - [X] With Folder per Record configured, uploading several files at once to a record that has no folder yet creates exactly one folder, and every file of that upload is placed in it.
+        - [X] Two users uploading to the same new record at the same time do not create a second folder.
+        - [X] A record that already has duplicated folders receives every new file into the same one of them.
+        - [X] Attaching an existing file to a record with no folder yet creates the record folder under the configured upload folder, and not inside the folder the attached file already lived in.
+
+    - [X] Change 7: More than one upload folder can be configured, in priority order.
+
+        - [X] A second folder can be added under Folder Locations, and up to ten are accepted.
+        - [X] Uploads are placed in the first folder in the list, and the configured folder structure is created inside it.
+        - [X] After reordering, new uploads go to the newly promoted first folder.
+        - [X] Files already stored in another folder stay where they are and remain reachable from Salesforce.
+
+    - [X] Change 8: Direct Browser Upload sends large file content straight to Google Drive, and falls back safely when it cannot.
+
+        - [X] The setting is off after the upgrade, and large uploads behave exactly as before.
+        - [X] `Test connection` succeeds and leaves no file behind in Google Drive.
+        - [X] With the setting on, a file larger than 100 MB completes and lands in the configured folder, and a file under 2 MB is unaffected.
+        - [X] Folder structure, versioning, and preview behave the same as for a standard upload.
+        - [X] With the `GoogleDriveDirectUpload` CSP Trusted Site deactivated, the Uploader offers a retry through Salesforce on the file card, and accepting it completes the upload.
+        - [X] The same failure in the Attachments upload window offers the retry at the bottom of the window.
+        - [X] Turning the setting back off leaves large uploads working from the Uploader, Attachments, and File Explorer.
+        - [X] Logs tagged `Google Client for Salesforce` show the expected outcomes and no unexpected errors.
+
+    - [X] Change 9: Questions and answers are inspected before they leave and re-enter Salesforce.
+
+        - [X] Standard is the active mode when nothing was chosen, and the safety settings are disabled while File Intelligence is off.
+        - [X] A normal question about the document is answered.
+        - [X] An attempt to make the model ignore its instructions is refused with a readable message, and the preview keeps working.
+        - [X] A request to reveal the configuration or system prompt is refused.
+        - [X] With the mode set to Off, questions pass through without inspection.
+        - [X] An unknown class name in `Custom AI Prompt Safety Guard Class` falls back to the shipped protection rather than leaving questions unprotected.
+        - [X] Searching File Explorer for a word that appears in a file's summary but not in its name finds that file.
+
+    ### Boring Changes
+    - [X] Version number assigned to all hard-coded labels
+    - [X] Version ID is assigned to all installation guides.
+
+    ### Smoke Checks
+    - [X] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [X] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [X] Admin can open Google Client app and browse configuration tabs without errors
+
+    ### Suite Execution (only for Full or Quick)
+    - [X] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
+
+	### Notes
+    - On certain Experience Cloud sites, modal actions such as Share and Download As are displayed beneath the preview window, making them inaccessible. A bug will be created to address this issue.
+	- Platform Cache is not allocated automatically when installing or upgrading the package. This remains a known issue listed on the Help page. Unfortunately, there is nothing we can do to address it as part of the unlocked package, so allocating Platform Cache remains a manual step. Note: Even without Platform Cache, most functionality continues to work as expected, except for the View All button in the Attachments component.
+
+??? example "Release v2.0.0"
 
     ### Validation Suite Used
     - [X] Full Validation Suite

@@ -27,20 +27,12 @@ public without sharing class GoogleLocalFileSharingService {
 	private final IGoogleUnitOfWork uow;
 
 	public GoogleLocalFileSharingService() {
-		this.uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
-			GoogleFile__c.SObjectType,
-			GoogleFileVersion__c.SObjectType,
-			GoogleFileLink__c.SObjectType
-		});
+		this.uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
 	}
 
 	public GoogleLocalFileSharingService(IGoogleUnitOfWork injectedUow) {
 		this.uow = injectedUow == null
-			? new GoogleCloudUnitOfWork(new List<SObjectType>{
-				GoogleFile__c.SObjectType,
-				GoogleFileVersion__c.SObjectType,
-				GoogleFileLink__c.SObjectType
-			})
+			? new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER)
 			: injectedUow;
 	}
 

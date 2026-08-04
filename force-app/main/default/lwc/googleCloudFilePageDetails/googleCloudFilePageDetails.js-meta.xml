@@ -8,11 +8,4 @@
 		<target>lightning__UrlAddressable</target>
 		<target>lightningCommunity__Page</target>
 	</targets>
-    <targetConfigs>
-		<targetConfig targets="lightning__RecordPage">
-			<objects>
-				<object>GoogleFile__c</object>
-			</objects>
-		</targetConfig>
-	</targetConfigs>
 </LightningComponentBundle>

@@ -78,12 +78,11 @@ private class GoogleLocalFileLinkEnrichmentServiceTest {
 
 	@IsTest
 	private static void testResolveLinkedRecordNamePositive() {
-		Account linkedRecord = new Account(Name = 'Resolved Account Name');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Resolved Record Name');
 
 		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
 
-		Assert.areEqual('Resolved Account Name', enrichmentService.resolveLinkedRecordName(linkedRecord.Id));
+		Assert.areEqual('Resolved Record Name', enrichmentService.resolveLinkedRecordName(linkedRecordId));
 	}
 
 	@IsTest

@@ -26,10 +26,18 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 
 	private final GoogleMetadataConfigService googleConfig;
 	private final GoogleClientApiProvider remoteFileService;
+	private final IGoogleUnitOfWork uow;
 
 	public GoogleLocalFileVersionPublicLinkService() {
+		this((IGoogleUnitOfWork) null);
+	}
+
+	public GoogleLocalFileVersionPublicLinkService(IGoogleUnitOfWork injectedUow) {
 		this.googleConfig = new GoogleMetadataConfigService();
 		this.remoteFileService = new GoogleClientApiProvider();
+		this.uow = injectedUow == null
+			? new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER)
+			: injectedUow;
 	}
 
 	public List<GoogleFileVersion__c> removePublicLinkSharing(Id localFileVersionId) {
@@ -37,6 +45,13 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 
 		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
 		return deletePublicLink(new List<GoogleFileVersion__c>{ localFileVersion });
+	}
+
+	public List<GoogleFileVersion__c> removePublicLinkSharing(Set<Id> localFileVersionIds) {
+		if (localFileVersionIds == null || localFileVersionIds.isEmpty()) return new List<GoogleFileVersion__c>();
+		Logger.info('Remove Public Link Sharing --> ' + localFileVersionIds).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+
+		return deletePublicLink(queryLocalFileVersions(localFileVersionIds));
 	}
 
 	public List<GoogleFileVersion__c> applyPublicLinkSharing(Id localFileVersionId) {
@@ -59,6 +74,13 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 			.withAdvancedFields()
 			.byId(localFileVersionId)
 			.toObject();
+	}
+
+	private List<GoogleFileVersion__c> queryLocalFileVersions(Set<Id> localFileVersionIds) {
+		return (List<GoogleFileVersion__c>) GoogleFileVersionSelector.query()
+			.withAdvancedFields()
+			.byIds(localFileVersionIds)
+			.toList();
 	}
 
 	private List<GoogleFileVersion__c> createAndAssignPublicLink(List<GoogleFileVersion__c> localFileVersions, Datetime expirationDate, Boolean isDomainSkip) {
@@ -102,7 +124,8 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 		}
 
 		try {
-			update localFileVersions;
+			uow.registerDirty(localFileVersions);
+			uow.commitWork(true);
 		} catch (Exception ex) {
 			Logger.error('Created & Assign Public Link Failed (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
@@ -140,7 +163,8 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 		}
 
 		try {
-			update localFileVersions;
+			uow.registerDirty(localFileVersions);
+			uow.commitWork(true);
 		} catch (Exception ex) {
 			Logger.error('Delete Public Link Failed (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();

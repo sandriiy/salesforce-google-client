@@ -36,7 +36,7 @@ private class GoogleCacheDriveFolderServiceTest {
 	@IsTest
 	private static void testBuildFolderKeyPositiveProducesPlatformCacheSafeKey() {
 		GoogleCacheDriveFolderService folderCache = buildService();
-		Id targetId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id targetId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		Test.startTest();
 		String folderKey = folderCache.buildFolderKey('1AbCdEfGhIjKlMnOpQrStUvWxYz012345', targetId);
@@ -51,8 +51,8 @@ private class GoogleCacheDriveFolderServiceTest {
 	@IsTest
 	private static void testBuildFolderKeyPositiveDistinguishesParentAndTarget() {
 		GoogleCacheDriveFolderService folderCache = buildService();
-		Id firstTargetId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
-		Id secondTargetId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id firstTargetId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		Id secondTargetId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		Test.startTest();
 		String sameTargetUnderRootA = folderCache.buildFolderKey('ROOT_A', firstTargetId);
@@ -71,7 +71,7 @@ private class GoogleCacheDriveFolderServiceTest {
 		GoogleCacheDriveFolderService folderCache = buildService();
 
 		Test.startTest();
-		String blankParentKey = folderCache.buildFolderKey('', GoogleCloudTestFactory.fakeId(Account.SObjectType));
+		String blankParentKey = folderCache.buildFolderKey('', GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 		String missingTargetKey = folderCache.buildFolderKey('ROOT_A', null);
 		Test.stopTest();
 
@@ -82,7 +82,7 @@ private class GoogleCacheDriveFolderServiceTest {
 	@IsTest
 	private static void testPutAndGetFolderIdPositive() {
 		GoogleCacheDriveFolderService folderCache = buildService();
-		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(Account.SObjectType));
+		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 
 		Test.startTest();
 		folderCache.putFolderId(folderKey, 'FOLDER_01');
@@ -96,7 +96,7 @@ private class GoogleCacheDriveFolderServiceTest {
 	@IsTest
 	private static void testMarkPendingPositiveHidesFolderUntilResolved() {
 		GoogleCacheDriveFolderService folderCache = buildService();
-		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(Account.SObjectType));
+		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 
 		Test.startTest();
 		folderCache.markPending(folderKey);
@@ -116,7 +116,7 @@ private class GoogleCacheDriveFolderServiceTest {
 	@IsTest
 	private static void testIsPendingPositiveExpiresStaleClaim() {
 		GoogleCacheDriveFolderService folderCache = buildService();
-		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(Account.SObjectType));
+		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 
 		Long staleClaimedAt = DateTime.now().getTime() - (GoogleCacheDriveFolderService.PENDING_LIFESPAN_MILLISECONDS * 2);
 		GoogleCacheDriveFolderService.cacheProviderOverride.put(folderKey, GoogleCacheDriveFolderService.PENDING_PREFIX + ':' + String.valueOf(staleClaimedAt));
@@ -131,7 +131,7 @@ private class GoogleCacheDriveFolderServiceTest {
 	@IsTest
 	private static void testEvictPositiveRemovesEntry() {
 		GoogleCacheDriveFolderService folderCache = buildService();
-		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(Account.SObjectType));
+		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 		folderCache.putFolderId(folderKey, 'FOLDER_01');
 
 		Test.startTest();
@@ -144,7 +144,7 @@ private class GoogleCacheDriveFolderServiceTest {
 	@IsTest
 	private static void testPutFolderIdNegativeIgnoresBlankFolderId() {
 		GoogleCacheDriveFolderService folderCache = buildService();
-		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(Account.SObjectType));
+		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 
 		Test.startTest();
 		folderCache.putFolderId(folderKey, '');
@@ -156,7 +156,7 @@ private class GoogleCacheDriveFolderServiceTest {
 	@IsTest
 	private static void testUnavailableCacheNegativeDegradesToMissWithoutThrowing() {
 		GoogleCacheDriveFolderService folderCache = buildUnavailableService();
-		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(Account.SObjectType));
+		String folderKey = folderCache.buildFolderKey('ROOT_A', GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 
 		Test.startTest();
 		folderCache.markPending(folderKey);

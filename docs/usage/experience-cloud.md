@@ -47,19 +47,21 @@ You must create **two empty Experience Cloud pages** with the following **URLs**
   <li>Choose <strong>1 full-width column</strong> layout.</li>
   <li>Create the first page:
     <ul>
-      <li>Label: View All Files (or similar)</li>
+      <li>Name: View All Files (or similar)</li>
       <li>API Name: ViewAllFiles (or similar)</li>
 	  <li>URL: <strong>gview-all-files</strong></li>
     </ul>
   </li>
   <li>Create the second page:
     <ul>
-      <li>Label: File Details (or similar)</li>
+      <li>Name: File Details (or similar)</li>
       <li>API Name: FileDetails (or similar)</li>
 	  <li>URL: <strong>gfile-details</strong></li>
     </ul>
   </li>
 </ol>
+
+![Creating the View All Files page in Experience Builder](../assets/images/usage_experience_new_page.png)
 
 ## Place Required Internal Components
 
@@ -82,6 +84,8 @@ After creating the pages, place the required internal Google Client components o
   <li>Drag the component into the main content area.</li>
   <li>Use a single, wide section for best results.</li>
 </ul>
+
+![All Attachments placed on the gview-all-files page](../assets/images/usage_experience_component_placed.png)
 
 After placing both components, click <strong>Publish</strong> to make the pages available. At this point, navigation used by Google Client components is fully configured.
 

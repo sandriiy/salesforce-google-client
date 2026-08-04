@@ -45,9 +45,7 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 			.byIds(versionIds)
 			.toList();
 
-		IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
-			GoogleFileVersion__c.SObjectType
-		});
+		IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
 
         for (GoogleFileVersion__c localFileVersion : localFileVersions) {
             if (String.isNotBlank(localFileVersion.GoogleDocsFileId__c)) continue;

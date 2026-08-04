@@ -408,7 +408,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
                 hasPersistedRecord: true
             };
 
-            if (alsoValidate) {
+            if (alsoValidate && !this.isAdvancedView) {
                 const didValidate = await this.runValidation({ skipInitialSave: true, showSkippedMessage: false });
                 if (!didValidate) {
                     showToast(this, 'Configuration Saved', 'Configuration was saved successfully', 'success');

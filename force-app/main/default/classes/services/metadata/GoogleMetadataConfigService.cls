@@ -54,14 +54,7 @@ public inherited sharing class GoogleMetadataConfigService {
 	public GoogleMetadataConfigService(IGoogleMetadataDeployer deployer) {
 		this.metadataDeployer = deployer;
 
-		if (configRecordOverride != null) {
-			this.configRecord = configRecordOverride;
-		} else {
-			Map<String, GoogleClientConfig__mdt> all = GoogleClientConfig__mdt.getAll();
-			this.configRecord = (all != null && !all.isEmpty())
-				? all.values()[0]
-				: new GoogleClientConfig__mdt();
-		}
+		this.configRecord = configRecordOverride != null ? configRecordOverride : resolveConfigRecord();
     }
 
     public Id saveConfig(Map<String, Object> fieldApiToValue) {
@@ -93,13 +86,13 @@ public inherited sharing class GoogleMetadataConfigService {
 	}
 
 	public Long getBigFileSizeInBytes() {
-		Long configuredValue = (Long) configRecord.DefaultBigFileSize__c;
-		return configuredValue == null ? DEFAULT_BIG_FILE_SIZE : configuredValue;
+		Decimal configuredValue = configRecord.DefaultBigFileSize__c;
+		return configuredValue == null ? DEFAULT_BIG_FILE_SIZE : configuredValue.longValue();
     }
 
 	public Integer getDeleteChainSize() {
-		Integer configuredValue = (Integer) configRecord.MaxDeleteChainSize__c;
-		return configuredValue == null ? DEFAULT_MAX_DELETE_CHAIN_SIZE : configuredValue;
+		Decimal configuredValue = configRecord.MaxDeleteChainSize__c;
+		return configuredValue == null ? DEFAULT_MAX_DELETE_CHAIN_SIZE : configuredValue.intValue();
     }
 
     public String getDefaultUploadFolderId() {
@@ -215,8 +208,8 @@ public inherited sharing class GoogleMetadataConfigService {
 	}
 
 	public Integer getQuestionMaxOutputTokens() {
-		Integer configuredValue = (Integer) configRecord.QuestionMaxOutputTokens__c;
-		return configuredValue == null ? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS : configuredValue;
+		Decimal configuredValue = configRecord.QuestionMaxOutputTokens__c;
+		return configuredValue == null ? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS : configuredValue.intValue();
 	}
 
 	public String getAiSafetyMode() {
@@ -235,6 +228,22 @@ public inherited sharing class GoogleMetadataConfigService {
 	public String getGoogleDriveDomain() {
         return configRecord.OrganizationalDomain__c;
     }
+
+	private GoogleClientConfig__mdt resolveConfigRecord() {
+		Map<String, GoogleClientConfig__mdt> configRecordsByDeveloperName = GoogleClientConfig__mdt.getAll();
+		if (configRecordsByDeveloperName == null || configRecordsByDeveloperName.isEmpty()) {
+			return new GoogleClientConfig__mdt();
+		}
+
+		GoogleClientConfig__mdt packagedRecord = configRecordsByDeveloperName.get(DEFAULT_RECORD_DEVELOPER_NAME);
+		if (packagedRecord != null) {
+			return packagedRecord;
+		}
+
+		return configRecordsByDeveloperName.size() == 1
+			? configRecordsByDeveloperName.values()[0]
+			: new GoogleClientConfig__mdt();
+	}
 
 	private Map<String, Object> applyManagedDefaults(Map<String, Object> fieldApiToValue) {
 		Map<String, Object> normalizedValues = new Map<String, Object>(fieldApiToValue);

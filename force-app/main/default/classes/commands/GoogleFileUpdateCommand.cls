@@ -29,13 +29,15 @@ public without sharing class GoogleFileUpdateCommand {
 
     private static final Integer MAX_FILE_NAME_LENGTH = 80;
 
+    private final IGoogleUnitOfWork uowRef;
     private final GoogleFile__c localGoogleFileRecord;
     private final GoogleFileVersion__c localGoogleFileVersionRecord;
     private String fileName;
     private String fileVersionName;
     private String fileDescription;
 
-    public GoogleFileUpdateCommand(GoogleFile__c localGoogleFileRecord, GoogleFileVersion__c localGoogleFileVersionRecord) {
+    public GoogleFileUpdateCommand(IGoogleUnitOfWork uowRef, GoogleFile__c localGoogleFileRecord, GoogleFileVersion__c localGoogleFileVersionRecord) {
+        this.uowRef = uowRef;
         this.localGoogleFileRecord = localGoogleFileRecord;
         this.localGoogleFileVersionRecord = localGoogleFileVersionRecord;
     }
@@ -60,6 +62,10 @@ public without sharing class GoogleFileUpdateCommand {
         GoogleFileUpdateResult result = new GoogleFileUpdateResult();
         result.localGoogleFileToUpdate = buildFileUpdate();
         result.localGoogleFileVersionToUpdate = buildFileVersionUpdate();
+
+        if (result.localGoogleFileToUpdate != null) uowRef.registerDirty(result.localGoogleFileToUpdate);
+        if (result.localGoogleFileVersionToUpdate != null) uowRef.registerDirty(result.localGoogleFileVersionToUpdate);
+
         return result;
     }
 

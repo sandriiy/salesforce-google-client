@@ -81,7 +81,7 @@ const isEmpty = (value) => {
 const isPermissionMissing = (error) => {
     const message = (typeof error === 'string')
         ? error
-        : error?.body?.message || error?.message || '';
+        : error?.body?.message || error?.body?.[0]?.message || error?.message || '';
 
     if (!message) {
         return false;

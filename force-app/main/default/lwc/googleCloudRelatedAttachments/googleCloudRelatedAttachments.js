@@ -20,6 +20,7 @@ import {
 	extractFileExtension
 } from 'c/googleCloudUtils';
 import { DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
+import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
 import retrieveGoogleFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit';
 
 const UNABLE_TO_UPLOAD_MESSAGE = 'Unable to upload file(s)';
@@ -41,7 +42,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@api fileTypes;
 	@api maximumSizeMb;
 
-	@track isAccessible = true; // false when the user does not have permission
+	@track isAccessible = hasGoogleClientUserAccess === true;
 	@track isNewFileVersionUpload = false;
 	@track subscription;
 	@track tabInfo;

@@ -30,6 +30,11 @@ public with sharing class GoogleFileVersionTriggerHandler extends GTriggerHandle
 	private GoogleLocalFileVersionLifecycleService lifecycleService;
 
 	public GoogleFileVersionTriggerHandler() {
+		this((IGoogleUnitOfWork) null);
+	}
+
+	@TestVisible
+	private GoogleFileVersionTriggerHandler(IGoogleUnitOfWork injectedUow) {
 		super('GoogleFileVersionTriggerHandler');
 
 		this.newRecords = (List<GoogleFileVersion__c>) Trigger.new;
@@ -37,7 +42,7 @@ public with sharing class GoogleFileVersionTriggerHandler extends GTriggerHandle
 		this.newRecordsMap = (Map<Id, GoogleFileVersion__c>) Trigger.newMap;
 		this.oldRecordsMap = (Map<Id, GoogleFileVersion__c>) Trigger.oldMap;
 
-		this.lifecycleService = new GoogleLocalFileVersionLifecycleService();
+		this.lifecycleService = new GoogleLocalFileVersionLifecycleService(injectedUow);
 	}
 
 	public override void afterInsert() {

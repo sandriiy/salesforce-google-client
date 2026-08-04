@@ -28,8 +28,7 @@ export default class GoogleCloudFileDeleteModal extends LightningModal {
 
 				this.close(true);
 			})
-			.catch(error => {
-				console.error(error);
+			.catch(() => {
 				showToast(
 					this,
 					'Unable to delete Existing File',

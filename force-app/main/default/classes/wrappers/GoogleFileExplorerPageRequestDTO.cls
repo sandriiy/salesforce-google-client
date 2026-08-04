@@ -27,6 +27,7 @@ public with sharing class GoogleFileExplorerPageRequestDTO {
 	@AuraEnabled public String searchTerm;
 	@AuraEnabled public String cursor;
 	@AuraEnabled public Integer pageSize;
+	@AuraEnabled public String bucket;
 
 	private static final String DEFAULT_SORT_FIELD = 'lastModifiedDisplay';
 	private static final String DEFAULT_SORT_PATH = 'LastModifiedDate';
@@ -36,14 +37,26 @@ public with sharing class GoogleFileExplorerPageRequestDTO {
 		'createdDateDisplay' => 'CreatedDate',
 		'lastModifiedDisplay' => 'LastModifiedDate',
 		'fileOwner' => 'Owner.Name',
-		'ownerName' => 'CreatedBy.Name',
+		'createdByName' => 'CreatedBy.Name',
 		'isLinkedLabel' => 'NumberOfLinks__c'
 	};
+
+	public static GoogleFileExplorerPageRequestDTO of(String sortField, String sortDirection, String searchTerm, String cursor, Integer pageSize, String bucket) {
+		GoogleFileExplorerPageRequestDTO request = new GoogleFileExplorerPageRequestDTO();
+		request.sortField = sortField;
+		request.sortDirection = sortDirection;
+		request.searchTerm = searchTerm;
+		request.cursor = cursor;
+		request.pageSize = pageSize;
+		request.bucket = bucket;
+		return request;
+	}
 
 	public static GoogleFileExplorerPageRequestDTO firstPage() {
 		GoogleFileExplorerPageRequestDTO request = new GoogleFileExplorerPageRequestDTO();
 		request.sortField = DEFAULT_SORT_FIELD;
 		request.sortDirection = 'DESC';
+		request.bucket = GoogleCloudConstants.FILE_EXPLORER_BUCKET_OWNED;
 		return request;
 	}
 
@@ -53,7 +66,8 @@ public with sharing class GoogleFileExplorerPageRequestDTO {
 	}
 
 	public Integer effectivePageSize() {
-		return (pageSize == null || pageSize <= 0) ? GoogleCloudConstants.FILE_EXPLORER_PAGE_SIZE : pageSize;
+		if (pageSize == null || pageSize <= 0) return GoogleCloudConstants.FILE_EXPLORER_PAGE_SIZE;
+		return Math.min(pageSize, GoogleCloudConstants.FILE_EXPLORER_MAX_PAGE_SIZE);
 	}
 
 	public Boolean hasCursor() {

@@ -271,4 +271,111 @@ private class GoogleMetadataConfigServiceTest {
 		Assert.areEqual('summary', columns[1]);
 		Assert.areEqual('type', columns[2]);
 	}
+
+	@IsTest
+	private static void testResolveConfigRecordNeverReturnsNull() {
+		GoogleMetadataConfigService.configRecordOverride = null;
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		Assert.isNotNull(svc.getConfig());
+		Assert.isNotNull(svc.getAiSafetyMode());
+		Assert.isNotNull(svc.getFileExplorerColumns());
+		Assert.isNotNull(svc.getAllUploadFolderIds());
+	}
+
+	@IsTest
+	private static void testFreshInstallEmptyConfigUsesDefaults() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		Assert.isFalse(svc.hasConfigRecord());
+		Assert.isFalse(svc.isPreviewDisabled());
+		Assert.isFalse(svc.isDirectBrowserUploadEnabled());
+		Assert.isFalse(svc.isFileIntelligenceEnabled());
+		Assert.isFalse(svc.requiresRecordFolder());
+
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_BIG_FILE_SIZE, svc.getBigFileSizeInBytes());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_MAX_DELETE_CHAIN_SIZE, svc.getDeleteChainSize());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AUTH_CLASS_NAME, svc.getGoogleDriveAuthorizerClassName());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_SAFETY_MODE, svc.getAiSafetyMode());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_SUMMARY_PROMPT, svc.getSummaryPrompt());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_QUESTION_PROMPT, svc.getQuestionPrompt());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_QUESTION_MAX_OUTPUT_TOKENS, svc.getQuestionMaxOutputTokens());
+		Assert.areEqual(5, svc.getFileExplorerColumns().size());
+		Assert.areEqual(0, svc.getAllUploadFolderIds().size());
+	}
+
+	@IsTest
+	private static void testBlankFieldsFallBackToDefaults() {
+		GoogleCloudTestFactory.config()
+			.asPackagedRecord()
+			.withUploadFolderId('')
+			.withAiSafetyMode('')
+			.withSummaryPrompt('')
+			.withFileExplorerColumns('')
+			.apply();
+
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		Assert.isTrue(svc.hasConfigRecord());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_SAFETY_MODE, svc.getAiSafetyMode());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_SUMMARY_PROMPT, svc.getSummaryPrompt());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_FILE_EXPLORER_COLUMNS.split(';').size(), svc.getFileExplorerColumns().size());
+		Assert.areEqual(0, svc.getAllUploadFolderIds().size());
+	}
+
+	@IsTest
+	private static void testUnsupportedSafetyModeFallsBackToDefault() {
+		GoogleCloudTestFactory.config().withAiSafetyMode('Paranoid').apply();
+
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_SAFETY_MODE, new GoogleMetadataConfigService().getAiSafetyMode());
+	}
+
+	@IsTest
+	private static void testConfiguredNumericFieldsAreReadWithoutCastErrors() {
+		GoogleCloudTestFactory.config()
+			.withBigFileSize(5242880L)
+			.withDeleteChainSize(7)
+			.withQuestionMaxOutputTokens(2048)
+			.apply();
+
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		Assert.areEqual(5242880L, svc.getBigFileSizeInBytes());
+		Assert.areEqual(7, svc.getDeleteChainSize());
+		Assert.areEqual(2048, svc.getQuestionMaxOutputTokens());
+	}
+
+	@IsTest
+	private static void testOptionalFeaturesAreOffUntilExplicitlyEnabled() {
+		GoogleCloudTestFactory.config().apply();
+		GoogleMetadataConfigService disabled = new GoogleMetadataConfigService();
+
+		Assert.isFalse(disabled.isDirectBrowserUploadEnabled());
+		Assert.isFalse(disabled.isFileIntelligenceEnabled());
+
+		GoogleCloudTestFactory.config()
+			.withDirectBrowserUpload(true)
+			.withFileIntelligence(true)
+			.apply();
+		GoogleMetadataConfigService enabled = new GoogleMetadataConfigService();
+
+		Assert.isTrue(enabled.isDirectBrowserUploadEnabled());
+		Assert.isTrue(enabled.isFileIntelligenceEnabled());
+	}
+
+	@IsTest
+	private static void testAdditionalUploadFoldersArePreservedInOrder() {
+		GoogleCloudTestFactory.config()
+			.withUploadFolderId('PRIMARY')
+			.withAdditionalUploadFolderIds(' SECOND ;;THIRD; PRIMARY ')
+			.apply();
+
+		List<String> folderIds = new GoogleMetadataConfigService().getAllUploadFolderIds();
+
+		Assert.areEqual(3, folderIds.size());
+		Assert.areEqual('PRIMARY', folderIds[0]);
+		Assert.areEqual('SECOND', folderIds[1]);
+		Assert.areEqual('THIRD', folderIds[2]);
+	}
 }

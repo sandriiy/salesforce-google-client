@@ -31,11 +31,7 @@ private class GoogleFileStoreInFolderCommandTest {
 	}
 
 	private static IGoogleUnitOfWork buildUow() {
-		return new GoogleCloudUnitOfWork(new List<SObjectType>{
-			GoogleFile__c.SObjectType,
-			GoogleFileVersion__c.SObjectType,
-			GoogleFileLink__c.SObjectType
-		});
+		return GoogleCloudTestFactory.unitOfWork();
 	}
 
 	@IsTest
@@ -117,8 +113,7 @@ private class GoogleFileStoreInFolderCommandTest {
 		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}-{User}');
 
-		Account linkedRecord = new Account(Name = 'Placement Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Placement Record');
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
 			.withName('Placement File')
@@ -135,8 +130,8 @@ private class GoogleFileStoreInFolderCommandTest {
 
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(parentFile.Id)
-			.withLinkedRecord(linkedRecord.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(
@@ -181,7 +176,7 @@ private class GoogleFileStoreInFolderCommandTest {
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(parentFile.Id)
 			.withLinkedRecord(linkedRecordId)
-			.withLinkedType('Account')
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		return new GoogleFileRelocationRequestDTO(
@@ -208,7 +203,7 @@ private class GoogleFileStoreInFolderCommandTest {
 		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		List<GoogleFileRelocationRequestDTO> requests = new List<GoogleFileRelocationRequestDTO>{
 			buildPlacementRequest(linkedRecordId, 'GD_SHARED_1'),
 			buildPlacementRequest(linkedRecordId, 'GD_SHARED_2'),
@@ -251,7 +246,7 @@ private class GoogleFileStoreInFolderCommandTest {
 		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GoogleFileRelocationRequestDTO request = buildPlacementRequest(linkedRecordId, 'GD_DEFERRED_1');
 
 		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
@@ -296,8 +291,7 @@ private class GoogleFileStoreInFolderCommandTest {
 		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}-{User}');
 
-		Account linkedRecord = new Account(Name = 'Existing Folder Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Existing Folder Record');
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
 			.withName('Existing Folder File')
@@ -314,8 +308,8 @@ private class GoogleFileStoreInFolderCommandTest {
 
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(parentFile.Id)
-			.withLinkedRecord(linkedRecord.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(
@@ -454,8 +448,7 @@ private class GoogleFileStoreInFolderCommandTest {
 		config.CustomGoogleUploadFolderStructure__c = '{Record}';
 		GoogleMetadataConfigService.configRecordOverride = config;
 
-		Account linkedRecord = new Account(Name = 'Fallback Placement Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Fallback Placement Record');
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
 			.withName('Fallback File')
@@ -475,8 +468,8 @@ private class GoogleFileStoreInFolderCommandTest {
 
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(parentFile.Id)
-			.withLinkedRecord(linkedRecord.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(
@@ -540,8 +533,7 @@ private class GoogleFileStoreInFolderCommandTest {
 		config.CustomGoogleUploadFolderStructure__c = '{Record}';
 		GoogleMetadataConfigService.configRecordOverride = config;
 
-		Account linkedRecord = new Account(Name = 'Self-Healing Placement Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Self-Healing Placement Record');
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
 			.withName('Big File')
@@ -558,8 +550,8 @@ private class GoogleFileStoreInFolderCommandTest {
 
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(parentFile.Id)
-			.withLinkedRecord(linkedRecord.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(linkedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(

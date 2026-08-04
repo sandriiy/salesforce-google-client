@@ -51,8 +51,7 @@ export default class GoogleCloudFilePublicLink extends LightningElement {
                 this.publicLink = result.PublicLink__c;
                 this.expirationOn = isEmpty(this.datetime) ? false : true;
             })
-            .catch(error => {
-                console.error(error);
+            .catch(() => {
                 showToast(
                     this,
                     'Unable to create Public Link',
@@ -71,8 +70,7 @@ export default class GoogleCloudFilePublicLink extends LightningElement {
             .then(result => {
                 this.clearPublicLinkInfo();
             })
-            .catch(error => {
-                console.error(error);
+            .catch(() => {
                 showToast(
                     this,
                     'Unable to delete Public Link',
@@ -93,8 +91,7 @@ export default class GoogleCloudFilePublicLink extends LightningElement {
                 this.publicLink = this.localFileVersionRecord.PublicLink__c;
                 this.expirationOn = isEmpty(this.datetime) ? false : true;
             })
-            .catch(error => {
-                console.error(error);
+            .catch(() => {
                 showToast(
                     this,
                     'Unable to retrieve File Version',

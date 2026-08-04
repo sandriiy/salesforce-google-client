@@ -1,3 +1,26 @@
+/**
+ * MIT License
+ *
+ * Copyright (c) 2026 Andrii Sukhetskyi
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 @IsTest
 private class GoogleFileCloudShortcutJobTest {
 	private static GoogleClientConfig__mdt buildFolderConfig(String uploadFolderId, String folderStructure) {
@@ -45,8 +68,7 @@ private class GoogleFileCloudShortcutJobTest {
 		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Account relatedAccount = new Account(Name = 'Shortcut Account');
-		insert relatedAccount;
+		Id relatedRecordId = GoogleCloudTestFactory.linkedRecord('Shortcut Record');
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('Shortcut File')
@@ -60,8 +82,8 @@ private class GoogleFileCloudShortcutJobTest {
 
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
-			.withLinkedRecord(relatedAccount.Id)
-			.withLinkedType('Account')
+			.withLinkedRecord(relatedRecordId)
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		Test.startTest();
@@ -90,7 +112,7 @@ private class GoogleFileCloudShortcutJobTest {
 		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Id relatedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id relatedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		GoogleFile__c localFile = GoogleCloudTestFactory.file()
 			.withName('Placed Shortcut File')
@@ -106,7 +128,7 @@ private class GoogleFileCloudShortcutJobTest {
 		GoogleFileLink__c link = GoogleCloudTestFactory.link()
 			.forFile(localFile.Id)
 			.withLinkedRecord(relatedRecordId)
-			.withLinkedType('Account')
+			.withLinkedType('GoogleFile__c')
 			.insertRecord();
 
 		Test.startTest();

@@ -66,19 +66,28 @@ Use this option for production and UAT environments. Authentication uses the **s
 
 ![Agent Platform Setup](../assets/images/config_ai_agent_platform.png)
 
-### Step 4: Configure Prompts and Token Limits
+### Step 4: Review the Prompts
 
-Admins can control how Google Client asks the AI provider to respond.
+Google Client ships working prompts for both summaries and questions, so the feature is usable the moment validation passes. Nothing here is required to get started.
 
-Configure these settings based on your business language and expected output length:
+Come back to them when you know how your teams want documents described:
 
-- **Custom Summary Prompt** - system prompt used when summaries are generated
-- **Custom Question Prompt** - system prompt used when users ask questions about a file
-- **Question Max Output Tokens** - maximum output tokens returned for file question responses
+- **Summary Prompt** — how the provider is asked to describe a file
+- **Question Prompt** — how it is asked to answer a user's question
+- **Question Max Output Tokens** — how long an answer may be, which is also what drives your provider costs
 
-Keep prompts specific and practical. The best prompts tell the provider what kind of business answer your users expect, without adding unnecessary ceremony.
+📘 See [AI Intelligence settings](../config/advanced/ai-intelligence.md) for what each one does and how to write a good prompt.
 
-![File Intelligence enablement setting](../assets/images/client_ai_enable_config.png)
+![Prompts and answer length in Advanced](../assets/images/config_advanced_ai_intelligence.png)
+
+### Step 5: Nothing, You Are Done
+
+Prompt security is already active. Every question is inspected before it reaches the provider and every answer before it is shown, at a **Standard** strictness that suits most organizations. You do not need to configure anything for that to happen.
+
+Change it later if you need to:
+
+- 📘 [AI Prompt Security](../features/artificial-intelligence/safety.md) — what is inspected, what each mode does, and how to supply your own inspection in Apex
+- 📘 [Safety & Customization](../config/advanced/safety-customization.md) — the settings themselves
 
 ## What Happens After Setup
 
@@ -90,5 +99,11 @@ After File Intelligence is configured:
 - Users can ask questions about the current file when Q&A is available
 
 If the provider is not configured, validation fails, or the file is not eligible, Google Client simply keeps the regular file experience available without showing broken AI controls.
+
+## Where to Go Next
+
+- [AI & Intelligence overview](../features/artificial-intelligence/overview.md) — how the layer works and what it does not do
+- [Document Summaries](../features/artificial-intelligence/summaries.md) — where summaries appear and when they are generated
+- [File Q&A](../features/artificial-intelligence/file-qa.md) — how users ask, and what will not be answered
 
 <br>

@@ -70,11 +70,10 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks();
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '');
 
-		Account linkedRecord = new Account(Name = 'Blank Structure Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Blank Structure Record');
 
 		Test.startTest();
-		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecord.Id);
+		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecordId);
 		Test.stopTest();
 
 		Assert.areEqual(null, folderId);
@@ -97,11 +96,10 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(buildMissingFolderMock());
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Account linkedRecord = new Account(Name = 'Record Structure Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Record Structure Record');
 
 		Test.startTest();
-		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecord.Id);
+		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecordId);
 		Test.stopTest();
 
 		Assert.isNotNull(folderId);
@@ -124,11 +122,10 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(buildMissingFolderMock());
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}-{User}');
 
-		Account linkedRecord = new Account(Name = 'Nested Structure Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Nested Structure Record');
 
 		Test.startTest();
-		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecord.Id);
+		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecordId);
 		Test.stopTest();
 
 		Assert.isNotNull(folderId);
@@ -163,11 +160,10 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(buildExistingFolderMock('EXISTING_FOLDER_01'));
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Account linkedRecord = new Account(Name = 'Existing Folder Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Existing Folder Record');
 
 		Test.startTest();
-		String folderId = new GoogleFileFolderStructureCommand().findExistingFolder(UserInfo.getUserId(), linkedRecord.Id);
+		String folderId = new GoogleFileFolderStructureCommand().findExistingFolder(UserInfo.getUserId(), linkedRecordId);
 		Test.stopTest();
 
 		Assert.areEqual('EXISTING_FOLDER_01', folderId);
@@ -178,11 +174,10 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(buildMissingFolderMock());
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('PRIMARY_ROOT', '{Record}');
 
-		Account linkedRecord = new Account(Name = 'Fallback Root Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Fallback Root Record');
 
 		Test.startTest();
-		String folderId = new GoogleFileFolderStructureCommand().ensureFolder('FALLBACK_ROOT', UserInfo.getUserId(), linkedRecord.Id);
+		String folderId = new GoogleFileFolderStructureCommand().ensureFolder('FALLBACK_ROOT', UserInfo.getUserId(), linkedRecordId);
 		Test.stopTest();
 
 		Assert.isNotNull(folderId);
@@ -205,11 +200,10 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(buildExistingFolderMock('EXISTING_FALLBACK_FOLDER'));
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('PRIMARY_ROOT', '{Record}');
 
-		Account linkedRecord = new Account(Name = 'Fallback Existing Account');
-		insert linkedRecord;
+		Id linkedRecordId = GoogleCloudTestFactory.linkedRecord('Fallback Existing Record');
 
 		Test.startTest();
-		String folderId = new GoogleFileFolderStructureCommand().findExistingFolder('FALLBACK_ROOT', UserInfo.getUserId(), linkedRecord.Id);
+		String folderId = new GoogleFileFolderStructureCommand().findExistingFolder('FALLBACK_ROOT', UserInfo.getUserId(), linkedRecordId);
 		Test.stopTest();
 
 		Assert.areEqual('EXISTING_FALLBACK_FOLDER', folderId);
@@ -221,7 +215,7 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
 		folderCache.putFolderId(folderCache.buildFolderKey('ROOT_FOLDER_01', linkedRecordId), 'CACHED_FOLDER_01');
 
@@ -239,7 +233,7 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GoogleFileFolderStructureCommand folderStructureCommand = new GoogleFileFolderStructureCommand();
 
 		Test.startTest();
@@ -257,7 +251,7 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(buildDuplicateFoldersMock(new List<String>{ 'FOLDER_C', 'FOLDER_A', 'FOLDER_B' }));
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		Test.startTest();
 		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecordId);
@@ -274,7 +268,7 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
 		folderCache.markPending(folderCache.buildFolderKey('ROOT_FOLDER_01', linkedRecordId));
 
@@ -294,7 +288,7 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(buildMissingFolderMock());
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
 		folderCache.markPending(folderCache.buildFolderKey('ROOT_FOLDER_01', linkedRecordId));
 
@@ -314,7 +308,7 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 		GoogleCacheDriveFolderService.cacheProviderOverride = new GoogleInMemoryCacheProvider(true);
 
-		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		Test.startTest();
 		String folderId = new GoogleFileFolderStructureCommand().ensureFolder(linkedRecordId);
@@ -328,7 +322,7 @@ private class GoogleFileFolderStructureCommandTest {
 		GoogleCloudTestFactory.initMocks(buildExistingFolderMock('EXISTING_FOLDER_01'));
 		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
-		Id linkedRecordId = GoogleCloudTestFactory.fakeId(Account.SObjectType);
+		Id linkedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 		GoogleFileFolderStructureCommand folderStructureCommand = new GoogleFileFolderStructureCommand();
 
 		Test.startTest();

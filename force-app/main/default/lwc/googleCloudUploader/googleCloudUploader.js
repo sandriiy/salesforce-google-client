@@ -2,6 +2,7 @@ import { LightningElement, api, track, wire } from 'lwc';
 import { saveGoogleFileLocally, uploadInChunks, upload, prefetchUploadFolderStructure } from 'c/googleCloudUploadUtils';
 import { BIG_FILE_SIZE } from 'c/googleCloudUploadUtils';
 import { DEFAULT_OOPS_MESSAGE, DEFAULT_FILE_UPLOAD_FAILURE, DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
+import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
 import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension } from 'c/googleCloudUtils';
 import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
 
@@ -17,7 +18,7 @@ export default class GoogleCloudUploader extends LightningElement {
     @api allowMultipleFiles;
 	@api maxFileCount;
 
-	@track isAccessible = true; // false when the user does not have permission
+	@track isAccessible = hasGoogleClientUserAccess === true;
 	@track isNewFileVersionUpload = false;
 	@track isDropzoneActive = false;
 	@track isLoading = true;

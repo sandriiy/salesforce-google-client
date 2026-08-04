@@ -9,6 +9,7 @@ import GoogleCloudExistingFileAttachModal from 'c/googleCloudExistingFileAttachM
 import { startConfigSession } from 'c/googleCloudConfigBus';
 import { navigateToByAttributes, isExperienceCloudContext } from 'c/googleCloudCrossPlatformUtils';
 import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, formatDateAsDayMonthYear, extractFileExtension } from 'c/googleCloudUtils';
+import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
 import { DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
 import { INT_VIEW_ALL_FILES_PAGE_NAME, EXT_VIEW_ALL_FILES_PAGE_NAME } from 'c/googleCloudCrossPlatformUtils';
 
@@ -34,7 +35,7 @@ export default class GoogleCloudAttachments extends NavigationMixin(LightningEle
 	@track isLoading = true;
 	@track isNewFileVersionUpload = false;
 	@track isExperienceSite = false;
-	@track isAccessible = true; // false when the user does not have permission
+	@track isAccessible = hasGoogleClientUserAccess === true;
 
 	wiredFilesResult;
 	@wire(retrieveGoogleFiles, { relatedRecordId: '$recordId', source: UPLOAD_SOURCE, recordsCount: '$countVisibleFiles' })

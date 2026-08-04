@@ -26,9 +26,14 @@ public class GoogleCloudTestFactory {
 	private static final String TEST_AUTHORIZER_CLASS_NAME = 'GoogleCloudTestFactory.TestGoogleAuthorizer';
 	private static Integer fakeIdCounter = 0;
 
+	private static final String SHARE_KEY_PREFIX = '02c';
+
 	public static Id fakeId(SObjectType sot) {
+		return fakeId(sot.getDescribe().getKeyPrefix());
+	}
+
+	public static Id fakeId(String keyPrefix) {
 		fakeIdCounter++;
-		String keyPrefix = sot.getDescribe().getKeyPrefix();
 		String idx = String.valueOf(fakeIdCounter);
 		return (Id)(keyPrefix + '0'.repeat(12 - idx.length()) + idx);
 	}
@@ -41,24 +46,94 @@ public class GoogleCloudTestFactory {
 		Test.setMock(HttpCalloutMock.class, httpMock);
 		GoogleClientApiProvider.authorizerClassNameOverride = TEST_AUTHORIZER_CLASS_NAME;
 		GoogleCacheDriveFolderService.cacheProviderOverride = new GoogleInMemoryCacheProvider();
+
+		if (GoogleMetadataConfigService.configRecordOverride == null) {
+			GoogleMetadataConfigService.configRecordOverride = config().build();
+		}
 	}
 
-	public static User newUser() {
-		Profile p = [SELECT Id FROM Profile WHERE Id = :UserInfo.getProfileId() LIMIT 1];
-		User u = new User(
-			ProfileId = p.Id,
-			Alias = 'tuser',
-			Email = 'tuser+' + String.valueOf(Crypto.getRandomLong()) + '@example.com',
-			EmailEncodingKey = 'UTF-8',
-			LastName = 'TestUser',
-			LanguageLocaleKey = 'en_US',
-			LocaleSidKey = 'en_US',
-			TimeZoneSidKey = 'America/New_York',
-			UserName = 'tuser+' + String.valueOf(Crypto.getRandomLong()) + '@example.com'
+	public static Id otherUserId() {
+		return fakeId(User.SObjectType);
+	}
+
+	public static void bypassTriggers() {
+		GTriggerHandler.setBypass('GoogleFileVersionTriggerHandler', true);
+		GTriggerHandler.setBypass('GoogleFileLinkTriggerHandler', true);
+	}
+
+	public static void grantRecordAccess(Id recordId, Boolean canRead, Boolean canEdit) {
+		if (GoogleRecordAccessResolver.accessOverrideByRecordId == null) {
+			GoogleRecordAccessResolver.accessOverrideByRecordId = new Map<Id, GoogleRecordAccessDTO>();
+		}
+
+		GoogleRecordAccessResolver.accessOverrideByRecordId.put(recordId, new GoogleRecordAccessDTO(recordId, canRead, canEdit));
+	}
+
+	public static void denyAllRecordAccess() {
+		GoogleRecordAccessResolver.accessOverrideByRecordId = new Map<Id, GoogleRecordAccessDTO>();
+	}
+
+	public static Id linkedRecord(String recordName, Boolean canRead, Boolean canEdit) {
+		Id linkedRecordId = fakeId(GoogleFile__c.SObjectType);
+		grantRecordAccess(linkedRecordId, canRead, canEdit);
+		GSOQL.mock(GoogleFileLinkedRecordSelector.MOCK_ID).thenReturn(new List<SObject>{
+			new GoogleFile__c(Id = linkedRecordId, Name = recordName)
+		});
+
+		return linkedRecordId;
+	}
+
+	public static Id linkedRecord(String recordName) {
+		return linkedRecord(recordName, true, true);
+	}
+
+	public static Id mockInternalUser() {
+		return mockUser(fakeId(User.SObjectType), 'Standard');
+	}
+
+	public static Id mockExternalUser() {
+		return mockUser(fakeId(User.SObjectType), 'CspLitePortal');
+	}
+
+	public static Id mockUser(Id userId, String userType) {
+		GSOQL.mock(GoogleUserSelector.MOCK_ID).thenReturn(new List<SObject>{ buildUser(userId, userType) });
+		return userId;
+	}
+
+	public static User buildUser(Id userId, String userType) {
+		return (User) JSON.deserialize(
+			JSON.serialize(new Map<String, Object>{
+				'attributes' => new Map<String, Object>{ 'type' => 'User' },
+				'Id' => userId,
+				'UserType' => userType
+			}),
+			User.class
 		);
-		
-		insert u;
-		return u;
+	}
+
+	public static void mockShares(List<GoogleFile__Share> shares) {
+		GSOQL.mock(GoogleFileShareSelector.MOCK_ID).thenReturn(shares);
+	}
+
+	public static void mockNoGroupMemberships() {
+		GSOQL.mock(GoogleGroupMemberSelector.MOCK_ID).thenReturn(new List<SObject>());
+	}
+
+	public static void mockLinks(List<GoogleFileLink__c> links) {
+		GSOQL.mock(GoogleFileLinkSelector.MOCK_ID).thenReturn(links);
+	}
+
+	public static void setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel floor) {
+		GoogleFileAccessResolver.privilegedFloorOverrideSet = true;
+		GoogleFileAccessResolver.privilegedFloorOverride = floor;
+	}
+
+	public static IGoogleUnitOfWork unitOfWork() {
+		return new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
+	}
+
+	public static ConfigBuilder config() {
+		return new ConfigBuilder();
 	}
 
 	public static FileBuilder file() {
@@ -71,6 +146,10 @@ public class GoogleCloudTestFactory {
 
 	public static LinkBuilder link() {
 		return new LinkBuilder();
+	}
+
+	public static ShareBuilder share() {
+		return new ShareBuilder();
 	}
 
 	public class TestGoogleAuthorizer implements GoogleAuthorizer {
@@ -87,41 +166,6 @@ public class GoogleCloudTestFactory {
 		public FileBuilder withSource(String v) { r.Source__c = v; return this; }
 		public FileBuilder withOwner(Id ownerId) { r.OwnerId = ownerId; return this; }
 		public FileBuilder withUserAccessLevel(String v) { r.UserAccessLevel__c = v; return this; }
-		public FileBuilder forRecord(Id recordId) {
-			Map<String, Schema.SObjectField> m = GoogleFile__c.SObjectType.getDescribe().fields.getMap();
-
-			if (m.containsKey('RecordId__c')) {
-				r.put('RecordId__c', recordId);
-				return this;
-			}
-			if (m.containsKey('RelatedRecordId__c')) {
-				r.put('RelatedRecordId__c', recordId);
-				return this;
-			}
-			if (m.containsKey('LinkedRecordId__c')) {
-				r.put('LinkedRecordId__c', recordId);
-				return this;
-			}
-
-			// Otherwise, find the first updateable reference field that can point to Account (or generic)
-			for (String api : m.keySet()) {
-				Schema.DescribeFieldResult d = m.get(api).getDescribe();
-				if (d.getType() != Schema.DisplayType.REFERENCE) continue;
-				if (!d.isCreateable()) continue;
-
-				List<Schema.SObjectType> refs = d.getReferenceTo();
-				if (refs == null || refs.isEmpty()) continue;
-
-				for (Schema.SObjectType t : refs) {
-					if (t == Account.SObjectType) {
-						r.put(api, recordId);
-						return this;
-					}
-				}
-			}
-
-			return this;
-		}
 
 		public GoogleFile__c build() {
 			if (String.isBlank(r.Name)) r.Name = 'Test File';
@@ -143,6 +187,7 @@ public class GoogleCloudTestFactory {
 		public VersionBuilder withName(String v) { r.Name = v; return this; }
 		public VersionBuilder withDescription(String v) { r.Description__c = v; return this; }
 		public VersionBuilder isLatest(Boolean v) { r.IsLatestFile__c = v; return this; }
+		public VersionBuilder withSummary(String v) { r.Summary__c = v; return this; }
 		public VersionBuilder withType(String v) { r.Type__c = v; return this; }
 		public VersionBuilder withSize(Long v) { r.Size__c = v; return this; }
 		public VersionBuilder withDriveId(String v) { r.GoogleDriveFileId__c = v; return this; }
@@ -182,9 +227,9 @@ public class GoogleCloudTestFactory {
 		public GoogleFileLink__c build() {
 			if (String.isBlank(r.ShareType__c)) r.ShareType__c = 'Viewer';
 			if (String.isBlank(r.Visibility__c)) r.Visibility__c = 'AllUsers';
-			if (String.isBlank(r.LinkedObjectType__c)) r.LinkedObjectType__c = 'Account';
+			if (String.isBlank(r.LinkedObjectType__c)) r.LinkedObjectType__c = 'GoogleFile__c';
 			if (String.isBlank(r.LinkedObjectId__c)) {
-				r.LinkedObjectId__c = String.valueOf(fakeId(Account.SObjectType));
+				r.LinkedObjectId__c = String.valueOf(fakeId(GoogleFile__c.SObjectType));
 			}
 			return r;
 		}
@@ -192,6 +237,74 @@ public class GoogleCloudTestFactory {
 		public GoogleFileLink__c insertRecord() {
 			GoogleFileLink__c out = build();
 			insert out;
+			return out;
+		}
+	}
+
+	public class ShareBuilder {
+		private GoogleFile__Share r = new GoogleFile__Share();
+
+		public ShareBuilder forFile(Id fileId) { r.ParentId = fileId; return this; }
+		public ShareBuilder sharedWith(Id userOrGroupId) { r.UserOrGroupId = userOrGroupId; return this; }
+		public ShareBuilder withAccessLevel(String v) { r.AccessLevel = v; return this; }
+
+		public GoogleFile__Share build() {
+			if (String.isBlank(r.AccessLevel)) r.AccessLevel = 'Read';
+			if (r.UserOrGroupId == null) r.UserOrGroupId = otherUserId();
+			r.RowCause = Schema.GoogleFile__Share.RowCause.Manual;
+
+			return (GoogleFile__Share) JSON.deserialize(
+				JSON.serialize(new Map<String, Object>{
+					'attributes' => new Map<String, Object>{ 'type' => 'GoogleFile__Share' },
+					'Id' => fakeId(SHARE_KEY_PREFIX),
+					'ParentId' => r.ParentId,
+					'UserOrGroupId' => r.UserOrGroupId,
+					'AccessLevel' => r.AccessLevel,
+					'RowCause' => r.RowCause
+				}),
+				GoogleFile__Share.class
+			);
+		}
+	}
+
+	public class ConfigBuilder {
+		private GoogleClientConfig__mdt r = new GoogleClientConfig__mdt();
+
+		public ConfigBuilder asPackagedRecord() {
+			r.DeveloperName = 'GoogleClient';
+			r.MasterLabel = 'Google Client';
+			return this;
+		}
+
+		public ConfigBuilder withUploadFolderId(String v) { r.DefaultGoogleUploadFolderId__c = v; return this; }
+		public ConfigBuilder withAdditionalUploadFolderIds(String v) { r.AdditionalGoogleUploadFolderIds__c = v; return this; }
+		public ConfigBuilder withFolderStructure(String v) { r.CustomGoogleUploadFolderStructure__c = v; return this; }
+		public ConfigBuilder withServiceAccount(String v) { r.CustomGoogleServiceAccount__c = v; return this; }
+		public ConfigBuilder withCertificate(String v) { r.CustomGoogleCertificate__c = v; return this; }
+		public ConfigBuilder withOrganizationalDomain(String v) { r.OrganizationalDomain__c = v; return this; }
+		public ConfigBuilder withPreviewDisabled(Boolean v) { r.IsFilePreviewDisabled__c = v; return this; }
+		public ConfigBuilder withBigFileSize(Long v) { r.DefaultBigFileSize__c = v; return this; }
+		public ConfigBuilder withDeleteChainSize(Integer v) { r.MaxDeleteChainSize__c = v; return this; }
+		public ConfigBuilder withDirectBrowserUpload(Boolean v) { r.IsDirectBrowserUploadEnabled__c = v; return this; }
+		public ConfigBuilder withFileExplorerColumns(String v) { r.FileExplorerColumns__c = v; return this; }
+		public ConfigBuilder withFileIntelligence(Boolean v) { r.IsFileIntelligenceEnabled__c = v; return this; }
+		public ConfigBuilder withGeminiApiKey(String v) { r.CustomGeminiApiKey__c = v; return this; }
+		public ConfigBuilder withAiModel(String v) { r.CustomModelName__c = v; return this; }
+		public ConfigBuilder withAgentProjectId(String v) { r.CustomAgentProjectId__c = v; return this; }
+		public ConfigBuilder withAgentLocation(String v) { r.CustomAgentLocation__c = v; return this; }
+		public ConfigBuilder withAiSafetyMode(String v) { r.AiSafetyMode__c = v; return this; }
+		public ConfigBuilder withAiPromptSafetyGuardClass(String v) { r.CustomAiPromptSafetyGuardClass__c = v; return this; }
+		public ConfigBuilder withSummaryPrompt(String v) { r.CustomSummaryPrompt__c = v; return this; }
+		public ConfigBuilder withQuestionPrompt(String v) { r.CustomQuestionPrompt__c = v; return this; }
+		public ConfigBuilder withQuestionMaxOutputTokens(Integer v) { r.QuestionMaxOutputTokens__c = v; return this; }
+
+		public GoogleClientConfig__mdt build() {
+			return r;
+		}
+
+		public GoogleClientConfig__mdt apply() {
+			GoogleClientConfig__mdt out = build();
+			GoogleMetadataConfigService.configRecordOverride = out;
 			return out;
 		}
 	}

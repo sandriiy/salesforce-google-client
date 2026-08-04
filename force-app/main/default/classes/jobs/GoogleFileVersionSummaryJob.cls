@@ -57,9 +57,7 @@ public with sharing class GoogleFileVersionSummaryJob extends GQueueableJob.Allo
 			}
 		}
 
-		IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(new List<SObjectType>{
-			GoogleFileVersion__c.SObjectType
-		});
+		IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
 		
 		Boolean hasUpdates = false;
 
@@ -99,8 +97,6 @@ public with sharing class GoogleFileVersionSummaryJob extends GQueueableJob.Allo
 		}
 	}
 
-	// TODO: BS
-
 	@TestVisible
 	private static void setTestResult(Id versionId, GoogleFileAnalysisResultDTO testResult) {
 		if (versionId == null || testResult == null) return;
@@ -111,8 +107,6 @@ public with sharing class GoogleFileVersionSummaryJob extends GQueueableJob.Allo
 	private static void clearTestResults() {
 		testResultsByVersionId.clear();
 	}
-
-	// ....
 
 	private Map<Id, GoogleFileAnalysisResultDTO> captureTestResultsByVersionId() {
 		if (testResultsByVersionId == null || testResultsByVersionId.isEmpty()) {

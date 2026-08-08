@@ -13,10 +13,8 @@ It solves a simple business problem: **Salesforce is where users work, but it sh
 
 A user uploads a file to a Salesforce record exactly as they always have. The file is stored in Google Drive, and Salesforce keeps only a lightweight pointer to it. Back on the record, that file looks and behaves like a native Salesforce file — it can be previewed, shared, versioned, downloaded, and linked to other records without anyone leaving Salesforce or needing to know where the document physically lives.
 
-<!-- VIDEO: swap the id below when the new overview is recorded -->
-
 <div class="video-embed">
-  <iframe src="https://www.youtube-nocookie.com/embed/cyVFIoocE4I" title="Google Client for Salesforce — product overview" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  <iframe src="https://www.youtube-nocookie.com/embed/sj8eI5AdP7g" title="Google Client for Salesforce — product overview" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 </div>
 
 ## Why It Matters

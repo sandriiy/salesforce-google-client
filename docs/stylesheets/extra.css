@@ -82,6 +82,13 @@
 	background: #000000;
 }
 
+.md-typeset .article-cover {
+	display: block;
+	width: 100%;
+	margin: 1.2em 0 0.8em;
+	border-radius: 12px;
+}
+
 .video-embed iframe {
 	position: absolute;
 	inset: 0;

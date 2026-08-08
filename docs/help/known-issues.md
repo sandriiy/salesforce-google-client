@@ -85,6 +85,29 @@ If you run into something unexpected, check the list below. If your issue isn't 
     5. Click **Save**.
     6. Return to Google Client setup and try the action again.
 
+??? info "Files stay on the Lead after it is converted"
+
+    **When does it happen?**
+
+    A Lead that has Google Client files is converted. The files stay on the Lead and do not appear on the new Account, Contact, or Opportunity.
+
+    **Root Cause**
+
+    Salesforce carries its own files over during conversion. It knows nothing about Google Client files, so nothing is moved for you.
+
+    **Fix — move them with a flow**
+
+    Each file-to-record association is stored as a **Google File Link** record, and that record is editable. A record-triggered flow on **Lead** that runs when the Lead is converted can point those links at the new record.
+
+    What to get right:
+
+    1. **Find the right links.** Look for **Google File Link** records where **Linked Object Id** equals the converted Lead's Id.
+    2. **Decide move or copy.** Changing **Linked Object Id** moves the file to the new record. Creating a second link keeps it on the Lead as well — copy **Google File** across and set **Is Additional Link?** to true.
+    3. **Keep the rest of the link in step.** **Linked Object Type** and **Linked Object Name** are what users see in Linked Records. **Share Type** and **Visibility** decide who can reach the file, so carry them over from the original link instead of picking new values.
+    4. **Choose one target per file.** Conversion can create an Account, a Contact, and an Opportunity. Linking the same file to all three means it shows up on all three.
+
+    The Google Drive file itself does not move. Only the Salesforce record it appears on changes.
+
 ??? info ""Certificate cannot be null" when saving and validating Google Drive configuration"
 
     **When does it happen?**

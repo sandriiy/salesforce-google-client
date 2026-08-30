@@ -14,9 +14,11 @@ import GoogleCloudUploadFileModal from 'c/googleCloudUploaderModal';
 import GoogleCloudFilePublicLinkModal from 'c/googleCloudFilePublicLinkModal';
 import GoogleCloudFileDeleteModal from 'c/googleCloudFileDeleteModal';
 import GoogleCloudFileSharingModal from 'c/googleCloudFileSharingModal';
+import GoogleCloudOpenInDriveModal from 'c/googleCloudOpenInDriveModal';
 
 import fetchFileAccess from '@salesforce/apex/GoogleCloudFilesController.fetchFileAccess';
 import fetchFileHeaderDetails from '@salesforce/apex/GoogleCloudFilesViewController.fetchFileHeaderDetails';
+import canOpenInDrive from '@salesforce/apex/GoogleCloudDriveAccessController.canOpenInDrive';
 
 import yesAccesstemplate from './googleCloudFilePageDetails.html';
 import noAccessTemplate from './googleCloudFilePageDetailsNoAccess.html';
@@ -48,6 +50,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	@track isAccessChecked = false;
 	@track isHeaderLoading = true;
 	@track isMainLoading = true;
+	@track isOpenInDriveAvailable = false;
 
 	currentPageRef;
 	_recordId;
@@ -73,6 +76,27 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 
 	handleLatestVersionSelection(event) {
 		this.latestVersionRecord = event.detail.version;
+	}
+
+	async handleOpenInDrive(event) {
+		if (!this.isOpenInDriveVisible) return;
+
+		this.showLatestVersionWarning();
+		await GoogleCloudOpenInDriveModal.open({
+			size: 'small',
+			label: 'Open in Google Drive',
+			fileName: this.fileName,
+			localGoogleFileId: this.recordId,
+			localGoogleFileVersionId: this.latestVersionRecord.Id
+		});
+	}
+
+	async resolveOpenInDriveAvailability() {
+		try {
+			this.isOpenInDriveAvailable = await canOpenInDrive({ localGoogleFileId: this.recordId }) === true;
+		} catch (e) {
+			this.isOpenInDriveAvailable = false;
+		}
 	}
 
 	async handleFlowStatusChange(event) {
@@ -228,6 +252,8 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 			this.hasRecordAccess = this.hasAccess;
 
 			if (this.hasRecordAccess) {
+				await this.resolveOpenInDriveAvailability();
+
 				const headerDto = await fetchFileHeaderDetails({
 					localFileRecordId: this.recordId
 				});
@@ -389,6 +415,10 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 
 	get isEditAccess() {
 		return this.accessLevel === 'Edit';
+	}
+
+	get isOpenInDriveVisible() {
+		return this.isOpenInDriveAvailable === true && !!this.latestVersionRecord?.Id;
 	}
 
 	get isReadOnlyAccess() {

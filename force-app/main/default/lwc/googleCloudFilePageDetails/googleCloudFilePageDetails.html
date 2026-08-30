@@ -62,6 +62,12 @@
                                                 onclick={handlePublicLinkCreate}
                                             ></lightning-menu-item>
                                             <lightning-menu-item
+                                                lwc:if={isOpenInDriveVisible}
+                                                label="Open in Google Drive"
+                                                value="openInDrive"
+                                                onclick={handleOpenInDrive}
+                                            ></lightning-menu-item>
+                                            <lightning-menu-item
                                                 label="Delete"
                                                 value="delete"
                                                 onclick={handleFileDelete}

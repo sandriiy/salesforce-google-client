@@ -21,6 +21,7 @@ import GoogleCloudFileDeleteModal from 'c/googleCloudFileDeleteModal';
 import GoogleCloudFileDownloadAsModal from 'c/googleCloudFileDownloadAsModal';
 import GoogleCloudFileUploadModal from 'c/googleCloudUploaderModal';
 import GoogleCloudFileSharingModal from 'c/googleCloudFileSharingModal';
+import GoogleCloudOpenInDriveModal from 'c/googleCloudOpenInDriveModal';
 
 import { navigateToByAttributes, isExperienceCloudContext } from 'c/googleCloudCrossPlatformUtils';
 import { INT_VIEW_FILE_DETAILS_PAGE_NAME, EXT_VIEW_FILE_DETAILS_PAGE_NAME } from 'c/googleCloudCrossPlatformUtils';
@@ -28,6 +29,7 @@ import { INT_VIEW_FILE_DETAILS_PAGE_NAME, EXT_VIEW_FILE_DETAILS_PAGE_NAME } from
 import retrieveLocalGoogleFileById from '@salesforce/apex/GoogleCloudFilesController.retrieveLocalGoogleFileById';
 import validateFilePreview from '@salesforce/apex/GoogleCloudFilesController.validateFilePreview';
 import downloadFileAsPdf from '@salesforce/apex/GoogleCloudFilesController.downloadFileAsPdf';
+import canOpenInDrive from '@salesforce/apex/GoogleCloudDriveAccessController.canOpenInDrive';
 
 const PREVIEW_SLOW_THRESHOLD_MS = 5000;
 const PREVIEW_RENDERER_PDF = 'pdf';
@@ -50,6 +52,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	@track isPreviewTakingTooLong = false;
 	@track isIntelligenceAvailable = false;
 	@track isIntelligencePanelOpen = false;
+	@track isOpenInDriveAvailable = false;
 
 	previewOperation;
 	previewBlobUrl;
@@ -175,6 +178,21 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		});
 	}
 
+	async handleOpenInDrive(event) {
+		const targetVersionId = this.openInDriveVersionId;
+		if (!this.isOpenInDriveAvailable || !targetVersionId) {
+			return;
+		}
+
+		await GoogleCloudOpenInDriveModal.open({
+			size: 'small',
+			label: 'Open in Google Drive',
+			fileName: this.fileName,
+			localGoogleFileId: this.localGoogleRecordId,
+			localGoogleFileVersionId: targetVersionId
+		});
+	}
+
 	async handleFileSharing(event) {
 		if (this.denyOperationIfReadOnly()) return;
 
@@ -289,6 +307,16 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	async getLocalGoogleDriveFile() {
 		this.localGoogleRecord = await retrieveLocalGoogleFileById({ localGoogleFileId: this.localGoogleRecordId });
 		this.accessLevel = this.localGoogleRecord.UserAccessLevel__c || 'View';
+
+		await this.resolveOpenInDriveAvailability();
+	}
+
+	async resolveOpenInDriveAvailability() {
+		try {
+			this.isOpenInDriveAvailable = await canOpenInDrive({ localGoogleFileId: this.localGoogleRecordId }) === true;
+		} catch (e) {
+			this.isOpenInDriveAvailable = false;
+		}
 	}
 
 	async getGoogleFileBlob(localGoogleVersionId, previewOperation) {
@@ -650,6 +678,14 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		}
 
 		return getFileIcon(this.localLatestVersionRecord.Name);
+	}
+
+	get openInDriveVersionId() {
+		return this.localVersionRecordId || this.localLatestVersionRecord?.Id;
+	}
+
+	get isOpenInDriveVisible() {
+		return this.isOpenInDriveAvailable === true && !!this.openInDriveVersionId;
 	}
 
 	get isDownloadAsAvailable() {

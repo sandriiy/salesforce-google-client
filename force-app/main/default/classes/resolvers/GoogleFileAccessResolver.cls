@@ -593,6 +593,10 @@ public without sharing class GoogleFileAccessResolver {
 		return 0;
 	}
 
+	public Boolean isInternalUser(String userType) {
+		return isInternalUserType(userType);
+	}
+
 	private Boolean isInternalUserType(String userType) {
 		if (userType == null) return true;
 

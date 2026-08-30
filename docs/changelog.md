@@ -2,6 +2,13 @@
 
 All notable changes to this client are documented here. Each entry describes what changed for administrators and end users of an installed package version.
 
+## [2.2.0] - TBA
+
+### Added
+
+- Open in Google Drive. A file owner can open a file directly in Google Drive from the preview window or the File Details page, which is useful for printing, downloading, or keeping a personal copy. The option is off until an administrator turns it on under Advanced → File Management, and existing organizations see no change until they do.
+- View access granted for Open in Google Drive covers only the file being opened. Where Google Drive supports timed access it ends after a week, extended each time the file is opened again. It never reaches the folder around the file, and it never allows changing, deleting, or resharing the file.
+
 ## [2.1.0] - 2026-08-05
 
 ### Added

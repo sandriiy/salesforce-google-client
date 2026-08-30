@@ -24,6 +24,16 @@ It is **off by default**. Until you turn it on, uploads behave exactly as they a
 
 📘 See [Direct Browser Upload](../direct-browser-upload.md) for what changes, what does not, and what happens when an upload cannot be sent directly.
 
+## Open in Google Drive
+
+Lets file owners open a file directly in Google Drive.
+
+It is **off by default**. Until you turn it on, the option does not appear anywhere and files stay reachable only from Salesforce.
+
+When it is on, only the **owner** of a file sees the option, and only if they are an internal user. Opening a file gives that person **view access to that one file**. Where your Google Drive supports timed access it lasts a week, extended each time they open the file again; where it doesn't, it stays until removed in Google Drive. They can read, print, download, and save their own copy.
+
+📘 See [Open in Google Drive](../../features/open-in-drive.md)
+
 ## Maximum Preview File Size
 
 The size, in bytes, above which a file is treated as a large upload and transferred in chunks rather than in one request. It also governs which files can be rendered by the large-file preview path.

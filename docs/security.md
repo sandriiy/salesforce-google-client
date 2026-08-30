@@ -133,6 +133,20 @@ This is a **floor, not an override**: it only ever *raises* access, never lowers
 
 For safety, the floor applies to **internal users only**. An external (Experience Cloud) user who somehow holds one of these permissions still honors the internal-vs-external visibility rules and never sees internal-only Files.
 
+## Access to Google Drive Itself
+
+Everything above governs what a person can reach **inside Salesforce**. One feature also gives a person access **in Google Drive**: [Open in Google Drive](features/open-in-drive.md).
+
+It is off until an administrator turns it on. When it is on, the rules are deliberately narrow:
+
+- Only the **owner** of a File can use it, and only if they are an **internal** user. Collaborators, people the File was shared with, administrators holding View-All or Edit-All, and Experience Cloud users never see the option.
+- The access granted is **view only**. The person can read, print, download, and keep their own copy.
+- The access covers **that one file**. It gives nothing on the folder, and nothing on any other file in it.
+- Where Google Drive supports timed access, it **ends after a week** on its own, and opening the file again extends it. Where it doesn't, the access stays until it is removed in Google Drive.
+- **Every grant is recorded** in the logs, so administrators can review who was given access to what, and when.
+
+Because access is granted in Google Drive rather than in Salesforce, it does not disappear the moment a Salesforce share changes. If a File changes owner, the previous owner keeps their view access in Drive until it expires.
+
 ## Finding Files with Global Search
 
 Google Files can be found through Salesforce **global search**, the same search box you use to find any other record.

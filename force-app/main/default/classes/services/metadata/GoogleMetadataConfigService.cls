@@ -85,6 +85,10 @@ public inherited sharing class GoogleMetadataConfigService {
 		return configRecord.IsDirectBrowserUploadEnabled__c == true;
 	}
 
+	public Boolean isOpenInDriveEnabled() {
+		return configRecord.IsOpenInDriveEnabled__c == true;
+	}
+
 	public Long getBigFileSizeInBytes() {
 		Decimal configuredValue = configRecord.DefaultBigFileSize__c;
 		return configuredValue == null ? DEFAULT_BIG_FILE_SIZE : configuredValue.longValue();
@@ -250,6 +254,7 @@ public inherited sharing class GoogleMetadataConfigService {
 
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsFilePreviewDisabled__c', configRecord.IsFilePreviewDisabled__c, false);
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsDirectBrowserUploadEnabled__c', configRecord.IsDirectBrowserUploadEnabled__c, false);
+		applyBooleanDefaultIfMissing(normalizedValues, 'IsOpenInDriveEnabled__c', configRecord.IsOpenInDriveEnabled__c, false);
 		applyNumberDefaultIfMissing(normalizedValues, 'DefaultBigFileSize__c', configRecord.DefaultBigFileSize__c, DEFAULT_BIG_FILE_SIZE);
 		applyNumberDefaultIfMissing(normalizedValues, 'MaxDeleteChainSize__c', configRecord.MaxDeleteChainSize__c, DEFAULT_MAX_DELETE_CHAIN_SIZE);
 

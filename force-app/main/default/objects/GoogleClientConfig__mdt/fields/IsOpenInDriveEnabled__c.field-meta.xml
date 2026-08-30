@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsOpenInDriveEnabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Controls whether file owners can open a file in Google Drive. When enabled, the owner is given view access to that one file for a limited time. Leave this off to keep files reachable only from Salesforce.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Lets file owners open a file directly in Google Drive with view access for a limited time. Leave this off to keep files reachable only from Salesforce.</inlineHelpText>
+    <label>Is Open In Google Drive Enabled?</label>
+    <type>Checkbox</type>
+</CustomField>

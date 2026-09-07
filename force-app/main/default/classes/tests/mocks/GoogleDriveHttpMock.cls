@@ -139,6 +139,12 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 .toHttpResponse(req);
         }
 
+        if ((method == 'PATCH' || method == 'PUT') && endpointLower.contains('/permissions/')) {
+            return new JsonResponses()
+                .permissionModified('perm_user_reader_001')
+                .toHttpResponse(req);
+        }
+
         if (method == 'POST' && endpointLower.contains(':batchupdate')) {
             return new JsonResponses()
                 .batchUpdateSuccess()
@@ -408,6 +414,27 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 .withBody(
                     '{ "id":"' + escapeJson(id) +
                     '", "type":"anyone", "role":"reader" }'
+                );
+        }
+
+        public MockResponse permissionModified(String id) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody(
+                    '{ "id":"' + escapeJson(id) +
+                    '", "type":"user", "role":"reader" }'
+                );
+        }
+
+        public MockResponse fileDetailsWithPermissionsSuccess(String id, String permissionId, String principalType, String emailAddress) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody(
+                    '{ "id":"' + escapeJson(id) +
+                    '", "webViewLink":"https://drive.google.com/file/d/' + escapeJson(id) +
+                    '/view", "permissions":[{ "id":"' + escapeJson(permissionId) +
+                    '", "type":"' + escapeJson(principalType) +
+                    '", "role":"reader", "emailAddress":"' + escapeJson(emailAddress) + '" }] }'
                 );
         }
 

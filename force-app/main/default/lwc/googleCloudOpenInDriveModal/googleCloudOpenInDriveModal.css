@@ -1,0 +1,110 @@
+.drive-panel {
+    display: grid;
+}
+
+.drive-panel__stage {
+    display: grid;
+    gap: 0.65rem;
+    justify-items: center;
+    text-align: center;
+    padding: 2.25rem 1rem 1.75rem;
+}
+
+.drive-panel__title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #202124;
+    word-break: break-word;
+    max-width: 26rem;
+}
+
+.drive-panel__text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #5F6368;
+    max-width: 26rem;
+}
+
+.drive-panel__divider::before {
+    content: '';
+    flex: 1;
+    background: linear-gradient(to right, #4285F4 0 25%, #EA4335 25% 50%, #FBBC04 50% 75%, #34A853 75% 100%);
+}
+
+.drive-loader {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    border: 0.25rem solid #F1F3F4;
+    border-top-color: #4285F4;
+    margin-bottom: 0.35rem;
+    animation: drive-loader-spin 0.85s linear infinite, drive-loader-colors 3.4s linear infinite;
+}
+
+@keyframes drive-loader-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes drive-loader-colors {
+    0%, 100% { border-top-color: #4285F4; }
+    25% { border-top-color: #EA4335; }
+    50% { border-top-color: #FBBC04; }
+    75% { border-top-color: #34A853; }
+}
+
+.drive-panel__badge {
+    position: relative;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    margin-bottom: 0.35rem;
+}
+
+.drive-panel__badge--ready {
+    background: #E6F4EA;
+}
+
+.drive-panel__badge--ready::after {
+    content: '';
+    position: absolute;
+    left: 1.05rem;
+    top: 0.75rem;
+    width: 0.8rem;
+    height: 1.25rem;
+    border-right: 0.2rem solid #1E8E3E;
+    border-bottom: 0.2rem solid #1E8E3E;
+    transform: rotate(43deg);
+}
+
+.drive-panel__badge--failed {
+    background: #FCE8E6;
+}
+
+.drive-panel__badge--failed::before {
+    content: '';
+    position: absolute;
+    left: calc(50% - 0.1rem);
+    top: 0.7rem;
+    width: 0.2rem;
+    height: 1rem;
+    border-radius: 0.1rem;
+    background: #D93025;
+}
+
+.drive-panel__badge--failed::after {
+    content: '';
+    position: absolute;
+    left: calc(50% - 0.11rem);
+    bottom: 0.62rem;
+    width: 0.22rem;
+    height: 0.22rem;
+    border-radius: 50%;
+    background: #D93025;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .drive-loader {
+        animation: none;
+    }
+}

@@ -46,6 +46,7 @@ public class GoogleCloudTestFactory {
 		Test.setMock(HttpCalloutMock.class, httpMock);
 		GoogleClientApiProvider.authorizerClassNameOverride = TEST_AUTHORIZER_CLASS_NAME;
 		GoogleCacheDriveFolderService.cacheProviderOverride = new GoogleInMemoryCacheProvider();
+		setPrivilegedFloor(null);
 
 		if (GoogleMetadataConfigService.configRecordOverride == null) {
 			GoogleMetadataConfigService.configRecordOverride = config().build();
@@ -96,16 +97,25 @@ public class GoogleCloudTestFactory {
 	}
 
 	public static Id mockUser(Id userId, String userType) {
-		GSOQL.mock(GoogleUserSelector.MOCK_ID).thenReturn(new List<SObject>{ buildUser(userId, userType) });
+		return mockUser(userId, userType, null);
+	}
+
+	public static Id mockUser(Id userId, String userType, String email) {
+		GSOQL.mock(GoogleUserSelector.MOCK_ID).thenReturn(new List<SObject>{ buildUser(userId, userType, email) });
 		return userId;
 	}
 
 	public static User buildUser(Id userId, String userType) {
+		return buildUser(userId, userType, null);
+	}
+
+	public static User buildUser(Id userId, String userType, String email) {
 		return (User) JSON.deserialize(
 			JSON.serialize(new Map<String, Object>{
 				'attributes' => new Map<String, Object>{ 'type' => 'User' },
 				'Id' => userId,
-				'UserType' => userType
+				'UserType' => userType,
+				'Email' => email
 			}),
 			User.class
 		);
@@ -286,6 +296,7 @@ public class GoogleCloudTestFactory {
 		public ConfigBuilder withBigFileSize(Long v) { r.DefaultBigFileSize__c = v; return this; }
 		public ConfigBuilder withDeleteChainSize(Integer v) { r.MaxDeleteChainSize__c = v; return this; }
 		public ConfigBuilder withDirectBrowserUpload(Boolean v) { r.IsDirectBrowserUploadEnabled__c = v; return this; }
+		public ConfigBuilder withOpenInDrive(Boolean v) { r.IsOpenInDriveEnabled__c = v; return this; }
 		public ConfigBuilder withFileExplorerColumns(String v) { r.FileExplorerColumns__c = v; return this; }
 		public ConfigBuilder withFileIntelligence(Boolean v) { r.IsFileIntelligenceEnabled__c = v; return this; }
 		public ConfigBuilder withGeminiApiKey(String v) { r.CustomGeminiApiKey__c = v; return this; }

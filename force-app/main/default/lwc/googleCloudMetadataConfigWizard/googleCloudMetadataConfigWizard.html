@@ -161,6 +161,25 @@
                                             </div>
                                         </div>
 
+                                        <div class="tab-toggle-header slds-m-top_medium">
+                                            <div class="tab-toggle-copy">
+                                                <div class="tab-toggle-title">Open in Google Drive</div>
+                                                <div class="tab-toggle-subtitle">Lets file owners open a file directly in Google Drive. They get view access to that one file for a limited time, so they can read, print, download, or make their own copy. They cannot change or delete it, and the rest of the folder stays private.</div>
+                                            </div>
+                                            <div class="tab-toggle-control">
+                                                <lightning-input
+                                                    type="toggle"
+                                                    variant="label-hidden"
+                                                    checked={draft.isOpenInDriveEnabled}
+                                                    onchange={handleToggle}
+                                                    data-field="isOpenInDriveEnabled"
+                                                    label="Enable Open in Google Drive"
+                                                    message-toggle-active=""
+                                                    message-toggle-inactive="">
+                                                </lightning-input>
+                                            </div>
+                                        </div>
+
                                         <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_medium">
                                             <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                                                 <lightning-input

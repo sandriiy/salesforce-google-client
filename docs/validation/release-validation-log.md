@@ -2,7 +2,35 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
-???+ example "Release v2.1.0"
+???+ example "Release v2.2.0"
+
+    ### Validation Suite Used
+    - [ ] Full Validation Suite
+    - [X] Quick Regression Suite
+    - [X] Targeted Regression Suite
+
+    ### Release Changes
+    - [ ] Change 1: TBA
+	- [ ] Change 2: TBA
+	- [ ] Change 3: TBA
+
+    ### Boring Changes
+    - [ ] Version number assigned to all hard-coded labels
+    - [ ] Version ID is assigned to all installation guides.
+	- [ ] All images for documentation are included.
+
+    ### Smoke Checks
+    - [ ] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [ ] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [ ] Admin can open Google Client app and browse configuration tabs without errors
+
+    ### Suite Execution (only for Full or Quick)
+    - [ ] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
+
+	### Notes
+    - 
+
+??? example "Release v2.1.0"
 
     ### Validation Suite Used
     - [ ] Full Validation Suite

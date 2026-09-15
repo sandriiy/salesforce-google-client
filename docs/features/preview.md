@@ -22,7 +22,9 @@ Supported preview behavior includes:
 
 ## File Size Behavior
 
-PDF and supported image files can be previewed directly. Other previewable document and spreadsheet files depend on the configured **Maximum Preview File Size** and on Google Client preparing a Google Workspace preview version.
+PDF and supported image files can be previewed directly. Other previewable document and spreadsheet files depend on Google Client preparing a Google Workspace preview version, and on that preview version fitting within the configured **Maximum Preview File Size**.
+
+Since 2.2.0 the limit is measured against the prepared preview version rather than the uploaded file. The preview version is usually far smaller, so a document that is too large to download in one go can still be previewed. Files uploaded before 2.2.0 keep using the size of the uploaded file.
 
 If a file cannot be previewed, the preview window still opens and gives users the available actions, including download.
 

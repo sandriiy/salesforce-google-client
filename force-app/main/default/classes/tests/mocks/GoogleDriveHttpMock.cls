@@ -408,6 +408,12 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 );
         }
 
+        public MockResponse fileSizeSuccess(String id, String size) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody('{ "id":"' + escapeJson(id) + '", "size":"' + escapeJson(size) + '" }');
+        }
+
         public MockResponse permissionCreated(String id) {
             return new MockResponse()
                 .withHeader('Content-Type', 'application/json')

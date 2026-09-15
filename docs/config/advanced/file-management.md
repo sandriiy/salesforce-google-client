@@ -42,6 +42,8 @@ The default is **2 MB** (`2097152`). Blank means the default is used.
 
 PDFs are previewed regardless of this value.
 
+For document and spreadsheet files the limit is compared against the Google Workspace preview version Google Client prepares, which is usually far smaller than the uploaded file, so a large upload can still be previewable. Files uploaded before 2.2.0 are compared by their uploaded size.
+
 Raising it is rarely useful. The chunked path exists because Salesforce limits how much data one operation can hold, and this setting does not change those limits — setting it too high produces errors rather than larger previews.
 
 ## Max Delete Chain Size

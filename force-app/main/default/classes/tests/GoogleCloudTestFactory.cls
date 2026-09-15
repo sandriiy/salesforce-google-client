@@ -203,6 +203,7 @@ public class GoogleCloudTestFactory {
 		public VersionBuilder withDriveId(String v) { r.GoogleDriveFileId__c = v; return this; }
 		public VersionBuilder withFolderId(String v) { r.GoogleDriveFolderId__c = v; return this; }
 		public VersionBuilder withDocsId(String v) { r.GoogleDocsFileId__c = v; return this; }
+		public VersionBuilder withDocsSize(Long v) { r.GoogleDocsFileSize__c = v; return this; }
 		public VersionBuilder withPublicLink(String v) { r.PublicLink__c = v; return this; }
 		public VersionBuilder withPublicLinkPermissionId(String v) { r.PublicLinkPermissionId__c = v; return this; }
 		public VersionBuilder withPublicLinkExpiration(Datetime v) { r.PublicLinkExpirationDate__c = v; return this; }

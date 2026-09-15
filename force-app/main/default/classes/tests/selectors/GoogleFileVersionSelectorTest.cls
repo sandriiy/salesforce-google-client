@@ -74,6 +74,7 @@ private class GoogleFileVersionSelectorTest {
 			.withSize(30)
 			.withDriveId('GD_SEL_ADV_1')
 			.withDocsId('DOCS_SEL_ADV_1')
+			.withDocsSize(4335)
 			.insertRecord();
 
 		update new GoogleFileVersion__c(
@@ -89,6 +90,7 @@ private class GoogleFileVersionSelectorTest {
 
 		Assert.areEqual('GD_SEL_ADV_1', queriedVersion.GoogleDriveFileId__c);
 		Assert.areEqual('DOCS_SEL_ADV_1', queriedVersion.GoogleDocsFileId__c);
+		Assert.areEqual(4335, queriedVersion.GoogleDocsFileSize__c);
 		Assert.areEqual('FOLDER_SEL_ADV_1', queriedVersion.GoogleDriveFolderId__c);
 		Assert.areEqual('Selector summary text', queriedVersion.Summary__c);
 	}

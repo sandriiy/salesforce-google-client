@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>GoogleDocsFileSize__c</fullName>
+    <deprecated>false</deprecated>
+    <description>Size, in bytes, of the Google Workspace copy created for this version. Blank until the copy has been measured.</description>
+    <externalId>false</externalId>
+    <label>Google Workspace File Size</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

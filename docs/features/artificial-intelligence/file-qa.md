@@ -25,6 +25,8 @@ Q&A appears when all of the following are true:
 
 When any of these is not met, the Q&A box is not shown. Google Client hides the control rather than offering something that will fail.
 
+There is one exception. A file that was analyzed while AI Analytics was on keeps its summary and labels, so its sidebar can still be opened after an administrator turns AI Analytics off. The sidebar stays closed until the user opens it, and the question box is disabled with a note that questions are turned off; a question sent anyway is refused.
+
 ## What It Will and Will Not Answer
 
 Answers come from the open document, and only from it. A question the document cannot answer returns a plain "I could not find that in this file" rather than a guess.

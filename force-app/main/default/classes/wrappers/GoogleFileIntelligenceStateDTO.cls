@@ -30,4 +30,6 @@ public class GoogleFileIntelligenceStateDTO {
 	public Boolean hasSummary;
 	@AuraEnabled
 	public Boolean isIntelligenceEligible;
+	@AuraEnabled
+	public List<String> labels;
 }

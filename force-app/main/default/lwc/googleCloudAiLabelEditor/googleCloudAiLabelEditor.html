@@ -1,0 +1,99 @@
+<template>
+    <div class="label-editor">
+        <div class="label-editor-header">
+            <div class="label-editor-title">
+                Labels
+                <lightning-helptext content="Each label needs its Google Drive label ID and a plain-language description of the documents it applies to."></lightning-helptext>
+            </div>
+            <div class="label-editor-count">{countLabel}</div>
+        </div>
+
+        <div class="label-editor-note">
+            <lightning-icon icon-name="utility:info" size="x-small" class="label-editor-note-icon"></lightning-icon>
+            <span>Labels are applied without values for now. Filling in label fields such as a description, a date, or a choice from a list is coming in a future release.</span>
+        </div>
+
+        <template lwc:if={hasRows}>
+            <div class="label-editor-grid">
+                <template for:each={rows} for:item="row">
+                    <div key={row.key} class="label-editor-item">
+                        <div class="label-editor-item-header">
+                            <div class="label-editor-item-title">{row.nameLabel}</div>
+                            <lightning-button-icon
+                                icon-name="utility:delete"
+                                variant="bare"
+                                alternative-text="Remove label"
+                                title="Remove label"
+                                data-row-key={row.key}
+                                onclick={handleRemoveLabel}
+                                disabled={disabled}
+                            ></lightning-button-icon>
+                        </div>
+
+                        <div class="slds-grid slds-wrap slds-gutters_small">
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    type="text"
+                                    max-length="80"
+                                    value={row.name}
+                                    data-row-key={row.key}
+                                    data-field="name"
+                                    onchange={handleFieldChange}
+                                    label="Name"
+                                    field-level-help="A short name for this label, exactly as you want it to appear in Salesforce, for example Invoice or Contract."
+                                    placeholder="e.g. Invoice"
+                                    disabled={disabled}
+                                    required
+                                ></lightning-input>
+                            </div>
+
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                <lightning-input
+                                    type="text"
+                                    max-length="255"
+                                    value={row.labelId}
+                                    data-row-key={row.key}
+                                    data-field="labelId"
+                                    onchange={handleFieldChange}
+                                    label="Google Drive Label ID"
+                                    field-level-help="The ID of the published Google Drive label, shown in the Google Admin console under Labels."
+                                    placeholder="e.g. SEND70dQN5lH71BeU4nrBgrBit6Pvst1"
+                                    disabled={disabled}
+                                    required
+                                ></lightning-input>
+                            </div>
+
+                            <div class="slds-col slds-size_1-of-1">
+                                <lightning-textarea
+                                    value={row.description}
+                                    data-row-key={row.key}
+                                    data-field="description"
+                                    onchange={handleFieldChange}
+                                    label="When to apply this label"
+                                    field-level-help="Describe, in plain language, the documents this label is for. The AI compares every new file against this description."
+                                    placeholder="e.g. A bill or invoice requesting payment for goods or services, usually with an invoice number, amounts, and a due date."
+                                    max-length="2000"
+                                    disabled={disabled}
+                                    required
+                                ></lightning-textarea>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+        <template lwc:else>
+            <div class="label-editor-empty">No labels defined yet. Add a label to start categorizing new files automatically.</div>
+        </template>
+
+        <div class="slds-m-top_small">
+            <lightning-button
+                variant="neutral"
+                icon-name="utility:add"
+                label="Add label"
+                onclick={handleAddLabel}
+                disabled={addLabelDisabled}
+            ></lightning-button>
+        </div>
+    </div>
+</template>

@@ -77,6 +77,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 
 		try {
 			GoogleFileVersion__c localFileVersion = retrieveLocalFileVersion(localGoogleFileVersionId);
+			onLocalFileVersionLoaded(localFileVersion);
 			if (!isEligible(localFileVersion)) {
 				applyIneligibleResult(result);
 				return result;
@@ -171,6 +172,8 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 		return supportsInteractiveIntelligence(localFileVersion);
 	}
 
+	public virtual void onLocalFileVersionLoaded(GoogleFileVersion__c localFileVersion) {}
+
 	public virtual void applyIneligibleResult(GoogleFileAnalysisResultDTO result) {
 		result.blocked = true;
 	}
@@ -223,6 +226,10 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 		return false;
 	}
 
+	protected GoogleClientApiProvider getGoogleApiProvider() {
+		return this.googleApiProvider;
+	}
+
 	private GoogleFileAnalysisResultDTO createBaseResult(String providerName) {
 		GoogleFileAnalysisResultDTO result = new GoogleFileAnalysisResultDTO();
 		result.provider = providerName;
@@ -258,7 +265,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			.addUserText(buildUserPrompt(normalizedInput, documentText))
 			.withCandidates(getCandidateCount())
 			.withTemperature(getTemperature())
-			.withMaxTokens(getMaxOutputTokens())
+			.withMaxTokens(getMaxOutputTokens() + getThinkingBudget())
 			.withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(getThinkingBudget()))
 			.withResponseMimeType(getResponseMimeType())
 			.build();

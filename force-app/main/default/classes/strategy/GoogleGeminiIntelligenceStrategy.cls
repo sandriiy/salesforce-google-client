@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFileIntelligenceStrategy {
+public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFileIntelligenceStrategy, IGoogleFileLabelingStrategy {
     public class GoogleGeminiConfigurationException extends Exception {}
 
     private static final String VALIDATION_PROMPT = 'Reply with OK.';
@@ -32,6 +32,7 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
     private IGenAiApiKeyProvider apiKeyProvider;
 	private GoogleFileSummarizeCommand summarizeCommand = new GoogleFileSummarizeCommand();
 	private GoogleFileQuestionCommand questionCommand = new GoogleFileQuestionCommand();
+	private GoogleFileLabelCommand labelCommand = new GoogleFileLabelCommand();
 	private IGenAiClient genAiClient;
 
 	public GoogleGeminiIntelligenceStrategy() {
@@ -95,6 +96,20 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 		return this.questionCommand.answerQuestion(localGoogleFileVersionId, question, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
+	public GoogleFileLabelResultDTO label(Id localGoogleFileVersionId) {
+		if (localGoogleFileVersionId == null) {
+			return null;
+		}
+
+		try {
+			validateGeminiConfiguration();
+		} catch (Exception ex) {
+			return buildBlockedLabelResult(ex.getMessage());
+		}
+
+		return this.labelCommand.label(localGoogleFileVersionId, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
+	}
+
     private void validateGeminiConfiguration() {
         GenAiApiKey apiKey = apiKeyProvider == null ? null : apiKeyProvider.apiKey();
         String modelName = metadataService.getGoogleAiModel();
@@ -117,6 +132,14 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 		result.blocked = true;
 		result.provider = 'Gemini';
 		result.operationType = operationType;
+		result.errorMessage = errorMessage;
+		return result;
+	}
+
+	private GoogleFileLabelResultDTO buildBlockedLabelResult(String errorMessage) {
+		GoogleFileLabelResultDTO result = new GoogleFileLabelResultDTO();
+		result.blocked = true;
+		result.provider = 'Gemini';
 		result.errorMessage = errorMessage;
 		return result;
 	}

@@ -1,7 +1,7 @@
 <template>
     <div class="drive-config-shell">
         <div class="slds-grid slds-wrap slds-gutters_small">
-            <div class="slds-col slds-size_1-of-1 slds-large-size_8-of-12">
+            <div class="slds-col slds-size_1-of-1">
                 <section class="config-card">
                     <div class="config-padding">
                         <div class="config-step-bar">
@@ -312,72 +312,6 @@
                         </template>
                     </div>
                 </section>
-            </div>
-
-            <div class="slds-col slds-size_1-of-1 slds-large-size_4-of-12">
-                <aside class="config-card config-quick-setup-right">
-                    <div class="config-padding">
-                        <div class="quick-setup-title">Quick Setup</div>
-
-                        <template lwc:if={isAdminMode}>
-                            <div class="quick-setup-step">
-                                <div class="quick-setup-step-number">1</div>
-                                <div>
-                                    <div class="quick-setup-step-title">Generate certificate</div>
-                                    <div class="quick-setup-step-text">Create a Service Account → Create a new Key → Convert it into a certificate.</div>
-                                </div>
-                            </div>
-                            <div class="quick-setup-step">
-                                <div class="quick-setup-step-number">2</div>
-                                <div>
-                                    <div class="quick-setup-step-title">Upload to Salesforce</div>
-                                    <div class="quick-setup-step-text">Setup → Certificate and Key Management.</div>
-                                </div>
-                            </div>
-                            <div class="quick-setup-step">
-                                <div class="quick-setup-step-number">3</div>
-                                <div>
-                                    <div class="quick-setup-step-title">Enter details</div>
-                                    <div class="quick-setup-step-text">Specify the Service Account email &amp; uploaded certificate name.</div>
-                                </div>
-                            </div>
-                        </template>
-
-                        <template lwc:if={isDeveloperMode}>
-                            <div class="quick-setup-step">
-                                <div class="quick-setup-step-number">1</div>
-                                <div>
-                                    <div class="quick-setup-step-title">Generate certificate</div>
-                                    <div class="quick-setup-step-text">Create a Service Account → Create a new Key → Convert it into a certificate.</div>
-                                </div>
-                            </div>
-                            <div class="quick-setup-step">
-                                <div class="quick-setup-step-number">2</div>
-                                <div>
-                                    <div class="quick-setup-step-title">Upload to Salesforce</div>
-                                    <div class="quick-setup-step-text">Setup → Certificate and Key Management.</div>
-                                </div>
-                            </div>
-                            <div class="quick-setup-step">
-                                <div class="quick-setup-step-number">3</div>
-                                <div>
-                                    <div class="quick-setup-step-title">Implement authorizer</div>
-                                    <div class="quick-setup-step-text">Create an Apex class that implements <b>GoogleAuthorizer</b> and returns an access token.</div>
-                                </div>
-                            </div>
-                        </template>
-
-                        <div class="content-divider"></div>
-
-                        <div class="quick-setup-button-row">
-                            <lightning-button
-                                variant="neutral"
-                                label="Open Quick Setup Guide"
-                                onclick={openQuickSetupGuide}
-                            ></lightning-button>
-                        </div>
-                    </div>
-                </aside>
             </div>
         </div>
     </div>

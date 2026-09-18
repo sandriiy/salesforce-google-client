@@ -35,6 +35,7 @@ public inherited sharing class GoogleFileVersionSelector extends GSOQL implement
         GoogleFileVersion__c.GoogleDocsFileSize__c,
         GoogleFileVersion__c.Type__c,
 		GoogleFileVersion__c.Summary__c,
+		GoogleFileVersion__c.AiLabels__c,
         GoogleFileVersion__c.CreatedDate,
 		GoogleFileVersion__c.LastModifiedDate
     };

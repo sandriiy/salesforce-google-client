@@ -83,6 +83,13 @@ const FILE_EXPLORER_COLUMN_CATALOG = [
         fieldName: 'summary',
         type: 'text',
         wrapText: true
+    },
+    {
+        key: 'labels',
+        label: 'Labels',
+        fieldName: 'labels',
+        type: 'text',
+        wrapText: true
     }
 ];
 

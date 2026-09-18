@@ -71,6 +71,10 @@ public with sharing class GoogleFileInsertFinalizeCommand {
                 }
             }
 
+			if (!summaryCandidateVersionIds.isEmpty() && new GoogleFileIntelligenceFactory().isLabelingConfigured()) {
+				jobsChainer.chain(new GoogleFileVersionLabelJob(summaryCandidateVersionIds)).deepClone();
+			}
+
             if (hasJobs) {
                 jobsChainer.enqueue();
             }

@@ -217,6 +217,7 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
                                 GSOQL.FilterGroup.anyConditionMatching()
                                     .add(GSOQL.Filter.with(GoogleFileVersion__c.Name).contains(escapedTerm))
                                     .add(GSOQL.Filter.with(GoogleFileVersion__c.Summary__c).contains(escapedTerm))
+                                    .add(GSOQL.Filter.with(GoogleFileVersion__c.AiLabels__c).contains(escapedTerm))
                             )
                     )
             )

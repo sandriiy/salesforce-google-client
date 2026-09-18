@@ -62,13 +62,18 @@ public without sharing class GoogleLocalFileIntelligenceService {
 				.toList()
 		);
 
+		Map<Id, List<String>> labelNamesByVersionId = new GoogleLocalFileVersionLabelService().retrieveLabelNamesByVersionId(versionIds);
 		GoogleFileVersionContextResolver contextResolver = new GoogleFileVersionContextResolver();
 		Boolean isIntelligenceConfigured = new GoogleFileIntelligenceFactory().isConfigured();
 		IGoogleAiPromptSafetyGuard safetyGuard = new GoogleAiPromptSafetyGuardFactory().resolve();
 		String safetyMode = new GoogleMetadataConfigService().getAiSafetyMode();
 		for (Id versionId : localFileVersionIds) {
 			if (versionId == null) continue;
-			intelligenceStates.add(buildIntelligenceState(versionId, versionsById.get(versionId), contextResolver, isIntelligenceConfigured, safetyGuard, safetyMode));
+			GoogleFileIntelligenceStateDTO intelligenceState = buildIntelligenceState(versionId, versionsById.get(versionId), contextResolver, isIntelligenceConfigured, safetyGuard, safetyMode);
+			if (labelNamesByVersionId.containsKey(versionId)) {
+				intelligenceState.labels = labelNamesByVersionId.get(versionId);
+			}
+			intelligenceStates.add(intelligenceState);
 		}
 
 		return intelligenceStates;
@@ -142,6 +147,7 @@ public without sharing class GoogleLocalFileIntelligenceService {
 		intelligenceState.summary = null;
 		intelligenceState.hasSummary = false;
 		intelligenceState.isIntelligenceEligible = false;
+		intelligenceState.labels = new List<String>();
 		return intelligenceState;
 	}
 }

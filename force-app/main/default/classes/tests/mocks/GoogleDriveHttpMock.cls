@@ -125,6 +125,12 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 .toHttpResponse(req);
         }
 
+        if (method == 'POST' && endpointLower.contains('/modifylabels')) {
+            return new JsonResponses()
+                .labelsModified('label_001')
+                .toHttpResponse(req);
+        }
+
         if (method == 'POST' &&
             (endpointLower.contains('/clone') ||
              endpointLower.contains('/copy'))) {
@@ -405,6 +411,15 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                     '", "webViewLink":"https://drive.google.com/file/d/' +
                     escapeJson(id) + '/view", "webContentLink":"https://drive.google.com/uc?id=' +
                     escapeJson(id) + '&export=download" }'
+                );
+        }
+
+        public MockResponse labelsModified(String labelId) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody(
+                    '{ "kind":"drive#modifyLabelsResponse", "modifiedLabels":[{ "id":"' + escapeJson(labelId) +
+                    '", "revisionId":"1", "fields":{} }] }'
                 );
         }
 

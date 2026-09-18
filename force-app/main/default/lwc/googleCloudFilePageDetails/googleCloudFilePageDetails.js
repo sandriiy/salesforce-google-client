@@ -174,6 +174,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 
 			let versionsComponent = this.refs.versions;
 			versionsComponent.refresh();
+			this.refs.labels?.refresh?.();
 
 			// Close preview if it was open
 			let previewComponent = this.refs.filePreviewModal;

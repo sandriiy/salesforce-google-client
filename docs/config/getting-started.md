@@ -54,7 +54,7 @@ The **Advanced** screen in the Google Client app holds everything else, grouped 
 
 - [File Management](advanced/file-management.md) — preview, upload transport, file size, deletion, and public link scope
 - [User Interface](advanced/user-interface.md) — which columns appear in File Explorer
-- [AI Intelligence](advanced/ai-intelligence.md) — prompts and answer length for summaries and questions
+- [AI Intelligence](advanced/ai-intelligence.md) — prompts and answer length for summaries and questions, and automatic labeling
 - [Safety & Customization](advanced/safety-customization.md) — how strictly AI questions and answers are inspected
 
 ## Where to Go Next

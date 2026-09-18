@@ -22,6 +22,7 @@ Move columns from **Available Columns** to **Displayed Columns**, then drag them
 | **Is Linked?** | Whether the file is attached to a Salesforce record |
 | **Access** | The viewing user's own access level, View or Edit |
 | **Summary** | The AI-generated description of the file |
+| **Labels** | The Google Drive labels applied by AI, separated by semicolons |
 
 Two rules apply:
 
@@ -40,7 +41,7 @@ Any field on the **Google File Version** object can be added as a column. Enter 
 Fields that hold sensitive data are never queried, even when named here.
 
 !!! note
-    Not every column can be sorted. Title, Is Linked?, Created By, Owner, and the two date columns can; Type, Size, Summary, Access, and custom fields are shown but not sortable.
+    Not every column can be sorted. Title, Is Linked?, Created By, Owner, and the two date columns can; Type, Size, Summary, Labels, Access, and custom fields are shown but not sortable.
 
 📘 See [File Explorer](../../features/file-explorer.md) for how the tab behaves for end users.
 

@@ -6,12 +6,25 @@ All notable changes to this client are documented here. Each entry describes wha
 
 ### Added
 
+- AI Labeling. Administrators describe each of their Google Drive labels in plain language under Advanced → AI Intelligence, and Google Client assigns the best-matching label to every new file when it is confident enough. Files the AI is not sure about stay unlabeled. The assigned label is visible in Google Drive, next to the file name in the preview window and in the File Intelligence panel, and is recorded in Salesforce as a Google File Version Label related to the file version, so it can be used in reports and automation. Off by default, and available only alongside AI Analytics.
+- Minimum confidence and an optional thinking budget for labeling, so administrators decide how sure the AI must be before a label is applied and whether it may reason before deciding.
+- Labels in File Explorer. A Labels column can be added under Advanced → User Interface, and the search box matches label names, so files can be found by the label the AI applied.
+- A Labels card on the File Details page listing every label applied to the file, with the version it belongs to and how confident the AI was.
 - Open in Google Drive. A file owner can open a file directly in Google Drive from the preview window or the File Details page, which is useful for printing, downloading, or keeping a personal copy. The option is off until an administrator turns it on under Advanced → File Management, and existing organizations see no change until they do.
 - View access granted for Open in Google Drive covers only the file being opened. Where Google Drive supports timed access it ends after a week, extended each time the file is opened again. It never reaches the folder around the file, and it never allows changing, deleting, or resharing the file.
 
 ### Changed
 
+- The setup guides on the Google Client home page moved from inside the configuration form to the side panel, where they follow the section or Advanced tab that is open and can be closed. The configuration area is now full width.
+- Setup and Advanced are a clear two-way switch at the top of the configuration page, each Advanced tab says what it contains, and switching between the two with unsaved changes asks whether to save or discard them first.
+- AI Analytics can only be turned on once a provider is connected. Google Client checks the provider the moment the switch is flipped and explains what to do if it is not ready, instead of accepting a configuration that would fail later.
+- The "AI analysis is off" reminder is a small notice in the corner of the page instead of a banner inside the form, leaving the form to the settings themselves.
+- When AI Analytics is turned off, files that already have a summary or labels keep their preview sidebar. It stays closed until opened, and asking questions is unavailable until an administrator turns AI Analytics back on.
 - Whether a document or spreadsheet file can be previewed is now decided by the size of the Google Workspace preview version Google Client prepares, not by the size of the uploaded file. That preview version is usually far smaller, so files that used to be reported as too large to preview now open, while the Maximum Preview File Size setting keeps its meaning. PDF and image previews are unaffected, and files uploaded before this version continue to be judged by their uploaded size.
+
+### Fixed
+
+- Custom summary, question, and labeling prompts longer than 255 characters, and long File Explorer column lists, were silently cut short before being used. They are now read in full.
 
 ## [2.1.0] - 2026-08-05
 

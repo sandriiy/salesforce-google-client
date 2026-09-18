@@ -145,6 +145,15 @@
 
                         <section class="record-layout__card">
                             <template lwc:if={isContentReady}>
+                                <c-google-cloud-file-labels
+                                    lwc:ref="labels"
+                                    record-id={recordId}>
+                                </c-google-cloud-file-labels>
+                            </template>
+                        </section>
+
+                        <section class="record-layout__card">
+                            <template lwc:if={isContentReady}>
                                 <c-google-cloud-file-linked-records
                                     lwc:ref="linkedRecords"
                                     local-file-record-id={recordId}>

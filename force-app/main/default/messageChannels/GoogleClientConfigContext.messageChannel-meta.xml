@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningMessageChannel xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Tells the Google Client home page which part of the configuration is open, so the side panel can show the matching setup guide.</description>
+    <isExposed>false</isExposed>
+    <lightningMessageFields>
+        <description>Either "context" (published by the configuration wizard) or "ready" (published by a panel asking for the current context).</description>
+        <fieldName>type</fieldName>
+    </lightningMessageFields>
+    <lightningMessageFields>
+        <description>The configuration section that is open, for example "drive" or "ai".</description>
+        <fieldName>section</fieldName>
+    </lightningMessageFields>
+    <lightningMessageFields>
+        <description>The variant selected inside the section, for example "admin", "developer", "gemini" or "agent".</description>
+        <fieldName>variant</fieldName>
+    </lightningMessageFields>
+    <lightningMessageFields>
+        <description>Either "main" for the setup screen or "advanced" for advanced settings.</description>
+        <fieldName>view</fieldName>
+    </lightningMessageFields>
+    <lightningMessageFields>
+        <description>The active advanced settings tab when the advanced view is open.</description>
+        <fieldName>tab</fieldName>
+    </lightningMessageFields>
+    <masterLabel>Google Client Config Context</masterLabel>
+</LightningMessageChannel>

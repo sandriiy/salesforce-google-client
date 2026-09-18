@@ -1,0 +1,81 @@
+.label-editor {
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.label-editor-header {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.label-editor-title {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    font-weight: 600;
+}
+
+.label-editor-count {
+    font-size: 12.5px;
+    opacity: 0.85;
+}
+
+.label-editor-note {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    line-height: 1.4;
+    background: rgba(1, 118, 211, 0.06);
+    border: 1px solid rgba(1, 118, 211, 0.18);
+}
+
+.label-editor-note-icon {
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+
+.label-editor-grid {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.label-editor-item {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+.label-editor-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.label-editor-item-title {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.label-editor-empty {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    opacity: 0.85;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px dashed rgba(0, 0, 0, 0.16);
+}

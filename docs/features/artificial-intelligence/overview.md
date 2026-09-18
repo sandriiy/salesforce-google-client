@@ -2,7 +2,7 @@
 
 Google Client includes an optional AI layer that helps people understand documents without leaving Salesforce — and without opening them.
 
-It does two things: it writes a short summary of every file, and it answers questions about the file a user is looking at.
+It does three things: it writes a short summary of every file, it answers questions about the file a user is looking at, and it can label each new file with one of your Google Drive labels.
 
 ![AI summary and Q&A panel](../../assets/images/client_preview_summary_and_question.png)
 
@@ -18,13 +18,17 @@ It does two things: it writes a short summary of every file, and it answers ques
 
     Ask a question about the open document and get the answer in the preview window, instead of reading the whole file to find one clause.
 
+- **[AI Labeling](labeling.md)**
+
+    Describe each Google Drive label in plain language and let Google Client apply the best match to every new file, or leave it unlabeled when it is not sure.
+
 </div>
 
 ## How It Works
 
 Google Client analyzes a converted copy of the file rather than the original upload, which is how a Word document, a spreadsheet, and a PDF can all be handled the same way. The original file in Google Drive is never modified.
 
-Summaries are generated in the background after an upload, so nobody waits for one. Questions are answered on demand while the preview is open.
+Summaries and labels are generated in the background after an upload, so nobody waits for them. Questions are answered on demand while the preview is open.
 
 Everything goes to the AI provider **you** configure, in **your** Google account, and nowhere else. Google Client does not run a model of its own and does not route content through any third party.
 
@@ -53,7 +57,7 @@ The core Google Drive experience does not depend on AI. Upload, preview, downloa
 ## Where to Go Next
 
 - [Configure AI & Intelligence](../../setup/configure-intelligence.md) — connect a provider
-- [AI Intelligence settings](../../config/advanced/ai-intelligence.md) — prompts and answer length
+- [AI Intelligence settings](../../config/advanced/ai-intelligence.md) — prompts, answer length, and labeling
 - [Safety & Customization](../../config/advanced/safety-customization.md) — the safety mode setting
 
 <br>

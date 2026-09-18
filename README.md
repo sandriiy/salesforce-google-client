@@ -19,7 +19,7 @@
 
 **Google Client for Salesforce** is a lightweight, server-to-server connector between Salesforce and Google Cloud, built to simplify file management, reduce Salesforce file storage pressure, and bring Google Workspace documents into Salesforce without disrupting existing workflows.
 
-It works as a transparent layer: files live in Google Drive and appear inside Salesforce in a familiar record-based experience. Your team can upload, attach existing files, preview, download, share, manage versions, create public links, and use optional AI summaries and file Q&A without leaving Salesforce.
+It works as a transparent layer: files live in Google Drive and appear inside Salesforce in a familiar record-based experience. Your team can upload, attach existing files, preview, download, share, manage versions, create public links, and use optional AI summaries, file Q&A, and automatic labeling without leaving Salesforce.
 
 There is no visible difference for end users, and no changes to how files move through your business.
 
@@ -47,7 +47,7 @@ There is no visible difference for end users, and no changes to how files move t
 - Enforce Salesforce-based access before users can open, share, or modify files
 - Grant support and compliance staff org-wide file visibility with View-All and Edit-All permissions
 - Support compliance needs with audit logging, reports, and file activity visibility
-- Use optional Gemini or Agent Platform integration for document summaries and file Q&A, with prompt and response safety inspection built in
+- Use optional Gemini or Agent Platform integration for document summaries, file Q&A, and automatic Google Drive labels, with prompt and response safety inspection built in
 
 <br />
 

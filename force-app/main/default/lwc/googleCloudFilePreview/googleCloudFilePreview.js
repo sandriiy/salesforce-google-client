@@ -52,6 +52,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	@track isPreviewTakingTooLong = false;
 	@track isIntelligenceAvailable = false;
 	@track isIntelligencePanelOpen = false;
+	@track intelligenceLabels = [];
 	@track isOpenInDriveAvailable = false;
 
 	previewOperation;
@@ -143,6 +144,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		this.localLatestVersionRecord = undefined;
 		this.isIntelligenceAvailable = false;
 		this.isIntelligencePanelOpen = false;
+		this.intelligenceLabels = [];
 		this.resetAllStyles();
 	}
 
@@ -155,8 +157,9 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	}
 
 	handleIntelligenceStateChange(event) {
-		this.isIntelligenceAvailable = event.detail?.isEligible === true;
+		this.isIntelligenceAvailable = event.detail?.isAvailable === true;
 		this.isIntelligencePanelOpen = event.detail?.isOpen === true;
+		this.intelligenceLabels = Array.isArray(event.detail?.labels) ? event.detail.labels : [];
 	}
 
 	async handleFileDownload(event) {
@@ -718,6 +721,26 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 
 	get intelligenceVersionId() {
 		return this.localLatestVersionRecord?.Id;
+	}
+
+	get hasIntelligenceLabels() {
+		return this.intelligenceLabels.length > 0;
+	}
+
+	get primaryIntelligenceLabel() {
+		return this.intelligenceLabels[0] || '';
+	}
+
+	get hasMoreIntelligenceLabels() {
+		return this.intelligenceLabels.length > 1;
+	}
+
+	get moreIntelligenceLabelsCopy() {
+		return `+${this.intelligenceLabels.length - 1} more`;
+	}
+
+	get intelligenceLabelsTitle() {
+		return this.intelligenceLabels.join(', ');
 	}
 
 	get viewDetailsReferenceName() {

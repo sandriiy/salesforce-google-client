@@ -103,6 +103,51 @@ private class GoogleCloudFilesViewControllerTest {
 	}
 
 	@IsTest
+	private static void testRetrieveLocalGoogleFileLabelsPositive() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('VIEWLBL1')
+			.insertRecord();
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('VIEWLBL1.pdf')
+			.withType('application/pdf')
+			.withSize(10)
+			.insertRecord();
+		GoogleCloudTestFactory.versionLabel()
+			.forVersion(version.Id)
+			.withName('Invoice')
+			.withDriveLabelId('LABEL_INVOICE')
+			.withConfidence(95)
+			.insertRecord();
+
+		List<GoogleFileVersionLabelDTO> labels;
+		Test.startTest();
+			labels = GoogleCloudFilesViewController.retrieveLocalGoogleFileLabels(parentFile.Id);
+		Test.stopTest();
+
+		Assert.areEqual(1, labels.size());
+		Assert.areEqual('Invoice', labels[0].name);
+		Assert.areEqual(95, labels[0].confidence);
+		Assert.areEqual('VIEWLBL1.pdf', labels[0].versionName);
+	}
+
+	@IsTest
+	private static void testRetrieveLocalGoogleFileLabelsNegativeNoAccess() {
+		GoogleCloudTestFactory.initMocks();
+
+		try {
+			Test.startTest();
+			GoogleCloudFilesViewController.retrieveLocalGoogleFileLabels('a08000000000001AAA');
+			Test.stopTest();
+			Assert.fail('Labels of an unreachable file must not be returned');
+		} catch (Exception ex) {
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
+		}
+	}
+
+	@IsTest
 	private static void testRetrieveLocalGoogleFileVersionsNegativeNoAccess() {
 		GoogleCloudTestFactory.initMocks();
 

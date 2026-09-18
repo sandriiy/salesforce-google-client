@@ -12,6 +12,7 @@ public class GoogleCloudConstants {
 		GoogleFile__c.SObjectType,
 		GoogleFileLink__c.SObjectType,
 		GoogleFileVersion__c.SObjectType,
+		GoogleFileVersionLabel__c.SObjectType,
 		GoogleFile__Share.SObjectType
 	};
 
@@ -93,7 +94,7 @@ public class GoogleCloudConstants {
 
 	// File Explorer constants used to change its appearance (column display, pagination etc).
 	public static final Set<String> FILE_EXPLORER_COLUMNS = new Set<String>{
-		'title', 'type', 'size', 'owner', 'fileOwner', 'createdDate', 'lastModified', 'isLinked', 'access', 'summary'
+		'title', 'type', 'size', 'owner', 'fileOwner', 'createdDate', 'lastModified', 'isLinked', 'access', 'summary', 'labels'
 	};
 	public static final String FILE_EXPLORER_COLUMN_TITLE = 'title';
 	public static final Integer FILE_EXPLORER_MAX_COLUMNS = 7;

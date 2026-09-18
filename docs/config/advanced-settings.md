@@ -8,7 +8,9 @@ A freshly installed package behaves exactly as documented without any of them be
 
 1. Open the **Google Client** app from the App Launcher
 2. Go to the **Home** page
-3. Select **Advanced**
+3. Select **Advanced** in the switch at the top right, next to **Setup**
+
+If you have unsaved changes on the Setup screen, Google Client asks whether to save or discard them before opening Advanced, so the two never mix. While an Advanced tab is open, the side panel of the Home page shows a short guide to what that tab contains.
 
 ![Advanced settings tabs](../assets/images/config_advanced_tabs.png)
 
@@ -26,7 +28,7 @@ A freshly installed package behaves exactly as documented without any of them be
 
 - **[AI Intelligence](advanced/ai-intelligence.md)**
 
-    Turn File Intelligence on, and control the prompts and answer length used for summaries and questions.
+    Turn AI Analytics on, control the prompts and answer length used for summaries and questions, and let Google Client label new files automatically.
 
 - **[Safety & Customization](advanced/safety-customization.md)**
 

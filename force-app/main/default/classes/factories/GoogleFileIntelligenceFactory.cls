@@ -33,6 +33,10 @@ public with sharing class GoogleFileIntelligenceFactory {
 		return metadataConfig.isFileIntelligenceEnabled() && (hasGeminiConfiguration() || hasAgentConfiguration());
 	}
 
+	public Boolean isLabelingConfigured() {
+		return isConfigured() && metadataConfig.isAiLabelingEnabled() && !metadataConfig.getAiLabelDefinitions().isEmpty();
+	}
+
     public IGoogleFileIntelligenceStrategy create() {
 		if (!metadataConfig.isFileIntelligenceEnabled()) {
 			throw new GoogleFileIntelligenceFactoryException('AI file intelligence is disabled. Enable it in Advanced settings and save the configuration before using summaries or questions');
@@ -43,6 +47,18 @@ public with sharing class GoogleFileIntelligenceFactory {
 
 	public IGoogleFileIntelligenceStrategy createForValidation() {
 		return createConfiguredStrategy();
+	}
+
+	public IGoogleFileLabelingStrategy createForLabeling() {
+		if (!metadataConfig.isFileIntelligenceEnabled()) {
+			throw new GoogleFileIntelligenceFactoryException('AI file intelligence is disabled. Enable it in Advanced settings and save the configuration before labeling files');
+		}
+
+		if (!metadataConfig.isAiLabelingEnabled()) {
+			throw new GoogleFileIntelligenceFactoryException('AI labeling is disabled. Enable it in Advanced settings and save the configuration before labeling files');
+		}
+
+		return (IGoogleFileLabelingStrategy) createConfiguredStrategy();
 	}
 
 	private IGoogleFileIntelligenceStrategy createConfiguredStrategy() {

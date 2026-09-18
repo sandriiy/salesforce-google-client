@@ -45,6 +45,20 @@ public with sharing class GoogleCloudFilesViewController {
 			.toList();
     }
 
+	@AuraEnabled
+	public static List<GoogleFileVersionLabelDTO> retrieveLocalGoogleFileLabels(Id localFileRecordId) {
+		try {
+			return new GoogleLocalFileVersionLabelService().retrieveLabelsForFile(localFileRecordId);
+		} catch (GoogleLocalFileVersionLabelService.GoogleLocalFileVersionLabelServiceException ex) {
+			throw new AuraHandledException(ex.getMessage());
+		} catch (Exception ex) {
+			Logger.error('Retrieve File Labels, Id: ' + localFileRecordId + ', Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+
+			throw new AuraHandledException('Unable to retrieve the labels of this file. Please try again or contact your system administrator');
+		}
+	}
+
 	private static void assertFileReadable(Id localFileRecordId) {
 		if (localFileRecordId == null) return;
 		

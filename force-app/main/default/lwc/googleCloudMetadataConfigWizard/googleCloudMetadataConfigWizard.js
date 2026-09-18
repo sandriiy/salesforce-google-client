@@ -1,12 +1,15 @@
 import { LightningElement, api, wire } from 'lwc';
 import { gql, graphql } from 'lightning/uiGraphQLApi';
+import { publish, subscribe, unsubscribe, MessageContext } from 'lightning/messageService';
 import { isEmpty, showToast, normalizeError, extractGraphValue } from 'c/googleCloudUtils';
 import {
     FILE_EXPLORER_COLUMN_OPTIONS,
     DEFAULT_FILE_EXPLORER_COLUMNS,
     MAX_FILE_EXPLORER_COLUMNS
 } from 'c/googleCloudFileExplorerColumns';
+import { CONFIG_CONTEXT_MESSAGE_TYPE, CONFIG_SECTION, CONFIG_VIEW, DOCS_BASE_URL } from 'c/googleCloudSetupGuides';
 
+import CONFIG_CONTEXT_CHANNEL from '@salesforce/messageChannel/GoogleClientConfigContext__c';
 import checkConfig from '@salesforce/apex/GoogleCloudConfigController.validateLatestMetadataDeploy';
 import validateDriveConfig from '@salesforce/apex/GoogleCloudConfigController.validateDriveMetadataConfig';
 import validateIntelligenceConfig from '@salesforce/apex/GoogleCloudConfigController.validateIntelligenceMetadataConfig';
@@ -23,7 +26,7 @@ const RESUMABLE_INCOMPLETE_STATUS = 308;
 const CONFIG_DEV_NAME = 'GoogleClient';
 const CONFIG_SECTIONS = [
     {
-        key: 'drive',
+        key: CONFIG_SECTION.drive,
         label: 'Google Drive',
         icon: 'doctype:gdocs',
         description: 'Configure Google Drive authentication and file organization for this org.',
@@ -31,7 +34,7 @@ const CONFIG_SECTIONS = [
         validator: validateDriveConfig
     },
     {
-        key: 'ai',
+        key: CONFIG_SECTION.ai,
         label: 'Gemini & Agent Platform',
         icon: 'utility:magicwand',
         description: 'Configure Gemini Developer API or Agent Platform (ex-Vertex AI) for file analysis in Google Client.',
@@ -74,6 +77,11 @@ const QUERY = gql`
                             QuestionMaxOutputTokens__c { value }
                             AiSafetyMode__c { value }
                             CustomAiPromptSafetyGuardClass__c { value }
+                            IsAiLabelingEnabled__c { value }
+                            CustomLabelingPrompt__c { value }
+                            AiLabelingMinConfidence__c { value }
+                            AiLabelingThinkingBudget__c { value }
+                            AiLabelDefinitions__c { value }
 
                             FileExplorerColumns__c { value }
                         }
@@ -90,6 +98,11 @@ const DEFAULT_BIG_FILE_SIZE = 2097152;
 const DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 const DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
 const DEFAULT_AI_SAFETY_MODE = 'Standard';
+const DEFAULT_AI_LABELING_MIN_CONFIDENCE = 80;
+const DEFAULT_AI_LABELING_THINKING_BUDGET = 0;
+const MAX_AI_LABEL_DEFINITIONS = 20;
+const MIN_CONFIDENCE_PERCENT = 0;
+const MAX_CONFIDENCE_PERCENT = 100;
 const AI_SAFETY_MODE_OPTIONS = [
     { label: 'Strict', value: 'Strict' },
     { label: 'Standard', value: 'Standard' },
@@ -100,14 +113,25 @@ const ADVANCED_TAB_FILE_MANAGEMENT = 'fileManagement';
 const ADVANCED_TAB_USER_INTERFACE = 'userInterface';
 const ADVANCED_TAB_AI_INTELLIGENCE = 'aiIntelligence';
 const ADVANCED_TAB_SAFETY_CUSTOMIZATION = 'safetyCustomization';
-const ADVANCED_TAB_KEYS = [ADVANCED_TAB_FILE_MANAGEMENT, ADVANCED_TAB_USER_INTERFACE, ADVANCED_TAB_AI_INTELLIGENCE, ADVANCED_TAB_SAFETY_CUSTOMIZATION];
+const ADVANCED_TABS = [
+    { key: ADVANCED_TAB_FILE_MANAGEMENT, label: 'File Management', description: 'Previews, uploads, limits' },
+    { key: ADVANCED_TAB_USER_INTERFACE, label: 'User Interface', description: 'File Explorer columns' },
+    { key: ADVANCED_TAB_AI_INTELLIGENCE, label: 'AI Intelligence', description: 'Analytics and labeling' },
+    { key: ADVANCED_TAB_SAFETY_CUSTOMIZATION, label: 'Safety & Customization', description: 'Prompt inspection' }
+];
+const ADVANCED_TAB_KEYS = ADVANCED_TABS.map((tab) => tab.key);
+const ADVANCED_INPUT_SELECTOR = 'lightning-input, lightning-textarea, lightning-dual-listbox, c-google-cloud-ai-label-editor';
+const NOTICE_AI_OFF = 'aiOff';
+const NOTICE_AI_PROVIDER_MISSING = 'aiProviderMissing';
 const FILE_EXPLORER_REQUIRED_COLUMNS = ['title'];
 const FILE_EXPLORER_COLUMNS_OVERFLOW_MESSAGE = `You can display up to ${MAX_FILE_EXPLORER_COLUMNS} columns.`;
-const SAFETY_MODE_GUIDE_URL = 'https://sandriiy.github.io/salesforce-google-client/features/artificial-intelligence/safety/';
-const UI_FILE_EXPLORER_URL = 'https://sandriiy.github.io/salesforce-google-client/features/file-explorer/';
-const CUSTOM_GUARD_GUIDE_URL = 'https://sandriiy.github.io/salesforce-google-client/features/artificial-intelligence/safety/#ownguard';
+const SAFETY_MODE_GUIDE_URL = `${DOCS_BASE_URL}/features/artificial-intelligence/safety/`;
+const UI_FILE_EXPLORER_URL = `${DOCS_BASE_URL}/features/file-explorer/`;
+const CUSTOM_GUARD_GUIDE_URL = `${DOCS_BASE_URL}/features/artificial-intelligence/safety/#ownguard`;
+const AI_LABELING_GUIDE_URL = `${DOCS_BASE_URL}/features/artificial-intelligence/labeling/`;
 const DEFAULT_SUMMARY_PROMPT = 'Create a very short summary of the provided document content that starts with "This file describes". Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief.';
 const DEFAULT_QUESTION_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
+const DEFAULT_LABELING_PROMPT = 'You classify one business document into exactly one of the labels defined by the administrator. Read the document text and compare it against every label description. Choose a label only when the document clearly matches that description. When the document fits none of the labels, fits several of them equally well, or you are not sure, answer None. Never invent a label that is not in the list and use only the document text provided.';
 
 export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     configComponentConstructor;
@@ -139,29 +163,46 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
         aiSafetyMode: DEFAULT_AI_SAFETY_MODE,
         customAiPromptSafetyGuardClass: '',
+        isAiLabelingEnabled: false,
+        customLabelingPrompt: DEFAULT_LABELING_PROMPT,
+        aiLabelingMinConfidence: DEFAULT_AI_LABELING_MIN_CONFIDENCE,
+        aiLabelingThinkingBudget: DEFAULT_AI_LABELING_THINKING_BUDGET,
+        aiLabelDefinitions: '',
         fileExplorerColumns: ''
     };
+
+    @wire(MessageContext)
+    messageContext;
 
     errorMessage = '';
     customColumnDraft = '';
     configRegistry = CONFIG_SECTIONS;
-    selectedConfigKey = CONFIG_SECTIONS?.[0]?.key || 'drive';
+    selectedConfigKey = CONFIG_SECTIONS?.[0]?.key || CONFIG_SECTION.drive;
+    sectionVariant = null;
     isConfigMenuOpen = false;
-    viewMode = 'main';
+    viewMode = CONFIG_VIEW.main;
     activeAdvancedTab = ADVANCED_TAB_FILE_MANAGEMENT;
     validationIssues = new Map();
     isDirectUploadProbeRunning = false;
     directUploadProbeSucceeded = false;
     directUploadProbeMessage = '';
+    isProviderCheckRunning = false;
+    dismissedNoticeKey = null;
+    pendingNavigation = null;
+    contextSubscription = null;
 
     connectedCallback() {
         this.initActiveConfigComponent();
         this._windowClickHandler = this.handleWindowClick.bind(this);
         window.addEventListener('click', this._windowClickHandler);
+        this.contextSubscription = subscribe(this.messageContext, CONFIG_CONTEXT_CHANNEL, (message) => this.handleContextMessage(message));
+        this.publishConfigContext();
     }
 
     disconnectedCallback() {
         window.removeEventListener('click', this._windowClickHandler);
+        unsubscribe(this.contextSubscription);
+        this.contextSubscription = null;
     }
 
     @wire(graphql, { query: QUERY })
@@ -200,6 +241,31 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         }
     }
 
+    handleContextMessage(message) {
+        if (message?.type === CONFIG_CONTEXT_MESSAGE_TYPE.ready) {
+            this.publishConfigContext();
+        }
+    }
+
+    publishConfigContext() {
+        if (!this.messageContext) {
+            return;
+        }
+
+        publish(this.messageContext, CONFIG_CONTEXT_CHANNEL, {
+            type: CONFIG_CONTEXT_MESSAGE_TYPE.context,
+            section: this.selectedConfigKey,
+            variant: this.sectionVariant,
+            view: this.viewMode,
+            tab: this.activeAdvancedTab
+        });
+    }
+
+    handleSectionContextChange(event) {
+        this.sectionVariant = event?.detail?.variant || null;
+        this.publishConfigContext();
+    }
+
     toggleConfigMenu(event) {
         event?.stopPropagation?.();
         this.isConfigMenuOpen = !this.isConfigMenuOpen;
@@ -227,20 +293,100 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             return;
         }
 
-        this.selectedConfigKey = newKey;
         this.isConfigMenuOpen = false;
-        this.initActiveConfigComponent();
+        this.applyNavigation({ view: CONFIG_VIEW.main, section: newKey });
     }
 
-    toggleAdvancedView() {
-        this.viewMode = this.isAdvancedView ? 'main' : 'advanced';
+    handleSetupViewClick() {
+        this.requestNavigation({ view: CONFIG_VIEW.main });
+    }
+
+    handleAdvancedViewClick() {
+        this.requestNavigation({ view: CONFIG_VIEW.advanced });
     }
 
     handleAdvancedStepClick(event) {
         const nextTab = event?.currentTarget?.dataset?.step;
         if (nextTab && ADVANCED_TAB_KEYS.includes(nextTab)) {
             this.activeAdvancedTab = nextTab;
+            this.publishConfigContext();
         }
+    }
+
+    requestNavigation(navigation) {
+        if (navigation.view === this.viewMode && !navigation.section && !navigation.tab) {
+            return;
+        }
+
+        if (this.isDirty) {
+            this.pendingNavigation = navigation;
+            return;
+        }
+
+        this.applyNavigation(navigation);
+    }
+
+    applyNavigation({ view, section, tab }) {
+        if (section && section !== this.selectedConfigKey) {
+            this.selectedConfigKey = section;
+            this.sectionVariant = null;
+            this.initActiveConfigComponent();
+        }
+
+        if (tab && ADVANCED_TAB_KEYS.includes(tab)) {
+            this.activeAdvancedTab = tab;
+        }
+
+        this.viewMode = view === CONFIG_VIEW.advanced ? CONFIG_VIEW.advanced : CONFIG_VIEW.main;
+        this.publishConfigContext();
+    }
+
+    handleNavigationCancel() {
+        this.pendingNavigation = null;
+    }
+
+    handleNavigationDiscard() {
+        const navigation = this.pendingNavigation;
+        this.pendingNavigation = null;
+        if (!navigation) {
+            return;
+        }
+
+        this.draft = this.toDraft(this.server);
+        this.applyNavigation(navigation);
+    }
+
+    async handleNavigationSave() {
+        const navigation = this.pendingNavigation;
+        if (!navigation) {
+            return;
+        }
+
+        await this.saveInternal({ alsoValidate: false });
+        if (this.isDirty) {
+            return;
+        }
+
+        this.pendingNavigation = null;
+        this.applyNavigation(navigation);
+    }
+
+    handleNoticeDismiss() {
+        this.dismissedNoticeKey = this.activeNotice?.key || null;
+    }
+
+    handleNoticeAction() {
+        const notice = this.activeNotice;
+        if (!notice) {
+            return;
+        }
+
+        this.dismissedNoticeKey = notice.key;
+        this.requestNavigation(notice.navigation);
+    }
+
+    handleOpenProviderSetup() {
+        this.requestNavigation({ view: CONFIG_VIEW.main, section: CONFIG_SECTION.ai });
     }
 
     handleFieldChange(event) {
@@ -294,16 +440,75 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     handleToggle(event) {
         const fieldName = event.target.dataset.field;
-        let nextDraft = {
+        this.draft = {
             ...this.draft,
             [fieldName]: event.target.checked
         };
+    }
 
-        if (fieldName === 'isFileIntelligenceEnabled' && event.target.checked) {
-            nextDraft = this.applyIntelligenceDefaults(nextDraft);
+    async handleIntelligenceToggle(event) {
+        const toggle = event.target;
+        if (!toggle.checked) {
+            this.draft = {
+                ...this.draft,
+                isFileIntelligenceEnabled: false,
+                isAiLabelingEnabled: false
+            };
+            return;
         }
 
-        this.draft = nextDraft;
+        if (this.server?.isFileIntelligenceEnabled) {
+            this.draft = this.applyIntelligenceDefaults({ ...this.draft, isFileIntelligenceEnabled: true });
+            return;
+        }
+
+        if (!this.isIntelligenceProviderSaved) {
+            toggle.checked = false;
+            showToast(this, 'Connect a provider first', 'Set up and validate Gemini or Agent Platform before turning on AI Analytics', 'warning');
+            return;
+        }
+
+        const isProviderValid = await this.checkIntelligenceProvider();
+        if (!isProviderValid) {
+            toggle.checked = false;
+            return;
+        }
+
+        this.draft = this.applyIntelligenceDefaults({ ...this.draft, isFileIntelligenceEnabled: true });
+    }
+
+    handleLabelingToggle(event) {
+        const isEnabled = event.target.checked;
+        if (isEnabled && !this.isIntelligenceEnabled) {
+            event.target.checked = false;
+            showToast(this, 'Turn on AI Analytics first', 'AI Labeling works on top of AI Analytics, so enable that switch before this one', 'warning');
+            return;
+        }
+
+        this.draft = this.applyLabelingDefaults({ ...this.draft, isAiLabelingEnabled: isEnabled });
+    }
+
+    handleLabelDefinitionsChange(event) {
+        this.draft = {
+            ...this.draft,
+            aiLabelDefinitions: event.detail?.value || ''
+        };
+    }
+
+    async checkIntelligenceProvider() {
+        this.isProviderCheckRunning = true;
+        this.busy = true;
+        try {
+            await validateIntelligenceConfig();
+            showToast(this, 'Provider validated', 'AI Analytics is ready to be turned on. Save the configuration to apply it', 'success');
+            return true;
+        } catch (error) {
+            showToast(this, 'Provider not ready', normalizeError(error), 'error');
+            return false;
+        } finally {
+            this.isProviderCheckRunning = false;
+            this.busy = false;
+        }
     }
 
     async handleDirectUploadProbe() {
@@ -442,7 +647,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             }
         }
 
-        if (this.isAdvancedView && this.hasInputErrors('.advanced-container lightning-input, .advanced-container lightning-textarea, .advanced-container lightning-dual-listbox')) {
+        if (this.isAdvancedView && this.hasInputErrors(this.scopedAdvancedSelector('.advanced-container'))) {
             this.focusFailingAdvancedTab();
             return false;
         }
@@ -575,6 +780,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
             aiSafetyMode: '',
             customAiPromptSafetyGuardClass: '',
+            isAiLabelingEnabled: false,
+            customLabelingPrompt: '',
+            aiLabelingMinConfidence: DEFAULT_AI_LABELING_MIN_CONFIDENCE,
+            aiLabelingThinkingBudget: DEFAULT_AI_LABELING_THINKING_BUDGET,
+            aiLabelDefinitions: '',
             fileExplorerColumns: ''
         };
     }
@@ -606,6 +816,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             questionMaxOutputTokens: this.toNumberOrNull(extractGraphValue(recordNode?.QuestionMaxOutputTokens__c)),
             aiSafetyMode: extractGraphValue(recordNode?.AiSafetyMode__c) || '',
             customAiPromptSafetyGuardClass: extractGraphValue(recordNode?.CustomAiPromptSafetyGuardClass__c) || '',
+            isAiLabelingEnabled: !!extractGraphValue(recordNode?.IsAiLabelingEnabled__c),
+            customLabelingPrompt: extractGraphValue(recordNode?.CustomLabelingPrompt__c) || '',
+            aiLabelingMinConfidence: this.toNumberOrNull(extractGraphValue(recordNode?.AiLabelingMinConfidence__c)),
+            aiLabelingThinkingBudget: this.toNumberOrNull(extractGraphValue(recordNode?.AiLabelingThinkingBudget__c)),
+            aiLabelDefinitions: extractGraphValue(recordNode?.AiLabelDefinitions__c) || '',
             fileExplorerColumns: extractGraphValue(recordNode?.FileExplorerColumns__c) || ''
         };
     }
@@ -636,6 +851,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             questionMaxOutputTokens: serverSnapshot.questionMaxOutputTokens,
             aiSafetyMode: serverSnapshot.aiSafetyMode || '',
             customAiPromptSafetyGuardClass: serverSnapshot.customAiPromptSafetyGuardClass || '',
+            isAiLabelingEnabled: !!serverSnapshot.isAiLabelingEnabled,
+            customLabelingPrompt: serverSnapshot.customLabelingPrompt || '',
+            aiLabelingMinConfidence: serverSnapshot.aiLabelingMinConfidence,
+            aiLabelingThinkingBudget: serverSnapshot.aiLabelingThinkingBudget,
+            aiLabelDefinitions: serverSnapshot.aiLabelDefinitions || '',
             fileExplorerColumns: serverSnapshot.fileExplorerColumns || ''
         });
     }
@@ -677,6 +897,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'QuestionMaxOutputTokens__c', serverState.questionMaxOutputTokens, draftState.questionMaxOutputTokens);
         this.putIfChanged(changed, 'AiSafetyMode__c', serverState.aiSafetyMode, draftState.aiSafetyMode);
         this.putIfChanged(changed, 'CustomAiPromptSafetyGuardClass__c', serverState.customAiPromptSafetyGuardClass, draftState.customAiPromptSafetyGuardClass);
+        this.putIfChanged(changed, 'IsAiLabelingEnabled__c', !!serverState.isAiLabelingEnabled, !!draftState.isAiLabelingEnabled);
+        this.putIfChanged(changed, 'CustomLabelingPrompt__c', serverState.customLabelingPrompt, draftState.customLabelingPrompt);
+        this.putIfChanged(changed, 'AiLabelingMinConfidence__c', serverState.aiLabelingMinConfidence, draftState.aiLabelingMinConfidence);
+        this.putIfChanged(changed, 'AiLabelingThinkingBudget__c', serverState.aiLabelingThinkingBudget, draftState.aiLabelingThinkingBudget);
+        this.putIfChanged(changed, 'AiLabelDefinitions__c', serverState.aiLabelDefinitions, draftState.aiLabelDefinitions);
         this.putIfChanged(changed, 'FileExplorerColumns__c', serverState.fileExplorerColumns, draftState.fileExplorerColumns);
 
         return changed;
@@ -706,6 +931,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             questionMaxOutputTokens: draftState.questionMaxOutputTokens,
             aiSafetyMode: draftState.aiSafetyMode || '',
             customAiPromptSafetyGuardClass: draftState.customAiPromptSafetyGuardClass || '',
+            isAiLabelingEnabled: !!draftState.isAiLabelingEnabled,
+            customLabelingPrompt: draftState.customLabelingPrompt || '',
+            aiLabelingMinConfidence: draftState.aiLabelingMinConfidence,
+            aiLabelingThinkingBudget: draftState.aiLabelingThinkingBudget,
+            aiLabelDefinitions: draftState.aiLabelDefinitions || '',
             fileExplorerColumns: draftState.fileExplorerColumns || ''
         };
     }
@@ -715,11 +945,24 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             return draftState;
         }
 
-        return {
+        return this.applyLabelingDefaults({
             ...draftState,
             customSummaryPrompt: draftState.customSummaryPrompt || DEFAULT_SUMMARY_PROMPT,
             customQuestionPrompt: draftState.customQuestionPrompt || DEFAULT_QUESTION_PROMPT,
             questionMaxOutputTokens: draftState.questionMaxOutputTokens ?? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS
+        });
+    }
+
+    applyLabelingDefaults(draftState) {
+        if (!draftState?.isAiLabelingEnabled) {
+            return draftState;
+        }
+
+        return {
+            ...draftState,
+            customLabelingPrompt: draftState.customLabelingPrompt || DEFAULT_LABELING_PROMPT,
+            aiLabelingMinConfidence: draftState.aiLabelingMinConfidence ?? DEFAULT_AI_LABELING_MIN_CONFIDENCE,
+            aiLabelingThinkingBudget: draftState.aiLabelingThinkingBudget ?? DEFAULT_AI_LABELING_THINKING_BUDGET
         };
     }
 
@@ -758,6 +1001,13 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return Number.isFinite(numberValue) ? numberValue : null;
     }
 
+    scopedAdvancedSelector(scope) {
+        return ADVANCED_INPUT_SELECTOR
+            .split(',')
+            .map((selector) => `${scope} ${selector.trim()}`)
+            .join(', ');
+    }
+
     hasInputErrors(selector, toastTitle = 'Invalid Fields', toastMessage = 'Please review the highlighted fields and try again') {
         const inputs = Array.from(this.template.querySelectorAll(selector));
         if (!inputs.length) {
@@ -785,10 +1035,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     focusFailingAdvancedTab() {
         for (const tabKey of ADVANCED_TAB_KEYS) {
-            const inputs = Array.from(this.template.querySelectorAll(`[data-tab="${tabKey}"] lightning-input, [data-tab="${tabKey}"] lightning-textarea, [data-tab="${tabKey}"] lightning-dual-listbox`));
+            const inputs = Array.from(this.template.querySelectorAll(this.scopedAdvancedSelector(`[data-tab="${tabKey}"]`)));
             const hasInvalid = inputs.some((input) => typeof input.checkValidity === 'function' && !input.checkValidity());
             if (hasInvalid) {
                 this.activeAdvancedTab = tabKey;
+                this.publishConfigContext();
                 return;
             }
         }
@@ -837,19 +1088,50 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     }
 
     get isAdvancedView() {
-        return this.viewMode === 'advanced';
+        return this.viewMode === CONFIG_VIEW.advanced;
     }
 
-    get advancedToggleLabel() {
-        return this.isAdvancedView ? 'Advanced: On' : 'Advanced';
+    get isMainView() {
+        return !this.isAdvancedView;
     }
 
-    get advancedToggleClass() {
-        return this.isAdvancedView ? 'action-button action-button-pill is-on' : 'action-button action-button-pill';
+    get setupViewClass() {
+        return this.isMainView ? 'view-switch-option is-active' : 'view-switch-option';
+    }
+
+    get advancedViewClass() {
+        return this.isAdvancedView ? 'view-switch-option is-active' : 'view-switch-option';
+    }
+
+    get advancedTabs() {
+        return ADVANCED_TABS.map((tab) => ({
+            ...tab,
+            className: this.advancedStepButtonClass(tab.key)
+        }));
+    }
+
+    get showUnsavedChangesModal() {
+        return this.pendingNavigation !== null;
+    }
+
+    get pendingNavigationLabel() {
+        return this.pendingNavigation?.view === CONFIG_VIEW.advanced ? 'Advanced settings' : 'Setup';
     }
 
     get hasPersistedConfigRecord() {
         return this.server?.hasPersistedRecord === true;
+    }
+
+    get isIntelligenceProviderSaved() {
+        const savedState = this.server;
+        if (!savedState) {
+            return false;
+        }
+
+        const hasModel = !isEmpty(savedState.customModelName);
+        const hasGemini = !isEmpty(savedState.customGeminiApiKey);
+        const hasAgent = !isEmpty(savedState.customAgentProjectId) && !isEmpty(savedState.customAgentLocation);
+        return hasModel && (hasGemini || hasAgent);
     }
 
     get isIntelligenceEnabled() {
@@ -860,6 +1142,75 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return !this.isIntelligenceEnabled;
     }
 
+    get isIntelligenceToggleDisabled() {
+        return this.busy || this.isProviderCheckRunning || (!this.isIntelligenceProviderSaved && !this.isIntelligenceEnabled);
+    }
+
+    get showProviderRequiredHint() {
+        return !this.isIntelligenceProviderSaved && !this.isIntelligenceEnabled;
+    }
+
+    get isLabelingEnabled() {
+        return this.isIntelligenceEnabled && !!this.draft?.isAiLabelingEnabled;
+    }
+
+    get isLabelingDisabled() {
+        return !this.isLabelingEnabled;
+    }
+
+    get isLabelingToggleDisabled() {
+        return this.busy || this.isIntelligenceDisabled;
+    }
+
+    get maxAiLabelDefinitions() {
+        return MAX_AI_LABEL_DEFINITIONS;
+    }
+
+    get minConfidencePercent() {
+        return MIN_CONFIDENCE_PERCENT;
+    }
+
+    get maxConfidencePercent() {
+        return MAX_CONFIDENCE_PERCENT;
+    }
+
+    get aiLabelingGuideUrl() {
+        return AI_LABELING_GUIDE_URL;
+    }
+
+    get activeNotice() {
+        if (this.hasError || this.isLoading) {
+            return null;
+        }
+
+        if (this.isMainView && this.selectedConfigKey === CONFIG_SECTION.ai && this.isIntelligenceDisabled) {
+            return {
+                key: NOTICE_AI_OFF,
+                title: 'AI analysis is off',
+                text: 'Provider details can be saved and validated here, but summaries, questions and labels stay off until AI Analytics is turned on under Advanced → AI Intelligence.',
+                actionLabel: 'Open AI Intelligence',
+                navigation: { view: CONFIG_VIEW.advanced, tab: ADVANCED_TAB_AI_INTELLIGENCE }
+            };
+        }
+
+        if (this.isAdvancedView && this.activeAdvancedTab === ADVANCED_TAB_AI_INTELLIGENCE && this.showProviderRequiredHint) {
+            return {
+                key: NOTICE_AI_PROVIDER_MISSING,
+                title: 'Connect a provider first',
+                text: 'AI Analytics can be turned on once Gemini or Agent Platform is set up and validated. Do that under Gemini & Agent Platform, then come back here.',
+                actionLabel: 'Open Gemini & Agent Platform',
+                navigation: { view: CONFIG_VIEW.main, section: CONFIG_SECTION.ai }
+            };
+        }
+
+        return null;
+    }
+
+    get visibleNotice() {
+        const notice = this.activeNotice;
+        return notice && notice.key !== this.dismissedNoticeKey ? notice : null;
+    }
+
     get aiSafetyModeOptions() {
         return AI_SAFETY_MODE_OPTIONS;
     }
@@ -868,7 +1219,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return this.draft?.aiSafetyMode || DEFAULT_AI_SAFETY_MODE;
     }
 
-	get uiFileExplorerUrl() {
+    get uiFileExplorerUrl() {
         return UI_FILE_EXPLORER_URL;
     }
 
@@ -886,18 +1237,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     advancedTabPanelClass(tabKey) {
         return this.activeAdvancedTab === tabKey ? 'advanced-tab-panel' : 'advanced-tab-panel is-hidden';
-    }
-
-    get fileManagementStepClass() {
-        return this.advancedStepButtonClass(ADVANCED_TAB_FILE_MANAGEMENT);
-    }
-
-    get aiIntelligenceStepClass() {
-        return this.advancedStepButtonClass(ADVANCED_TAB_AI_INTELLIGENCE);
-    }
-
-    get safetyCustomizationStepClass() {
-        return this.advancedStepButtonClass(ADVANCED_TAB_SAFETY_CUSTOMIZATION);
     }
 
     get fileManagementPanelClass() {
@@ -923,10 +1262,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     get safetyCustomizationPanelClass() {
         return this.advancedTabPanelClass(ADVANCED_TAB_SAFETY_CUSTOMIZATION);
-    }
-
-    get userInterfaceStepClass() {
-        return this.advancedStepButtonClass(ADVANCED_TAB_USER_INTERFACE);
     }
 
     get userInterfacePanelClass() {
@@ -1028,13 +1363,18 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.customGeminiApiKey || '') !== (draftState.customGeminiApiKey || '') ||
             (serverState.customModelName || '') !== (draftState.customModelName || '') ||
             (serverState.customAgentLocation || '') !== (draftState.customAgentLocation || '') ||
-			(serverState.customAgentProjectId || '') !== (draftState.customAgentProjectId || '') ||
+            (serverState.customAgentProjectId || '') !== (draftState.customAgentProjectId || '') ||
             (!!serverState.isFileIntelligenceEnabled !== !!draftState.isFileIntelligenceEnabled) ||
             (serverState.customSummaryPrompt || '') !== (draftState.customSummaryPrompt || '') ||
             (serverState.customQuestionPrompt || '') !== (draftState.customQuestionPrompt || '') ||
             (serverState.questionMaxOutputTokens ?? null) !== (draftState.questionMaxOutputTokens ?? null) ||
             (serverState.aiSafetyMode || '') !== (draftState.aiSafetyMode || '') ||
             (serverState.customAiPromptSafetyGuardClass || '') !== (draftState.customAiPromptSafetyGuardClass || '') ||
+            (!!serverState.isAiLabelingEnabled !== !!draftState.isAiLabelingEnabled) ||
+            (serverState.customLabelingPrompt || '') !== (draftState.customLabelingPrompt || '') ||
+            (serverState.aiLabelingMinConfidence ?? null) !== (draftState.aiLabelingMinConfidence ?? null) ||
+            (serverState.aiLabelingThinkingBudget ?? null) !== (draftState.aiLabelingThinkingBudget ?? null) ||
+            (serverState.aiLabelDefinitions || '') !== (draftState.aiLabelDefinitions || '') ||
             (serverState.fileExplorerColumns || '') !== (draftState.fileExplorerColumns || '')
         );
     }

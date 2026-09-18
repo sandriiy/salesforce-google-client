@@ -7,6 +7,12 @@
                     <span class="topbar-filename slds-truncate slds-text-heading_small" title={fileName}>
                         {fileName}
                     </span>
+                    <template lwc:if={hasIntelligenceLabels}>
+                        <span class="topbar-label" title={intelligenceLabelsTitle}>{primaryIntelligenceLabel}</span>
+                        <template lwc:if={hasMoreIntelligenceLabels}>
+                            <span class="topbar-label topbar-label_more" title={intelligenceLabelsTitle}>{moreIntelligenceLabelsCopy}</span>
+                        </template>
+                    </template>
                 </div>
 
                 <div class="slds-col slds-size_1-of-3 slds-grid slds-grid_align-center slds-grid_vertical-align-center">

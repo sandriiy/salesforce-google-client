@@ -37,7 +37,30 @@
 .topbar-filename {
   	max-width: 250px;
   	min-width: 40px;
-  	margin-right: 5%;
+  	margin-right: 3%;
+}
+
+.topbar-label {
+	flex-shrink: 0;
+	max-width: 160px;
+	margin-right: 6px;
+	padding: 3px 10px;
+	border-radius: 999px;
+	background: rgba(166, 250, 255, 0.12);
+	border: 1px solid rgba(166, 250, 255, 0.28);
+	color: #E6FBFF;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.2;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.topbar-label_more {
+	color: #DADADA;
+	background: rgba(255, 255, 255, 0.08);
+	border-color: rgba(255, 255, 255, 0.18);
 }
 
 .stage {

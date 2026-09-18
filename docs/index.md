@@ -43,7 +43,7 @@ A user uploads a file to a Salesforce record exactly as they always have. The fi
 
 - **Documents explain themselves**
 
-    Optional AI summaries and file Q&A help people understand a document without reading all of it, while admins keep control of the provider, prompts, and cost.
+    Optional AI summaries, file Q&A, and automatic Google Drive labels help people understand and organize documents without reading all of them, while admins keep control of the provider, prompts, and cost.
 
 </div>
 

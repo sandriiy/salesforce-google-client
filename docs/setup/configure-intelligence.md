@@ -1,6 +1,6 @@
 # Configure AI & Intelligence
 
-This guide walks through configuring the optional **AI & Intelligence** layer inside the Google Client app. Once set up, it enables document summaries and file Q&A for supported files stored in Google Drive.
+This guide walks through configuring the optional **AI & Intelligence** layer inside the Google Client app. Once set up, it enables document summaries, file Q&A, and automatic labeling for supported files stored in Google Drive.
 
 !!! note
     Haven't configured Google Drive yet? That step is required first: [Configure Google Workspace](configure-drive.md)
@@ -20,15 +20,9 @@ You also need to decide which provider model is appropriate for the org:
 2. Navigate to the **Home** page.
 3. Expand the **Gemini & Agent Platform** section under **Google Integration Settings**.
 
-### Step 2: Enable File Intelligence
+A short guide for the selected provider appears in the side panel of the Home page while you work, and closes when you no longer need it.
 
-Turn on **Is File Intelligence Enabled?** before using summaries or file questions.
-
-When this setting is off, Google Drive file operations continue to work normally, but the AI summary and Q&A experience is not available.
-
-![File Intelligence enablement setting](../assets/images/client_ai_enable_config.png)
-
-### Step 3: Choose an Integration Method
+### Step 2: Choose an Integration Method
 
 Google Client supports two ways to connect to Google's AI services:
 
@@ -45,10 +39,13 @@ Use this option for quick setup in developer or sandbox environments. Authentica
 2. Go to [Google AI Studio](https://aistudio.google.com/apikey){ target="_blank" rel="noopener noreferrer" } and create or select a project
 3. Generate a **Gemini API Key**
 4. Paste the key into the **Gemini API Key** field
-5. Set the **Model Name** (e.g. `gemini-2.5-flash`)
+5. Set the **Model Name** (e.g. `gemini-3.8-flash`)
 6. Click **Save & Validate**
 
 ![Gemini Developer API Setup](../assets/images/config_ai_gemini_developer.png)
+
+!!! note
+    A notice in the corner of the page reminds you that AI analysis is still off. That is expected at this point: provider details are saved and validated here, and analysis is switched on in the next step.
 
 #### Option B: Agent Platform (Gemini Enterprise Agent Platform)
 
@@ -61,10 +58,20 @@ Use this option for production and UAT environments. Authentication uses the **s
 3. Grant the existing Drive service account the **Vertex AI User** role on that project
 4. Enter the **Agent Project ID** (your Google Cloud project ID, e.g. `my-google-cloud-project`)
 5. Enter the **Agent Location** (the region where the model runs, e.g. `us-central1` or `global`)
-6. Set the **Model Name** (e.g. `gemini-2.5-flash`)
+6. Set the **Model Name** (e.g. `gemini-3.8-flash`)
 7. Click **Save & Validate**
 
 ![Agent Platform Setup](../assets/images/config_ai_agent_platform.png)
+
+### Step 3: Turn On AI Analytics
+
+Open **Advanced** → **AI Intelligence** and turn on **AI Analytics**.
+
+The switch is available only once a provider has been saved. When you flip it, Google Client checks the provider straight away and tells you if it is not ready, so nothing is turned on against a provider that does not answer. Save the configuration to apply it.
+
+When this setting is off, Google Drive file operations continue to work normally, but the AI summary, Q&A, and labeling experience is not available.
+
+![AI Analytics switch](../assets/images/client_ai_enable_config.png)
 
 ### Step 4: Review the Prompts
 
@@ -80,7 +87,13 @@ Come back to them when you know how your teams want documents described:
 
 ![Prompts and answer length in Advanced](../assets/images/config_advanced_ai_intelligence.png)
 
-### Step 5: Nothing, You Are Done
+### Step 5: Label Files Automatically (Optional)
+
+Still under **AI Intelligence**, the **AI Labeling** section lets Google Client assign one of your Google Drive labels to each new file based on its content. Describe every label in plain language, choose how confident the AI must be, and save. Files the AI is not sure about stay unlabeled.
+
+📘 See [AI Labeling](../features/artificial-intelligence/labeling.md) for how it works and how to write good label descriptions.
+
+### Step 6: Nothing, You Are Done
 
 Prompt security is already active. Every question is inspected before it reaches the provider and every answer before it is shown, at a **Standard** strictness that suits most organizations. You do not need to configure anything for that to happen.
 
@@ -95,6 +108,7 @@ After File Intelligence is configured:
 
 - Google Client can generate summaries for supported file versions
 - Summaries are stored in Salesforce on the file version
+- With AI Labeling on, new files receive one of your Google Drive labels when the AI is confident enough
 - The preview window can show a summary sidebar for eligible files
 - Users can ask questions about the current file when Q&A is available
 
@@ -105,5 +119,6 @@ If the provider is not configured, validation fails, or the file is not eligible
 - [AI & Intelligence overview](../features/artificial-intelligence/overview.md) — how the layer works and what it does not do
 - [Document Summaries](../features/artificial-intelligence/summaries.md) — where summaries appear and when they are generated
 - [File Q&A](../features/artificial-intelligence/file-qa.md) — how users ask, and what will not be answered
+- [AI Labeling](../features/artificial-intelligence/labeling.md) — automatic Google Drive labels based on content
 
 <br>

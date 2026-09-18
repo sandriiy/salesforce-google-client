@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFileIntelligenceStrategy {
+public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFileIntelligenceStrategy, IGoogleFileLabelingStrategy {
     public class GoogleAgentConfigurationException extends Exception {}
 
     private static final String VALIDATION_PROMPT = 'Reply with OK.';
@@ -32,6 +32,7 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
     private IGenAiAccessTokenProvider tokenProvider;
 	private GoogleFileSummarizeCommand summarizeCommand = new GoogleFileSummarizeCommand();
     private GoogleFileQuestionCommand questionCommand = new GoogleFileQuestionCommand();
+	private GoogleFileLabelCommand labelCommand = new GoogleFileLabelCommand();
 	private IGenAiClient genAiClient;
 
     public GoogleAgentIntelligenceStrategy() {
@@ -106,6 +107,20 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
         return this.questionCommand.answerQuestion(localGoogleFileVersionId, question, 'Agent Platform', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
+	public GoogleFileLabelResultDTO label(Id localGoogleFileVersionId) {
+		if (localGoogleFileVersionId == null) {
+			return null;
+		}
+
+		try {
+			validateAgentConfiguration(false);
+		} catch (Exception ex) {
+			return buildBlockedLabelResult(ex.getMessage());
+		}
+
+		return this.labelCommand.label(localGoogleFileVersionId, 'Agent Platform', this.metadataService.getGoogleAiModel(), this.genAiClient);
+	}
+
     private void validateAgentConfiguration(Boolean resolveAccessToken) {
         String projectId = metadataService.getGoogleAgentProjectId();
         String location = metadataService.getGoogleAgentLocation();
@@ -155,4 +170,12 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
         result.errorMessage = errorMessage;
         return result;
     }
+
+	private GoogleFileLabelResultDTO buildBlockedLabelResult(String errorMessage) {
+		GoogleFileLabelResultDTO result = new GoogleFileLabelResultDTO();
+		result.blocked = true;
+		result.provider = 'Agent Platform';
+		result.errorMessage = errorMessage;
+		return result;
+	}
 }

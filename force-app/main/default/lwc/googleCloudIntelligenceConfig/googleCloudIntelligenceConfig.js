@@ -7,9 +7,6 @@ const PROVIDER = {
     AGENT: 'agent'
 };
 
-const GEMINI_SETUP_URL = 'https://ai.google.dev/gemini-api/docs/api-key';
-const AGENT_SETUP_URL = 'https://cloud.google.com/vertex-ai/generative-ai/docs/start';
-
 export default class GoogleCloudIntelligenceConfig extends LightningElement {
     @api draft;
     @api server;
@@ -17,6 +14,11 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
     @api isLoading = false;
 
     currentProvider = null;
+    lastReportedVariant = null;
+
+    renderedCallback() {
+        this.reportVariantChange();
+    }
 
     @api reportValidity() {
         const inputs = Array.from(this.template.querySelectorAll('lightning-input'));
@@ -41,6 +43,16 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
 
     dispatchAction(name) {
         this.dispatchEvent(new CustomEvent(name));
+    }
+
+    reportVariantChange() {
+        const variant = this.provider;
+        if (variant === this.lastReportedVariant) {
+            return;
+        }
+
+        this.lastReportedVariant = variant;
+        this.dispatchEvent(new CustomEvent('contextchange', { detail: { variant } }));
     }
 
     handleProviderChange(event) {
@@ -91,10 +103,6 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         this.dispatchAction('revert');
     }
 
-    handleOpenSelectedGuide() {
-        window.open(this.selectedGuideUrl, '_blank');
-    }
-
     inferProviderFromDraft() {
         const hasAgentSetup =
             !!asString(this.draft?.customAgentProjectId).trim() ||
@@ -141,32 +149,12 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         return `step-button provider-option ${this.isAgentMode ? 'is-active' : ''}`;
     }
 
-    get selectedGuideUrl() {
-        return this.isGeminiMode ? GEMINI_SETUP_URL : AGENT_SETUP_URL;
-    }
-
-    get setupGuideButtonLabel() {
-        return this.isGeminiMode ? 'Open Gemini Setup Guide' : 'Open Agent Platform Setup Guide';
-    }
-
-    get quickSetupTitle() {
-        return this.isGeminiMode ? 'Gemini Quick Setup' : 'Agent Platform Quick Setup';
-    }
-
     get primaryActionLabel() {
         if (!this.isConfigDirty) {
             return 'Validate';
         }
 
         return 'Save & Validate';
-    }
-
-    get isIntelligenceEnabled() {
-        return !!this.draft?.isFileIntelligenceEnabled;
-    }
-
-    get isIntelligenceDisabled() {
-        return !this.isIntelligenceEnabled;
     }
 
     get isConfigDirty() {

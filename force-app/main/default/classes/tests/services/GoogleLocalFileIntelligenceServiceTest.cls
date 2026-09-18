@@ -61,6 +61,37 @@ private class GoogleLocalFileIntelligenceServiceTest {
 	}
 
 	@IsTest
+	private static void testRetrieveIntelligenceStatesPositiveIncludesAssignedLabel() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INTLBL').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('INTLBL.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId('GD_INT_LBL')
+			.withDocsId('DOCS_INT_LBL')
+			.insertRecord();
+		GoogleCloudTestFactory.versionLabel()
+			.forVersion(localFileVersion.Id)
+			.withName('Invoice')
+			.withDriveLabelId('LABEL_INVOICE')
+			.withConfidence(92)
+			.insertRecord();
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(1, states.size());
+		Assert.areEqual(new List<String>{ 'Invoice' }, states[0].labels);
+		Assert.isTrue(new GoogleLocalFileIntelligenceService().retrieveIntelligenceState(null).labels.isEmpty());
+	}
+
+	@IsTest
 	private static void testRetrieveIntelligenceStatesNegativeTooLarge() {
 		GoogleCloudTestFactory.initMocks();
 		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();

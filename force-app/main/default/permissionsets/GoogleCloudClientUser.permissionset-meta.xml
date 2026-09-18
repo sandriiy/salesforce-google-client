@@ -54,6 +54,21 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>GoogleFileVersionLabel__c.Confidence__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleFileVersionLabel__c.GoogleDriveLabelId__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleFileVersion__c.AiLabels__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>GoogleFileVersion__c.Description__c</field>
         <readable>true</readable>
     </fieldPermissions>

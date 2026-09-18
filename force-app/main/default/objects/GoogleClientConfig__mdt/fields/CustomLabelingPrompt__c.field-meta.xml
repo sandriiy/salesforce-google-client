@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CustomLabelingPrompt__c</fullName>
+    <description>System prompt used when Google Client decides which configured label, if any, describes a file. Leave blank to use the built-in prompt.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>System prompt used when Google Client decides which configured label, if any, describes a file. Leave blank to use the built-in prompt.</inlineHelpText>
+    <label>Custom Labeling Prompt</label>
+    <length>32768</length>
+    <required>false</required>
+    <type>LongTextArea</type>
+    <unique>false</unique>
+    <visibleLines>5</visibleLines>
+</CustomField>

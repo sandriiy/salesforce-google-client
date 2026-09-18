@@ -227,6 +227,25 @@ private class GoogleSelectorTest {
 	}
 
 	@IsTest
+	private static void testFileSelectorSearchMatchesLatestVersionLabels() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.bypassTriggers();
+
+		GoogleFile__c labeledFile = GoogleCloudTestFactory.file().withName('Search Parent Three').insertRecord();
+		GoogleFile__c plainFile = GoogleCloudTestFactory.file().withName('Search Parent Four').insertRecord();
+
+		GoogleCloudTestFactory.version().forFile(labeledFile.Id).withName('report.pdf').withAiLabels('Classified; Finance').isLatest(true).insertRecord();
+		GoogleCloudTestFactory.version().forFile(plainFile.Id).withName('report-two.pdf').isLatest(true).insertRecord();
+
+		Set<Id> matchedByLabel = new Map<Id, GoogleFile__c>(
+			(List<GoogleFile__c>) GoogleFileSelector.query().withBaseFields().bySearchTerm('Classified').toList()
+		).keySet();
+
+		Assert.isTrue(matchedByLabel.contains(labeledFile.Id), 'Search must match the labels of the latest version');
+		Assert.isFalse(matchedByLabel.contains(plainFile.Id), 'A file without that label must not match');
+	}
+
+	@IsTest
 	private static void testFileSelectorSearchEscapesLikeWildcards() {
 		GoogleCloudTestFactory.initMocks();
 		GoogleCloudTestFactory.bypassTriggers();

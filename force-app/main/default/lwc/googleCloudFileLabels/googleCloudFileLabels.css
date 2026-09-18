@@ -1,0 +1,32 @@
+.labels__body {
+    margin-top: -0.35rem;
+}
+
+.labels__rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 20rem;
+    overflow-y: auto;
+}
+
+.labels__row + .labels__row {
+    border-top: 1px solid #DDDBDA;
+}
+
+.labels__state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    min-height: 6rem;
+    padding: 1rem;
+    text-align: center;
+}
+
+.labels__state--error {
+    background: rgba(254, 242, 242, 0.95);
+    color: #991B1B;
+    border: 1px solid rgba(220, 38, 38, 0.18);
+}

@@ -60,6 +60,7 @@ public class GoogleCloudTestFactory {
 	public static void bypassTriggers() {
 		GTriggerHandler.setBypass('GoogleFileVersionTriggerHandler', true);
 		GTriggerHandler.setBypass('GoogleFileLinkTriggerHandler', true);
+		GTriggerHandler.setBypass('GoogleFileVersionLabelTriggerHandler', true);
 	}
 
 	public static void grantRecordAccess(Id recordId, Boolean canRead, Boolean canEdit) {
@@ -158,6 +159,10 @@ public class GoogleCloudTestFactory {
 		return new LinkBuilder();
 	}
 
+	public static VersionLabelBuilder versionLabel() {
+		return new VersionLabelBuilder();
+	}
+
 	public static ShareBuilder share() {
 		return new ShareBuilder();
 	}
@@ -198,6 +203,7 @@ public class GoogleCloudTestFactory {
 		public VersionBuilder withDescription(String v) { r.Description__c = v; return this; }
 		public VersionBuilder isLatest(Boolean v) { r.IsLatestFile__c = v; return this; }
 		public VersionBuilder withSummary(String v) { r.Summary__c = v; return this; }
+		public VersionBuilder withAiLabels(String v) { r.AiLabels__c = v; return this; }
 		public VersionBuilder withType(String v) { r.Type__c = v; return this; }
 		public VersionBuilder withSize(Long v) { r.Size__c = v; return this; }
 		public VersionBuilder withDriveId(String v) { r.GoogleDriveFileId__c = v; return this; }
@@ -220,6 +226,26 @@ public class GoogleCloudTestFactory {
 
 		public GoogleFileVersion__c insertRecord() {
 			GoogleFileVersion__c out = build();
+			insert out;
+			return out;
+		}
+	}
+
+	public class VersionLabelBuilder {
+		private GoogleFileVersionLabel__c r = new GoogleFileVersionLabel__c();
+
+		public VersionLabelBuilder forVersion(Id versionId) { r.GoogleFileVersionId__c = versionId; return this; }
+		public VersionLabelBuilder withName(String v) { r.Name = v; return this; }
+		public VersionLabelBuilder withDriveLabelId(String v) { r.GoogleDriveLabelId__c = v; return this; }
+		public VersionLabelBuilder withConfidence(Integer v) { r.Confidence__c = v; return this; }
+
+		public GoogleFileVersionLabel__c build() {
+			if (String.isBlank(r.Name)) r.Name = 'Test Label';
+			return r;
+		}
+
+		public GoogleFileVersionLabel__c insertRecord() {
+			GoogleFileVersionLabel__c out = build();
 			insert out;
 			return out;
 		}
@@ -309,6 +335,11 @@ public class GoogleCloudTestFactory {
 		public ConfigBuilder withSummaryPrompt(String v) { r.CustomSummaryPrompt__c = v; return this; }
 		public ConfigBuilder withQuestionPrompt(String v) { r.CustomQuestionPrompt__c = v; return this; }
 		public ConfigBuilder withQuestionMaxOutputTokens(Integer v) { r.QuestionMaxOutputTokens__c = v; return this; }
+		public ConfigBuilder withAiLabeling(Boolean v) { r.IsAiLabelingEnabled__c = v; return this; }
+		public ConfigBuilder withLabelingPrompt(String v) { r.CustomLabelingPrompt__c = v; return this; }
+		public ConfigBuilder withAiLabelingMinConfidence(Integer v) { r.AiLabelingMinConfidence__c = v; return this; }
+		public ConfigBuilder withAiLabelingThinkingBudget(Integer v) { r.AiLabelingThinkingBudget__c = v; return this; }
+		public ConfigBuilder withAiLabelDefinitions(String v) { r.AiLabelDefinitions__c = v; return this; }
 
 		public GoogleClientConfig__mdt build() {
 			return r;

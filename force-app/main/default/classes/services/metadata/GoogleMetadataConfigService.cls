@@ -35,14 +35,23 @@ public inherited sharing class GoogleMetadataConfigService {
 	public static final Long DEFAULT_BIG_FILE_SIZE = 2097152L;
 	public static final Integer DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 	public static final Integer DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
+	public static final Integer DEFAULT_AI_LABELING_MIN_CONFIDENCE = 80;
+	public static final Integer DEFAULT_AI_LABELING_THINKING_BUDGET = 0;
+	public static final Integer MAX_AI_LABEL_DEFINITIONS = 20;
 	public static final String DEFAULT_SUMMARY_PROMPT = 'Create a very short summary of the provided document content that starts with "This file describes". Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief.';
+	public static final String DEFAULT_LABELING_PROMPT = 'You classify one business document into exactly one of the labels defined by the administrator. Read the document text and compare it against every label description. Choose a label only when the document clearly matches that description. When the document fits none of the labels, fits several of them equally well, or you are not sure, answer None. Never invent a label that is not in the list and use only the document text provided.';
 	public static final String DEFAULT_QUESTION_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
 
+	private static final Integer MAX_AI_LABEL_NAME_LENGTH = GoogleFileVersionLabel__c.Name.getDescribe().getLength();
+	private static final Integer MIN_CONFIDENCE_PERCENT = 0;
+	private static final Integer MAX_CONFIDENCE_PERCENT = 100;
 	private static final String DEFAULT_RECORD_DEVELOPER_NAME = 'GoogleClient';
 	private static final String DEFAULT_RECORD_LABEL = 'Google Client';
 
 	@TestVisible
 	private static GoogleClientConfig__mdt configRecordOverride;
+	@TestVisible
+	private static GoogleClientConfig__mdt resolvedConfigRecord;
 
 	private GoogleClientConfig__mdt configRecord;
 	private IGoogleMetadataDeployer metadataDeployer;
@@ -229,24 +238,86 @@ public inherited sharing class GoogleMetadataConfigService {
 		return configRecord.CustomAiPromptSafetyGuardClass__c;
 	}
 
+	public Boolean isAiLabelingEnabled() {
+		return isFileIntelligenceEnabled() && configRecord.IsAiLabelingEnabled__c == true;
+	}
+
+	public String getLabelingPrompt() {
+		String configuredValue = configRecord.CustomLabelingPrompt__c;
+		return String.isNotBlank(configuredValue) ? configuredValue : DEFAULT_LABELING_PROMPT;
+	}
+
+	public Integer getAiLabelingMinConfidence() {
+		Decimal configuredValue = configRecord.AiLabelingMinConfidence__c;
+		if (configuredValue == null) return DEFAULT_AI_LABELING_MIN_CONFIDENCE;
+
+		Integer confidence = configuredValue.intValue();
+		if (confidence < MIN_CONFIDENCE_PERCENT) return MIN_CONFIDENCE_PERCENT;
+		return confidence > MAX_CONFIDENCE_PERCENT ? MAX_CONFIDENCE_PERCENT : confidence;
+	}
+
+	public Integer getAiLabelingThinkingBudget() {
+		Decimal configuredValue = configRecord.AiLabelingThinkingBudget__c;
+		if (configuredValue == null || configuredValue < 0) return DEFAULT_AI_LABELING_THINKING_BUDGET;
+		return configuredValue.intValue();
+	}
+
+	public List<GoogleAiLabelDefinitionDTO> getAiLabelDefinitions() {
+		List<GoogleAiLabelDefinitionDTO> definitions = new List<GoogleAiLabelDefinitionDTO>();
+		String raw = configRecord.AiLabelDefinitions__c;
+		if (String.isBlank(raw)) return definitions;
+
+		List<GoogleAiLabelDefinitionDTO> configuredDefinitions;
+		try {
+			configuredDefinitions = (List<GoogleAiLabelDefinitionDTO>) JSON.deserialize(raw, List<GoogleAiLabelDefinitionDTO>.class);
+		} catch (Exception ex) {
+			Logger.error('AI label definitions could not be read: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			return definitions;
+		}
+
+		Set<String> seenNames = new Set<String>();
+		for (GoogleAiLabelDefinitionDTO definition : configuredDefinitions) {
+			if (definition == null || !definition.isComplete() || definition.name.trim().length() > MAX_AI_LABEL_NAME_LENGTH) continue;
+
+			String nameKey = definition.name.trim().toLowerCase();
+			if (seenNames.contains(nameKey)) continue;
+			seenNames.add(nameKey);
+
+			definitions.add(definition);
+			if (definitions.size() >= MAX_AI_LABEL_DEFINITIONS) break;
+		}
+
+		return definitions;
+	}
+
 	public String getGoogleDriveDomain() {
         return configRecord.OrganizationalDomain__c;
     }
 
 	private GoogleClientConfig__mdt resolveConfigRecord() {
-		Map<String, GoogleClientConfig__mdt> configRecordsByDeveloperName = GoogleClientConfig__mdt.getAll();
-		if (configRecordsByDeveloperName == null || configRecordsByDeveloperName.isEmpty()) {
+		if (resolvedConfigRecord == null) {
+			resolvedConfigRecord = loadConfigRecord();
+		}
+
+		return resolvedConfigRecord;
+	}
+
+	private GoogleClientConfig__mdt loadConfigRecord() {
+		List<GoogleClientConfig__mdt> configRecords = (List<GoogleClientConfig__mdt>) GoogleClientConfigSelector.query()
+			.withAllFields()
+			.toList();
+		if (configRecords == null || configRecords.isEmpty()) {
 			return new GoogleClientConfig__mdt();
 		}
 
-		GoogleClientConfig__mdt packagedRecord = configRecordsByDeveloperName.get(DEFAULT_RECORD_DEVELOPER_NAME);
-		if (packagedRecord != null) {
-			return packagedRecord;
+		for (GoogleClientConfig__mdt candidate : configRecords) {
+			if (candidate.DeveloperName == DEFAULT_RECORD_DEVELOPER_NAME) {
+				return candidate;
+			}
 		}
 
-		return configRecordsByDeveloperName.size() == 1
-			? configRecordsByDeveloperName.values()[0]
-			: new GoogleClientConfig__mdt();
+		return configRecords.size() == 1 ? configRecords[0] : new GoogleClientConfig__mdt();
 	}
 
 	private Map<String, Object> applyManagedDefaults(Map<String, Object> fieldApiToValue) {
@@ -264,6 +335,13 @@ public inherited sharing class GoogleMetadataConfigService {
 			applyStringDefaultIfMissing(normalizedValues, 'CustomQuestionPrompt__c', configRecord.CustomQuestionPrompt__c, DEFAULT_QUESTION_PROMPT);
 			applyNumberDefaultIfMissing(normalizedValues, 'QuestionMaxOutputTokens__c', configRecord.QuestionMaxOutputTokens__c, DEFAULT_QUESTION_MAX_OUTPUT_TOKENS);
 			applyStringDefaultIfMissing(normalizedValues, 'AiSafetyMode__c', configRecord.AiSafetyMode__c, DEFAULT_AI_SAFETY_MODE);
+		}
+
+		Boolean isLabelingEnabled = resolveBooleanValue(normalizedValues, 'IsAiLabelingEnabled__c', configRecord.IsAiLabelingEnabled__c);
+		if (isIntelligenceEnabled && isLabelingEnabled) {
+			applyStringDefaultIfMissing(normalizedValues, 'CustomLabelingPrompt__c', configRecord.CustomLabelingPrompt__c, DEFAULT_LABELING_PROMPT);
+			applyNumberDefaultIfMissing(normalizedValues, 'AiLabelingMinConfidence__c', configRecord.AiLabelingMinConfidence__c, DEFAULT_AI_LABELING_MIN_CONFIDENCE);
+			applyNumberDefaultIfMissing(normalizedValues, 'AiLabelingThinkingBudget__c', configRecord.AiLabelingThinkingBudget__c, DEFAULT_AI_LABELING_THINKING_BUDGET);
 		}
 
 		return normalizedValues;

@@ -49,4 +49,4 @@ Open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ tar
 
     No. AI & Intelligence is optional.
 
-    Upload, preview, download, sharing, public links, folder structure, file reuse, and versioning work without AI. When AI is configured, supported files can get stored summaries and file Q&A inside the preview window.
+    Upload, preview, download, sharing, public links, folder structure, file reuse, and versioning work without AI. When AI is configured, supported files can get stored summaries and file Q&A inside the preview window, and new files can be labeled automatically with one of your Google Drive labels.

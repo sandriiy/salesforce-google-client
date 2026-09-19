@@ -21,7 +21,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Fills in what a new record link should grant when nobody said. An internal user gets a "Viewer" link
+ * that only internal users see, an Experience Cloud user gets one that follows their access to the
+ * record itself, which keeps a community upload from becoming visible to people who cannot see the
+ * record it came from.
+ */
 public without sharing class GoogleFileLinkDefaultsResolver {
+	/**
+	 * Stamps the share type and visibility on a link that does not have them yet.
+	 *
+	 * @param linkRecord The link being created.
+	 * @return The same link with its defaults filled in.
+	 */
 	public GoogleFileLink__c applyDefaultValues(GoogleFileLink__c linkRecord) {
 		if (linkRecord == null) return null;
 

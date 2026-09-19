@@ -21,10 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Reads the GoogleClientConfig__mdt record with a real SOQL query instead of the custom metadata
+ * cache, because the cache cuts every Long Text Area at 255 characters and silently shortens the
+ * prompts and the label definitions. Go through GoogleMetadataConfigService rather than calling
+ * this directly; it loads the record once per transaction.
+ */
 public inherited sharing class GoogleClientConfigSelector extends GSOQL implements GSOQL.Selector {
 	@TestVisible
 	private static final String MOCK_ID = 'GoogleClientConfigSelector';
 
+	/**
+	 * Starts a new query over GoogleClientConfig__mdt in system mode.
+	 *
+	 * @return A fresh selector to chain field and filter calls onto.
+	 */
 	public static GoogleClientConfigSelector query() {
 		return new GoogleClientConfigSelector();
 	}
@@ -36,6 +47,12 @@ public inherited sharing class GoogleClientConfigSelector extends GSOQL implemen
 		mockId(MOCK_ID);
 	}
 
+	/**
+	 * Selects every field on the object, so a config field added by an upgrade is read without
+	 * touching this class.
+	 *
+	 * @return This same instance, so the call chains.
+	 */
 	public GoogleClientConfigSelector withAllFields() {
 		with(Schema.SObjectType.GoogleClientConfig__mdt.fields.getMap().values());
 		return this;

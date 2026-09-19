@@ -71,7 +71,7 @@ The switch is available only once a provider has been saved. When you flip it, G
 
 When this setting is off, Google Drive file operations continue to work normally, but the AI summary, Q&A, and labeling experience is not available.
 
-![AI Analytics switch](../assets/images/client_ai_enable_config.png)
+![AI Intelligence tab](../assets/images/config_advanced_ai_intelligence.png)
 
 ### Step 4: Review the Prompts
 
@@ -85,13 +85,11 @@ Come back to them when you know how your teams want documents described:
 
 📘 See [AI Intelligence settings](../config/advanced/ai-intelligence.md) for what each one does and how to write a good prompt.
 
-![Prompts and answer length in Advanced](../assets/images/config_advanced_ai_intelligence.png)
-
 ### Step 5: Label Files Automatically (Optional)
 
 Still under **AI Intelligence**, the **AI Labeling** section lets Google Client assign one of your Google Drive labels to each new file based on its content. Describe every label in plain language, choose how confident the AI must be, and save. Files the AI is not sure about stay unlabeled.
 
-📘 See [AI Labeling](../features/artificial-intelligence/labeling.md) for how it works and how to write good label descriptions.
+📘 See [File Labeling](../features/artificial-intelligence/labeling.md) for how it works and how to write good label descriptions.
 
 ### Step 6: Nothing, You Are Done
 
@@ -119,6 +117,6 @@ If the provider is not configured, validation fails, or the file is not eligible
 - [AI & Intelligence overview](../features/artificial-intelligence/overview.md) — how the layer works and what it does not do
 - [Document Summaries](../features/artificial-intelligence/summaries.md) — where summaries appear and when they are generated
 - [File Q&A](../features/artificial-intelligence/file-qa.md) — how users ask, and what will not be answered
-- [AI Labeling](../features/artificial-intelligence/labeling.md) — automatic Google Drive labels based on content
+- [File Labeling](../features/artificial-intelligence/labeling.md) — automatic Google Drive labels based on content
 
 <br>

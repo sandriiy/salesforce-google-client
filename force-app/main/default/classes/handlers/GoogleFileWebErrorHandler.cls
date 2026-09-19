@@ -21,7 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Logs what a failed Google Drive call was actually doing, the endpoint, headers and parameters included.
+ * The library still throws afterwards, this only makes sure the detail is somewhere findable.
+ */
 public with sharing class GoogleFileWebErrorHandler implements GoogleFailureStrategy {
+    /**
+     * Records a failed Drive call.
+     *
+     * @param ex The failure, carrying the request that caused it.
+     */
     public void onFailure(GoogleCloudException ex) {
 		Logger.error('Google Drive API Exception: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		Logger.error('Google Drive API Endpoint:' + ex.endpoint).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);

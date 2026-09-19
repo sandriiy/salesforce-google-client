@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The answer to opening a file in Google Drive: the link, when access ends, and whether the person
+ * already had it.
+ */
 public class GoogleDriveAccessDTO {
 	@AuraEnabled
 	public String driveUrl;
@@ -31,6 +35,13 @@ public class GoogleDriveAccessDTO {
 	@AuraEnabled
 	public Boolean wasAlreadyShared;
 
+	/**
+	 * Holds the grant.
+	 *
+	 * @param driveUrl The link that opens the file.
+	 * @param expiresOn When access ends, or null when Drive would not take an end date.
+	 * @param wasAlreadyShared True when the person already had access.
+	 */
 	public GoogleDriveAccessDTO(String driveUrl, Datetime expiresOn, Boolean wasAlreadyShared) {
 		this.driveUrl = driveUrl;
 		this.expiresOn = expiresOn;

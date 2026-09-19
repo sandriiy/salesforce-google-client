@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Hands an access token to the AI client for Agent Platform, reusing the same Google service account the
+ * Drive integration already authenticates with, so no second identity is needed.
+ */
 public with sharing class DefaultGoogleGenAiAccessTokenProvider implements IGenAiAccessTokenProvider {
     private GoogleClientApiProvider googleApiProvider;
 
@@ -33,6 +37,11 @@ public with sharing class DefaultGoogleGenAiAccessTokenProvider implements IGenA
         this.googleApiProvider = googleApiProvider;
     }
 
+    /**
+     * The current access token.
+     *
+     * @return The token, or null when no credential could be resolved.
+     */
     public GenAiAccessToken token() {
         GoogleCredential googleCredential = googleApiProvider.retrieveGoogleClientCreds();
         if (googleCredential == null) {

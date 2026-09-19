@@ -4,7 +4,15 @@
             <div class="slds-col slds-size_1-of-1">
                 <section class="config-card">
                     <div class="config-padding">
-                        <div class="config-step-bar provider-switch-bar">
+                        <div class={statusClass} role="status" aria-live="polite">
+                            <span class="ai-status-dot"></span>
+                            <span class="ai-status-copy">
+                                <span class="ai-status-title">{statusTitle}</span>
+                                <span class="ai-status-text">{statusText}</span>
+                            </span>
+                        </div>
+
+                        <div class="config-step-bar provider-switch-bar slds-m-top_small">
                             <button class={geminiOptionClass} data-provider="gemini" onclick={handleProviderChange} type="button">
                                 <span class="step-indicator"></span>
                                 <span class="provider-option-content">
@@ -95,8 +103,20 @@
                             </div>
                         </template>
 
-                        <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+                        <div class="slds-m-top_large slds-grid slds-grid_align-end">
                             <div class="action-buttons action-buttons-wrap">
+                                <template lwc:if={showDeactivation}>
+                                    <lightning-button
+                                        class="slds-m-right_x-small"
+                                        variant="neutral"
+                                        label="Deactivate"
+                                        icon-name="utility:power"
+                                        title="Turn AI off and clear the provider details, prompts, labeling setup and safety settings"
+                                        onclick={handleDeactivate}
+                                        disabled={busy}
+                                    ></lightning-button>
+                                </template>
+
                                 <lightning-button
                                     variant="neutral"
                                     label="Revert changes"

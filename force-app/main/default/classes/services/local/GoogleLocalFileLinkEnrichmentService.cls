@@ -21,7 +21,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Fills in the name of whatever record a link points at. The name field differs per object, and for a
+ * contact or a person account it is assembled from several fields, so the compound field is used where
+ * there is one rather than showing only a last name.
+ */
 public without sharing class GoogleLocalFileLinkEnrichmentService {
+    /**
+     * Reads the display name of one record of any object.
+     *
+     * @param linkedRecordId The record to name.
+     * @return Its name, or null when the object has none or the record is gone.
+     */
     public String resolveLinkedRecordName(Id linkedRecordId) {
         if (linkedRecordId == null) return null;
 

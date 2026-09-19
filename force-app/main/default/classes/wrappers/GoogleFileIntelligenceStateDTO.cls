@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What the preview panel knows about a file: its stored summary, its labels, and whether questions can be
+ * asked at all. A file can have a summary while analysis is switched off, which is why the two are
+ * separate.
+ */
 public class GoogleFileIntelligenceStateDTO {
 	@AuraEnabled
 	public Id versionId;

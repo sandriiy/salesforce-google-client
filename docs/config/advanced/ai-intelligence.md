@@ -51,7 +51,7 @@ Raising it allows fuller answers to complex questions. Lowering it keeps answers
 
 Assigns one of your Google Drive labels to each new file based on what it contains. Off by default, and available only while AI Analytics is on.
 
-📘 See [AI Labeling](../../features/artificial-intelligence/labeling.md) for how it behaves, where labels appear, and how to write good descriptions.
+📘 See [File Labeling](../../features/artificial-intelligence/labeling.md) for how it behaves, where labels appear, and how to write good descriptions.
 
 ### Labeling Prompt
 

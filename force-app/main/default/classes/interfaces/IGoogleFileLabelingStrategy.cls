@@ -21,6 +21,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What a provider has to do to label files. It is separate from IGoogleFileIntelligenceStrategy on
+ * purpose, because adding a method to that shipped interface would break every implementation an org
+ * already has.
+ */
 public interface IGoogleFileLabelingStrategy {
+	/**
+	 * Chooses one of the configured Google Drive labels for a file and applies it when confident enough.
+	 *
+	 * @param localGoogleFileVersionId The version to label.
+	 * @return The chosen label and whether Drive accepted it.
+	 */
 	GoogleFileLabelResultDTO label(Id localGoogleFileVersionId);
 }

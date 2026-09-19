@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Fills in the name of the record a link points at before it is saved, so lists can show the record
+ * without looking it up again per row.
+ */
 public with sharing class GoogleFileLinkTriggerHandler extends GTriggerHandler {
     private List<GoogleFileLink__c> newRecords;
 	private List<GoogleFileLink__c> oldRecords;

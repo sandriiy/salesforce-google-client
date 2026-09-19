@@ -21,6 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Sends a configuration change to the Metadata API. It exists so saving can be exercised without
+ * deploying anything.
+ */
 public interface IGoogleMetadataDeployer {
+	/**
+	 * Queues the deployment.
+	 *
+	 * @param container The configuration record to deploy.
+	 * @return The deployment Id to follow.
+	 */
 	Id enqueue(Metadata.DeployContainer container);
 }

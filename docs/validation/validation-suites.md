@@ -25,6 +25,9 @@
 - [X] AI Q&A / analysis is disabled
 - [X] Folder structure is set to No folder structure / Default folder only
 - [X] `Direct Browser Upload` is disabled
+- [X] `Open in Google Drive` is disabled
+- [X] AI Labeling is disabled and no label definitions exist
+- [X] At least two Google Drive labels are published and shared with the service account, and their label IDs are known
 - [X] File Explorer columns are left at their default selection
 - [X] Required local test files are nearby:
     - [X] PDF file
@@ -35,6 +38,7 @@
     - [X] Google Docs / DOCX-style document
     - [X] Non-previewable file type
     - [X] File larger than 100 MB
+    - [X] Document or spreadsheet file larger than the Maximum Preview File Size setting
 - [X] At least one document contains clear business content for summary and Q&A testing
 - [X] At least one Google file owned by internal user A exists and is not yet linked to the target Salesforce record
 - [X] At least one Google file not owned by internal user A exists
@@ -54,6 +58,8 @@ Log in as Admin.
 - [ ] Confirm AI summary / Q&A features are not active
 - [ ] Confirm folder structure is set to No folder structure / Default folder only
 - [ ] Confirm `Direct Browser Upload` is disabled in Advanced → File Management
+- [ ] Confirm `Open in Google Drive` is disabled in Advanced → File Management
+- [ ] Confirm AI Labeling is disabled and no label definitions exist in Advanced → AI Intelligence
 - [ ] Confirm the `GoogleDriveDirectUpload` CSP Trusted Site exists and is active in Setup
 - [ ] Confirm Org Cache is allocated to the `GoogleCloudClient` Platform Cache partition
 - [ ] Confirm File Explorer columns in Advanced → User Interface are at their default selection
@@ -62,6 +68,11 @@ Log in as Admin.
 - [ ] Confirm admin-only configuration pages are available to the admin user
 - [ ] Confirm Analytics tab renders for the admin user
 - [ ] Confirm Logger Admin Dashboard renders for the admin user
+- [ ] Confirm setup guides show in the side panel and follow the section or Advanced tab that is open
+- [ ] Confirm a setup guide can be closed and the configuration area stays full width
+- [ ] Confirm each Advanced tab says what it contains
+- [ ] Change a setting without saving, switch between Setup and Advanced, and confirm it asks whether to save or discard
+- [ ] Confirm switching between Google Drive and AI inside Setup with unsaved changes does not ask
 
 ### Phase 2: Core Cloud Uploads
 
@@ -115,16 +126,30 @@ Use the Uploader component as the main entry point for Preview in this phase. Do
 - [ ] Confirm large image preview works
 - [ ] Open Preview for the document file from the Uploader component
 - [ ] Confirm document preview works
+- [ ] Open Preview for the document larger than the Maximum Preview File Size setting
+- [ ] Confirm that document previews rather than reporting that it is too large
 - [ ] Confirm Download as... is visible for previewable files
 - [ ] Open Preview for the non-previewable file from the Uploader component
 - [ ] Confirm non-previewable message is shown
 - [ ] Confirm Download as... is not visible for the non-previewable file
 - [ ] Confirm AI summary / Q&A actions are not shown while AI is not configured
+- [ ] Confirm Open in Google Drive is not offered while the setting is off
 - [ ] Edit file details for one owned file from Preview opened through the Uploader component
 - [ ] Upload a new version for one owned file from Preview opened through the Uploader component
 - [ ] Confirm latest version becomes active
 - [ ] Confirm older version remains in the org
 - [ ] Confirm preview and download use the latest active version
+
+Log in as Admin.
+
+- [ ] Enable `Open in Google Drive` in Advanced → File Management
+
+Log in as Internal User A.
+
+- [ ] Confirm Open in Google Drive is offered in Preview for an owned file
+- [ ] Open the file in Google Drive and confirm it opens
+- [ ] Confirm the file opens read only and the folder around it cannot be reached
+- [ ] Confirm Open in Google Drive is not offered for a file owned by another user
 
 ### Phase 4: Attachments Preview and File Actions
 
@@ -342,6 +367,7 @@ Use Salesforce global search for this part.
 - [ ] Confirm standard record buttons and the highlights panel are not shown
 - [ ] Confirm the same page opens when the file URL is entered directly
 - [ ] Confirm preview, sharing, versions, and linked records all work from this page
+- [ ] Confirm Open in Google Drive is offered for an owned file and opens the file
 
 ### Phase 11: Privileged Access
 
@@ -398,6 +424,7 @@ Use the Experience Cloud Uploader component for upload checks and the Experience
 - [ ] Confirm Preview opens from the Experience Cloud Attachments component for files the external user can access
 - [ ] Confirm Preview actions respect external user access level
 - [ ] Confirm internal-only actions are not available
+- [ ] Confirm Open in Google Drive is not offered anywhere on Experience Cloud
 - [ ] Confirm AI summary/sidebar behavior does not break Experience Cloud preview while AI is not configured
 
 Log in as Internal User A.
@@ -628,12 +655,21 @@ Use a file linked to multiple records.
 
 Log in as Admin.
 
+- [ ] Confirm AI Analytics cannot be switched on while no provider is saved
+- [ ] Confirm AI Labeling cannot be switched on while AI Analytics is off
 - [ ] Configure Gemini API for Developers
 - [ ] Validate Gemini configuration
+- [ ] Enter a wrong API key, try to switch AI Analytics on, and confirm it refuses and explains what to do
+- [ ] Restore the correct API key
 - [ ] Enable Q&A / analysis
 - [ ] Configure summary prompt
+- [ ] Save a summary prompt longer than 255 characters, reopen the page, and confirm the whole prompt is still there
 - [ ] Configure question-answering prompt
 - [ ] Configure token limits
+- [ ] Define two Google Drive labels in Advanced → AI Intelligence with a name, a label ID and a plain language description
+- [ ] Save a label description longer than 255 characters, reopen the page, and confirm it is still there in full
+- [ ] Set a minimum confidence and leave the thinking budget empty
+- [ ] Enable AI Labeling
 
 Log in as Internal User A.
 
@@ -653,10 +689,50 @@ Log in as Internal User A.
 - [ ] Ask a question about the file
 - [ ] Add the Summary column in File Explorer and confirm the generated summary is shown
 - [ ] Search File Explorer for a word that appears in the summary but not in the file name, and confirm the file is found
+- [ ] Confirm the summary follows the long summary prompt saved for this phase
+
+Use the two labels defined for this phase.
+
+- [ ] Upload a file that clearly matches one of the defined labels
+- [ ] Confirm the label is applied and shows next to the file name in Preview
+- [ ] Confirm the label is listed in the File Intelligence panel
+- [ ] Confirm the same label is applied to the file in Google Drive
+- [ ] Confirm a Google File Version Label record exists for that version with its name and confidence
+- [ ] Upload a file that matches none of the defined labels and confirm it stays unlabeled
+
+Log in as Admin.
+
+- [ ] Add the Labels column in Advanced → User Interface and save
+- [ ] Raise the minimum confidence above what the model returned
+
+Log in as Internal User A.
+
+- [ ] Confirm the Labels column shows the applied label in File Explorer
+- [ ] Search File Explorer by the label name and confirm the labeled file is found
+- [ ] Confirm the Labels column cannot be sorted
+- [ ] Open the File Details page for the labeled file and confirm the Labels card lists the label, the version it belongs to and the confidence
+- [ ] Open the File Details page for an unlabeled file and confirm the Labels card shows nothing rather than failing
+- [ ] Upload the same kind of file again and confirm no label is applied at the higher confidence
+
+Log in as Admin.
+
+- [ ] Set the minimum confidence back and set a thinking budget
+
+Log in as Internal User A.
+
+- [ ] Upload a matching file again and confirm labeling still completes
+- [ ] Make the labeled file externally visible for the Experience Cloud test record
+
+Log in as External User E.
+
+- [ ] Confirm the labeled file shows its label in the Experience Cloud preview
+- [ ] Confirm labels of files the external user cannot access are not visible
 
 Log in as Admin.
 
 - [ ] Disable the `Enable AI File Intelligence` setting
+- [ ] Confirm AI Labeling is switched off together with AI Analytics
+- [ ] Confirm the reminder that AI analysis is off shows as a notice in the corner of the page and can be dismissed
 
 Log in as Internal User A.
 
@@ -664,8 +740,12 @@ Use Preview opened from the same component where the files were uploaded.
 
 - [ ] Open Preview for the file
 - [ ] Confirm AI File Intelligence actions are not available after the setting is disabled
+- [ ] Confirm a file that already has a summary or a label keeps its preview sidebar, and that it stays closed until opened
+- [ ] Confirm asking a question is unavailable and the panel explains that questions are turned off
+- [ ] Confirm a file with no summary and no label shows no sidebar at all
 - [ ] Upload another new file after `Enable AI File Intelligence` is disabled
 - [ ] Confirm no new summary is generated for files uploaded while `Enable AI File Intelligence` is disabled
+- [ ] Confirm no label is applied to files uploaded while `Enable AI File Intelligence` is disabled
 
 ### Phase 18: Agent Platform / Vertex Configuration
 
@@ -695,6 +775,8 @@ Log in as Internal User A.
 - [ ] Open Preview for the new file from the Attachments component
 - [ ] Confirm summary is generated and appears in Preview sidebar
 - [ ] Ask a question about the file
+- [ ] Upload a file that clearly matches one of the defined labels and confirm the label is applied
+- [ ] Confirm the same label is applied to the file in Google Drive
 
 Log in as Admin.
 
@@ -771,7 +853,30 @@ Log in as regular operational user without admin permissions.
 - [ ] Confirm Analytics dashboard is not accessible
 - [ ] Confirm operational file features still work from Uploader, Attachments, File Explorer, and Preview where user has record/file access
 
-### Phase 21: Final Sweep
+### Phase 21: Flow Actions
+
+Log in as Admin.
+
+Build one screen flow on a record page that calls the four actions in turn, each with a fault path.
+
+- [ ] Confirm the Google Client category in Flow Builder lists Create Folder in Google Drive, Upload File to Google Drive, Download File from Google Drive and Extract File Content as Text from Google Drive
+- [ ] Confirm Edit Google File Details and Public Link Expiration sit in the same category
+- [ ] Run Create Folder in Google Drive with a folder name and confirm the folder is created in Google Drive
+- [ ] Run it again with the same name and confirm the same folder is returned instead of a second one
+- [ ] Run it with the folder name left blank and a record Id, and confirm the folder that record already owns is returned
+- [ ] Run Upload File to Google Drive with a Salesforce file and a record Id, and confirm the file appears on the record like any other upload
+- [ ] Confirm the uploaded file is placed according to the configured folder structure
+- [ ] Run it with Remove Salesforce Copy on and confirm the Salesforce file is deleted and the Google file remains
+- [ ] Run it with a file above the Maximum Preview File Size setting, confirm it reports that the upload finishes in the background, then confirm the file appears on the record shortly afterwards
+- [ ] Run Download File from Google Drive and confirm the file is saved in Salesforce and attached to the record
+- [ ] Run it with Convert To set to pdf and confirm a PDF is saved
+- [ ] Run Extract File Content as Text and confirm the file text is returned
+- [ ] Set Maximum Characters and confirm the text is cut at that length and reported as cut short
+- [ ] Run it against a file whose preview copy is still preparing and confirm it reports that text is not available yet
+- [ ] Point one action at a file that does not exist and confirm the fault path shows a readable message
+- [ ] Confirm logs tagged `Google Client for Salesforce` show the expected outcomes and no unexpected errors
+
+### Phase 22: Final Sweep
 
 Use the final intended release configuration.
 
@@ -801,6 +906,10 @@ Use the final intended release configuration.
 - [ ] AI File Intelligence summary works for files uploaded after `Enable AI File Intelligence` is enabled
 - [ ] Question answering works when AI provider is configured and `Enable AI File Intelligence` is enabled
 - [ ] AI prompt security refuses an obvious injection attempt
+- [ ] Labels applied by AI are shown in File Explorer and on the File Details page
+- [ ] A document larger than the Maximum Preview File Size setting previews
+- [ ] Open in Google Drive works for an owned file and is not offered to external users
+- [ ] Flow actions create a folder, upload, download and read file text without errors
 - [ ] No critical errors appear in the UI
 - [ ] No critical errors appear in logs
 

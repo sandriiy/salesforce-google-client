@@ -21,6 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Remembers which Drive folder belongs to which record, in the org cache. Drive search does not reliably
+ * return a folder that was just created, which is how records ended up with two folders, and this closes
+ * that gap. It is only ever an optimisation: every cache failure is treated as a miss, so with no cache
+ * allocated the behaviour falls back to searching Drive. Never make a folder path depend on a value
+ * coming back from here.
+ */
 public without sharing class GoogleCacheDriveFolderService {
 	@TestVisible
 	private static final String KEY_PREFIX = 'GFOLDER1';
@@ -35,6 +42,14 @@ public without sharing class GoogleCacheDriveFolderService {
 	private IGoogleCacheProvider cacheProvider;
 	private Boolean isCacheProviderResolved = false;
 
+	/**
+	 * Makes the cache key for a folder, which is a hash because the platform only accepts letters and digits
+	 * in a key.
+	 *
+	 * @param parentFolderId The folder it lives under.
+	 * @param targetId The user or record the folder belongs to.
+	 * @return The key to read and write with, or null when either part is missing.
+	 */
 	public String buildFolderKey(String parentFolderId, Id targetId) {
 		if (String.isBlank(parentFolderId) || targetId == null) return null;
 
@@ -44,6 +59,12 @@ public without sharing class GoogleCacheDriveFolderService {
 		return KEY_PREFIX + hashedKey;
 	}
 
+	/**
+	 * Reads a remembered folder. A folder another transaction is still creating reads as a miss.
+	 *
+	 * @param folderKey The key from buildFolderKey().
+	 * @return The folder Id, or null when it is not known yet.
+	 */
 	public String getFolderId(String folderKey) {
 		String storedValue = read(folderKey);
 		if (String.isBlank(storedValue) || isPendingValue(storedValue)) return null;
@@ -51,6 +72,13 @@ public without sharing class GoogleCacheDriveFolderService {
 		return storedValue;
 	}
 
+	/**
+	 * Says whether another transaction is creating this folder right now, so the caller defers instead of
+	 * creating a second one. A claim older than a minute is treated as abandoned.
+	 *
+	 * @param folderKey The key from buildFolderKey().
+	 * @return True while somebody else is creating it.
+	 */
 	public Boolean isPending(String folderKey) {
 		String storedValue = read(folderKey);
 		if (!isPendingValue(storedValue)) return false;
@@ -58,15 +86,32 @@ public without sharing class GoogleCacheDriveFolderService {
 		return !hasPendingExpired(storedValue);
 	}
 
+	/**
+	 * Claims the folder before creating it, so other transactions wait rather than duplicate it.
+	 *
+	 * @param folderKey The key from buildFolderKey().
+	 */
 	public void markPending(String folderKey) {
 		write(folderKey, PENDING_PREFIX + ':' + String.valueOf(DateTime.now().getTime()));
 	}
 
+	/**
+	 * Remembers a folder that has been created or found.
+	 *
+	 * @param folderKey The key from buildFolderKey().
+	 * @param folderId The Drive folder to remember.
+	 */
 	public void putFolderId(String folderKey, String folderId) {
 		if (String.isBlank(folderId)) return;
 		write(folderKey, folderId);
 	}
 
+	/**
+	 * Forgets a folder, which is what to do when a Drive call against it fails so the next transaction looks
+	 * it up again instead of trusting a stale Id.
+	 *
+	 * @param folderKey The key from buildFolderKey().
+	 */
 	public void evict(String folderKey) {
 		if (String.isBlank(folderKey)) return;
 

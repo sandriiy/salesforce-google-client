@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Opens a file in Google Drive for its owner, which is the one place this package hands somebody access
+ * outside Salesforce. Every gate is here rather than in the component: the feature has to be on, the
+ * user has to be internal, they have to own the file, and the version has to belong to it. Access is
+ * always read only, always on the one file, never on the folder around it.
+ */
 public without sharing class GoogleLocalDriveAccessService {
 	public class GoogleLocalDriveAccessException extends Exception {}
 
@@ -37,6 +43,13 @@ public without sharing class GoogleLocalDriveAccessService {
 		this.accessResolver = new GoogleFileAccessResolver();
 	}
 
+	/**
+	 * Says whether the running user may open this file in Drive, which is what decides if the action shows
+	 * up at all.
+	 *
+	 * @param localFileRecordId The file in question.
+	 * @return True when the feature is on and the user owns the file.
+	 */
 	public Boolean canOpenInDrive(Id localFileRecordId) {
 		if (localFileRecordId == null) return false;
 		if (!googleConfig.isOpenInDriveEnabled()) return false;
@@ -47,6 +60,15 @@ public without sharing class GoogleLocalDriveAccessService {
 		return findOwnedFile(localFileRecordId, UserInfo.getUserId()) != null;
 	}
 
+	/**
+	 * Grants the running user read access to the file in Drive and hands back the link. Where Drive allows
+	 * it the access ends after a week, and where it does not the grant stands without an end date rather
+	 * than failing the open.
+	 *
+	 * @param localFileRecordId The file being opened.
+	 * @param localFileVersionId The version being opened, which must belong to that file.
+	 * @return The Drive link and when access ends.
+	 */
 	public GoogleDriveAccessDTO openInDrive(Id localFileRecordId, Id localFileVersionId) {
 		Logger.info('Open In Drive Request --> FileId=' + String.valueOf(localFileRecordId) + ', VersionId=' + String.valueOf(localFileVersionId)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 

@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * An open direct upload: where the browser sends to, and how much it may send before Apex finishes the
+ * job with the tail.
+ */
 public class GoogleDirectUploadSessionDTO {
 	@AuraEnabled
 	public String sessionUri;

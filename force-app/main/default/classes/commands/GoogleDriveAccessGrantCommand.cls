@@ -21,6 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Hands a real Google Drive permission to one email address, the only place in the package
+ * where access is granted outside Salesforce. The role is always "reader", Drive sends no
+ * notification email and the grant lands on the file itself, never its folder. Every Drive call
+ * goes through GoogleClientApiProvider, and deciding whether the user may have this at all is
+ * the caller's job: GoogleLocalDriveAccessService gates it and nothing in here checks access.
+ */
 public without sharing class GoogleDriveAccessGrantCommand {
 	public class GoogleDriveAccessGrantException extends Exception {}
 
@@ -36,6 +43,18 @@ public without sharing class GoogleDriveAccessGrantCommand {
 		this.remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
 	}
 
+	/**
+	 * Grants the address view access to the Drive file until the given moment, reusing an
+	 * individual permission Drive already holds for that address instead of adding a second one.
+	 * The end date is best effort: some drives refuse expirations outright, and then the grant
+	 * survives with no end date rather than failing, which the result reports by leaving
+	 * accessEndsOn empty.
+	 *
+	 * @param remoteFileId The Drive file Id to share, normally GoogleFileVersion__c.GoogleDriveFileId__c.
+	 * @param emailAddress The Google account that receives access.
+	 * @param accessEndsOn When access should end; must be in the future and at most a year away.
+	 * @return The view link, the permission Id to revoke later and whether the address was already shared with.
+	 */
 	public GrantResult grantViewAccess(String remoteFileId, String emailAddress, Datetime accessEndsOn) {
 		if (String.isBlank(remoteFileId)) {
 			throw new GoogleDriveAccessGrantException('Remote File Id must not be blank');
@@ -126,12 +145,33 @@ public without sharing class GoogleDriveAccessGrantCommand {
 		}
 	}
 
+	/**
+	 * What the grant produced, kept so a caller can open the file now and later revoke exactly
+	 * the permission that was created.
+	 */
 	public class GrantResult {
 		public final String viewLink;
+		/**
+		 * The Drive permission Id, whether this call created it or found it already there.
+		 */
 		public final String permissionId;
+		/**
+		 * Null when Drive refused to put an end date on the permission.
+		 */
 		public final Datetime accessEndsOn;
+		/**
+		 * True when the address already held an individual permission and it was reused as is.
+		 */
 		public final Boolean wasAlreadyShared;
 
+		/**
+		 * Builds the result the way grantViewAccess() reports it.
+		 *
+		 * @param viewLink The Drive link that opens the file in the browser.
+		 * @param permissionId The Drive permission Id that was created or reused.
+		 * @param accessEndsOn The applied end date, or null when Drive refused one.
+		 * @param wasAlreadyShared Whether an existing individual permission was reused.
+		 */
 		public GrantResult(String viewLink, String permissionId, Datetime accessEndsOn, Boolean wasAlreadyShared) {
 			this.viewLink = viewLink;
 			this.permissionId = permissionId;

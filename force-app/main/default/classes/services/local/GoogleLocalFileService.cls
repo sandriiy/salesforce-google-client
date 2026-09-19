@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The way in for everything about files themselves: listing them, creating them, renaming them and
+ * deleting them. This is the layer your own Apex should call rather than the commands underneath, since
+ * it owns the unit of work and the single commit, turns failures into something a user can read, and
+ * leaves the detail in the log.
+ */
 public without sharing class GoogleLocalFileService {
     public class GoogleLocalFileException extends Exception {}
 
@@ -30,12 +36,23 @@ public without sharing class GoogleLocalFileService {
         this.uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
     }
 
+    /**
+     * Builds the service on a unit of work you already have, which is how several services commit together
+     * in one transaction.
+     *
+     * @param injectedUow The unit of work to register on. A null gets one of its own.
+     */
     public GoogleLocalFileService(IGoogleUnitOfWork injectedUow) {
         this.uow = injectedUow == null
             ? new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER)
             : injectedUow;
     }
 
+    /**
+     * Starts a read of the compact header shown at the top of the File Details page.
+     *
+     * @return The command to point at a file with forFile().
+     */
     public GoogleFilePageDetailsCommand.RetrieveHeaderCommand retrieveGoogleFileHeaderDetails() {
         try {
             return new GoogleFilePageDetailsCommand().retrieveHeader();
@@ -60,14 +77,34 @@ public without sharing class GoogleLocalFileService {
 		}
 	}
 
+	/**
+	 * Reads the first page of File Explorer for a user.
+	 *
+	 * @param userId Whose files to list.
+	 * @return The first page, with the cursor for the next one.
+	 */
 	public GoogleFileExplorerResultDTO retrieveFileExplorerFiles(Id userId) {
 		return retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO.firstPage(), userId);
 	}
 
+	/**
+	 * Reads one page of files for the running user.
+	 *
+	 * @param request What to sort, search and page by.
+	 * @return The page, with the cursor for the next one when there is more.
+	 */
 	public GoogleFileExplorerResultDTO retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO request) {
 		return retrieveGoogleFilesPage(request, UserInfo.getUserId());
 	}
 
+	/**
+	 * Reads one page of files for a given user. This is where the File Explorer request is translated into
+	 * the neutral criteria the access layer works with, so paging stays free of anything about that screen.
+	 *
+	 * @param request What to sort, search and page by.
+	 * @param userId Whose files to list.
+	 * @return The page, with the cursor for the next one when there is more.
+	 */
 	public GoogleFileExplorerResultDTO retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO request, Id userId) {
 		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
 		try {
@@ -102,6 +139,12 @@ public without sharing class GoogleLocalFileService {
 		return GoogleFileAccessResolver.OwnershipScope.AnyOwner;
 	}
 
+	/**
+	 * Creates the Google Drive folders a record needs before files start arriving, which is what lets an
+	 * upload resolve its folder while the bytes are still moving.
+	 *
+	 * @param relatedRecordId The record whose folders should exist.
+	 */
 	public void ensureGoogleDriveFolderStructure(Id relatedRecordId) {
 		if (relatedRecordId == null) return;
 
@@ -114,6 +157,15 @@ public without sharing class GoogleLocalFileService {
 		}
 	}
 
+	/**
+	 * Lists the files attached to a record for one place in the UI, already filtered to what the running
+	 * user may see.
+	 *
+	 * @param relatedRecordId The record whose files are wanted.
+	 * @param source The component asking, such as "Notes & Attachments". Blank means every file.
+	 * @param recordsCount How many to return at most. Null or zero means all of them.
+	 * @return The accessible files, each stamped with UserAccessLevel__c.
+	 */
 	public List<GoogleFile__c> retrieveGoogleFilesForRelatedRecord(Id relatedRecordId, String source, Integer recordsCount) {
 		if (relatedRecordId == null) return new List<GoogleFile__c>();
 
@@ -150,6 +202,13 @@ public without sharing class GoogleLocalFileService {
 		}
 	}
 
+	/**
+	 * Lists the running user's own files that are not on this record yet, which is what Attach Existing
+	 * File offers. Only owned files qualify, because attaching a file to a record grants access to it.
+	 *
+	 * @param relatedRecordId The record the file would be attached to.
+	 * @return The files that can still be attached there.
+	 */
 	public List<GoogleFile__c> retrieveAttachableOwnedFiles(Id relatedRecordId) {
 		if (relatedRecordId == null) return new List<GoogleFile__c>();
 		
@@ -186,23 +245,43 @@ public without sharing class GoogleLocalFileService {
 		}
 	}
 
-    public GoogleFile__c createGoogleFileRecord(GoogleFileCreateRequestDTO request) {
-		GoogleFileInsertCommand insertCommand = new GoogleFileInsertCommand(uow)
-			.setRecordId(request.recordId)
-			.setFileName(request.fileName)
-			.setFileType(request.fileType)
-			.setFileSize(request.fileSize)
-			.setGoogleDriveId(request.googleDriveId)
-			.setParentFolderId(request.parentFolderId)
-			.setSource(request.source);
+	/**
+	 * Records several uploaded files in one transaction and one commit, which is what automation needs when
+	 * it moves a batch of files at once.
+	 *
+	 * @param requests One request per uploaded file.
+	 * @return The created records in the same order, carrying their new Ids.
+	 */
+	public List<GoogleFileInsertCommand.GoogleFileInsertResult> createGoogleFileRecords(List<GoogleFileCreateRequestDTO> requests) {
+		List<GoogleFileInsertCommand.GoogleFileInsertResult> insertResults = new List<GoogleFileInsertCommand.GoogleFileInsertResult>();
+		if (requests == null || requests.isEmpty()) return insertResults;
 
-		if (request.localGoogleFileId != null) {
-			insertCommand = insertCommand.setLocalGoogleFileId(request.localGoogleFileId);
+		try {
+			for (GoogleFileCreateRequestDTO request : requests) {
+				insertResults.add(buildInsertCommand(request).save());
+			}
+
+			uow.commitWork(true);
+		} catch (Exception ex) {
+			Logger.error('Create Google File Records (Local): ' + requests.size() + ' file(s), message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileException('Unable to create the file record. Please try again or contact your system administrator');
 		}
 
+		return insertResults;
+	}
+
+    /**
+     * Records one uploaded file and hands back what the caller may see of it. A file the caller cannot reach
+     * comes back null, which only happens when it was uploaded on somebody else's behalf.
+     *
+     * @param request The uploaded file and the record it belongs to.
+     * @return The new file with its current version, or null when the caller cannot see it.
+     */
+    public GoogleFile__c createGoogleFileRecord(GoogleFileCreateRequestDTO request) {
 		GoogleFileInsertCommand.GoogleFileInsertResult insertResult;
 		try {
-			insertResult = insertCommand.save();
+			insertResult = buildInsertCommand(request).save();
 			uow.commitWork(true);
 		} catch (Exception ex) {
 			Logger.error('Create Google File Record (Local): ' + request.googleDriveId + ', message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
@@ -228,6 +307,29 @@ public without sharing class GoogleLocalFileService {
 		return null;
 	}
 
+	private GoogleFileInsertCommand buildInsertCommand(GoogleFileCreateRequestDTO request) {
+		GoogleFileInsertCommand insertCommand = new GoogleFileInsertCommand(uow)
+			.setRecordId(request.recordId)
+			.setFileName(request.fileName)
+			.setFileType(request.fileType)
+			.setFileSize(request.fileSize)
+			.setGoogleDriveId(request.googleDriveId)
+			.setParentFolderId(request.parentFolderId)
+			.setSource(request.source);
+
+		if (request.localGoogleFileId != null) {
+			insertCommand = insertCommand.setLocalGoogleFileId(request.localGoogleFileId);
+		}
+
+		return insertCommand;
+	}
+
+	/**
+	 * Renames files and versions and changes descriptions, committing once for the whole batch and doing
+	 * nothing at all when none of them really changed.
+	 *
+	 * @param requests The records to change and what to change them to.
+	 */
 	public void updateGoogleFileDetails(List<GoogleFileUpdateRequestDTO> requests) {
 		if (requests == null || requests.isEmpty()) return;
 		
@@ -256,6 +358,11 @@ public without sharing class GoogleLocalFileService {
 		}
 	}
 
+    /**
+     * Starts a delete.
+     *
+     * @return The command to point at a file and decide whether Google Drive loses its copy too.
+     */
     public GoogleFileDeleteCommand deleteGoogleFileRecord() {
         try {
             return new GoogleFileDeleteCommand(uow);
@@ -266,6 +373,12 @@ public without sharing class GoogleLocalFileService {
         }
     }
 
+    /**
+     * Starts an access check. Any path of your own that returns files to a user ends with this, or the files
+     * leak.
+     *
+     * @return The command to fill in with files and a user.
+     */
     public GoogleFileAccessCheckCommand stripInaccessibleRecords() {
         try {
             return new GoogleFileAccessCheckCommand();

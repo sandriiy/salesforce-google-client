@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What GoogleLocalFileService needs to record a file that is already in Google Drive. Fill in
+ * localGoogleFileId to add a version to a file that exists instead of creating a new one.
+ */
 public class GoogleFileCreateRequestDTO {
     public Id recordId;
 	public Id localGoogleFileId;

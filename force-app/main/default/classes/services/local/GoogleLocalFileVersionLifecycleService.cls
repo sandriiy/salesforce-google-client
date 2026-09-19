@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What the version trigger does after a version is inserted or deleted: queue the follow up work, keep
+ * the current version flag right, and clean up in Google Drive. It opens its own unit of work on
+ * purpose, since it runs inside a commit that is already under way.
+ */
 public with sharing class GoogleLocalFileVersionLifecycleService {
     public class GoogleFileVersionLifecycleException extends Exception {}
 
@@ -34,6 +39,11 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
         this.uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
     }
 
+    /**
+     * Builds the service on a unit of work you already have.
+     *
+     * @param injectedUow The unit of work to register on. A null gets one of its own.
+     */
     public GoogleLocalFileVersionLifecycleService(IGoogleUnitOfWork injectedUow) {
         this.googleConfig = new GoogleMetadataConfigService();
         this.versionContextResolver = new GoogleFileVersionContextResolver();
@@ -42,10 +52,22 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
             : injectedUow;
     }
 
+	/**
+	 * Queues the preview, summary, folder and label work for versions that were just inserted.
+	 *
+	 * @param newFileVersions The versions that were inserted.
+	 */
 	public void processFileInsertFinalizer(List<GoogleFileVersion__c> newFileVersions) {
 		new GoogleFileInsertFinalizeCommand(this.googleConfig, this.versionContextResolver).execute(newFileVersions);
 	}
 
+    /**
+     * Moves the current version flag to the newest version of each affected file, and updates only the rows
+     * whose flag is actually wrong.
+     *
+     * @param newFileVersions The versions after the change, or null.
+     * @param oldFileVersions The versions before the change, or null.
+     */
     public void markAsLatestVersionIfApplicable(List<GoogleFileVersion__c> newFileVersions, List<GoogleFileVersion__c> oldFileVersions) {
         Set<Id> parentFileIds = this.versionContextResolver.collectParentFileIds(newFileVersions, oldFileVersions);
         if (parentFileIds.isEmpty()) return;
@@ -63,6 +85,11 @@ public with sharing class GoogleLocalFileVersionLifecycleService {
         commitUpdatesWithBypass('GoogleFileVersionTriggerHandler', latestVersionsToUpdate);
     }
 
+	/**
+	 * Queues the Drive clean up for versions that were deleted, both the upload and its Workspace copy.
+	 *
+	 * @param localFileVersions The versions that were deleted.
+	 */
 	public void removeGoogleFiles(List<GoogleFileVersion__c> localFileVersions) {
 		System.enqueueJob(new GoogleFileCloudDeleteJob(localFileVersions));
 	}

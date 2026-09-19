@@ -12,6 +12,7 @@ All notable changes to this client will be documented in this file.
 - A Labels card on the File Details page listing every label applied to the file, with the version it belongs to and how confident the AI was.
 - Open in Google Drive. A file owner can open a file directly in Google Drive from the preview window or the File Details page, which is useful for printing, downloading, or keeping a personal copy. The option is off until an administrator turns it on under Advanced → File Management, and existing organizations see no change until they do.
 - View access granted for Open in Google Drive covers only the file being opened. Where Google Drive supports timed access it ends after a week, extended each time the file is opened again. It never reaches the folder around the file, and it never allows changing, deleting, or resharing the file.
+- Flow actions for Google Drive. Four actions in the new **Google Client** category of Flow Builder let administrators automate common operations without code: **Create Folder in Google Drive**, **Upload File to Google Drive**, **Download File from Google Drive** and **Extract File Content as Text from Google Drive**. Uploads take a Salesforce file, attach the result to a record and can remove the Salesforce copy afterwards, with large files finishing in the background. Downloads save a Salesforce file, optionally converted to another format. The two existing actions moved into the same category.
 
 ### Changed
 

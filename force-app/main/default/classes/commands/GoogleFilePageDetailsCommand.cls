@@ -21,21 +21,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Reads what the File Details page shows in its header for one GoogleFile__c: the name and the
+ * fields an admin put in the "Header" field set on the object, each with its label, display
+ * value and, for lookups, the related record's Id. Editing that field set is how the header is
+ * customised; no code change is needed.
+ */
 public without sharing class GoogleFilePageDetailsCommand {
 	private static final String HEADER_FIELD_SET_NAME = 'Header';
 
+	/**
+	 * Starts a header read.
+	 *
+	 * @return A command to point at a file with forFile() and run with execute().
+	 */
 	public RetrieveHeaderCommand retrieveHeader() {
 		return new RetrieveHeaderCommand();
 	}
 
+	/**
+	 * Loads the header of one file. A field set entry naming a field the object no longer has
+	 * is skipped, so a stale field set degrades to fewer values rather than an error.
+	 */
 	public class RetrieveHeaderCommand {
 		private Id fileId;
 
+		/**
+		 * Chooses the file to read.
+		 *
+		 * @param fileId The GoogleFile__c Id.
+		 * @return This same instance, so the call chains onto execute().
+		 */
 		public RetrieveHeaderCommand forFile(Id fileId) {
 			this.fileId = fileId;
 			return this;
 		}
 
+		/**
+		 * Runs the query and shapes the result. A lookup comes back with the related record's Name
+		 * as its display value and its Id in referenceId. There is no access check in here; the
+		 * caller must have resolved the user's access to the file before asking for its header.
+		 *
+		 * @return The header, empty (no name, no fields) when no file was chosen, the field set is
+		 * missing or the file was not found.
+		 */
 		public GoogleFileHeaderInfoDTO execute() {
 			GoogleFileHeaderInfoDTO result = createEmptyResult();
 

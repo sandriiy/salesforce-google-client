@@ -127,4 +127,22 @@ If you run into something unexpected, check the list below. If your issue isn't 
 
     After the authentication details finish saving, validation should use the new certificate information correctly.
 
+??? info "Reading a file's text in a flow right after uploading it returns nothing"
+
+    **When does it happen?**
+
+    A flow uploads a file to Google Drive and then uses **Extract File Content as Text from Google Drive** on it in the same run. Instead of the text, the action reports that text is not available yet.
+
+    **Root Cause**
+
+    Text is read from the preview copy Google prepares for the file, not from the uploaded file itself. Google takes a few seconds to prepare it, and the flow reaches the next step long before that.
+
+    **Fix**
+
+    1. Split the work in two. Upload in one flow, and read the text in a second flow that runs afterwards.
+    2. For a record triggered flow, put the reading step on a **scheduled path** a few minutes later.
+    3. Plain text files such as `.txt`, `.csv` and `.md` need none of this. They are read straight from the upload and are ready immediately.
+
+    The same wait applies to previews and AI summaries, so a file that cannot be read yet usually cannot be previewed yet either.
+
 <br>

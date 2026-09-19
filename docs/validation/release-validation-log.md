@@ -10,9 +10,93 @@ This document tracks **test coverage, validation scenarios, and release checks**
     - [X] Targeted Regression Suite
 
     ### Release Changes
-    - [ ] Change 1: TBA
-	- [ ] Change 2: TBA
-	- [ ] Change 3: TBA
+    - [ ] Change 1: The upgrade lands on an already configured org without changing how it behaves.
+
+        - [ ] Admin: Google Drive, folder structure, AI, safety and File Explorer column settings are all unchanged after the upgrade.
+        - [ ] Admin: AI Labeling and Open in Google Drive are both off, and no label definitions exist.
+        - [ ] Internal User: Upload, preview, download, sharing and versioning behave exactly as before the upgrade.
+        - [ ] External User: Experience Cloud pages open and behave exactly as before the upgrade.
+
+    - [ ] Change 2: The configuration page moved the setup guides to the side panel and made Setup and Advanced a two way switch.
+
+        - [ ] Admin: Setup guides show in the side panel, follow the section or Advanced tab that is open, and can be closed.
+        - [ ] Admin: The configuration area is full width and no guide is rendered inside the form.
+        - [ ] Admin: Switching between Setup and Advanced with unsaved changes asks whether to save or discard first, and both answers do what they say.
+        - [ ] Admin: Switching between Google Drive and AI inside Setup with unsaved changes does not ask.
+        - [ ] Admin: Each Advanced tab says what it contains, and File Management, User Interface, AI Intelligence and Safety & Customization all render without errors.
+
+    - [ ] Change 3: Whether a document or spreadsheet can be previewed now follows the size of the Google Workspace preview version.
+
+        - [ ] Internal User: Upload a document larger than Maximum Preview File Size and confirm it previews.
+        - [ ] Internal User: Confirm Download as... is offered for that document.
+        - [ ] Internal User: Confirm PDF and image previews are unchanged.
+        - [ ] Internal User: Confirm a file uploaded before the upgrade previews the same as it did before.
+
+    - [ ] Change 4: A file owner can open a file directly in Google Drive.
+
+        - [ ] Internal User: Confirm the option is not offered while the setting is off.
+        - [ ] Admin: Turn on Open in Google Drive under Advanced → File Management.
+        - [ ] Internal User: Open an owned file in Google Drive from the preview window, and confirm it opens.
+        - [ ] Internal User: Open an owned file in Google Drive from the File Details page, and confirm it opens.
+        - [ ] Internal User: Confirm the file opens read only in Google Drive and the folder around it cannot be reached.
+        - [ ] Internal User: Confirm the option is not offered for a file owned by another user.
+        - [ ] External User: Confirm the option is not offered anywhere on Experience Cloud.
+
+    - [ ] Change 5: Four Flow actions cover folders, uploads, downloads and file text.
+
+        - [ ] Admin: The Google Client category in Flow Builder lists the four new actions together with Edit Google File Details and Public Link Expiration.
+        - [ ] Admin: Create Folder in Google Drive creates the named folder, and running the flow again returns the same folder instead of a second one.
+        - [ ] Admin: Create Folder in Google Drive with the name left blank returns the folder the record already owns.
+        - [ ] Admin: Upload File to Google Drive sends a Salesforce file to Google Drive and it appears on the record like any other upload.
+        - [ ] Admin: Upload File to Google Drive with Remove Salesforce Copy on deletes the Salesforce file and keeps the Google file.
+        - [ ] Admin: A file above Maximum Preview File Size reports that it uploads in the background, and it appears on the record shortly afterwards.
+        - [ ] Admin: Download File from Google Drive saves the file in Salesforce and attaches it to the record.
+        - [ ] Admin: Download File from Google Drive with Convert To set to pdf saves a PDF.
+        - [ ] Admin: Extract File Content as Text returns the file text, and Maximum Characters cuts it at the length asked for.
+        - [ ] Admin: Extract File Content as Text on a file whose preview copy is still preparing reports that text is not available yet.
+        - [ ] Admin: A fault path on any of the actions shows a readable message.
+
+    - [ ] Change 6: AI Labeling assigns one configured Google Drive label to a new file when the AI is confident enough.
+
+        - [ ] Admin: AI Labeling cannot be switched on while AI Analytics is off.
+        - [ ] Admin: Define two labels with a name, a label ID and a plain language description, save, reopen the page, and confirm the definitions were kept in full.
+        - [ ] Internal User: Upload a file that clearly matches one label, and confirm that label is applied.
+        - [ ] Internal User: Confirm the label shows next to the file name in the preview window and in the File Intelligence panel.
+        - [ ] Admin: Confirm the same label is applied to the file in Google Drive.
+        - [ ] Admin: Confirm a Google File Version Label record exists for that version with its name and confidence.
+        - [ ] Internal User: Upload a file that matches none of the definitions, and confirm it stays unlabeled.
+        - [ ] Admin: Raise the minimum confidence above what the model returns, upload the same kind of file again, and confirm no label is applied.
+        - [ ] Admin: Set a thinking budget, upload again, and confirm labeling still completes.
+        - [ ] Admin: Turn AI Analytics off and confirm AI Labeling is switched off with it.
+
+    - [ ] Change 7: Labels are visible in File Explorer and on the File Details page.
+
+        - [ ] Admin: Add the Labels column under Advanced → User Interface and save.
+        - [ ] Internal User: Confirm the Labels column shows the applied label in File Explorer.
+        - [ ] Internal User: Search File Explorer by the label name and confirm the labeled file is found.
+        - [ ] Internal User: Confirm the Labels column cannot be sorted.
+        - [ ] Internal User: Open the File Details page for the labeled file and confirm the Labels card lists the label, the version it belongs to and the confidence.
+        - [ ] Internal User: Open the File Details page for an unlabeled file and confirm the Labels card shows nothing rather than failing.
+        - [ ] External User: Make a labeled file externally visible, then confirm its label shows in the Experience Cloud preview.
+        - [ ] External User: Confirm labels of files the external user cannot access are not visible.
+
+    - [ ] Change 8: Long prompts and long column lists are read in full.
+
+        - [ ] Admin: Save a summary prompt longer than 255 characters, reopen the page, and confirm the whole prompt is still there.
+        - [ ] Internal User: Upload a file and confirm the summary follows that long prompt.
+        - [ ] Admin: Save a label description longer than 255 characters and confirm labeling still uses it.
+        - [ ] Admin: Select seven File Explorer columns, save, reopen, and confirm all seven are kept.
+
+    - [ ] Change 9: Turning AI off keeps what was already generated, and clearing the AI configuration leaves the rest of the setup alone.
+
+        - [ ] Admin: Turning AI Analytics on checks the provider straight away, and with a wrong API key it refuses and explains what to do.
+        - [ ] Admin: The reminder that AI analysis is off shows as a notice in the corner of the page and can be dismissed.
+        - [ ] Internal User: With AI Analytics off, a file that already has a summary or a label keeps its preview sidebar, it stays closed until opened, and asking a question is unavailable.
+        - [ ] Internal User: With AI Analytics off, a file with no summary and no label shows no sidebar at all.
+        - [ ] Admin: Deactivate under Gemini & Agent Platform clears the provider details, prompts, label definitions and safety settings in one step, and AI Analytics and AI Labeling are both off afterwards.
+        - [ ] Admin: Google Drive settings, folder structure and File Explorer columns are untouched by that.
+        - [ ] Internal User: Summaries and labels already stored on files are still there.
+        - [ ] Admin: Connect a provider again, turn AI Analytics back on, and confirm summaries are generated for new files.
 
     ### Boring Changes
     - [ ] Version number assigned to all hard-coded labels

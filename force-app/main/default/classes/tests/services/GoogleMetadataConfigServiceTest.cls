@@ -498,6 +498,66 @@ private class GoogleMetadataConfigServiceTest {
 	}
 
 	@IsTest
+	private static void testDeactivateAiConfigClearsEveryAiSettingAndTurnsAnalysisOff() {
+		GoogleCloudTestFactory.config()
+			.asPackagedRecord()
+			.withUploadFolderId('PRIMARY')
+			.withFileIntelligence(true)
+			.withAiLabeling(true)
+			.withGeminiApiKey('api-key-1')
+			.withAiModel('gemini-2.0-flash')
+			.withAgentProjectId('project-1')
+			.withAgentLocation('global')
+			.withSummaryPrompt('Summarize')
+			.withQuestionPrompt('Answer')
+			.withQuestionMaxOutputTokens(512)
+			.withAiSafetyMode('Strict')
+			.withAiPromptSafetyGuardClass('MyGuard')
+			.withLabelingPrompt('Label')
+			.withAiLabelingMinConfidence(90)
+			.withAiLabelingThinkingBudget(1024)
+			.withAiLabelDefinitions('[{"name":"Invoice","labelId":"L1","description":"Bills"}]')
+			.apply();
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		Id deploymentId = new GoogleMetadataConfigService(deployer).deactivateAiConfig();
+		Test.stopTest();
+
+		Assert.isNotNull(deploymentId, 'Deactivation must be sent to the Metadata API like any other save');
+		Map<String, Object> savedValues = deployer.capturedValues();
+		for (String fieldApiName : GoogleMetadataConfigService.AI_CONFIGURATION_FIELDS) {
+			Assert.isTrue(savedValues.containsKey(fieldApiName), fieldApiName + ' must be part of the deactivation');
+			Assert.isNull(savedValues.get(fieldApiName), fieldApiName + ' must be cleared');
+		}
+		for (String fieldApiName : GoogleMetadataConfigService.AI_FEATURE_FLAG_FIELDS) {
+			Assert.areEqual(false, savedValues.get(fieldApiName), fieldApiName + ' must be switched off');
+		}
+		Assert.isFalse(savedValues.containsKey('DefaultGoogleUploadFolderId__c'), 'Google Drive settings must stay untouched');
+		Assert.isFalse(savedValues.containsKey('CustomGoogleServiceAccount__c'), 'Google Drive settings must stay untouched');
+	}
+
+	@IsTest
+	private static void testDeactivateAiConfigDoesNotReapplyPromptDefaults() {
+		GoogleCloudTestFactory.config()
+			.asPackagedRecord()
+			.withFileIntelligence(true)
+			.withGeminiApiKey('api-key-1')
+			.withAiModel('gemini-2.0-flash')
+			.apply();
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).deactivateAiConfig();
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isNull(savedValues.get('CustomSummaryPrompt__c'), 'Turning analysis off must not bring the shipped prompt back');
+		Assert.isNull(savedValues.get('QuestionMaxOutputTokens__c'));
+		Assert.isNull(savedValues.get('AiSafetyMode__c'));
+	}
+
+	@IsTest
 	private static void testAdditionalUploadFoldersArePreservedInOrder() {
 		GoogleCloudTestFactory.config()
 			.withUploadFolderId('PRIMARY')

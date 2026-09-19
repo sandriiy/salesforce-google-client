@@ -21,12 +21,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * One file waiting to be moved into its folder, as the folder job works through them. The user is carried
+ * along because the job runs later and cannot ask who uploaded the file.
+ */
 public class GoogleFileRelocationRequestDTO {
     public Id initiatorUserId;
 	public Id localGoogleFileId;
 	public Id localGoogleFileVersionId;
 	public Id linkLocalGoogleFileId;
 
+	/**
+	 * Holds one placement.
+	 *
+	 * @param initiatorUserId The user who uploaded the file.
+	 * @param localGoogleFileId The file being placed.
+	 * @param localGoogleFileVersionId The version whose Drive copy moves.
+	 * @param linkLocalGoogleFileId The link the destination record comes from.
+	 */
 	public GoogleFileRelocationRequestDTO(Id initiatorUserId, Id localGoogleFileId, Id localGoogleFileVersionId, Id linkLocalGoogleFileId) {
 		this.initiatorUserId = initiatorUserId;
 		this.localGoogleFileId = localGoogleFileId;

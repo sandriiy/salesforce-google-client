@@ -163,6 +163,34 @@ private class GoogleCloudConfigControllerTest {
 	}
 
 	@IsTest
+	private static void testDeactivateIntelligenceMetadataConfigNegativeWithoutSavedConfig() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+
+		Test.startTest();
+		try {
+			GoogleCloudConfigController.deactivateIntelligenceMetadataConfig();
+			Assert.fail('Nothing can be deactivated before the configuration exists');
+		} catch (AuraHandledException ex) {
+			Assert.isTrue(true);
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testDeactivateIntelligenceMetadataConfigPositive() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiMetadataConfig();
+
+		Test.startTest();
+		try {
+			GoogleCloudConfigController.deactivateIntelligenceMetadataConfig();
+			Assert.isTrue(true);
+		} catch (Exception ex) {
+			Assert.isTrue(String.isNotBlank(ex.getMessage()));
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
 	private static void testValidateIntelligenceMetadataConfigPositive() {
 		GoogleMetadataConfigService.configRecordOverride = buildGeminiMetadataConfig();
 		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());

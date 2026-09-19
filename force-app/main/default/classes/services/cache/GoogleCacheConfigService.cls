@@ -21,9 +21,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Wraps the platform cache partition this package uses, for the OAuth token and for handing
+ * configuration between the setup window and the page that opened it. Keys are sanitised because the
+ * platform only accepts letters and digits in them.
+ */
 public inherited sharing class GoogleCacheConfigService {
 	public class GoogleCacheConfigException extends Exception {}
 
+	/**
+	 * The partition this package owns. Its allocation ships at one unit of org and one of session, which is
+	 * what a Developer Edition or scratch org can spare.
+	 */
 	public static final String PARTITION = 'GoogleCloudClient';
 
 	private static final String PREFIX_CONFIG = 'CFG';
@@ -34,20 +43,42 @@ public inherited sharing class GoogleCacheConfigService {
 		this(new GoogleSessionCacheProvider(PARTITION));
 	}
 
+	/**
+	 * Builds the service on a cache of your choosing, which is how the org partition is used instead of the
+	 * session one.
+	 *
+	 * @param injectedCache The cache to use. A null gets the session partition.
+	 */
 	public GoogleCacheConfigService(IGoogleCacheProvider injectedCache) {
 		this.cache = (injectedCache == null)
 			? (IGoogleCacheProvider) new GoogleSessionCacheProvider(PARTITION)
 			: injectedCache;
 	}
 
+	/**
+	 * The session partition, for a caller that hands it to a library.
+	 *
+	 * @return The partition, or null when this service is on the org cache.
+	 */
 	public Cache.SessionPartition getSessionPartition() {
 		return cache.getSessionPartition();
 	}
 
+	/**
+	 * The org partition, for a caller that hands it to a library.
+	 *
+	 * @return The partition, or null when this service is on the session cache.
+	 */
 	public Cache.OrgPartition getOrgPartition() {
 		return cache.getOrgPartition();
 	}
 
+	/**
+	 * Stores a value under a key of your own.
+	 *
+	 * @param key Your key, at most 120 characters.
+	 * @param value The value to store, which cannot be null.
+	 */
 	public void put(String key, String value) {
 		validateKey(key);
 
@@ -58,16 +89,32 @@ public inherited sharing class GoogleCacheConfigService {
 		add(buildKvKey(key), value);
 	}
 
+	/**
+	 * Reads back a value stored under a key of your own.
+	 *
+	 * @param key Your key.
+	 * @return The value, or null when nothing is there.
+	 */
 	public String get(String key) {
 		validateKey(key);
 		return read(buildKvKey(key));
 	}
 
+	/**
+	 * Drops a value stored under a key of your own.
+	 *
+	 * @param key Your key.
+	 */
 	public void remove(String key) {
 		validateKey(key);
 		deleteKey(buildKvKey(key));
 	}
 
+	/**
+	 * Makes the one time id the setup window and its opener use to find each other.
+	 *
+	 * @return A fresh configuration id.
+	 */
 	public String generateConfigId() {
 		Long ts = DateTime.now().getTime();
 		String rnd = EncodingUtil.convertToHex(
@@ -77,11 +124,23 @@ public inherited sharing class GoogleCacheConfigService {
 		return 'cfg_' + String.valueOf(ts) + '_' + rnd;
 	}
 
+	/**
+	 * Checks that an id really is one this service made, since it arrives from the browser.
+	 *
+	 * @param configId The id to check.
+	 * @return True when the shape is right.
+	 */
 	public Boolean isValidConfigId(String configId) {
 		if (String.isBlank(configId)) return false;
 		return Pattern.matches('^cfg_\\d+_[0-9a-f]{8}$', configId);
 	}
 
+	/**
+	 * Puts the configuration payload where the other window can pick it up.
+	 *
+	 * @param configId The id the two sides agreed on.
+	 * @param payloadJson The payload, which cannot be null.
+	 */
 	public void putConfig(String configId, String payloadJson) {
 		validateConfigId(configId);
 
@@ -92,11 +151,22 @@ public inherited sharing class GoogleCacheConfigService {
 		add(buildConfigKey(configId), payloadJson);
 	}
 
+	/**
+	 * Picks up a configuration payload the other window left.
+	 *
+	 * @param configId The id the two sides agreed on.
+	 * @return The payload, or null when it is not there yet.
+	 */
 	public String getConfig(String configId) {
 		validateConfigId(configId);
 		return read(buildConfigKey(configId));
 	}
 
+	/**
+	 * Clears a configuration payload once it has been read.
+	 *
+	 * @param configId The id the two sides agreed on.
+	 */
 	public void removeConfig(String configId) {
 		validateConfigId(configId);
 		deleteKey(buildConfigKey(configId));

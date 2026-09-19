@@ -1,8 +1,8 @@
-# AI Labeling
+# File Labeling
 
-AI Labeling assigns one of your Google Drive labels to each new file based on what the file contains. You describe every label in plain language, Google Client compares each uploaded file against those descriptions, and applies the best match. When it is not sure, the file stays unlabeled.
+File Labeling assigns one of your Google Drive labels to each new file based on what the file contains. You describe every label in plain language, Google Client compares each uploaded file against those descriptions, and applies the best match. When it is not sure, the file stays unlabeled.
 
-<!-- IMAGE: ai_labeling_settings.png — the AI Labeling section under Advanced → AI Intelligence with two labels defined -->
+![AI Labeling settings](../../assets/images/ai_labeling_settings.png)
 
 ## What a Label Does
 
@@ -20,7 +20,7 @@ Every applied label is also recorded in Salesforce as a **Google File Version La
 
 Turning AI Analytics off later does not remove labels. They stay on the files in Google Drive and in Salesforce, and the preview sidebar can still be opened to see them.
 
-<!-- IMAGE: ai_labeling_preview_sidebar.png — the preview sidebar showing a summary with the assigned label underneath -->
+![Applied label in the preview sidebar](../../assets/images/ai_labeling_preview_sidebar.png)
 
 ## When a File Is Labeled
 

@@ -18,7 +18,7 @@ It does three things: it writes a short summary of every file, it answers questi
 
     Ask a question about the open document and get the answer in the preview window, instead of reading the whole file to find one clause.
 
-- **[AI Labeling](labeling.md)**
+- **[File Labeling](labeling.md)**
 
     Describe each Google Drive label in plain language and let Google Client apply the best match to every new file, or leave it unlabeled when it is not sure.
 

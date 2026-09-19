@@ -1,5 +1,7 @@
 # Uploader in Screen Flows
 
+**Type:** Screen element, listed as **Google Client: Uploader** in Flow Builder.
+
 The Google Client Uploader component can be placed directly inside a Salesforce **Screen Flow**. This lets you collect file uploads as part of any guided process, such as a case intake form, an onboarding checklist, or a document submission step — all without writing code.
 
 Files uploaded through the flow go straight to Google Drive and are linked to the record you specify, just like any other upload in Google Client.
@@ -29,5 +31,17 @@ Files uploaded through the flow go straight to Google Drive and are linked to th
 ## What Happens After Upload
 
 Once a file is uploaded, it is immediately sent to Google Drive and linked to the specified record. The user can see the file listed in the uploader, preview it, or delete it before moving to the next screen in the flow. All the same access controls and folder structure rules that apply elsewhere in Google Client apply here too.
+
+## Automating Without a Screen
+
+The Uploader collects files from a person. To move files around without anyone watching, use the actions instead.
+
+📘 [Create Folder in Google Drive](create-folder-action.md)
+
+📘 [Upload File to Google Drive](upload-file-action.md)
+
+📘 [Download File from Google Drive](download-file-action.md)
+
+📘 [Extract File Content as Text from Google Drive](extract-text-action.md)
 
 <br>

@@ -167,6 +167,10 @@ public class GoogleCloudTestFactory {
 		return new ShareBuilder();
 	}
 
+	public static SalesforceFileBuilder salesforceFile() {
+		return new SalesforceFileBuilder();
+	}
+
 	public class TestGoogleAuthorizer implements GoogleAuthorizer {
 		public String retrieveAccessToken() {
 			return 'client.test-access-token';
@@ -300,6 +304,49 @@ public class GoogleCloudTestFactory {
 					'RowCause' => r.RowCause
 				}),
 				GoogleFile__Share.class
+			);
+		}
+	}
+
+	public class SalesforceFileBuilder {
+		private Id versionId = fakeId(ContentVersion.SObjectType);
+		private Id documentId = fakeId(ContentDocument.SObjectType);
+		private String title = 'Test File';
+		private String fileExtension = 'pdf';
+		private String content = 'salesforce file content';
+
+		public SalesforceFileBuilder withVersionId(Id v) { versionId = v; return this; }
+		public SalesforceFileBuilder withDocumentId(Id v) { documentId = v; return this; }
+		public SalesforceFileBuilder withTitle(String v) { title = v; return this; }
+		public SalesforceFileBuilder withExtension(String v) { fileExtension = v; return this; }
+		public SalesforceFileBuilder withContent(String v) { content = v; return this; }
+
+		public ContentVersion mock() {
+			ContentVersion salesforceFile = build();
+			GSOQL.mock(GoogleContentVersionSelector.MOCK_ID).thenReturn(new List<SObject>{ salesforceFile });
+
+			if (GoogleLocalFileTransferService.sourceContentOverride == null) {
+				GoogleLocalFileTransferService.sourceContentOverride = new Map<Id, Blob>();
+			}
+			GoogleLocalFileTransferService.sourceContentOverride.put(salesforceFile.Id, Blob.valueOf(content));
+
+			return salesforceFile;
+		}
+
+		public ContentVersion build() {
+			Blob body = Blob.valueOf(content);
+			return (ContentVersion) JSON.deserialize(
+				JSON.serialize(new Map<String, Object>{
+					'attributes' => new Map<String, Object>{ 'type' => 'ContentVersion' },
+					'Id' => versionId,
+					'ContentDocumentId' => documentId,
+					'Title' => title,
+					'PathOnClient' => title + '.' + fileExtension,
+					'FileExtension' => fileExtension,
+					'ContentSize' => body.size(),
+					'IsLatest' => true
+				}),
+				ContentVersion.class
 			);
 		}
 	}

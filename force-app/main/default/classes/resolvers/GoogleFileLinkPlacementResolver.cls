@@ -21,7 +21,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Finds the links of a record for one place in the UI, so the Attachments component and File Explorer
+ * each show their own files. A link with no source of its own falls back to the source of the file,
+ * which is what keeps files uploaded before that field existed visible.
+ */
 public without sharing class GoogleFileLinkPlacementResolver {
+	/**
+	 * Reads the links of a record, narrowed to one source when you name one.
+	 *
+	 * @param relatedRecordId The record whose files are being listed.
+	 * @param source The place asking, such as "Notes & Attachments". Blank returns every link.
+	 * @return The matching links.
+	 */
 	public List<GoogleFileLink__c> resolveLinks(Id relatedRecordId, String source) {
 		if (relatedRecordId == null) {
 			return new List<GoogleFileLink__c>();
@@ -54,6 +66,13 @@ public without sharing class GoogleFileLinkPlacementResolver {
 		return matchingLinks;
 	}
 
+	/**
+	 * Same as resolveLinks() when only the file Ids are wanted.
+	 *
+	 * @param relatedRecordId The record whose files are being listed.
+	 * @param source The place asking. Blank returns every file.
+	 * @return The files reached from that record.
+	 */
 	public Set<Id> resolveFileIds(Id relatedRecordId, String source) {
 		return collectFileIds(resolveLinks(relatedRecordId, source));
 	}

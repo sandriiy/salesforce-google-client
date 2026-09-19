@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Hands back the guard that inspects prompts and answers, the shipped one unless an org named its own.
+ * A class that cannot be found, cannot be built or does not implement the interface falls back to the
+ * shipped guard rather than failing, because a typo in a class name must never leave prompts
+ * uninspected. The guard is resolved once per transaction.
+ */
 public with sharing class GoogleAiPromptSafetyGuardFactory {
 	@TestVisible
 	private static IGoogleAiPromptSafetyGuard cachedGuard;
@@ -36,6 +42,11 @@ public with sharing class GoogleAiPromptSafetyGuardFactory {
 		this.metadataService = metadataService == null ? new GoogleMetadataConfigService() : metadataService;
 	}
 
+	/**
+	 * The guard to inspect with.
+	 *
+	 * @return The configured guard, or the shipped one.
+	 */
 	public IGoogleAiPromptSafetyGuard resolve() {
 		if (cachedGuard != null) {
 			return cachedGuard;

@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Puts a Google Drive shortcut into a record folder when a file that already lives somewhere else is
+ * attached to another record. The file itself never moves, so the record it was uploaded from keeps it
+ * and the new record gets a pointer. Does nothing unless the configured structure keeps record folders.
+ */
 public without sharing class GoogleFileShortcutPlacementCommand {
 	public class GoogleFileShortcutPlacementCommandException extends Exception {}
 
@@ -40,21 +45,42 @@ public without sharing class GoogleFileShortcutPlacementCommand {
 		this.metadataService = new GoogleMetadataConfigService();
 	}
 
+	/**
+	 * Sets the user whose folder is used, which the job has to pass because it runs asynchronously.
+	 *
+	 * @param initiatorUserId The user who attached the file.
+	 * @return This same instance, so the call chains onto execute().
+	 */
 	public GoogleFileShortcutPlacementCommand initiatedBy(Id initiatorUserId) {
 		this.initiatorUserId = initiatorUserId;
 		return this;
 	}
 
+	/**
+	 * Sets the file the shortcut points at. Its latest version is what gets linked.
+	 *
+	 * @param localGoogleFileId The GoogleFile__c being attached.
+	 * @return This same instance, so the call chains onto execute().
+	 */
 	public GoogleFileShortcutPlacementCommand forFile(Id localGoogleFileId) {
 		this.localGoogleFileId = localGoogleFileId;
 		return this;
 	}
 
+	/**
+	 * Sets the link that was just created, which is where the destination record comes from.
+	 *
+	 * @param linkLocalGoogleFileId The GoogleFileLink__c created by the attach.
+	 * @return This same instance, so the call chains onto execute().
+	 */
 	public GoogleFileShortcutPlacementCommand forLink(Id linkLocalGoogleFileId) {
 		this.linkLocalGoogleFileId = linkLocalGoogleFileId;
 		return this;
 	}
 
+	/**
+	 * Creates the shortcut in the record folder, resolving that folder first and creating it if needed.
+	 */
 	public void execute() {
 		if (!metadataService.requiresRecordFolder()) return;
 

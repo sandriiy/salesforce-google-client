@@ -26,9 +26,9 @@ Files owned by a queue or a group don't offer the option, because there is no si
 
 The first time you open a file it takes a moment while access is arranged. After that it is faster.
 
-<!-- IMAGE: client_open_in_drive_menu.png — the preview window menu open, showing the "Open in Google Drive" item -->
+![Open in Google Drive in the preview menu](../assets/images/client_open_in_drive_menu.png)
 
-<!-- IMAGE: client_open_in_drive_modal.png — the confirmation window in its ready state, with the "Open Google Drive" and "Copy link" buttons -->
+![Open in Google Drive confirmation window](../assets/images/client_open_in_drive_modal.png)
 
 ## What you can do in Google Drive
 

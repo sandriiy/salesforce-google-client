@@ -21,11 +21,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Writes the short description of a file that users see in File Explorer and the preview. It skips a
+ * version that already has one, so running it again costs nothing, and it trims the answer to fit the
+ * field rather than letting a long answer fail the save.
+ */
 public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntelligenceCommandBase {
 	private static final Integer MAX_OUTPUT_TOKENS = 80;
 	private static final String OPERATION_TYPE = 'SUMMARY';
 	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
+	/**
+	 * Generates the summary of one version.
+	 *
+	 * @param localGoogleFileVersionId The version to summarize.
+	 * @param providerName The provider name to report back.
+	 * @param modelName The model to call.
+	 * @param genAiClient The client the request goes through.
+	 * @return The summary in text, or why there is none.
+	 */
 	public GoogleFileAnalysisResultDTO summarize(Id localGoogleFileVersionId, String providerName, String modelName, IGenAiClient genAiClient) {
 		return execute(localGoogleFileVersionId, providerName, modelName, genAiClient, null);
 	}

@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Keeps the label records and the searchable copy of them on the version in step, and reads labels back
+ * for the File Details page. The copy exists because a subquery cannot be searched or shown per row.
+ */
 public without sharing class GoogleLocalFileVersionLabelService {
 	public class GoogleLocalFileVersionLabelServiceException extends Exception {}
 
@@ -35,10 +39,23 @@ public without sharing class GoogleLocalFileVersionLabelService {
 		this(null);
 	}
 
+	/**
+	 * Builds the service on a unit of work you already have.
+	 *
+	 * @param injectedUow The unit of work to register on. A null gets one of its own.
+	 */
 	public GoogleLocalFileVersionLabelService(IGoogleUnitOfWork injectedUow) {
 		this.uow = injectedUow != null ? injectedUow : new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
 	}
 
+	/**
+	 * Rewrites the joined label names on the versions those labels belong to. It re-reads the versions first
+	 * and skips the ones that are gone, because deleting a file fires this while the parent is already being
+	 * deleted and updating it would roll the whole delete back.
+	 *
+	 * @param newLabels The labels after the change, or null.
+	 * @param oldLabels The labels before the change, or null.
+	 */
 	public void syncLabelNames(List<GoogleFileVersionLabel__c> newLabels, List<GoogleFileVersionLabel__c> oldLabels) {
 		Set<Id> versionIds = collectVersionIds(newLabels, oldLabels);
 		if (versionIds.isEmpty()) return;
@@ -68,6 +85,13 @@ public without sharing class GoogleLocalFileVersionLabelService {
 		}
 	}
 
+	/**
+	 * Lists every label on every version of a file, newest first, after checking that the running user may
+	 * see the file at all.
+	 *
+	 * @param localFileRecordId The file whose labels are wanted.
+	 * @return The labels with the version each one belongs to.
+	 */
 	public List<GoogleFileVersionLabelDTO> retrieveLabelsForFile(Id localFileRecordId) {
 		List<GoogleFileVersionLabelDTO> labels = new List<GoogleFileVersionLabelDTO>();
 		if (localFileRecordId == null) return labels;
@@ -121,6 +145,12 @@ public without sharing class GoogleLocalFileVersionLabelService {
 		return versionIds;
 	}
 
+	/**
+	 * Reads the label names of several versions in one query, oldest first.
+	 *
+	 * @param versionIds The versions whose labels are wanted.
+	 * @return The label names per version Id.
+	 */
 	public Map<Id, List<String>> retrieveLabelNamesByVersionId(Set<Id> versionIds) {
 		Map<Id, List<String>> labelNamesByVersionId = new Map<Id, List<String>>();
 		List<GoogleFileVersionLabel__c> versionLabels = (List<GoogleFileVersionLabel__c>) GoogleFileVersionLabelSelector.query()

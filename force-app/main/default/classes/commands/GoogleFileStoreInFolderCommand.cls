@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Moves an uploaded file from the upload folder into the folder its record or user owns, and takes the
+ * Workspace preview copy with it. Files are always uploaded to the configured upload folder first and
+ * moved afterwards, because the destination folder can only be resolved once the record is known.
+ */
 public without sharing class GoogleFileStoreInFolderCommand {
 	public class GoogleFileStoreInFolderCommandException extends Exception {}
 
@@ -29,6 +34,11 @@ public without sharing class GoogleFileStoreInFolderCommand {
     private GoogleFileFolderStructureCommand folderStructureCommand;
     private final IGoogleUnitOfWork uowRef;
 
+    /**
+     * Builds the command around the unit of work the new folder Id is registered on.
+     *
+     * @param uowRef The unit of work the version update is registered on.
+     */
     public GoogleFileStoreInFolderCommand(IGoogleUnitOfWork uowRef) {
         this.remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
         this.metadataService = new GoogleMetadataConfigService();
@@ -36,11 +46,24 @@ public without sharing class GoogleFileStoreInFolderCommand {
         this.uowRef = uowRef;
     }
 
+    /**
+     * Forces the folder to be created even when another transaction claims to be creating it, which is
+     * what the retry job does on its final attempt.
+     *
+     * @return This same instance, so the call chains onto placeFile().
+     */
     public GoogleFileStoreInFolderCommand ignorePendingFolderClaims() {
         this.folderStructureCommand.ignorePendingClaims();
         return this;
     }
 
+    /**
+     * Moves one file into its folder and registers the new folder Id on the version. A false answer means
+     * the folder was not ready and the job should try again, it is not a failure.
+     *
+     * @param request The version to move and the record and user it belongs to.
+     * @return True when the placement is settled, false when it should be retried later.
+     */
     public Boolean placeFile(GoogleFileRelocationRequestDTO request) {
         if (request == null) {
             Logger.error('Folder Placement Job Failed --> request is null').addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);

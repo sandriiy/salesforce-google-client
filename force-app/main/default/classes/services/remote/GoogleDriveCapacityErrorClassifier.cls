@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Tells a Drive error that means "this drive is full" apart from every other failure, which is what
+ * decides whether an upload moves to the next folder or gives up. It reads the error body and falls back
+ * to matching on the text, because the library wraps the response rather than handing it over whole.
+ */
 public with sharing class GoogleDriveCapacityErrorClassifier {
     private static final Integer CAPACITY_HTTP_CODE = 403;
 
@@ -30,6 +35,12 @@ public with sharing class GoogleDriveCapacityErrorClassifier {
         'numChildrenInNonRootLimitExceeded'
     };
 
+    /**
+     * Says whether this failure means the drive or folder is out of room.
+     *
+     * @param ex The exception the Drive call threw.
+     * @return True when moving to another folder is worth trying.
+     */
     public static Boolean isCapacityExhaustedError(Exception ex) {
         String message = extractMessage(ex);
         if (String.isBlank(message)) return false;
@@ -44,6 +55,12 @@ public with sharing class GoogleDriveCapacityErrorClassifier {
         return matchesBySubstring(message);
     }
 
+    /**
+     * Pulls the reason code out of a Drive error for the log.
+     *
+     * @param ex The exception the Drive call threw.
+     * @return The reason Google gave, or null when there was none to find.
+     */
     public static String extractReason(Exception ex) {
         String message = extractMessage(ex);
         if (String.isBlank(message)) return null;

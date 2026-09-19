@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Everything about who can reach a file: reading its sharing, sharing it with a user or a group,
+ * attaching it to another record and taking any of that away. Every method checks the running user
+ * first, and everything that changes sharing needs Edit on the file.
+ */
 public without sharing class GoogleLocalFileSharingService {
 	public class GoogleLocalFileSharingException extends Exception {}
 
@@ -30,12 +35,23 @@ public without sharing class GoogleLocalFileSharingService {
 		this.uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
 	}
 
+	/**
+	 * Builds the service on a unit of work you already have.
+	 *
+	 * @param injectedUow The unit of work to register on. A null gets one of its own.
+	 */
 	public GoogleLocalFileSharingService(IGoogleUnitOfWork injectedUow) {
 		this.uow = injectedUow == null
 			? new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER)
 			: injectedUow;
 	}
 
+	/**
+	 * Reads who a file is shared with, which records it reaches and who owns it.
+	 *
+	 * @param localFileRecordId The file to read.
+	 * @return The sharing picture of that file.
+	 */
 	public GoogleSharingInfoDTO fetchSharingDetails(Id localFileRecordId) {
 		GoogleFileSharingCommand.RetrieveSharingCommand retrieveSharingCommand = new GoogleFileSharingCommand(uow)
 			.retrieveSharing()
@@ -54,6 +70,15 @@ public without sharing class GoogleLocalFileSharingService {
 		}
 	}
 
+	/**
+	 * Shares a file with a user, a group or a record.
+	 *
+	 * @param localFileRecordId The file to share.
+	 * @param shareToObjectApiName The object name when sharing to a record, otherwise null.
+	 * @param shareToRecordId The user, group or record to share with.
+	 * @param uiAccessLevel "Viewer" or "Collaborator".
+	 * @return The Id of the new share or link.
+	 */
 	public Id createNewSharing(Id localFileRecordId, String shareToObjectApiName, Id shareToRecordId, String uiAccessLevel) {
 		GoogleFileSharingCommand.CreateSharingCommand createSharingCommand = new GoogleFileSharingCommand(uow)
 			.createSharing()
@@ -72,6 +97,13 @@ public without sharing class GoogleLocalFileSharingService {
 		}
 	}
 
+	/**
+	 * Changes what an existing share grants.
+	 *
+	 * @param localFileRecordId The shared file.
+	 * @param shareToRecordId Whose access is changing.
+	 * @param uiAccessLevel The new access level.
+	 */
 	public void modifyExistingSharingAccess(Id localFileRecordId, Id shareToRecordId, String uiAccessLevel) {
 		GoogleFileSharingCommand.ModifySharingCommand modifySharingCommand = new GoogleFileSharingCommand(uow)
 			.modifySharing()
@@ -90,6 +122,13 @@ public without sharing class GoogleLocalFileSharingService {
 		}
 	}
 
+	/**
+	 * Changes whether a record link reaches Experience Cloud users, using "AllUsers" or "InternalUsers".
+	 *
+	 * @param localFileRecordId The shared file.
+	 * @param shareToRecordId The record whose link is changing.
+	 * @param visibility The new visibility.
+	 */
 	public void modifyExistingSharingVisibility(Id localFileRecordId, Id shareToRecordId, String visibility) {
 		GoogleFileSharingCommand.ModifySharingCommand modifySharingCommand = new GoogleFileSharingCommand(uow)
 			.modifySharing()
@@ -108,6 +147,12 @@ public without sharing class GoogleLocalFileSharingService {
 		}
 	}
 
+	/**
+	 * Takes a share or a record link away.
+	 *
+	 * @param localFileRecordId The shared file.
+	 * @param shareToRecordId Who or what loses access.
+	 */
 	public void deleteExistingSharing(Id localFileRecordId, Id shareToRecordId) {
 		GoogleFileSharingCommand.DeleteSharingCommand deleteSharingCommand = new GoogleFileSharingCommand(uow)
 			.deleteSharing()
@@ -125,6 +170,15 @@ public without sharing class GoogleLocalFileSharingService {
 		}
 	}
 
+	/**
+	 * Attaches a file that already exists to another record, so the same file serves both without being
+	 * uploaded twice, and queues the Drive shortcut when the folder structure calls for one.
+	 *
+	 * @param localFileRecordId The file to attach. Only the owner may do this.
+	 * @param relatedRecordId The record to attach it to.
+	 * @param source Where it should show up on that record.
+	 * @return The Id of the link, new or already there.
+	 */
 	public Id attachExistingFileToRecord(Id localFileRecordId, Id relatedRecordId, String source) {
 		GoogleFileSharingCommand.CreateSharingCommand createSharingCommand = new GoogleFileSharingCommand(uow)
 			.createSharing()
@@ -153,6 +207,13 @@ public without sharing class GoogleLocalFileSharingService {
 		}
 	}
 
+	/**
+	 * Lists the records a file reaches, keeping only the ones the running user may know about and filling in
+	 * each record name.
+	 *
+	 * @param localFileRecordId The file whose records are wanted.
+	 * @return The readable links with their record names.
+	 */
 	public List<GoogleFileLink__c> retrieveLinkedRecords(Id localFileRecordId) {
 		GoogleFileLinkSelector selector = GoogleFileLinkSelector.query()
 			.withBaseFields()

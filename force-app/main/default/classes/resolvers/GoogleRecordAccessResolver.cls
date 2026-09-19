@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Answers what a user may do with ordinary Salesforce records, which is how a file linked to a record
+ * borrows that record's access. Always go through here rather than querying UserRecordAccess yourself,
+ * because that object takes at most 200 record Ids per query and this batches around it.
+ */
 public without sharing class GoogleRecordAccessResolver {
 	@TestVisible
 	private static final String MOCK_ID = 'GoogleRecordAccessResolver';
@@ -30,6 +35,14 @@ public without sharing class GoogleRecordAccessResolver {
 	@TestVisible
 	private static Map<Id, GoogleRecordAccessDTO> accessOverrideByRecordId;
 
+	/**
+	 * Resolves access to many records at once. Records the user cannot reach at all are simply missing from
+	 * the map rather than present with everything false.
+	 *
+	 * @param userId The user whose access is being resolved.
+	 * @param recordIds The records to check, in any number and of any object.
+	 * @return What the user may do, keyed by record Id.
+	 */
 	public Map<Id, GoogleRecordAccessDTO> resolveAccess(Id userId, Set<Id> recordIds) {
 		Map<Id, GoogleRecordAccessDTO> accessByRecordId = new Map<Id, GoogleRecordAccessDTO>();
 		if (userId == null || recordIds == null || recordIds.isEmpty()) {
@@ -57,11 +70,26 @@ public without sharing class GoogleRecordAccessResolver {
 		return accessByRecordId;
 	}
 
+	/**
+	 * Resolves access to one record.
+	 *
+	 * @param userId The user whose access is being resolved.
+	 * @param recordId The record to check.
+	 * @return What the user may do, or null when the record is out of reach.
+	 */
 	public GoogleRecordAccessDTO resolveAccess(Id userId, Id recordId) {
 		if (recordId == null) return null;
 		return resolveAccess(userId, new Set<Id>{ recordId }).get(recordId);
 	}
 
+	/**
+	 * Says whether the user can read the record, which is the usual question before letting them near a
+	 * file attached to it.
+	 *
+	 * @param userId The user whose access is being resolved.
+	 * @param recordId The record to check.
+	 * @return True when the user can read it.
+	 */
 	public Boolean hasReadAccess(Id userId, Id recordId) {
 		GoogleRecordAccessDTO recordAccess = resolveAccess(userId, recordId);
 		return recordAccess != null && recordAccess.hasReadAccess == true;

@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Picks one of the configured Google Drive labels for a file and applies it in Drive when the model is
+ * sure enough. It asks for two plain text lines rather than JSON because the shipped guard envelope
+ * forbids JSON, and it never labels a version twice. The label goes on the uploaded file first, and on
+ * the Workspace copy only as a courtesy, since the original is the one that counts.
+ */
 public with sharing class GoogleFileLabelCommand extends GoogleFileIntelligenceCommandBase {
 	private static final String OPERATION_TYPE = GoogleAiPromptContext.OPERATION_LABEL;
 	private static final String NO_LABEL_ANSWER = 'None';
@@ -36,6 +42,17 @@ public with sharing class GoogleFileLabelCommand extends GoogleFileIntelligenceC
 	private List<GoogleAiLabelDefinitionDTO> labelDefinitions = new List<GoogleAiLabelDefinitionDTO>();
 	private GoogleFileVersion__c targetFileVersion;
 
+	/**
+	 * Decides on a label for one version and applies it when the confidence reaches the configured minimum.
+	 * A file the model is unsure about comes back with applied false and no error, which is the normal way
+	 * for a file to stay unlabeled.
+	 *
+	 * @param localGoogleFileVersionId The version to label.
+	 * @param providerName The provider name to report back.
+	 * @param modelName The model to call.
+	 * @param genAiClient The client the request goes through.
+	 * @return The chosen label, the confidence, and whether Drive accepted it.
+	 */
 	public GoogleFileLabelResultDTO label(Id localGoogleFileVersionId, String providerName, String modelName, IGenAiClient genAiClient) {
 		GoogleFileLabelResultDTO result = new GoogleFileLabelResultDTO();
 		result.provider = providerName;

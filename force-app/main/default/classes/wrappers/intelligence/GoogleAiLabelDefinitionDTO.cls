@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * One label an administrator described, as stored in the configuration. The description is what the model
+ * compares a document against, so it is worth writing properly. Label field values are not supported yet.
+ */
 public class GoogleAiLabelDefinitionDTO {
 	@AuraEnabled
 	public String name;
@@ -29,6 +33,12 @@ public class GoogleAiLabelDefinitionDTO {
 	@AuraEnabled
 	public String description;
 
+	/**
+	 * Whether this definition can be used at all. An incomplete one is dropped rather than sent, so a half
+	 * filled row in the editor never breaks an upload.
+	 *
+	 * @return True when the name, the Drive label Id and the description are all there.
+	 */
 	public Boolean isComplete() {
 		return String.isNotBlank(name) && String.isNotBlank(labelId) && String.isNotBlank(description);
 	}

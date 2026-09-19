@@ -33,6 +33,7 @@ Google Client ships Lightning components that you place on record pages and app 
 
 - [Configure Components (Core Clouds)](../usage/core-clouds.md) — Sales Cloud, Service Cloud, custom apps, and standard record pages
 - [Configure Components (Experience Cloud)](../usage/experience-cloud.md) — LWR and Aura sites, which need their own pages
+- [Uploader in Screen Flows](../features/flows-automation/uploader-screen-flows.md) — collect uploads inside a screen flow, with Flow actions beside it for folders, uploads, downloads and file text
 
 ## 5. Optional: AI & Intelligence
 

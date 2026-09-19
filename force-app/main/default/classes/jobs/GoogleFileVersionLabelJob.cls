@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Labels each new file with one of the configured Google Drive labels. It is its own job rather than part
+ * of the summary one so every chunk gets its own callout budget, which matters once a thinking budget
+ * makes the calls slow. Labels are saved in one commit at the end, after the Drive calls, since DML
+ * cannot come before a callout.
+ */
 public with sharing class GoogleFileVersionLabelJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFileVersionLabelJobException extends Exception {}
 
@@ -33,15 +39,30 @@ public with sharing class GoogleFileVersionLabelJob extends GQueueableJob.Allows
 	private final Set<Id> versionIds;
 	private final Map<Id, GoogleFileLabelResultDTO> capturedTestResultsByVersionId;
 
+	/**
+	 * Builds the job for a set of versions.
+	 *
+	 * @param versionIds The versions to label.
+	 */
 	public GoogleFileVersionLabelJob(Set<Id> versionIds) {
 		this.versionIds = versionIds == null ? new Set<Id>() : new Set<Id>(versionIds);
 		this.capturedTestResultsByVersionId = captureTestResultsByVersionId();
 	}
 
+	/**
+	 * Copies the job when it is chained, which has to be spelled out because the generic copy cannot resolve
+	 * this type on its own.
+	 *
+	 * @return A copy of this job.
+	 */
 	public override GQueueableJob cloneForDeepCopy() {
 		return (GQueueableJob) JSON.deserialize(JSON.serialize(this), GoogleFileVersionLabelJob.class);
 	}
 
+	/**
+	 * Labels each version and records the ones Drive accepted. A file the model was unsure about is noted and
+	 * left unlabeled, which is the normal outcome rather than a failure.
+	 */
 	public override void work() {
 		if (skipExecution) return;
 		if (this.versionIds.isEmpty()) return;

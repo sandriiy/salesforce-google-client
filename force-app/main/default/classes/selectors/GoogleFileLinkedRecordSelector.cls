@@ -21,10 +21,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Reads the ordinary Salesforce records a file is attached to, whatever object they are. Ids are grouped
+ * by object first, because one query cannot span several objects, which is the price of a link that can
+ * point anywhere.
+ */
 public inherited sharing class GoogleFileLinkedRecordSelector {
     @TestVisible
     private static final String MOCK_ID = 'GoogleFileLinkedRecordSelector';
 
+    /**
+     * Reads records of any mix of objects in as few queries as there are objects.
+     *
+     * @param recordIds The records to read.
+     * @param fieldApiNames The fields to select on top of the Id.
+     * @return The records by Id, leaving out anything that no longer exists.
+     */
     public static Map<Id, SObject> selectByIds(Set<Id> recordIds, List<String> fieldApiNames) {
         Map<Id, SObject> recordsById = new Map<Id, SObject>();
         if (recordIds == null || recordIds.isEmpty()) {
@@ -66,11 +78,24 @@ public inherited sharing class GoogleFileLinkedRecordSelector {
         return recordsById;
     }
 
+    /**
+     * Reads one record of any object.
+     *
+     * @param recordId The record to read.
+     * @param fieldApiNames The fields to select on top of the Id.
+     * @return The record, or null when it is gone.
+     */
     public static SObject selectById(Id recordId, List<String> fieldApiNames) {
         if (recordId == null) return null;
         return selectByIds(new Set<Id>{ recordId }, fieldApiNames).get(recordId);
     }
 
+    /**
+     * Reads records of any mix of objects, Ids only.
+     *
+     * @param recordIds The records to read.
+     * @return The records by Id.
+     */
     public static Map<Id, SObject> selectByIds(Set<Id> recordIds) {
         return selectByIds(recordIds, null);
     }

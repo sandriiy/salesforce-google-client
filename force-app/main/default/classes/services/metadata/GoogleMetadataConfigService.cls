@@ -21,6 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Reads and writes the single Google Client configuration record. Every setting has a safe default here,
+ * because a field added in a new version is empty in every org that upgrades into it and the package has
+ * to keep behaving exactly as before until an administrator opts in. The record is read with a real
+ * query once per transaction rather than through the custom metadata cache, which cuts long text fields
+ * to 255 characters and quietly shortened prompts. Writing goes through the Metadata API, so a save is
+ * a deployment and lands a moment later.
+ */
 public inherited sharing class GoogleMetadataConfigService {
 	public class GoogleMetadataConfigException extends Exception {}
 
@@ -28,16 +36,57 @@ public inherited sharing class GoogleMetadataConfigService {
 	private static GoogleCacheConfigService cacheService = new GoogleCacheConfigService(orgWideProvider);
 
 	public static final String DEFAULT_METADATA_DEPLOY_KEY = 'DefaultGoogleMetadataDeployerKey';
+	/**
+	 * The shipped authorizer, used whenever an org has not named one of its own.
+	 */
 	public static final String DEFAULT_AUTH_CLASS_NAME = 'DefaultGoogleDriveAuthorizer';
+	/**
+	 * The strictness prompt inspection runs at when nothing is chosen.
+	 */
 	public static final String DEFAULT_AI_SAFETY_MODE = 'Standard';
+	/**
+	 * The columns File Explorer shows when an administrator has not picked any.
+	 */
 	public static final String DEFAULT_FILE_EXPLORER_COLUMNS = 'title;isLinked;access;owner;lastModified';
 	public static final Set<String> SUPPORTED_AI_SAFETY_MODES = new Set<String>{ 'Strict', 'Standard', 'Relaxed', 'Off' };
+	/**
+	 * The size in bytes above which a file is treated as large, for previews and for uploads alike.
+	 */
 	public static final Long DEFAULT_BIG_FILE_SIZE = 2097152L;
+	/**
+	 * How many files one delete job trashes in Drive before chaining another.
+	 */
 	public static final Integer DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
+	/**
+	 * How long an answer to a question may be when nothing is configured.
+	 */
 	public static final Integer DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
+	/**
+	 * How sure the model must be before a label is applied when nothing is configured.
+	 */
 	public static final Integer DEFAULT_AI_LABELING_MIN_CONFIDENCE = 80;
+	/**
+	 * How much reasoning a labeling call gets when nothing is configured, which is none.
+	 */
 	public static final Integer DEFAULT_AI_LABELING_THINKING_BUDGET = 0;
+	/**
+	 * How many labels an administrator may define. Anything past this is ignored rather than sent.
+	 */
 	public static final Integer MAX_AI_LABEL_DEFINITIONS = 20;
+	/**
+	 * The switches that turn AI on. Deactivation sets every one of them to false.
+	 */
+	public static final Set<String> AI_FEATURE_FLAG_FIELDS = new Set<String>{ 'IsFileIntelligenceEnabled__c', 'IsAiLabelingEnabled__c' };
+	/**
+	 * Everything an administrator entered for AI. Deactivation clears every one of them, which is what makes
+	 * it a reset rather than a pause. Add a new AI setting and it belongs in here too.
+	 */
+	public static final Set<String> AI_CONFIGURATION_FIELDS = new Set<String>{
+		'CustomGeminiApiKey__c', 'CustomModelName__c', 'CustomAgentProjectId__c', 'CustomAgentLocation__c',
+		'CustomSummaryPrompt__c', 'CustomQuestionPrompt__c', 'QuestionMaxOutputTokens__c',
+		'AiSafetyMode__c', 'CustomAiPromptSafetyGuardClass__c',
+		'CustomLabelingPrompt__c', 'AiLabelingMinConfidence__c', 'AiLabelingThinkingBudget__c', 'AiLabelDefinitions__c'
+	};
 	public static final String DEFAULT_SUMMARY_PROMPT = 'Create a very short summary of the provided document content that starts with "This file describes". Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief.';
 	public static final String DEFAULT_LABELING_PROMPT = 'You classify one business document into exactly one of the labels defined by the administrator. Read the document text and compare it against every label description. Choose a label only when the document clearly matches that description. When the document fits none of the labels, fits several of them equally well, or you are not sure, answer None. Never invent a label that is not in the list and use only the document text provided.';
 	public static final String DEFAULT_QUESTION_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
@@ -60,12 +109,25 @@ public inherited sharing class GoogleMetadataConfigService {
         this(new DefaultMetadataDeployer());
     }
 
+	/**
+	 * Builds the service on a deployer of your choosing, which is the seam that keeps saving testable.
+	 *
+	 * @param deployer What the configuration deployment is handed to.
+	 */
 	public GoogleMetadataConfigService(IGoogleMetadataDeployer deployer) {
 		this.metadataDeployer = deployer;
 
 		this.configRecord = configRecordOverride != null ? configRecordOverride : resolveConfigRecord();
     }
 
+    /**
+     * Saves the fields you name and leaves every other one alone, filling in defaults for anything that is
+     * still empty and now needs a value. The deployment is asynchronous, so the record has not changed yet
+     * when this returns.
+     *
+     * @param fieldApiToValue The fields to change, by API name.
+     * @return The deployment Id to follow, or null when there was nothing to change.
+     */
     public Id saveConfig(Map<String, Object> fieldApiToValue) {
         if (fieldApiToValue == null || fieldApiToValue.isEmpty()) {
             return null;
@@ -74,44 +136,113 @@ public inherited sharing class GoogleMetadataConfigService {
 		return deployNewMetadataChanges(applyManagedDefaults(fieldApiToValue));
     }
 
+	/**
+	 * Turns AI off and clears everything an administrator entered for it, so it can be set up again from
+	 * scratch or against another provider. Google Drive settings are untouched, and summaries and labels
+	 * already stored on files stay where they are.
+	 *
+	 * @return The deployment Id to follow.
+	 */
+	public Id deactivateAiConfig() {
+		Map<String, Object> clearedValues = new Map<String, Object>();
+		for (String fieldApiName : AI_CONFIGURATION_FIELDS) clearedValues.put(fieldApiName, null);
+		for (String fieldApiName : AI_FEATURE_FLAG_FIELDS) clearedValues.put(fieldApiName, false);
+
+		Logger.info('Deactivate AI Configuration --> Cleared=' + String.join(new List<String>(clearedValues.keySet()), ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		Logger.saveLog();
+
+		return saveConfig(clearedValues);
+	}
+
+    /**
+     * The configuration record itself, for a caller that wants a field this service has no getter for.
+     *
+     * @return The record, which is never null but may be empty on a fresh install.
+     */
     public GoogleClientConfig__mdt getConfig() {
         return configRecord;
     }
 
+	/**
+	 * Says whether the configuration has ever been saved, which is what separates a fresh install from a
+	 * configured org.
+	 *
+	 * @return True when a record exists.
+	 */
 	public Boolean hasConfigRecord() {
 		return String.isNotBlank(configRecord == null ? null : configRecord.DeveloperName);
 	}
 
+	/**
+	 * The resolver that decides where uploads go.
+	 *
+	 * @return The shipped resolver, which reads the configured upload folders.
+	 */
 	public IGoogleTargetFolderResolver getTargetFolderResolver() {
 		return new GoogleMetadataTargetFolderResolver(this);
 	}
 
+    /**
+     * Whether previews are turned off for the org.
+     *
+     * @return True when no preview copies should be made or shown.
+     */
     public Boolean isPreviewDisabled() {
 		return configRecord.IsFilePreviewDisabled__c == true;
     }
 
+	/**
+	 * Whether large uploads may go straight from the browser to Google Drive.
+	 *
+	 * @return True when direct upload is switched on.
+	 */
 	public Boolean isDirectBrowserUploadEnabled() {
 		return configRecord.IsDirectBrowserUploadEnabled__c == true;
 	}
 
+	/**
+	 * Whether a file owner may open a file in Google Drive.
+	 *
+	 * @return True when the action is switched on.
+	 */
 	public Boolean isOpenInDriveEnabled() {
 		return configRecord.IsOpenInDriveEnabled__c == true;
 	}
 
+	/**
+	 * The size above which a file counts as large.
+	 *
+	 * @return The configured size, or the shipped default.
+	 */
 	public Long getBigFileSizeInBytes() {
 		Decimal configuredValue = configRecord.DefaultBigFileSize__c;
 		return configuredValue == null ? DEFAULT_BIG_FILE_SIZE : configuredValue.longValue();
     }
 
+	/**
+	 * How many files one delete job trashes in Drive before chaining another.
+	 *
+	 * @return The configured size, or the shipped default.
+	 */
 	public Integer getDeleteChainSize() {
 		Decimal configuredValue = configRecord.MaxDeleteChainSize__c;
 		return configuredValue == null ? DEFAULT_MAX_DELETE_CHAIN_SIZE : configuredValue.intValue();
     }
 
+    /**
+     * The main Google Drive folder uploads go to.
+     *
+     * @return The folder Id, or null when Drive has not been configured yet.
+     */
     public String getDefaultUploadFolderId() {
         return configRecord.DefaultGoogleUploadFolderId__c;
     }
 
+    /**
+     * The fallback folders, in the order they should be tried.
+     *
+     * @return The extra folders, empty when none are configured.
+     */
     public List<String> getAdditionalUploadFolderIds() {
         String raw = configRecord.AdditionalGoogleUploadFolderIds__c;
         List<String> result = new List<String>();
@@ -126,6 +257,11 @@ public inherited sharing class GoogleMetadataConfigService {
         return result;
     }
 
+    /**
+     * Every upload folder in priority order, the main one first and no repeats.
+     *
+     * @return The folders an upload may go to.
+     */
     public List<String> getAllUploadFolderIds() {
         List<String> ordered = new List<String>();
         Set<String> seen = new Set<String>();
@@ -148,6 +284,11 @@ public inherited sharing class GoogleMetadataConfigService {
         return ordered;
     }
 
+    /**
+     * The columns File Explorer should show, in order.
+     *
+     * @return The configured column tokens, or the shipped default set.
+     */
     public List<String> getFileExplorerColumns() {
         String raw = configRecord.FileExplorerColumns__c;
         if (String.isBlank(raw)) {
@@ -164,23 +305,49 @@ public inherited sharing class GoogleMetadataConfigService {
         return result;
     }
 
+    /**
+     * The Apex class that gets the Google access token, which an org can replace with its own.
+     *
+     * @return The configured class name, or the shipped authorizer.
+     */
     public String getGoogleDriveAuthorizerClassName() {
         String customClassName = configRecord.CustomGoogleAuthorizerClass__c;
 		return String.isNotBlank(customClassName) ? customClassName : DEFAULT_AUTH_CLASS_NAME;
     }
 
+	/**
+	 * The Google service account Salesforce authenticates as.
+	 *
+	 * @return The configured account, or null.
+	 */
 	public String getGoogleDriveServiceAccountEmail() {
         return configRecord.CustomGoogleServiceAccount__c;
     }
 
+	/**
+	 * The Salesforce certificate the token request is signed with.
+	 *
+	 * @return The configured certificate name, or null.
+	 */
 	public String getGoogleDriveCertificateName() {
         return configRecord.CustomGoogleCertificate__c;
     }
 
+	/**
+	 * How folders are laid out in Drive, such as a folder per user, per record, or both nested.
+	 *
+	 * @return The configured structure, or null when files go straight into the upload folder.
+	 */
 	public String getGoogleDriveFolderStructure() {
         return configRecord.CustomGoogleUploadFolderStructure__c;
     }
 
+	/**
+	 * Whether the configured structure keeps a folder per record, which is what shortcuts and record folder
+	 * lookups depend on.
+	 *
+	 * @return True when records get their own folders.
+	 */
 	public Boolean requiresRecordFolder() {
 		String folderStructure = getGoogleDriveFolderStructure();
 		return (
@@ -190,41 +357,87 @@ public inherited sharing class GoogleMetadataConfigService {
 		);
 	}
 
+	/**
+	 * The Gemini Developer API key.
+	 *
+	 * @return The configured key, or null when this org uses Agent Platform or no AI at all.
+	 */
 	public String getGoogleGeminiKey() {
         return configRecord.CustomGeminiApiKey__c;
     }
 
+	/**
+	 * The model AI calls are sent to.
+	 *
+	 * @return The configured model name, or null.
+	 */
 	public String getGoogleAiModel() {
         return configRecord.CustomModelName__c;
     }
 
+	/**
+	 * The Agent Platform region requests go to.
+	 *
+	 * @return The configured location, or null.
+	 */
 	public String getGoogleAgentLocation() {
         return configRecord.CustomAgentLocation__c;
     }
 
+	/**
+	 * The Google Cloud project Agent Platform runs in.
+	 *
+	 * @return The configured project, or null.
+	 */
 	public String getGoogleAgentProjectId() {
         return configRecord.CustomAgentProjectId__c;
     }
 
+	/**
+	 * Whether AI analysis is switched on. With this off nothing is ever sent to a provider.
+	 *
+	 * @return True when summaries, questions and labeling may run.
+	 */
 	public Boolean isFileIntelligenceEnabled() {
 		return configRecord.IsFileIntelligenceEnabled__c == true;
 	}
 
+	/**
+	 * The system prompt used when a file is summarized.
+	 *
+	 * @return The configured prompt, or the shipped one.
+	 */
 	public String getSummaryPrompt() {
 		String configuredValue = configRecord.CustomSummaryPrompt__c;
 		return String.isNotBlank(configuredValue) ? configuredValue : DEFAULT_SUMMARY_PROMPT;
 	}
 
+	/**
+	 * The system prompt used when a question about a file is answered.
+	 *
+	 * @return The configured prompt, or the shipped one.
+	 */
 	public String getQuestionPrompt() {
 		String configuredValue = configRecord.CustomQuestionPrompt__c;
 		return String.isNotBlank(configuredValue) ? configuredValue : DEFAULT_QUESTION_PROMPT;
 	}
 
+	/**
+	 * How long an answer may be, which is also what drives the provider bill.
+	 *
+	 * @return The configured limit, or the shipped default.
+	 */
 	public Integer getQuestionMaxOutputTokens() {
 		Decimal configuredValue = configRecord.QuestionMaxOutputTokens__c;
 		return configuredValue == null ? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS : configuredValue.intValue();
 	}
 
+	/**
+	 * How strictly prompts and answers are inspected. An unrecognised value falls back to the default rather
+	 * than turning inspection off.
+	 *
+	 * @return "Strict", "Standard", "Relaxed" or "Off".
+	 */
 	public String getAiSafetyMode() {
 		String configuredValue = configRecord.AiSafetyMode__c;
 		if (String.isBlank(configuredValue)) {
@@ -234,19 +447,39 @@ public inherited sharing class GoogleMetadataConfigService {
 		return SUPPORTED_AI_SAFETY_MODES.contains(configuredValue) ? configuredValue : DEFAULT_AI_SAFETY_MODE;
 	}
 
+	/**
+	 * The Apex class that inspects prompts and answers, when an org has written its own.
+	 *
+	 * @return The configured class name, or null to use the shipped guard.
+	 */
 	public String getCustomAiPromptSafetyGuardClass() {
 		return configRecord.CustomAiPromptSafetyGuardClass__c;
 	}
 
+	/**
+	 * Whether new files are labeled automatically. Labeling can never be on while analysis is off.
+	 *
+	 * @return True when labeling may run.
+	 */
 	public Boolean isAiLabelingEnabled() {
 		return isFileIntelligenceEnabled() && configRecord.IsAiLabelingEnabled__c == true;
 	}
 
+	/**
+	 * The system prompt used when a label is chosen. The label descriptions are added to it automatically.
+	 *
+	 * @return The configured prompt, or the shipped one.
+	 */
 	public String getLabelingPrompt() {
 		String configuredValue = configRecord.CustomLabelingPrompt__c;
 		return String.isNotBlank(configuredValue) ? configuredValue : DEFAULT_LABELING_PROMPT;
 	}
 
+	/**
+	 * How sure the model must be before a label is applied, clamped to a percentage.
+	 *
+	 * @return A number from 0 to 100.
+	 */
 	public Integer getAiLabelingMinConfidence() {
 		Decimal configuredValue = configRecord.AiLabelingMinConfidence__c;
 		if (configuredValue == null) return DEFAULT_AI_LABELING_MIN_CONFIDENCE;
@@ -256,12 +489,24 @@ public inherited sharing class GoogleMetadataConfigService {
 		return confidence > MAX_CONFIDENCE_PERCENT ? MAX_CONFIDENCE_PERCENT : confidence;
 	}
 
+	/**
+	 * How much room a labeling call gets to reason before answering.
+	 *
+	 * @return The configured budget in tokens, never negative.
+	 */
 	public Integer getAiLabelingThinkingBudget() {
 		Decimal configuredValue = configRecord.AiLabelingThinkingBudget__c;
 		if (configuredValue == null || configuredValue < 0) return DEFAULT_AI_LABELING_THINKING_BUDGET;
 		return configuredValue.intValue();
 	}
 
+	/**
+	 * The labels the AI may choose from. Reading is deliberately forgiving: an incomplete entry, a duplicate
+	 * name, a name too long for the field or a broken payload is dropped rather than raised, so a bad save
+	 * can never stop files being uploaded.
+	 *
+	 * @return The usable label definitions, capped at the maximum.
+	 */
 	public List<GoogleAiLabelDefinitionDTO> getAiLabelDefinitions() {
 		List<GoogleAiLabelDefinitionDTO> definitions = new List<GoogleAiLabelDefinitionDTO>();
 		String raw = configRecord.AiLabelDefinitions__c;
@@ -291,6 +536,11 @@ public inherited sharing class GoogleMetadataConfigService {
 		return definitions;
 	}
 
+	/**
+	 * The domain public links are restricted to, when an org set one.
+	 *
+	 * @return The configured domain, or null to share links with anyone.
+	 */
 	public String getGoogleDriveDomain() {
         return configRecord.OrganizationalDomain__c;
     }

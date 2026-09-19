@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The sharing picture of one file: who owns it, which users and groups it is shared with, and which
+ * records it reaches. The parts nobody asked for come back empty rather than null.
+ */
 public class GoogleSharingInfoDTO {
     @AuraEnabled
 	public Id fileId;

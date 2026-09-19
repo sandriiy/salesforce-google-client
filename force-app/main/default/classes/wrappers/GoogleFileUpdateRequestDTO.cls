@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What GoogleLocalFileService needs to rename a file and its version or change the description. Both
+ * records have to carry their current Name, because that is what the new one is compared against.
+ */
 public class GoogleFileUpdateRequestDTO {
     public GoogleFile__c localGoogleFileRecord;
 	public GoogleFileVersion__c localGoogleFileVersionRecord;

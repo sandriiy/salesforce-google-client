@@ -28,6 +28,10 @@
         <apexClass>GoogleCloudFilesViewController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>GoogleFileUploadAction</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>
         <name>GoogleClientConfig__mdt</name>

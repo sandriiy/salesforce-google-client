@@ -7,6 +7,40 @@ const PROVIDER = {
     AGENT: 'agent'
 };
 
+const AI_STATUS = {
+    on: {
+        className: 'ai-status ai-status-on',
+        title: 'AI Analytics is on',
+        text: 'Summaries, questions and labeling are available to your users.'
+    },
+    off: {
+        className: 'ai-status ai-status-off',
+        title: 'AI Analytics is off',
+        text: 'Provider details are saved, but nothing is sent to the provider until AI Analytics is turned on under Advanced → AI Intelligence.'
+    },
+    notConnected: {
+        className: 'ai-status ai-status-not-connected',
+        title: 'AI is not connected',
+        text: 'Connect Gemini or Agent Platform below to make summaries, questions and labeling available.'
+    }
+};
+
+const SAVED_INTELLIGENCE_KEYS = [
+    'customGeminiApiKey',
+    'customModelName',
+    'customAgentLocation',
+    'customAgentProjectId',
+    'customSummaryPrompt',
+    'customQuestionPrompt',
+    'questionMaxOutputTokens',
+    'aiSafetyMode',
+    'customAiPromptSafetyGuardClass',
+    'customLabelingPrompt',
+    'aiLabelingMinConfidence',
+    'aiLabelingThinkingBudget',
+    'aiLabelDefinitions'
+];
+
 export default class GoogleCloudIntelligenceConfig extends LightningElement {
     @api draft;
     @api server;
@@ -35,6 +69,10 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         });
 
         return isValid;
+    }
+
+    @api resetProviderSelection() {
+        this.currentProvider = null;
     }
 
     dispatchFieldChange(field, value) {
@@ -103,6 +141,10 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         this.dispatchAction('revert');
     }
 
+    handleDeactivate() {
+        this.dispatchAction('deactivate');
+    }
+
     inferProviderFromDraft() {
         const hasAgentSetup =
             !!asString(this.draft?.customAgentProjectId).trim() ||
@@ -155,6 +197,52 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         }
 
         return 'Save & Validate';
+    }
+
+    get isAnalysisOn() {
+        return !!this.server?.isFileIntelligenceEnabled;
+    }
+
+    get isProviderSaved() {
+        const hasModel = !!asString(this.server?.customModelName).trim();
+        const hasGemini = !!asString(this.server?.customGeminiApiKey).trim();
+        const hasAgent = !!asString(this.server?.customAgentProjectId).trim() && !!asString(this.server?.customAgentLocation).trim();
+        return hasModel && (hasGemini || hasAgent);
+    }
+
+    get hasSavedIntelligenceSetup() {
+        if (this.isAnalysisOn || !!this.server?.isAiLabelingEnabled) {
+            return true;
+        }
+
+        return SAVED_INTELLIGENCE_KEYS.some((key) => {
+            const value = this.server?.[key];
+            return value !== null && value !== undefined && asString(value).trim() !== '';
+        });
+    }
+
+    get showDeactivation() {
+        return !!this.server?.hasPersistedRecord && this.hasSavedIntelligenceSetup;
+    }
+
+    get status() {
+        if (this.isAnalysisOn) {
+            return AI_STATUS.on;
+        }
+
+        return this.isProviderSaved ? AI_STATUS.off : AI_STATUS.notConnected;
+    }
+
+    get statusClass() {
+        return this.status.className;
+    }
+
+    get statusTitle() {
+        return this.status.title;
+    }
+
+    get statusText() {
+        return this.status.text;
     }
 
     get isConfigDirty() {

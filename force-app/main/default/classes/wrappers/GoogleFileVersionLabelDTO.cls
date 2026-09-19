@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * One label applied to one version, with enough about that version to show which one it was and whether
+ * it is still the current one.
+ */
 public class GoogleFileVersionLabelDTO {
 	@AuraEnabled
 	public Id id;
@@ -37,6 +41,13 @@ public class GoogleFileVersionLabelDTO {
 	@AuraEnabled
 	public Boolean isLatestVersion;
 
+	/**
+	 * Builds the display shape from the label and the version it belongs to.
+	 *
+	 * @param versionLabel The stored label.
+	 * @param localFileVersion The version it was applied to, or null when it is not loaded.
+	 * @return The label ready for display.
+	 */
 	public static GoogleFileVersionLabelDTO of(GoogleFileVersionLabel__c versionLabel, GoogleFileVersion__c localFileVersion) {
 		GoogleFileVersionLabelDTO dto = new GoogleFileVersionLabelDTO();
 		dto.id = versionLabel.Id;

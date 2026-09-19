@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Puts a Google Drive shortcut into a record folder after a file that already exists is attached to
+ * another record. It runs as a job because it is a Drive callout following the insert of the link.
+ */
 public with sharing class GoogleFileCloudShortcutJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFileCloudShortcutJobException extends Exception {}
 
@@ -31,12 +35,22 @@ public with sharing class GoogleFileCloudShortcutJob extends GQueueableJob.Allow
 	private final Id localGoogleFileId;
 	private final Id linkLocalGoogleFileId;
 
+	/**
+	 * Builds the job for one attach.
+	 *
+	 * @param initiatorUserId The user who attached the file, since the job cannot ask later.
+	 * @param localGoogleFileId The file being attached.
+	 * @param linkLocalGoogleFileId The link that was created.
+	 */
 	public GoogleFileCloudShortcutJob(Id initiatorUserId, Id localGoogleFileId, Id linkLocalGoogleFileId) {
 		this.initiatorUserId = initiatorUserId;
 		this.localGoogleFileId = localGoogleFileId;
 		this.linkLocalGoogleFileId = linkLocalGoogleFileId;
 	}
 
+	/**
+	 * Creates the shortcut in the record folder.
+	 */
 	public override void work() {
 		if (skipExecution) return;
 

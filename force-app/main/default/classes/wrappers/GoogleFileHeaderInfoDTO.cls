@@ -21,12 +21,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The compact header of the File Details page, built from the Header field set so an administrator
+ * decides what appears there.
+ */
 public class GoogleFileHeaderInfoDTO {
     @AuraEnabled
 	public String name;
     @AuraEnabled
 	public List<CompactFieldDTO> compactFields;
 
+    /**
+     * One field in the header. A lookup carries both the name to show and the Id to navigate to.
+     */
     public class CompactFieldDTO {
         @AuraEnabled public String apiName;
         @AuraEnabled public String label;

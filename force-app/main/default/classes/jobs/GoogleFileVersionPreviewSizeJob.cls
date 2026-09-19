@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Measures the Google Workspace copy a moment after it was made. Drive answers with a placeholder size
+ * until the conversion is really finished, so this waits a minute, asks again, and tries up to three
+ * times before leaving the size blank. A blank one simply means previews fall back to judging by the
+ * uploaded size.
+ */
 public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFilePreviewSizeJobException extends Exception {}
 
@@ -36,10 +42,21 @@ public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.
 	private final Set<Id> versionIds;
 	private final Integer measurementAttempt;
 
+	/**
+	 * Builds the job for a first attempt.
+	 *
+	 * @param versionIds The versions whose Workspace copy should be measured.
+	 */
 	public GoogleFileVersionPreviewSizeJob(Set<Id> versionIds) {
 		this(versionIds, FIRST_MEASUREMENT_ATTEMPT);
 	}
 
+	/**
+	 * Builds the job for a later attempt, which is how it reschedules itself.
+	 *
+	 * @param versionIds The versions still to measure.
+	 * @param measurementAttempt Which attempt this is, counting from one.
+	 */
 	public GoogleFileVersionPreviewSizeJob(Set<Id> versionIds, Integer measurementAttempt) {
 		this.versionIds = versionIds == null
 			? new Set<Id>()
@@ -49,10 +66,19 @@ public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.
 			: measurementAttempt;
 	}
 
+	/**
+	 * Queues the measurement a minute out, which is the normal way to start it.
+	 *
+	 * @param versionIds The versions to measure.
+	 */
 	public static void schedule(Set<Id> versionIds) {
 		schedule(versionIds, FIRST_MEASUREMENT_ATTEMPT);
 	}
 
+	/**
+	 * Reads the size of each Workspace copy and stores the ones Drive has finished converting, rescheduling
+	 * for the rest.
+	 */
 	public override void work() {
 		if (skipExecution) return;
 		if (this.versionIds.isEmpty()) return;

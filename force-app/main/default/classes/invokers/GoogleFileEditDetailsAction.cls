@@ -21,7 +21,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The Flow face of renaming a file. It changes the file name, the version name and the description, and
+ * is what the shipped Edit Details screen flow calls.
+ */
 public without sharing class GoogleFileEditDetailsAction {
+    /**
+     * The records being edited and the new values. Both records have to carry their current Name, since that
+     * is what the new one is compared against and where the extension is kept from.
+     */
     public class Input {
         @InvocableVariable(required=true)
         public GoogleFile__c localFileRecord;
@@ -35,9 +43,17 @@ public without sharing class GoogleFileEditDetailsAction {
         public String newFileDescription;
     }
 
+    /**
+     * Applies every change the flow supplied in one commit, and does nothing at all when none of them really
+     * changed anything.
+     *
+     * @param inputs One request per file.
+     */
     @InvocableMethod(
         label='Edit Google File Details'
         description='Updates local Google file and Version details'
+        category='Google Client'
+        iconName='slds:standard:file'
     )
     public static void editDetails(List<Input> inputs) {
         if (inputs == null || inputs.isEmpty()) return;

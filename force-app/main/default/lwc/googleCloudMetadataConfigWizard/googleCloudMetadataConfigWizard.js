@@ -14,6 +14,7 @@ import checkConfig from '@salesforce/apex/GoogleCloudConfigController.validateLa
 import validateDriveConfig from '@salesforce/apex/GoogleCloudConfigController.validateDriveMetadataConfig';
 import validateIntelligenceConfig from '@salesforce/apex/GoogleCloudConfigController.validateIntelligenceMetadataConfig';
 import saveConfig from '@salesforce/apex/GoogleCloudConfigController.saveMetadataConfig';
+import deactivateIntelligenceConfig from '@salesforce/apex/GoogleCloudConfigController.deactivateIntelligenceMetadataConfig';
 import initializeDirectUpload from '@salesforce/apex/GoogleCloudDirectUploadController.initializeDirectUpload';
 import reportDirectUploadOutcome from '@salesforce/apex/GoogleCloudDirectUploadController.reportDirectUploadOutcome';
 
@@ -103,6 +104,10 @@ const DEFAULT_AI_LABELING_THINKING_BUDGET = 0;
 const MAX_AI_LABEL_DEFINITIONS = 20;
 const MIN_CONFIDENCE_PERCENT = 0;
 const MAX_CONFIDENCE_PERCENT = 100;
+const AI_PROVIDER_NAMES = {
+    gemini: 'Gemini Developer API',
+    agent: 'Agent Platform'
+};
 const AI_SAFETY_MODE_OPTIONS = [
     { label: 'Strict', value: 'Strict' },
     { label: 'Standard', value: 'Standard' },
@@ -132,6 +137,23 @@ const AI_LABELING_GUIDE_URL = `${DOCS_BASE_URL}/features/artificial-intelligence
 const DEFAULT_SUMMARY_PROMPT = 'Create a very short summary of the provided document content that starts with "This file describes". Use only the text provided in the document and keep the summary accurate. Focus on the main subject and the most important points, names, dates, and numbers. Omit secondary details if the summary needs to stay brief.';
 const DEFAULT_QUESTION_PROMPT = 'You answer user questions about one specific file content. Use only the provided document text and be accurate. If the user refers to a table, column, field, row, section, value, or label with slightly imperfect wording, infer the closest reasonable match from the document before giving up. Prefer the most likely interpretation instead of returning nothing. If multiple interpretations are plausible, answer with the strongest match and briefly mention the ambiguity. If the answer is not available in the document - check if you can figure it out, and if not, reply exactly with "I could not find that in this file". Return plain text only. Keep the response concise, direct, and helpful. Do not use markdown, bullet lists, or headings.';
 const DEFAULT_LABELING_PROMPT = 'You classify one business document into exactly one of the labels defined by the administrator. Read the document text and compare it against every label description. Choose a label only when the document clearly matches that description. When the document fits none of the labels, fits several of them equally well, or you are not sure, answer None. Never invent a label that is not in the list and use only the document text provided.';
+const CLEARED_INTELLIGENCE_STATE = {
+    customGeminiApiKey: '',
+    customModelName: '',
+    customAgentLocation: '',
+    customAgentProjectId: '',
+    isFileIntelligenceEnabled: false,
+    customSummaryPrompt: '',
+    customQuestionPrompt: '',
+    questionMaxOutputTokens: null,
+    aiSafetyMode: '',
+    customAiPromptSafetyGuardClass: '',
+    isAiLabelingEnabled: false,
+    customLabelingPrompt: '',
+    aiLabelingMinConfidence: null,
+    aiLabelingThinkingBudget: null,
+    aiLabelDefinitions: ''
+};
 
 export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     configComponentConstructor;
@@ -190,6 +212,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     dismissedNoticeKey = null;
     pendingNavigation = null;
     contextSubscription = null;
+    isDeactivateAiModalOpen = false;
 
     connectedCallback() {
         this.initActiveConfigComponent();
@@ -387,6 +410,50 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     handleOpenProviderSetup() {
         this.requestNavigation({ view: CONFIG_VIEW.main, section: CONFIG_SECTION.ai });
+    }
+
+    handleDeactivateRequest() {
+        this.isDeactivateAiModalOpen = true;
+    }
+
+    handleDeactivateCancel() {
+        this.isDeactivateAiModalOpen = false;
+    }
+
+    async handleDeactivateConfirm() {
+        this.isDeactivateAiModalOpen = false;
+        this.busy = true;
+        try {
+            showToast(this, 'Deactivating AI...', 'Turning AI off and clearing its configuration. Please stay on this page.', 'info');
+            const deployId = await deactivateIntelligenceConfig();
+            const deployStatus = await this.waitForDeployResult(deployId);
+
+            if (deployStatus === 'fail') {
+                showToast(this, 'Something went wrong', 'Unable to deactivate AI. Please try again or contact your System Administrator', 'error');
+                return;
+            }
+
+            if (deployStatus === 'pending') {
+                showToast(this, 'Still In Progress', 'Taking longer than expected. Refresh the page to confirm AI is off.', 'info');
+                return;
+            }
+
+            this.server = { ...this.server, ...CLEARED_INTELLIGENCE_STATE };
+            this.draft = { ...this.draft, ...CLEARED_INTELLIGENCE_STATE };
+            this.resetSectionProviderSelection();
+            showToast(this, 'AI Deactivated', 'AI is off and its configuration was cleared. You can set it up again at any time', 'success');
+        } catch (error) {
+            showToast(this, 'Action Failed', normalizeError(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    resetSectionProviderSelection() {
+        const configComponent = this.refs.configComponent;
+        if (configComponent && typeof configComponent.resetProviderSelection === 'function') {
+            configComponent.resetProviderSelection();
+        }
     }
 
     handleFieldChange(event) {
@@ -1116,6 +1183,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     get pendingNavigationLabel() {
         return this.pendingNavigation?.view === CONFIG_VIEW.advanced ? 'Advanced settings' : 'Setup';
+    }
+
+    get deactivateAiModalTitle() {
+        const providerName = AI_PROVIDER_NAMES[this.sectionVariant];
+        return providerName ? `Deactivate ${providerName}?` : 'Deactivate AI?';
     }
 
     get hasPersistedConfigRecord() {

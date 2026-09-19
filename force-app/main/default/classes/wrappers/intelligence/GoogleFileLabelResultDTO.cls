@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What a labeling call ended with. success means the model answered, applied means Drive took the label,
+ * and the two differ whenever confidence fell short, which is the normal way a file stays unlabeled.
+ */
 public class GoogleFileLabelResultDTO {
 	public Boolean success;
 	public Boolean blocked;

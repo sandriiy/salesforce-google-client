@@ -21,9 +21,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The shipped way of getting a Google access token, by signing a JWT with the configured service account
+ * and certificate. The scopes are fixed at Drive and cloud platform, which is what both Drive and Agent
+ * Platform need. Name your own class in the configuration to get the token some other way.
+ */
 public with sharing class DefaultGoogleDriveAuthorizer implements GoogleAuthorizer {
     private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
+    /**
+     * Exchanges the signed assertion for an access token.
+     *
+     * @return The token to call Google with.
+     */
     public String retrieveAccessToken() {
         Auth.JWT jwt = new Auth.JWT();
         jwt.setAud('https://oauth2.googleapis.com/token');

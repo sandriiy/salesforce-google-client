@@ -521,6 +521,7 @@
                                 onsavevalidate={handleSaveValidate}
                                 onvalidate={handleValidate}
                                 onrevert={handleRevert}
+                                ondeactivate={handleDeactivateRequest}
                                 onsteperror={handleStepError}
                                 onvaliditychange={handleValidityChange}>
                             </lwc:component>
@@ -561,6 +562,25 @@
                     <lightning-button label="Keep editing" onclick={handleNavigationCancel} disabled={busy}></lightning-button>
                     <lightning-button class="slds-m-left_x-small" label="Discard changes" onclick={handleNavigationDiscard} disabled={busy}></lightning-button>
                     <lightning-button class="slds-m-left_x-small" variant="brand" label="Save and continue" onclick={handleNavigationSave} disabled={busy}></lightning-button>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <template lwc:if={isDeactivateAiModalOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="deactivate-ai-title" class="slds-modal slds-fade-in-open slds-modal_small">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h1 id="deactivate-ai-title" class="slds-modal__title slds-hyphenate">{deactivateAiModalTitle}</h1>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p>AI Analytics and AI Labeling will be turned off for everyone, and the provider details, prompts, label definitions and safety settings will be cleared. Summaries and labels already stored on files are kept.</p>
+                    <p class="slds-m-top_small">You can connect a provider and turn AI back on at any time.</p>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button label="Keep AI" onclick={handleDeactivateCancel} disabled={busy}></lightning-button>
+                    <lightning-button class="slds-m-left_x-small" variant="destructive" label="Deactivate" onclick={handleDeactivateConfirm} disabled={busy}></lightning-button>
                 </div>
             </div>
         </section>

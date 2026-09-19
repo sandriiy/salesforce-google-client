@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Writes the summary of each new file. A version that fails is logged and skipped rather than failing the
+ * whole batch, because one document the model dislikes should not cost the others their summary.
+ */
 public with sharing class GoogleFileVersionSummaryJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFileVersionSummaryJobException extends Exception {}
 
@@ -33,15 +37,30 @@ public with sharing class GoogleFileVersionSummaryJob extends GQueueableJob.Allo
 	private final Set<Id> versionIds;
 	private final Map<Id, GoogleFileAnalysisResultDTO> capturedTestResultsByVersionId;
 
+	/**
+	 * Builds the job for a set of versions.
+	 *
+	 * @param versionIds The versions to summarize.
+	 */
 	public GoogleFileVersionSummaryJob(Set<Id> versionIds) {
 		this.versionIds = versionIds == null ? new Set<Id>() : new Set<Id>(versionIds);
 		this.capturedTestResultsByVersionId = captureTestResultsByVersionId();
 	}
 
+	/**
+	 * Copies the job when it is chained, which has to be spelled out because the generic copy cannot resolve
+	 * this type on its own.
+	 *
+	 * @return A copy of this job.
+	 */
 	public override GQueueableJob cloneForDeepCopy() {
 		return (GQueueableJob) JSON.deserialize(JSON.serialize(this), GoogleFileVersionSummaryJob.class);
 	}
 
+	/**
+	 * Summarizes each version and saves the ones that worked in a single commit. With AI unavailable it
+	 * simply returns, leaving the files without summaries.
+	 */
 	public override void work() {
 		if (skipExecution) return;
 		if (this.versionIds.isEmpty()) return;

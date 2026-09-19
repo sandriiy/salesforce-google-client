@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Keeps the searchable copy of the label names on the version in step with the label records themselves,
+ * on every insert, update, delete and undelete. On an update only the rows whose name or parent really
+ * changed are resynced.
+ */
 public with sharing class GoogleFileVersionLabelTriggerHandler extends GTriggerHandler {
 	private static final Set<String> LABEL_NAME_SOURCE_FIELDS = new Set<String>{ 'Name', 'GoogleFileVersionId__c' };
 

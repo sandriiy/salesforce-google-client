@@ -33,10 +33,7 @@ Ordinary failures — a bad file, an expired token, a network problem — are **
 ## Choosing the Folders
 
 !!! tip
-    Use folders on **separate Shared Drives** rather than several folders on the same drive. Most capacity limits apply to the drive as a whole, so an extra folder on a drive that is already full will not accept uploads either.
-
-!!! note
-    Files already stored in an earlier folder are never moved. This only affects where **new** uploads are placed, so a record can end up with files in more than one drive over time. Each file keeps its own location, and every Google Client component continues to find it.
+    Use folders on **separate Shared Drives** rather than several on the same drive, since most capacity limits apply to the drive as a whole. Files already stored are never moved, so a record can end up with files in more than one drive, and every component still finds them.
 
 ## Planning Ahead
 

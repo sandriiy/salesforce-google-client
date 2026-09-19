@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What an AI operation ended with. Read success first, then blocked, which means the safety guard or the
+ * configuration stopped it rather than the model failing, and errorMessage for something a user can be
+ * shown.
+ */
 public with sharing class GoogleFileAnalysisResultDTO {
     @AuraEnabled
     public Boolean success;

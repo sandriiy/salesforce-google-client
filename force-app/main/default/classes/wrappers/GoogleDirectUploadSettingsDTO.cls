@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Whether this org sends large uploads straight from the browser, which is what the uploader asks before
+ * choosing how to send.
+ */
 public class GoogleDirectUploadSettingsDTO {
 	@AuraEnabled
 	public Boolean isDirectUploadEnabled;

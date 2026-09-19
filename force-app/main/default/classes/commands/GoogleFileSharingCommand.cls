@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The way into everything sharing: who a file is shared with, which records it is attached to, and
+ * changing or removing either. Sharing a file with a user or a group writes a GoogleFile__Share, while
+ * attaching it to a record writes a GoogleFileLink__c, and the caller does not have to know which.
+ * Unlike the other commands these ones commit as they go, so hand them a unit of work of their own.
+ */
 public without sharing class GoogleFileSharingCommand {
 	public class GoogleFileSharingException extends Exception {}
 
@@ -32,18 +38,38 @@ public without sharing class GoogleFileSharingCommand {
 		this.support = new SharingSupport();
 	}
 
+	/**
+	 * Starts a read of who a file is shared with.
+	 *
+	 * @return The command to narrow with forFile() and the include options.
+	 */
 	public RetrieveSharingCommand retrieveSharing() {
 		return new RetrieveSharingCommand(support);
 	}
 
+	/**
+	 * Starts a new share, either with a user or group or by attaching the file to a record.
+	 *
+	 * @return The command to fill in and apply.
+	 */
 	public CreateSharingCommand createSharing() {
 		return new CreateSharingCommand(uowRef, support);
 	}
 
+	/**
+	 * Starts the removal of an existing share or record link.
+	 *
+	 * @return The command to fill in and apply.
+	 */
 	public DeleteSharingCommand deleteSharing() {
 		return new DeleteSharingCommand(uowRef, support);
 	}
 
+	/**
+	 * Starts a change to an existing share or record link.
+	 *
+	 * @return The command to fill in and apply.
+	 */
 	public ModifySharingCommand modifySharing() {
 		return new ModifySharingCommand(uowRef, support);
 	}
@@ -186,6 +212,10 @@ public without sharing class GoogleFileSharingCommand {
 		}
 	}
 
+	/**
+	 * Reads the sharing picture of one or more files: the owner, the users and groups it is shared with,
+	 * and the records it is attached to. Each part is queried only when you ask for it.
+	 */
 	public class RetrieveSharingCommand {
 		private final SharingSupport support;
 
@@ -198,6 +228,12 @@ public without sharing class GoogleFileSharingCommand {
 			this.support = support;
 		}
 
+		/**
+		 * Adds a file to the read.
+		 *
+		 * @param fileId The GoogleFile__c to read sharing for.
+		 * @return This same instance, so the call chains onto fetch().
+		 */
 		public RetrieveSharingCommand forFile(Id fileId) {
 			if (fileId != null) {
 				this.fileIds.add(fileId);
@@ -206,6 +242,12 @@ public without sharing class GoogleFileSharingCommand {
 			return this;
 		}
 
+		/**
+		 * Adds several files to the read in one go.
+		 *
+		 * @param fileIds The files to read sharing for.
+		 * @return This same instance, so the call chains onto fetch().
+		 */
 		public RetrieveSharingCommand forFiles(Set<Id> fileIds) {
 			if (fileIds != null) {
 				this.fileIds.addAll(fileIds);
@@ -214,21 +256,45 @@ public without sharing class GoogleFileSharingCommand {
 			return this;
 		}
 
+		/**
+		 * Decides whether the owner is loaded, which costs a user query.
+		 *
+		 * @param include True to return the owner.
+		 * @return This same instance, so the call chains onto fetch().
+		 */
 		public RetrieveSharingCommand includeOwner(Boolean include) {
 			this.wantOwner = include;
 			return this;
 		}
 
+		/**
+		 * Decides whether the direct shares are loaded. The owner share is left out, since it is not something
+		 * anyone granted.
+		 *
+		 * @param include True to return the users and groups the file is shared with.
+		 * @return This same instance, so the call chains onto fetch().
+		 */
 		public RetrieveSharingCommand includeUsersAndGroups(Boolean include) {
 			this.wantGroupsAndUsers = include;
 			return this;
 		}
 
+		/**
+		 * Decides whether the record links are loaded.
+		 *
+		 * @param include True to return the records the file is attached to.
+		 * @return This same instance, so the call chains onto fetch().
+		 */
 		public RetrieveSharingCommand includeRecords(Boolean include) {
 			this.wantRecords = include;
 			return this;
 		}
 
+		/**
+		 * Asks for the owner, the direct shares and the record links together.
+		 *
+		 * @return This same instance, so the call chains onto fetch().
+		 */
 		public RetrieveSharingCommand includeAll() {
 			this.wantOwner = true;
 			this.wantGroupsAndUsers = true;
@@ -236,6 +302,11 @@ public without sharing class GoogleFileSharingCommand {
 			return this;
 		}
 
+		/**
+		 * Clears every include, which is the way to start from nothing after includeAll().
+		 *
+		 * @return This same instance, so the call chains onto fetch().
+		 */
 		public RetrieveSharingCommand includeNone() {
 			this.wantOwner = false;
 			this.wantGroupsAndUsers = false;
@@ -243,6 +314,12 @@ public without sharing class GoogleFileSharingCommand {
 			return this;
 		}
 
+		/**
+		 * Reads the sharing of every file asked for. Nothing here checks whether the caller may see it, the
+		 * service does that before calling.
+		 *
+		 * @return The sharing picture per file Id, with the parts that were not asked for left empty.
+		 */
 		public Map<Id, GoogleSharingInfoDTO> fetch() {
 			if (fileIds.isEmpty()) {
 				return new Map<Id, GoogleSharingInfoDTO>();
@@ -306,6 +383,10 @@ public without sharing class GoogleFileSharingCommand {
 		}
 	}
 
+	/**
+	 * Creates a share. A user or group Id writes a GoogleFile__Share with the mapped access level, anything
+	 * else is treated as a record and writes a GoogleFileLink__c, which only the file owner may do.
+	 */
 	public class CreateSharingCommand {
 		private final IGoogleUnitOfWork uowRef;
 		private final SharingSupport support;
@@ -321,41 +402,90 @@ public without sharing class GoogleFileSharingCommand {
 			this.support = support;
 		}
 
+		/**
+		 * Sets the file being shared.
+		 *
+		 * @param localFileRecordId The GoogleFile__c to share.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public CreateSharingCommand forFile(Id localFileRecordId) {
 			this.localFileRecordId = localFileRecordId;
 			return this;
 		}
 
+		/**
+		 * Sets who or what the file is shared with. The object name is only needed for a record, and is worked
+		 * out from the Id when left blank.
+		 *
+		 * @param linkedObjectType The API name of the record object, or null to resolve it.
+		 * @param shareToRecordId The user, group or record to share with.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public CreateSharingCommand shareTo(String linkedObjectType, Id shareToRecordId) {
 			this.linkedObjectType = linkedObjectType;
 			this.shareToRecordId = shareToRecordId;
 			return this;
 		}
 
+		/**
+		 * Shares the file with one user.
+		 *
+		 * @param userId The user to share with.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public CreateSharingCommand forUser(Id userId) {
 			this.shareToRecordId = userId;
 			return this;
 		}
 
+		/**
+		 * Shares the file with a public group or a queue, which is the way to reach a set of people at once.
+		 *
+		 * @param groupId The group to share with.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public CreateSharingCommand forGroup(Id groupId) {
 			this.shareToRecordId = groupId;
 			return this;
 		}
 
+		/**
+		 * Sets the access to grant, either "Viewer" or "Collaborator". Required for a user or group share.
+		 *
+		 * @param uiAccessLevel The access level as users see it.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public CreateSharingCommand withUiAccessLevel(String uiAccessLevel) {
 			this.uiAccessLevel = uiAccessLevel;
 			return this;
 		}
 
+		/**
+		 * Sets where the attached file should show up on the record, using a value of the Source picklist.
+		 *
+		 * @param source The source to stamp on the new link.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public CreateSharingCommand withSource(String source) {
 			this.source = source;
 			return this;
 		}
 
+		/**
+		 * Creates the share and commits it.
+		 *
+		 * @return The Id of the share or link, whether it was created now or already existed.
+		 */
 		public Id apply() {
 			return applyWithResult().recordId;
 		}
 
+		/**
+		 * Creates the share and tells you whether anything was actually created, which is how the caller knows
+		 * not to place a second Drive shortcut for a record the file already reached.
+		 *
+		 * @return The record Id and whether this call created it.
+		 */
 		public GoogleFileSharingApplyResultDTO applyWithResult() {
 			support.validateCommonIds(localFileRecordId, shareToRecordId);
 
@@ -366,6 +496,10 @@ public without sharing class GoogleFileSharingCommand {
 			return createRecordLink();
 		}
 
+		/**
+		 * Runs the same checks apply() would without writing anything, so a UI can refuse early rather than
+		 * failing halfway through.
+		 */
 		public void validateCreation() {
 			support.validateCommonIds(localFileRecordId, shareToRecordId);
 
@@ -410,6 +544,10 @@ public without sharing class GoogleFileSharingCommand {
 		}
 	}
 
+	/**
+	 * Removes a share from a user or group, or the link to a record. Removing something that is not there
+	 * is an error rather than a quiet success, because it usually means the caller is out of date.
+	 */
 	public class DeleteSharingCommand {
 		private final IGoogleUnitOfWork uowRef;
 		private final SharingSupport support;
@@ -422,16 +560,31 @@ public without sharing class GoogleFileSharingCommand {
 			this.support = support;
 		}
 
+		/**
+		 * Sets the file whose share is being removed.
+		 *
+		 * @param localFileRecordId The GoogleFile__c to unshare.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public DeleteSharingCommand forFile(Id localFileRecordId) {
 			this.localFileRecordId = localFileRecordId;
 			return this;
 		}
 
+		/**
+		 * Sets who or what loses access.
+		 *
+		 * @param shareToRecordId The user, group or record to remove.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public DeleteSharingCommand shareTo(Id shareToRecordId) {
 			this.shareToRecordId = shareToRecordId;
 			return this;
 		}
 
+		/**
+		 * Removes the share or link and commits.
+		 */
 		public void apply() {
 			support.validateCommonIds(localFileRecordId, shareToRecordId);
 
@@ -471,6 +624,10 @@ public without sharing class GoogleFileSharingCommand {
 		}
 	}
 
+	/**
+	 * Changes an existing share. A user or group share takes a new access level, and a record link takes a
+	 * new share type, a new visibility, or both.
+	 */
 	public class ModifySharingCommand {
 		private final IGoogleUnitOfWork uowRef;
 		private final SharingSupport support;
@@ -486,26 +643,55 @@ public without sharing class GoogleFileSharingCommand {
 			this.support = support;
 		}
 
+		/**
+		 * Sets the file whose sharing is changing.
+		 *
+		 * @param localFileRecordId The GoogleFile__c being changed.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public ModifySharingCommand forFile(Id localFileRecordId) {
 			this.localFileRecordId = localFileRecordId;
 			return this;
 		}
 
+		/**
+		 * Sets whose access is changing.
+		 *
+		 * @param shareToRecordId The user, group or record being changed.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public ModifySharingCommand shareTo(Id shareToRecordId) {
 			this.shareToRecordId = shareToRecordId;
 			return this;
 		}
 
+		/**
+		 * Sets the new access. For a user or group that is "Viewer" or "Collaborator", for a record it is the
+		 * share type such as "Viewer", "Collaborator", "InferredFromRecord" or "None".
+		 *
+		 * @param uiAccessLevel The new access level.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public ModifySharingCommand withUiAccessLevel(String uiAccessLevel) {
 			this.uiAccessLevel = uiAccessLevel;
 			return this;
 		}
 
+		/**
+		 * Sets whether a record link reaches external users, using "AllUsers" or "InternalUsers". It means
+		 * nothing for a user or group share.
+		 *
+		 * @param linkVisibility The new visibility of the link.
+		 * @return This same instance, so the call chains onto apply().
+		 */
 		public ModifySharingCommand withVisibility(String linkVisibility) {
 			this.linkVisibility = linkVisibility;
 			return this;
 		}
 
+		/**
+		 * Applies the change and commits. A record link needs at least an access level or a visibility.
+		 */
 		public void apply() {
 			support.validateCommonIds(localFileRecordId, shareToRecordId);
 

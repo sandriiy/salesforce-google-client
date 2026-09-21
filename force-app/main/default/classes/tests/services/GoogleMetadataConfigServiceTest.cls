@@ -413,7 +413,7 @@ private class GoogleMetadataConfigServiceTest {
 		Assert.areEqual(0, new GoogleMetadataConfigService().getAiLabelingMinConfidence());
 
 		GoogleCloudTestFactory.config().withAiLabelingThinkingBudget(-1).apply();
-		Assert.areEqual(0, new GoogleMetadataConfigService().getAiLabelingThinkingBudget());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_LABELING_THINKING_BUDGET, new GoogleMetadataConfigService().getAiLabelingThinkingBudget());
 	}
 
 	@IsTest

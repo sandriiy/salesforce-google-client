@@ -7,21 +7,21 @@ Google Client for Salesforce is an unlocked package. Installing it and upgrading
 Two packages are required **before** installing or upgrading Google Client for Salesforce.
 
 - [**Nebula Logger**](https://github.com/jongpie/NebulaLogger){ target="_blank" rel="noopener noreferrer" } v4.16.5 or later, providing structured logging and troubleshooting visibility across the app.
-- [**Apex Google Drive Library**](https://github.com/sandriiy/salesforce-google-drive-library){ target="_blank" rel="noopener noreferrer" } v1.2.4 or later, providing the underlying Google Drive API integration and authorization flow that this client builds on.
+- [**Apex Google Drive Library**](https://github.com/sandriiy/salesforce-google-drive-library){ target="_blank" rel="noopener noreferrer" } v1.3.0 or later, providing the underlying Google Drive API integration and authorization flow that this client builds on.
 
 If you already have them, confirm the installed versions meet the minimums above. A newer Google Client release may depend on newer versions of these packages, and installing over an older dependency is the most common reason an upgrade fails.
 
 ## Install the Latest Version
 
 <div class="page-actions" markdown>
-[Install in Sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000XoFlIAK){ .md-button .md-button--primary target="_blank" rel="noopener noreferrer" }
-[Install in Production](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000XoFlIAK){ .md-button target="_blank" rel="noopener noreferrer" }
+[Install in Sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000ZTtZIAW){ .md-button .md-button--primary target="_blank" rel="noopener noreferrer" }
+[Install in Production](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000ZTtZIAW){ .md-button target="_blank" rel="noopener noreferrer" }
 </div>
 
 Or via CLI:
 
 ```bash
-sf package install --wait 20 --security-type AdminsOnly --package 04tQy000000XoFlIAK
+sf package install --wait 20 --security-type AdminsOnly --package 04tQy000000ZTtZIAW
 ```
 
 ## Upgrading an Existing Org
@@ -40,16 +40,17 @@ After upgrading, open the **Google Client** app once. Anything new worth your at
 
 Every released version stays installable. You would normally only need one of these to reproduce an issue on the version an org is actually running, or to line a sandbox up with production before testing an upgrade.
 
-| Version | Released | Package Id |
-|---|---|---|
-| **2.1.0** *(latest)* | 2026-08-05 | `04tQy000000XoFlIAK` |
-| 2.0.0 | 2026-06-14 | `04tQy000000W3Z3IAK` |
-| 1.3.2 | 2026-06-08 | `04tQy000000VyHdIAK` |
-| 1.3.1 | 2026-04-27 | `04tJ80000011MVpIAM` |
-| 1.3.0 | 2026-04-26 | `04tJ80000011MVaIAM` |
-| 1.2.0 | 2026-02-26 | `04tJ80000011MKfIAM` |
-| 1.1.0 | 2026-01-18 | `04tJ80000011MEqIAM` |
-| 1.0.0 | 2025-12-30 | `04tJ80000011MDsIAM` |
+| Version | Released | Package Id | Drive Library Dependency | Nebula Dependency |
+|---|---|---|---|---|
+| **2.2.0** *(latest)* | 2026-09-21 | `04tQy000000ZTtZIAW` | v1.3.0 | v4.16.5 |
+| 2.1.0 | 2026-08-05 | `04tQy000000XoFlIAK` | v1.2.4 | v4.16.5 |
+| 2.0.0 | 2026-06-14 | `04tQy000000W3Z3IAK` | v1.2.4 | v4.16.5 |
+| 1.3.2 | 2026-06-08 | `04tQy000000VyHdIAK` | v1.2.3 | v4.16.5 |
+| 1.3.1 | 2026-04-27 | `04tJ80000011MVpIAM` | v1.2.3 | v4.16.5 |
+| 1.3.0 | 2026-04-26 | `04tJ80000011MVaIAM` | v1.2.3 | v4.16.5 |
+| 1.2.0 | 2026-02-26 | `04tJ80000011MKfIAM` | v1.2.3 | v4.16.5 |
+| 1.1.0 | 2026-01-18 | `04tJ80000011MEqIAM` | v1.2.2 | v4.16.5 |
+| 1.0.0 | 2025-12-30 | `04tJ80000011MDsIAM` | v1.2.2 | v4.16.5 |
 
 Install any of them by putting the package Id into the CLI command above, or into an install URL:
 

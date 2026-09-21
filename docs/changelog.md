@@ -2,7 +2,7 @@
 
 All notable changes to this client are documented here. Each entry describes what changed for administrators and end users of an installed package version.
 
-## [2.2.0] - TBA
+## [2.2.0] - 2026-09-20
 
 ### Added
 

@@ -1,7 +1,7 @@
 # FAQ
 
 Have a question that isn't answered here?
-Open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ target="_blank" rel="noopener noreferrer" } or reach out directly at [ansukhetskyi@cloudrylabs.com](mailto:ansukhetskyi@cloudrylabs.com).
+Open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ target="_blank" rel="noopener noreferrer" } or reach out directly at [ansukh@astertrail.com](mailto:ansukh@astertrail.com).
 
 ---
 

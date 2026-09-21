@@ -459,6 +459,19 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 );
         }
 
+        public MockResponse fileDetailsWithExpiringPermissionSuccess(String id, String permissionId, String principalType, String emailAddress, String expirationTime) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody(
+                    '{ "id":"' + escapeJson(id) +
+                    '", "webViewLink":"https://drive.google.com/file/d/' + escapeJson(id) +
+                    '/view", "permissions":[{ "id":"' + escapeJson(permissionId) +
+                    '", "type":"' + escapeJson(principalType) +
+                    '", "role":"reader", "expirationTime":"' + escapeJson(expirationTime) +
+                    '", "emailAddress":"' + escapeJson(emailAddress) + '" }] }'
+                );
+        }
+
         public MockResponse documentWithOcrTextSuccess() {
             return new MockResponse()
                 .withHeader('Content-Type', 'application/json')

@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What the model answered, reduced to what a guard needs: the text, why the model stopped and anything
+ * the provider said about it.
+ */
 public class GoogleAiResponseSnapshot {
 	public String finishReason;
 	public String outcomeReason;

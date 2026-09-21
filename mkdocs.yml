@@ -85,14 +85,22 @@ nav:
       - Preview: features/preview.md
       - Sharing: features/sharing.md
       - Public Links: features/public-links.md
+      - Open in Google Drive: features/open-in-drive.md
       - Versioning: features/versioning.md
       - Audit & Logging: features/audit.md
       - Flows & Automation:
           - Uploader in Screen Flows: features/flows-automation/uploader-screen-flows.md
+          - Create Folder in Google Drive: features/flows-automation/create-folder-action.md
+          - Upload File to Google Drive: features/flows-automation/upload-file-action.md
+          - Download File from Google Drive: features/flows-automation/download-file-action.md
+          - Extract File Content as Text: features/flows-automation/extract-text-action.md
+          - Edit Google File Details: features/flows-automation/edit-file-details-action.md
+          - Public Link Expiration: features/flows-automation/expire-public-link-action.md
       - AI & Intelligence:
-          - features/artificial-intelligence/overview.md
+          - Overview: features/artificial-intelligence/overview.md
           - Document Summaries: features/artificial-intelligence/summaries.md
           - File Q&A: features/artificial-intelligence/file-qa.md
+          - File Labeling: features/artificial-intelligence/labeling.md
           - AI Prompt Security: features/artificial-intelligence/safety.md
 
   - Settings:

@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Turns a public link on and off for a version. The permission Id Google returns is kept on the version,
+ * because that is the only way to revoke exactly the access that was granted and nothing else.
+ */
 public without sharing class GoogleLocalFileVersionPublicLinkService {
 	public class GoogleFileVersionPublicLinkException extends Exception {}
 
@@ -32,6 +36,11 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 		this((IGoogleUnitOfWork) null);
 	}
 
+	/**
+	 * Builds the service on a unit of work you already have.
+	 *
+	 * @param injectedUow The unit of work to register on. A null gets one of its own.
+	 */
 	public GoogleLocalFileVersionPublicLinkService(IGoogleUnitOfWork injectedUow) {
 		this.googleConfig = new GoogleMetadataConfigService();
 		this.remoteFileService = new GoogleClientApiProvider();
@@ -40,6 +49,12 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 			: injectedUow;
 	}
 
+	/**
+	 * Withdraws the public link of one version.
+	 *
+	 * @param localFileVersionId The version to close.
+	 * @return The updated version.
+	 */
 	public List<GoogleFileVersion__c> removePublicLinkSharing(Id localFileVersionId) {
 		Logger.info('Remove Public Link Sharing --> ' + localFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
@@ -47,6 +62,12 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 		return deletePublicLink(new List<GoogleFileVersion__c>{ localFileVersion });
 	}
 
+	/**
+	 * Withdraws the public links of several versions, which is what the expiration flow calls.
+	 *
+	 * @param localFileVersionIds The versions to close.
+	 * @return The updated versions.
+	 */
 	public List<GoogleFileVersion__c> removePublicLinkSharing(Set<Id> localFileVersionIds) {
 		if (localFileVersionIds == null || localFileVersionIds.isEmpty()) return new List<GoogleFileVersion__c>();
 		Logger.info('Remove Public Link Sharing --> ' + localFileVersionIds).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
@@ -54,14 +75,36 @@ public without sharing class GoogleLocalFileVersionPublicLinkService {
 		return deletePublicLink(queryLocalFileVersions(localFileVersionIds));
 	}
 
+	/**
+	 * Opens a public link that never expires.
+	 *
+	 * @param localFileVersionId The version to share.
+	 * @return The updated version, carrying the link.
+	 */
 	public List<GoogleFileVersion__c> applyPublicLinkSharing(Id localFileVersionId) {
 		return applyPublicLinkSharing(localFileVersionId, null);
 	}
 
+	/**
+	 * Opens a public link and records when it should be withdrawn.
+	 *
+	 * @param localFileVersionId The version to share.
+	 * @param expirationDate When the link should stop working.
+	 * @return The updated version, carrying the link.
+	 */
 	public List<GoogleFileVersion__c> applyPublicLinkSharing(Id localFileVersionId, Datetime expirationDate) {
 		return applyPublicLinkSharing(localFileVersionId, expirationDate, false);
 	}
 
+	/**
+	 * Opens a public link, optionally ignoring the organizational domain so the link works for anyone. With
+	 * a domain configured and no skip, only people in that domain can open it.
+	 *
+	 * @param localFileVersionId The version to share.
+	 * @param expirationDate When the link should stop working, or null.
+	 * @param isDomainSkip True to share with anyone rather than the configured domain.
+	 * @return The updated version, carrying the link.
+	 */
 	public List<GoogleFileVersion__c> applyPublicLinkSharing(Id localFileVersionId, Datetime expirationDate, Boolean isDomainSkip) {
 		Logger.info('Apply Public Link Sharing --> ' + localFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 

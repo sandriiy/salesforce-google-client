@@ -21,6 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Runs the upload where the browser sends the bytes to Google Drive itself and Apex only sends the last
+ * small piece. That final piece comes from the server so the Drive file Id and its folder are told to
+ * Salesforce by Google rather than by the browser. Nothing is cached between the calls: the browser
+ * hands the session back, because the platform cache is not allocated in every org and a flow that
+ * depends on it fails everywhere it is not.
+ */
 public without sharing class GoogleDirectUploadService {
 	public class GoogleDirectUploadException extends Exception {}
 
@@ -41,11 +48,24 @@ public without sharing class GoogleDirectUploadService {
 		this(new GoogleMetadataConfigService(), null);
 	}
 
+	/**
+	 * Builds the service on parts you already have.
+	 *
+	 * @param injectedMetadataService The configuration to read. A null gets a fresh one.
+	 * @param injectedRemoteUploader The uploader to send through. A null gets one when it is first needed.
+	 */
 	public GoogleDirectUploadService(GoogleMetadataConfigService injectedMetadataService, GoogleRemoteFileUploader injectedRemoteUploader) {
 		this.metadataService = injectedMetadataService == null ? new GoogleMetadataConfigService() : injectedMetadataService;
 		this.remoteUploader = injectedRemoteUploader;
 	}
 
+	/**
+	 * Works out how much the browser may send before the tail Apex finishes with. The answer is aligned to
+	 * the chunk size Google requires and always leaves something behind, so there is a tail to send.
+	 *
+	 * @param totalBytes The whole file size.
+	 * @return The number of bytes the browser should send.
+	 */
 	public static Long resolveBrowserByteLimit(Long totalBytes) {
 		if (totalBytes == null || totalBytes <= 0) return 0;
 
@@ -59,12 +79,25 @@ public without sharing class GoogleDirectUploadService {
 		return alignedLimit < 0 ? 0 : alignedLimit;
 	}
 
+	/**
+	 * Tells the browser whether this org uses direct upload at all.
+	 *
+	 * @return The settings the uploader needs.
+	 */
 	public GoogleDirectUploadSettingsDTO resolveSettings() {
 		GoogleDirectUploadSettingsDTO settings = new GoogleDirectUploadSettingsDTO();
 		settings.isDirectUploadEnabled = metadataService.isDirectBrowserUploadEnabled();
 		return settings;
 	}
 
+	/**
+	 * Opens the upload session with Google and hands the browser the address to send to.
+	 *
+	 * @param fileName The name the file gets in Drive.
+	 * @param mimeType What kind of file it is.
+	 * @param totalBytes The whole file size, which Google holds the browser to.
+	 * @return The session address and how much the browser may send.
+	 */
 	public GoogleDirectUploadSessionDTO startUpload(String fileName, String mimeType, Long totalBytes) {
 		if (!metadataService.isDirectBrowserUploadEnabled()) {
 			throw new GoogleDirectUploadException('Direct browser upload is not enabled for this organization');
@@ -89,6 +122,17 @@ public without sharing class GoogleDirectUploadService {
 		return session;
 	}
 
+	/**
+	 * Sends the last piece from Apex and finishes the upload, which is how the Drive file Id reaches
+	 * Salesforce at all, since the browser cannot read Google's closing answer.
+	 *
+	 * @param fileName The name the file gets in Drive.
+	 * @param sessionUri The session the browser has been sending to.
+	 * @param finalChunkToUpload The last piece, base64 encoded.
+	 * @param startByte Where that piece starts in the file.
+	 * @param totalBytes The whole file size.
+	 * @return The Drive file Id and the folder it landed in.
+	 */
 	public GoogleDirectUploadResultDTO completeUpload(String fileName, String sessionUri, String finalChunkToUpload, Long startByte, Long totalBytes) {
 		if (String.isBlank(sessionUri)) {
 			throw new GoogleDirectUploadException('The upload session is missing');
@@ -115,6 +159,13 @@ public without sharing class GoogleDirectUploadService {
 		return result;
 	}
 
+	/**
+	 * Records how a direct upload ended, so an org can tell a cancelled upload from one that fell back to
+	 * Salesforce and one that failed outright.
+	 *
+	 * @param outcome One of "failed", "blocked", "recovered" or "cancelled".
+	 * @param diagnostics What the browser saw.
+	 */
 	public void reportOutcome(String outcome, String diagnostics) {
 		String normalizedOutcome = String.isBlank(outcome) ? OUTCOME_FAILED : outcome;
 		String logMessage = 'Direct Browser Upload --> Outcome=' + normalizedOutcome + ', Details=' + String.valueOf(diagnostics);

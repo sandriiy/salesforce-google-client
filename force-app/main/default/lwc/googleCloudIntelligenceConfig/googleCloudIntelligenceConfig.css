@@ -88,25 +88,6 @@
     line-height: 1.35;
 }
 
-.info-panel {
-    margin-top: 12px;
-    padding: 12px;
-    border-radius: 12px;
-    background: rgba(1, 118, 211, 0.06);
-    border: 1px solid rgba(1, 118, 211, 0.18);
-}
-
-.info-title {
-    font-weight: 600;
-    margin-bottom: 2px;
-}
-
-.info-text {
-    font-size: 12.5px;
-    opacity: 0.9;
-    line-height: 1.45;
-}
-
 .recommendation-panel {
     padding: 14px;
     border-radius: 14px;
@@ -150,41 +131,6 @@
     flex-wrap: wrap;
 }
 
-.quick-setup-title {
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-
-.quick-setup-step {
-    display: grid;
-    grid-template-columns: 26px 1fr;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.quick-setup-step-number {
-    width: 26px;
-    height: 26px;
-    border-radius: 999px;
-    display: grid;
-    place-items: center;
-    font-weight: 600;
-    font-size: 12px;
-    background: rgba(1, 118, 211, 0.15);
-    color: #014486;
-}
-
-.quick-setup-step-title {
-    font-weight: 600;
-    font-size: 13px;
-}
-
-.quick-setup-step-text {
-    font-size: 12.5px;
-    opacity: 0.85;
-    line-height: 1.4;
-}
-
 .service-account-note {
     margin-top: 12px;
     padding: 12px;
@@ -204,19 +150,58 @@
     line-height: 1.45;
 }
 
-.content-divider {
-    height: 1px;
-    background: rgba(0, 0, 0, 0.10);
-    margin: 14px 0;
-}
 
-.quick-setup-button-row {
+.ai-status {
     display: flex;
-    justify-content: center;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(0, 0, 0, 0.03);
 }
 
-@media (max-width: 1023px) {
-    .config-quick-setup-right {
-        margin-top: 2%;
-    }
+.ai-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+
+.ai-status-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.ai-status-title {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.ai-status-text {
+    font-size: 12.5px;
+    opacity: 0.88;
+    line-height: 1.45;
+}
+
+.ai-status-on {
+    background: rgba(46, 132, 73, 0.08);
+    border-color: rgba(46, 132, 73, 0.18);
+}
+
+.ai-status-on .ai-status-dot {
+    background: rgba(46, 132, 73, 0.9);
+}
+
+.ai-status-off {
+    background: rgba(255, 176, 0, 0.10);
+    border-color: rgba(255, 176, 0, 0.35);
+}
+
+.ai-status-off .ai-status-dot {
+    background: rgba(255, 176, 0, 0.9);
 }

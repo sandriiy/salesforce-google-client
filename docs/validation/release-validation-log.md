@@ -2,7 +2,121 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
-???+ example "Release v2.1.0"
+???+ example "Release v2.2.0"
+
+    ### Validation Suite Used
+    - [ ] Full Validation Suite
+    - [X] Quick Regression Suite
+    - [X] Targeted Regression Suite
+
+    ### Release Changes
+    - [X] Change 1: The upgrade lands on an already configured org without changing how it behaves.
+
+        - [X] Admin: Google Drive, folder structure, AI, safety and File Explorer column settings are all unchanged after the upgrade.
+        - [X] Admin: AI Labeling and Open in Google Drive are both off, and no label definitions exist.
+        - [X] Internal User: Upload, preview, download, sharing and versioning behave exactly as before the upgrade.
+        - [X] External User: Experience Cloud pages open and behave exactly as before the upgrade.
+
+    - [X] Change 2: The configuration page moved the setup guides to the side panel and made Setup and Advanced a two way switch.
+
+        - [X] Admin: Setup guides show in the side panel, follow the section or Advanced tab that is open, and can be closed.
+        - [X] Admin: The configuration area is full width and no guide is rendered inside the form.
+        - [X] Admin: Switching between Setup and Advanced with unsaved changes asks whether to save or discard first, and both answers do what they say.
+        - [X] Admin: Switching between Google Drive and AI inside Setup with unsaved changes does not ask.
+        - [X] Admin: Each Advanced tab says what it contains, and File Management, User Interface, AI Intelligence and Safety & Customization all render without errors.
+
+    - [X] Change 3: Whether a document or spreadsheet can be previewed now follows the size of the Google Workspace preview version.
+
+        - [X] Internal User: Upload a document larger than Maximum Preview File Size and confirm it previews.
+        - [X] Internal User: Confirm Download as... is offered for that document.
+        - [X] Internal User: Confirm PDF and image previews are unchanged.
+        - [X] Internal User: Confirm a file uploaded before the upgrade previews the same as it did before.
+
+    - [X] Change 4: A file owner can open a file directly in Google Drive.
+
+        - [X] Internal User: Confirm the option is not offered while the setting is off.
+        - [X] Admin: Turn on Open in Google Drive under Advanced → File Management.
+        - [X] Internal User: Open an owned file in Google Drive from the preview window, and confirm it opens.
+        - [X] Internal User: Open an owned file in Google Drive from the File Details page, and confirm it opens.
+        - [X] Internal User: Confirm the file opens read only in Google Drive and the folder around it cannot be reached.
+        - [X] Internal User: Confirm the option is not offered for a file owned by another user.
+        - [X] External User: Confirm the option is not offered anywhere on Experience Cloud.
+
+    - [X] Change 5: Four Flow actions cover folders, uploads, downloads and file text.
+
+        - [X] Admin: The Google Client category in Flow Builder lists the four new actions together with Edit Google File Details and Public Link Expiration.
+        - [X] Admin: Create Folder in Google Drive creates the named folder, and running the flow again returns the same folder instead of a second one.
+        - [X] Admin: Create Folder in Google Drive with the name left blank returns the folder the record already owns.
+        - [X] Admin: Upload File to Google Drive sends a Salesforce file to Google Drive and it appears on the record like any other upload.
+        - [X] Admin: Upload File to Google Drive with Remove Salesforce Copy on deletes the Salesforce file and keeps the Google file.
+        - [X] Admin: A file above Maximum Preview File Size reports that it uploads in the background, and it appears on the record shortly afterwards.
+        - [X] Admin: Download File from Google Drive saves the file in Salesforce and attaches it to the record.
+        - [X] Admin: Download File from Google Drive with Convert To set to pdf saves a PDF.
+        - [X] Admin: Extract File Content as Text returns the file text, and Maximum Characters cuts it at the length asked for.
+        - [X] Admin: Extract File Content as Text on a file whose preview copy is still preparing reports that text is not available yet.
+        - [X] Admin: A fault path on any of the actions shows a readable message.
+
+    - [X] Change 6: AI Labeling assigns one configured Google Drive label to a new file when the AI is confident enough.
+
+        - [X] Admin: AI Labeling cannot be switched on while AI Analytics is off.
+        - [X] Admin: Define two labels with a name, a label ID and a plain language description, save, reopen the page, and confirm the definitions were kept in full.
+        - [X] Internal User: Upload a file that clearly matches one label, and confirm that label is applied.
+        - [X] Internal User: Confirm the label shows next to the file name in the preview window and in the File Intelligence panel.
+        - [X] Admin: Confirm the same label is applied to the file in Google Drive.
+        - [X] Admin: Confirm a Google File Version Label record exists for that version with its name and confidence.
+        - [X] Internal User: Upload a file that matches none of the definitions, and confirm it stays unlabeled.
+        - [X] Admin: Raise the minimum confidence above what the model returns, upload the same kind of file again, and confirm no label is applied.
+        - [X] Admin: Set a thinking budget, upload again, and confirm labeling still completes.
+        - [X] Admin: Turn AI Analytics off and confirm AI Labeling is switched off with it.
+
+    - [X] Change 7: Labels are visible in File Explorer and on the File Details page.
+
+        - [X] Admin: Add the Labels column under Advanced → User Interface and save.
+        - [X] Internal User: Confirm the Labels column shows the applied label in File Explorer.
+        - [X] Internal User: Search File Explorer by the label name and confirm the labeled file is found.
+        - [X] Internal User: Confirm the Labels column cannot be sorted.
+        - [X] Internal User: Open the File Details page for the labeled file and confirm the Labels card lists the label, the version it belongs to and the confidence.
+        - [X] Internal User: Open the File Details page for an unlabeled file and confirm the Labels card shows nothing rather than failing.
+        - [X] External User: Make a labeled file externally visible, then confirm its label shows in the Experience Cloud preview.
+        - [X] External User: Confirm labels of files the external user cannot access are not visible.
+
+    - [X] Change 8: Long prompts and long column lists are read in full.
+
+        - [X] Admin: Save a summary prompt longer than 255 characters, reopen the page, and confirm the whole prompt is still there.
+        - [X] Internal User: Upload a file and confirm the summary follows that long prompt.
+        - [X] Admin: Save a label description longer than 255 characters and confirm labeling still uses it.
+        - [X] Admin: Select seven File Explorer columns, save, reopen, and confirm all seven are kept.
+
+    - [X] Change 9: Turning AI off keeps what was already generated, and clearing the AI configuration leaves the rest of the setup alone.
+
+        - [X] Admin: Turning AI Analytics on checks the provider straight away, and with a wrong API key it refuses and explains what to do.
+        - [X] Admin: The reminder that AI analysis is off shows as a notice in the corner of the page and can be dismissed.
+        - [X] Internal User: With AI Analytics off, a file that already has a summary or a label keeps its preview sidebar, it stays closed until opened, and asking a question is unavailable.
+        - [X] Internal User: With AI Analytics off, a file with no summary and no label shows no sidebar at all.
+        - [X] Admin: Deactivate under Gemini & Agent Platform clears the provider details, prompts, label definitions and safety settings in one step, and AI Analytics and AI Labeling are both off afterwards.
+        - [X] Admin: Google Drive settings, folder structure and File Explorer columns are untouched by that.
+        - [X] Internal User: Summaries and labels already stored on files are still there.
+        - [X] Admin: Connect a provider again, turn AI Analytics back on, and confirm summaries are generated for new files.
+
+    ### Boring Changes
+    - [X] Version number assigned to all hard-coded labels
+    - [X] Version ID is assigned to all installation guides.
+	- [X] All images for documentation are included.
+
+    ### Smoke Checks
+    - [X] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [X] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [X] Admin can open Google Client app and browse configuration tabs without errors
+
+    ### Suite Execution (only for Full or Quick)
+    - [X] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
+
+	### Notes
+    - The thinking budget now defaults to 1024 rather than 0. At 0 the current Gemini models keep reasoning anyway and then answer with nothing, so labeling quietly produced no result. The field default, the Apex default and the setup wizard were all moved together, and 0 still turns reasoning off for models where that works.
+    - Only one Google Drive label was available for this round, so the "two labels" checks ran against a single definition ("Clasified"). It saved and reloaded in full, including a 418 character description, and the label the AI chose was correct on content: the matching document contains an email address, and the file that did not was left unlabeled.
+    - Saving the Agent Platform details and validating them in one step reported "Unable to determine which Google AI Strategy to use" the first time, although the details had been saved correctly. Clicking Validate once more passed, and turning on AI Analytics afterwards validated the provider without any issue.
+
+??? example "Release v2.1.0"
 
     ### Validation Suite Used
     - [ ] Full Validation Suite

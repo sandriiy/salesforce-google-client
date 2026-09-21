@@ -33,6 +33,7 @@ Google Client ships Lightning components that you place on record pages and app 
 
 - [Configure Components (Core Clouds)](../usage/core-clouds.md) — Sales Cloud, Service Cloud, custom apps, and standard record pages
 - [Configure Components (Experience Cloud)](../usage/experience-cloud.md) — LWR and Aura sites, which need their own pages
+- [Uploader in Screen Flows](../features/flows-automation/uploader-screen-flows.md) — collect uploads inside a screen flow, with Flow actions beside it for folders, uploads, downloads and file text
 
 ## 5. Optional: AI & Intelligence
 
@@ -54,7 +55,7 @@ The **Advanced** screen in the Google Client app holds everything else, grouped 
 
 - [File Management](advanced/file-management.md) — preview, upload transport, file size, deletion, and public link scope
 - [User Interface](advanced/user-interface.md) — which columns appear in File Explorer
-- [AI Intelligence](advanced/ai-intelligence.md) — prompts and answer length for summaries and questions
+- [AI Intelligence](advanced/ai-intelligence.md) — prompts and answer length for summaries and questions, and automatic labeling
 - [Safety & Customization](advanced/safety-customization.md) — how strictly AI questions and answers are inspected
 
 ## Where to Go Next

@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What a guard decided about an answer. Blocking carries a reason code for the log and a message the user
+ * can read, and a guard may instead allow it with text of its own, which is how something is redacted
+ * rather than refused.
+ */
 public class GoogleAiResponseSafetyDecision {
 	public static final String REASON_PROVIDER_SAFETY = 'ProviderSafety';
 	public static final String REASON_SECRET_LEAK = 'SecretLeak';
@@ -33,12 +38,24 @@ public class GoogleAiResponseSafetyDecision {
 	public String userVisibleMessage;
 	public String sanitizedText;
 
+	/**
+	 * Lets the answer through unchanged.
+	 *
+	 * @return An allowing decision.
+	 */
 	public static GoogleAiResponseSafetyDecision allow() {
 		GoogleAiResponseSafetyDecision decision = new GoogleAiResponseSafetyDecision();
 		decision.allowed = true;
 		return decision;
 	}
 
+	/**
+	 * Refuses the answer.
+	 *
+	 * @param reasonCode Why, for the log.
+	 * @param userVisibleMessage Why, for the person who asked.
+	 * @return A blocking decision.
+	 */
 	public static GoogleAiResponseSafetyDecision block(String reasonCode, String userVisibleMessage) {
 		GoogleAiResponseSafetyDecision decision = new GoogleAiResponseSafetyDecision();
 		decision.allowed = false;

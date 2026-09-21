@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Makes the Google Workspace copy of each new file, which is what previews, Download As, summaries and
+ * labeling all read. It runs as a job because the clone is a Drive callout and a callout cannot follow
+ * uncommitted DML in the same transaction.
+ */
 public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFilePreviewJobException extends Exception {}
 
@@ -28,12 +33,21 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 	private static Boolean skipExecution = false;
 
     private final Set<Id> versionIds;
+    /**
+     * Builds the job for a set of versions.
+     *
+     * @param versionIds The versions needing a Workspace copy.
+     */
     public GoogleFileVersionPreviewJob(Set<Id> versionIds) {
         this.versionIds = versionIds == null
 			? new Set<Id>()
 			: new Set<Id>(versionIds);
     }
 
+	/**
+	 * Clones each version in Drive, stores the copy Id, and queues the size measurement afterwards. The size
+	 * is measured later on purpose, since Drive reports a placeholder until it has finished converting.
+	 */
 	public override void work() {
 		if (skipExecution) return;
 		if (versionIds.isEmpty()) return;
@@ -46,6 +60,7 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 			.toList();
 
 		IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
+		Set<Id> generatedPreviewVersionIds = new Set<Id>();
 
         for (GoogleFileVersion__c localFileVersion : localFileVersions) {
             if (String.isNotBlank(localFileVersion.GoogleDocsFileId__c)) continue;
@@ -67,6 +82,8 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 				Id = localFileVersion.Id,
 				GoogleDocsFileId__c = generatedPreviewFileId
 			));
+			
+			generatedPreviewVersionIds.add(localFileVersion.Id);
         }
 
 		try {
@@ -75,8 +92,11 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 		} catch (Exception ex) {
 			Logger.error('Google File Version update failed (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
+			return;
 		} finally {
 			GTriggerHandler.clearAllBypasses();
 		}
+
+		GoogleFileVersionPreviewSizeJob.schedule(generatedPreviewVersionIds);
     }
 }

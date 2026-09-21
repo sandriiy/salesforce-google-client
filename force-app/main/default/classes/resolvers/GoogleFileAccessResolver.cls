@@ -21,9 +21,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The one place that decides who may see which file. A file can be linked to any object, so Salesforce
+ * sharing cannot answer that on its own, and this combines every path a user might have, ownership, a
+ * direct share, a record the file is linked to, and the View All and Edit All permissions, and keeps the
+ * highest one. Files that reach none of those are dropped rather than returned with no access.
+ */
 public without sharing class GoogleFileAccessResolver {
 	public class GoogleFileAccessCheckException extends Exception {}
+	/**
+	 * What a user ends up with on a file. Edit beats View wherever two paths disagree.
+	 */
 	public enum AccessLevel { View, Edit }
+	/**
+	 * Which files a page asks for, so a caller can split "owned by me" from "shared with me" without
+	 * teaching the resolver what those buckets mean.
+	 */
 	public enum OwnershipScope { AnyOwner, OwnedByUser, NotOwnedByUser }
 
 	private static final String PERMISSION_VIEW_ALL_ACCESS = 'GoogleClientViewAllAccess';
@@ -47,10 +60,26 @@ public without sharing class GoogleFileAccessResolver {
 	private Boolean floorResolved = false;
 	private Map<Id, Set<Id>> memoPrincipalIdsByUserId = new Map<Id, Set<Id>>();
 
+	/**
+	 * Resolves access for a set of files that is already in hand.
+	 *
+	 * @param inputFiles The files to check. Rows carrying OwnerId save a query.
+	 * @param targetUserId Whose access to resolve. Null means the running user.
+	 * @return The accessible files in the order they came in, each stamped with UserAccessLevel__c.
+	 */
 	public List<GoogleFile__c> resolveAccessibleFiles(List<GoogleFile__c> inputFiles, Id targetUserId) {
 		return resolveAccessibleFiles(inputFiles, targetUserId, null);
 	}
 
+	/**
+	 * Resolves access while counting only the links the caller cares about, which is how a file shown on
+	 * one record does not borrow access from another record entirely.
+	 *
+	 * @param inputFiles The files to check.
+	 * @param targetUserId Whose access to resolve. Null means the running user.
+	 * @param scopedRecordLinks The links to consider, or null to load every link of each file.
+	 * @return The accessible files in the order they came in, each stamped with UserAccessLevel__c.
+	 */
 	public List<GoogleFile__c> resolveAccessibleFiles(List<GoogleFile__c> inputFiles, Id targetUserId, List<GoogleFileLink__c> scopedRecordLinks) {
 		if (inputFiles == null || inputFiles.isEmpty()) return new List<GoogleFile__c>();
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
@@ -106,6 +135,14 @@ public without sharing class GoogleFileAccessResolver {
 		return resolveAccessibleFilesForUser(targetUserId, new List<String>());
 	}
 
+	/**
+	 * Loads every file a user can reach and resolves access over all of them at once. It is capped and
+	 * unordered by design, so prefer resolveFilePage() for anything a user scrolls.
+	 *
+	 * @param targetUserId Whose files to load. Null means the running user.
+	 * @param additionalVersionFields Extra GoogleFileVersion__c fields to bring back with the latest version.
+	 * @return Every accessible file, each stamped with UserAccessLevel__c.
+	 */
 	public List<GoogleFile__c> resolveAccessibleFilesForUser(Id targetUserId, List<String> additionalVersionFields) {
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
 
@@ -116,6 +153,12 @@ public without sharing class GoogleFileAccessResolver {
 		return resolveAccessibleFiles(candidateFiles, targetUserId);
 	}
 
+	/**
+	 * The access floor the running user gets everywhere from the View All and Edit All custom permissions.
+	 * It raises access and never lowers it, and it is resolved once per instance.
+	 *
+	 * @return Edit, View, or null when the user holds neither permission.
+	 */
 	public AccessLevel privilegedFloor() {
 		if (floorResolved) return memoFloor;
 		floorResolved = true;
@@ -136,10 +179,25 @@ public without sharing class GoogleFileAccessResolver {
 		return memoFloor;
 	}
 
+	/**
+	 * Reads one page of files for the running user.
+	 *
+	 * @param criteria What to sort, search and page by.
+	 * @return The page, its cursor row and whether more files follow.
+	 */
 	public FilePage resolveFilePage(FilePageCriteria criteria) {
 		return resolveFilePage(criteria, UserInfo.getUserId());
 	}
 
+	/**
+	 * Reads one page of files for a given user. Whether more rows follow is taken from the query rather
+	 * than from what survived the access check, otherwise a single unreachable file would end the list
+	 * early. When too few rows survive, it widens the scan once rather than handing back a short page.
+	 *
+	 * @param criteria What to sort, search and page by.
+	 * @param targetUserId Whose access to resolve. Null means the running user.
+	 * @return The page, its cursor row and whether more files follow.
+	 */
 	public FilePage resolveFilePage(FilePageCriteria criteria, Id targetUserId) {
 		if (criteria == null) criteria = new FilePageCriteria();
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
@@ -216,6 +274,10 @@ public without sharing class GoogleFileAccessResolver {
 		return sharedFileIds;
 	}
 
+	/**
+	 * What one page asks for. This is the resolver's own input on purpose, so paging never has to know
+	 * which screen is calling.
+	 */
 	public class FilePageCriteria {
 		public Integer pageSize;
 		public String sortPath;
@@ -226,22 +288,44 @@ public without sharing class GoogleFileAccessResolver {
 		public OwnershipScope ownerScope = OwnershipScope.AnyOwner;
 		public List<String> additionalVersionFields = new List<String>();
 
+		/**
+		 * The page size that will really be used, falling back to the default and capped at the maximum.
+		 *
+		 * @return A usable page size.
+		 */
 		public Integer effectivePageSize() {
 			if (pageSize == null || pageSize <= 0) return DEFAULT_PAGE_SIZE;
 			return Math.min(pageSize, MAX_PAGE_SIZE);
 		}
 
+		/**
+		 * The field the page is sorted by, falling back to the last modified date.
+		 *
+		 * @return A usable sort path.
+		 */
 		public String effectiveSortPath() {
 			return String.isBlank(sortPath) ? DEFAULT_SORT_PATH : sortPath;
 		}
 	}
 
+	/**
+	 * One page of files. cursorRow is the row the next page continues after, and hasMore says whether there
+	 * is a next page at all.
+	 */
 	public class FilePage {
 		public List<GoogleFile__c> records = new List<GoogleFile__c>();
 		public GoogleFile__c cursorRow;
 		public Boolean hasMore = false;
 	}
 
+	/**
+	 * Keeps the links that actually grant the user something, which is what decides whether a file shows up
+	 * on a record at all.
+	 *
+	 * @param inputLinks The links to check.
+	 * @param targetUserId Whose access to resolve. Null means the running user.
+	 * @return The links that grant access.
+	 */
 	public List<GoogleFileLink__c> resolveAccessibleRecordLinks(List<GoogleFileLink__c> inputLinks, Id targetUserId) {
 		if (inputLinks == null || inputLinks.isEmpty()) return new List<GoogleFileLink__c>();
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
@@ -260,6 +344,14 @@ public without sharing class GoogleFileAccessResolver {
 		return accessibleLinks;
 	}
 
+	/**
+	 * Keeps the links whose record the user can read, ignoring what the link grants on the file. That is
+	 * the right question for Linked Records, where the point is which records a user may be told about.
+	 *
+	 * @param inputLinks The links to check.
+	 * @param targetUserId Whose access to resolve. Null means the running user.
+	 * @return The links whose linked record the user can read.
+	 */
 	public List<GoogleFileLink__c> resolveReadableRecordLinks(List<GoogleFileLink__c> inputLinks, Id targetUserId) {
 		if (inputLinks == null || inputLinks.isEmpty()) return new List<GoogleFileLink__c>();
 		if (targetUserId == null) targetUserId = UserInfo.getUserId();
@@ -591,6 +683,17 @@ public without sharing class GoogleFileAccessResolver {
 		if (level == AccessLevel.Edit) return 2;
 		if (level == AccessLevel.View) return 1;
 		return 0;
+	}
+
+	/**
+	 * Says whether a user type belongs inside the org rather than to an Experience Cloud site, which is
+	 * what visibility and the privileged floor both hang on.
+	 *
+	 * @param userType The UserType of the user. Null is treated as internal.
+	 * @return True for an internal user.
+	 */
+	public Boolean isInternalUser(String userType) {
+		return isInternalUserType(userType);
 	}
 
 	private Boolean isInternalUserType(String userType) {

@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Turns the configured column list into what File Explorer should render. A token the catalog knows is
+ * passed through, anything else is treated as a GoogleFileVersion__c field API name and looked up. A
+ * field that does not exist or is confidential becomes an empty column rather than a broken query, and
+ * the Title column is always first.
+ */
 public without sharing class GoogleFileExplorerColumnResolver {
 	private final GoogleMetadataConfigService googleConfig;
 
@@ -28,10 +34,20 @@ public without sharing class GoogleFileExplorerColumnResolver {
 		this(new GoogleMetadataConfigService());
 	}
 
+	/**
+	 * Builds the resolver on a configuration the caller already holds.
+	 *
+	 * @param googleConfig The configuration to read the column list from.
+	 */
 	public GoogleFileExplorerColumnResolver(GoogleMetadataConfigService googleConfig) {
 		this.googleConfig = googleConfig;
 	}
 
+	/**
+	 * Resolves the columns to show, in order.
+	 *
+	 * @return The columns, with a label and data type for the custom ones.
+	 */
 	public List<GoogleFileColumnDTO> resolveColumns() {
 		Map<String, Schema.SObjectField> versionFields = GoogleFileVersion__c.SObjectType.getDescribe().fields.getMap();
 		Set<String> confidentialFieldNames = confidentialFieldNames();
@@ -49,6 +65,12 @@ public without sharing class GoogleFileExplorerColumnResolver {
 		return resolvedColumns;
 	}
 
+	/**
+	 * The extra version fields the file query has to bring back for those columns. Fields already in the
+	 * base query and confidential ones are left out.
+	 *
+	 * @return The field API names to add to the latest version subquery.
+	 */
 	public List<String> resolveAdditionalVersionFields() {
 		Map<String, Schema.SObjectField> versionFields = GoogleFileVersion__c.SObjectType.getDescribe().fields.getMap();
 		Set<String> excludedFieldNames = confidentialFieldNames();

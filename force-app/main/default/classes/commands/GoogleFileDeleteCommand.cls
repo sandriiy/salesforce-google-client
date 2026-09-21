@@ -21,26 +21,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Deletes a GoogleFile__c and, when asked, the Drive files behind every one of its versions.
+ * Together with GoogleFileSharingCommand this is the deliberate exception to the rule that
+ * commands never commit: save() commits the unit of work itself, because the Drive deletion is
+ * a queueable that may only be enqueued once the Salesforce delete has gone through. Nothing
+ * in here checks who may delete the file; the caller settles that first.
+ */
 public without sharing class GoogleFileDeleteCommand {
 	private final IGoogleUnitOfWork uowRef;
 
 	private Id recordId;
 	private Boolean hasCloudFilesDeletion;
 
+	/**
+	 * @param uowRef The unit of work the delete is registered on and committed through; do not
+	 * queue other work on it expecting to commit later.
+	 */
 	public GoogleFileDeleteCommand(IGoogleUnitOfWork uowRef) {
 		this.uowRef = uowRef;
 	}
 
+	/**
+	 * Sets the GoogleFile__c to delete.
+	 *
+	 * @param value The file record Id.
+	 * @return This same instance, so the call chains onto setCloudDeletion() and save().
+	 */
 	public GoogleFileDeleteCommand setRecordId(Id value) {
 		this.recordId = value;
 		return this;
 	}
 
+	/**
+	 * Chooses whether the Drive files of every version are deleted too, through
+	 * GoogleFileCloudDeleteJob after the commit. Leave it off to keep the content in Drive and
+	 * drop only the Salesforce records.
+	 *
+	 * @param isCloudFilesDeletion True to delete the Drive content as well.
+	 * @return This same instance, so the call chains onto save().
+	 */
 	public GoogleFileDeleteCommand setCloudDeletion(Boolean isCloudFilesDeletion) {
 		this.hasCloudFilesDeletion = isCloudFilesDeletion;
 		return this;
 	}
 
+	/**
+	 * Deletes the file record, commits, and then enqueues the Drive deletion when it was asked
+	 * for. Versions, links, labels and shares go with the file through the master-detail
+	 * cascade, which is why the versions are read before the delete: the job needs their Drive
+	 * Ids after the rows are gone.
+	 *
+	 * @return Always true; a failure surfaces as an exception, not as false.
+	 */
 	public Boolean save() {
 		GoogleFile__c googleFile = buildFileStub(recordId);
 		List<GoogleFileVersion__c> localFileVersions = (List<GoogleFileVersion__c>) GoogleFileVersionSelector.query()

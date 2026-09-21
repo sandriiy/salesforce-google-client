@@ -46,6 +46,7 @@ public class GoogleCloudTestFactory {
 		Test.setMock(HttpCalloutMock.class, httpMock);
 		GoogleClientApiProvider.authorizerClassNameOverride = TEST_AUTHORIZER_CLASS_NAME;
 		GoogleCacheDriveFolderService.cacheProviderOverride = new GoogleInMemoryCacheProvider();
+		setPrivilegedFloor(null);
 
 		if (GoogleMetadataConfigService.configRecordOverride == null) {
 			GoogleMetadataConfigService.configRecordOverride = config().build();
@@ -59,6 +60,7 @@ public class GoogleCloudTestFactory {
 	public static void bypassTriggers() {
 		GTriggerHandler.setBypass('GoogleFileVersionTriggerHandler', true);
 		GTriggerHandler.setBypass('GoogleFileLinkTriggerHandler', true);
+		GTriggerHandler.setBypass('GoogleFileVersionLabelTriggerHandler', true);
 	}
 
 	public static void grantRecordAccess(Id recordId, Boolean canRead, Boolean canEdit) {
@@ -96,16 +98,25 @@ public class GoogleCloudTestFactory {
 	}
 
 	public static Id mockUser(Id userId, String userType) {
-		GSOQL.mock(GoogleUserSelector.MOCK_ID).thenReturn(new List<SObject>{ buildUser(userId, userType) });
+		return mockUser(userId, userType, null);
+	}
+
+	public static Id mockUser(Id userId, String userType, String email) {
+		GSOQL.mock(GoogleUserSelector.MOCK_ID).thenReturn(new List<SObject>{ buildUser(userId, userType, email) });
 		return userId;
 	}
 
 	public static User buildUser(Id userId, String userType) {
+		return buildUser(userId, userType, null);
+	}
+
+	public static User buildUser(Id userId, String userType, String email) {
 		return (User) JSON.deserialize(
 			JSON.serialize(new Map<String, Object>{
 				'attributes' => new Map<String, Object>{ 'type' => 'User' },
 				'Id' => userId,
-				'UserType' => userType
+				'UserType' => userType,
+				'Email' => email
 			}),
 			User.class
 		);
@@ -148,8 +159,16 @@ public class GoogleCloudTestFactory {
 		return new LinkBuilder();
 	}
 
+	public static VersionLabelBuilder versionLabel() {
+		return new VersionLabelBuilder();
+	}
+
 	public static ShareBuilder share() {
 		return new ShareBuilder();
+	}
+
+	public static SalesforceFileBuilder salesforceFile() {
+		return new SalesforceFileBuilder();
 	}
 
 	public class TestGoogleAuthorizer implements GoogleAuthorizer {
@@ -188,11 +207,13 @@ public class GoogleCloudTestFactory {
 		public VersionBuilder withDescription(String v) { r.Description__c = v; return this; }
 		public VersionBuilder isLatest(Boolean v) { r.IsLatestFile__c = v; return this; }
 		public VersionBuilder withSummary(String v) { r.Summary__c = v; return this; }
+		public VersionBuilder withAiLabels(String v) { r.AiLabels__c = v; return this; }
 		public VersionBuilder withType(String v) { r.Type__c = v; return this; }
 		public VersionBuilder withSize(Long v) { r.Size__c = v; return this; }
 		public VersionBuilder withDriveId(String v) { r.GoogleDriveFileId__c = v; return this; }
 		public VersionBuilder withFolderId(String v) { r.GoogleDriveFolderId__c = v; return this; }
 		public VersionBuilder withDocsId(String v) { r.GoogleDocsFileId__c = v; return this; }
+		public VersionBuilder withDocsSize(Long v) { r.GoogleDocsFileSize__c = v; return this; }
 		public VersionBuilder withPublicLink(String v) { r.PublicLink__c = v; return this; }
 		public VersionBuilder withPublicLinkPermissionId(String v) { r.PublicLinkPermissionId__c = v; return this; }
 		public VersionBuilder withPublicLinkExpiration(Datetime v) { r.PublicLinkExpirationDate__c = v; return this; }
@@ -209,6 +230,26 @@ public class GoogleCloudTestFactory {
 
 		public GoogleFileVersion__c insertRecord() {
 			GoogleFileVersion__c out = build();
+			insert out;
+			return out;
+		}
+	}
+
+	public class VersionLabelBuilder {
+		private GoogleFileVersionLabel__c r = new GoogleFileVersionLabel__c();
+
+		public VersionLabelBuilder forVersion(Id versionId) { r.GoogleFileVersionId__c = versionId; return this; }
+		public VersionLabelBuilder withName(String v) { r.Name = v; return this; }
+		public VersionLabelBuilder withDriveLabelId(String v) { r.GoogleDriveLabelId__c = v; return this; }
+		public VersionLabelBuilder withConfidence(Integer v) { r.Confidence__c = v; return this; }
+
+		public GoogleFileVersionLabel__c build() {
+			if (String.isBlank(r.Name)) r.Name = 'Test Label';
+			return r;
+		}
+
+		public GoogleFileVersionLabel__c insertRecord() {
+			GoogleFileVersionLabel__c out = build();
 			insert out;
 			return out;
 		}
@@ -267,6 +308,49 @@ public class GoogleCloudTestFactory {
 		}
 	}
 
+	public class SalesforceFileBuilder {
+		private Id versionId = fakeId(ContentVersion.SObjectType);
+		private Id documentId = fakeId(ContentDocument.SObjectType);
+		private String title = 'Test File';
+		private String fileExtension = 'pdf';
+		private String content = 'salesforce file content';
+
+		public SalesforceFileBuilder withVersionId(Id v) { versionId = v; return this; }
+		public SalesforceFileBuilder withDocumentId(Id v) { documentId = v; return this; }
+		public SalesforceFileBuilder withTitle(String v) { title = v; return this; }
+		public SalesforceFileBuilder withExtension(String v) { fileExtension = v; return this; }
+		public SalesforceFileBuilder withContent(String v) { content = v; return this; }
+
+		public ContentVersion mock() {
+			ContentVersion salesforceFile = build();
+			GSOQL.mock(GoogleContentVersionSelector.MOCK_ID).thenReturn(new List<SObject>{ salesforceFile });
+
+			if (GoogleLocalFileTransferService.sourceContentOverride == null) {
+				GoogleLocalFileTransferService.sourceContentOverride = new Map<Id, Blob>();
+			}
+			GoogleLocalFileTransferService.sourceContentOverride.put(salesforceFile.Id, Blob.valueOf(content));
+
+			return salesforceFile;
+		}
+
+		public ContentVersion build() {
+			Blob body = Blob.valueOf(content);
+			return (ContentVersion) JSON.deserialize(
+				JSON.serialize(new Map<String, Object>{
+					'attributes' => new Map<String, Object>{ 'type' => 'ContentVersion' },
+					'Id' => versionId,
+					'ContentDocumentId' => documentId,
+					'Title' => title,
+					'PathOnClient' => title + '.' + fileExtension,
+					'FileExtension' => fileExtension,
+					'ContentSize' => body.size(),
+					'IsLatest' => true
+				}),
+				ContentVersion.class
+			);
+		}
+	}
+
 	public class ConfigBuilder {
 		private GoogleClientConfig__mdt r = new GoogleClientConfig__mdt();
 
@@ -286,6 +370,7 @@ public class GoogleCloudTestFactory {
 		public ConfigBuilder withBigFileSize(Long v) { r.DefaultBigFileSize__c = v; return this; }
 		public ConfigBuilder withDeleteChainSize(Integer v) { r.MaxDeleteChainSize__c = v; return this; }
 		public ConfigBuilder withDirectBrowserUpload(Boolean v) { r.IsDirectBrowserUploadEnabled__c = v; return this; }
+		public ConfigBuilder withOpenInDrive(Boolean v) { r.IsOpenInDriveEnabled__c = v; return this; }
 		public ConfigBuilder withFileExplorerColumns(String v) { r.FileExplorerColumns__c = v; return this; }
 		public ConfigBuilder withFileIntelligence(Boolean v) { r.IsFileIntelligenceEnabled__c = v; return this; }
 		public ConfigBuilder withGeminiApiKey(String v) { r.CustomGeminiApiKey__c = v; return this; }
@@ -297,6 +382,11 @@ public class GoogleCloudTestFactory {
 		public ConfigBuilder withSummaryPrompt(String v) { r.CustomSummaryPrompt__c = v; return this; }
 		public ConfigBuilder withQuestionPrompt(String v) { r.CustomQuestionPrompt__c = v; return this; }
 		public ConfigBuilder withQuestionMaxOutputTokens(Integer v) { r.QuestionMaxOutputTokens__c = v; return this; }
+		public ConfigBuilder withAiLabeling(Boolean v) { r.IsAiLabelingEnabled__c = v; return this; }
+		public ConfigBuilder withLabelingPrompt(String v) { r.CustomLabelingPrompt__c = v; return this; }
+		public ConfigBuilder withAiLabelingMinConfidence(Integer v) { r.AiLabelingMinConfidence__c = v; return this; }
+		public ConfigBuilder withAiLabelingThinkingBudget(Integer v) { r.AiLabelingThinkingBudget__c = v; return this; }
+		public ConfigBuilder withAiLabelDefinitions(String v) { r.AiLabelDefinitions__c = v; return this; }
 
 		public GoogleClientConfig__mdt build() {
 			return r;

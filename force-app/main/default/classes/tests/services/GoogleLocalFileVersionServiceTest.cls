@@ -438,4 +438,76 @@ private class GoogleLocalFileVersionServiceTest {
 		Test.stopTest();
 	}
 
+	@IsTest
+	private static void testValidatePreviewEligiblePositiveConvertUsesWorkspaceSizeWhenUploadedFileTooLarge() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildPreviewConfig(false, 10L);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('PV7').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('PV7.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(200)
+			.withDriveId('GD_PV_7')
+			.withDocsId('DOCS_READY_7')
+			.withDocsSize(5)
+			.insertRecord();
+
+		Test.startTest();
+		GoogleFilePreviewAction action = new GoogleLocalFileVersionService().validatePreviewEligible(localFileVersion.Id);
+		Test.stopTest();
+
+		Assert.areEqual(GoogleFilePreviewAction.CONVERT, action);
+	}
+
+	@IsTest
+	private static void testValidatePreviewEligibleNegativeTooLargeByWorkspaceSize() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildPreviewConfig(false, 10L);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('PV8').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('PV8.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(5)
+			.withDriveId('GD_PV_8')
+			.withDocsId('DOCS_READY_8')
+			.withDocsSize(200)
+			.insertRecord();
+
+		Test.startTest();
+		try {
+			new GoogleLocalFileVersionService().validatePreviewEligible(localFileVersion.Id);
+			Assert.isTrue(false);
+		} catch (GoogleLocalFileVersionService.GoogleFileVersionException ex) {
+			Assert.isTrue(ex.getMessage().contains('too large to preview'));
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testValidatePreviewEligiblePositiveDirectIgnoresWorkspaceSize() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildPreviewConfig(false, 10L);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('PV9').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('PV9.pdf')
+			.withType('application/pdf')
+			.withSize(5)
+			.withDriveId('GD_PV_9')
+			.withDocsId('DOCS_READY_9')
+			.withDocsSize(200)
+			.insertRecord();
+
+		Test.startTest();
+		GoogleFilePreviewAction action = new GoogleLocalFileVersionService().validatePreviewEligible(localFileVersion.Id);
+		Test.stopTest();
+
+		Assert.areEqual(GoogleFilePreviewAction.DIRECT, action);
+	}
+
 }

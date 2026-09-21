@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Sends deleted files to the Google Drive trash, the upload and its Workspace copy alike. It works
+ * through them a configured number at a time and chains itself for the rest, so deleting a file with
+ * many versions does not run into the callout ceiling.
+ */
 public with sharing class GoogleFileCloudDeleteJob implements Queueable, Database.AllowsCallouts {
 	private final Integer MAX_CALLS_PER_JOB;
     private final List<String> googleFileIds;
@@ -28,6 +33,11 @@ public with sharing class GoogleFileCloudDeleteJob implements Queueable, Databas
 	@TestVisible
 	private static Boolean skipExecution = false;
 
+	/**
+	 * Builds the job from the versions that were deleted, taking both Drive Ids off each one.
+	 *
+	 * @param fileVersions The deleted versions, loaded with their confidential fields.
+	 */
 	public GoogleFileCloudDeleteJob(List<GoogleFileVersion__c> fileVersions) {
 		this.MAX_CALLS_PER_JOB = new GoogleMetadataConfigService().getDeleteChainSize();
         this.googleFileIds = fileVersions == null 
@@ -35,6 +45,11 @@ public with sharing class GoogleFileCloudDeleteJob implements Queueable, Databas
 			: extractFileIds(fileVersions);
     }
 
+    /**
+     * Builds the job from Drive file Ids directly.
+     *
+     * @param googleFileIds The Drive files to trash.
+     */
     public GoogleFileCloudDeleteJob(Set<String> googleFileIds) {
 		this.MAX_CALLS_PER_JOB = new GoogleMetadataConfigService().getDeleteChainSize();
         this.googleFileIds = googleFileIds == null 
@@ -42,6 +57,11 @@ public with sharing class GoogleFileCloudDeleteJob implements Queueable, Databas
 			: new List<String>(this.googleFileIds);
     }
 
+	/**
+	 * Builds the job from Drive file Ids directly, which is also how it chains what is left over.
+	 *
+	 * @param googleFileIds The Drive files to trash.
+	 */
 	public GoogleFileCloudDeleteJob(List<String> googleFileIds) {
 		this.MAX_CALLS_PER_JOB = new GoogleMetadataConfigService().getDeleteChainSize();
         this.googleFileIds = googleFileIds == null 
@@ -49,6 +69,11 @@ public with sharing class GoogleFileCloudDeleteJob implements Queueable, Databas
 			: googleFileIds;
     }
 
+    /**
+     * Trashes as many files as one job is allowed and chains another for the remainder.
+     *
+     * @param qc The queueable context, which this job does not use.
+     */
     public void execute(QueueableContext qc) {
         if (skipExecution) return;
         if (googleFileIds.isEmpty()) return;

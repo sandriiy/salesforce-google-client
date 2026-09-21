@@ -41,6 +41,25 @@ private class GoogleMetadataConfigServiceTest {
 		}
 	}
 
+	private class CapturingDeployer implements IGoogleMetadataDeployer {
+		private Metadata.DeployContainer capturedContainer;
+
+		public Id enqueue(Metadata.DeployContainer container) {
+			this.capturedContainer = container;
+			return '0Af000000000002AAA';
+		}
+
+		private Map<String, Object> capturedValues() {
+			Map<String, Object> valuesByField = new Map<String, Object>();
+			Metadata.CustomMetadata record = (Metadata.CustomMetadata) this.capturedContainer.getMetadata()[0];
+			for (Metadata.CustomMetadataValue value : record.values) {
+				valuesByField.put(value.field, value.value);
+			}
+
+			return valuesByField;
+		}
+	}
+
 	private static GoogleClientConfig__mdt buildConfig(Boolean isPreviewDisabled) {
 		return new GoogleClientConfig__mdt(
 			DeveloperName = 'GoogleClient',
@@ -362,6 +381,180 @@ private class GoogleMetadataConfigServiceTest {
 
 		Assert.isTrue(enabled.isDirectBrowserUploadEnabled());
 		Assert.isTrue(enabled.isFileIntelligenceEnabled());
+	}
+
+	@IsTest
+	private static void testAiLabelingIsOffWithSafeDefaultsAfterUpgrade() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		Assert.isFalse(svc.isAiLabelingEnabled());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_LABELING_PROMPT, svc.getLabelingPrompt());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_LABELING_MIN_CONFIDENCE, svc.getAiLabelingMinConfidence());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_LABELING_THINKING_BUDGET, svc.getAiLabelingThinkingBudget());
+		Assert.areEqual(0, svc.getAiLabelDefinitions().size());
+	}
+
+	@IsTest
+	private static void testAiLabelingRequiresFileIntelligence() {
+		GoogleCloudTestFactory.config().withAiLabeling(true).apply();
+		Assert.isFalse(new GoogleMetadataConfigService().isAiLabelingEnabled());
+
+		GoogleCloudTestFactory.config().withAiLabeling(true).withFileIntelligence(true).apply();
+		Assert.isTrue(new GoogleMetadataConfigService().isAiLabelingEnabled());
+	}
+
+	@IsTest
+	private static void testAiLabelingMinConfidenceIsClampedToPercent() {
+		GoogleCloudTestFactory.config().withAiLabelingMinConfidence(150).apply();
+		Assert.areEqual(100, new GoogleMetadataConfigService().getAiLabelingMinConfidence());
+
+		GoogleCloudTestFactory.config().withAiLabelingMinConfidence(-5).apply();
+		Assert.areEqual(0, new GoogleMetadataConfigService().getAiLabelingMinConfidence());
+
+		GoogleCloudTestFactory.config().withAiLabelingThinkingBudget(-1).apply();
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_LABELING_THINKING_BUDGET, new GoogleMetadataConfigService().getAiLabelingThinkingBudget());
+	}
+
+	@IsTest
+	private static void testGetAiLabelDefinitionsKeepsOnlyCompleteUniqueEntries() {
+		GoogleCloudTestFactory.config()
+			.withAiLabelDefinitions('['
+				+ '{"name":"Invoice","labelId":"LABEL_INVOICE","description":"A bill requesting payment"},'
+				+ '{"name":"","labelId":"LABEL_BLANK","description":"Missing name"},'
+				+ '{"name":"invoice","labelId":"LABEL_DUP","description":"Duplicate name"},'
+				+ '{"name":"Contract","description":"Missing label id"},'
+				+ '{"name":"' + 'N'.repeat(81) + '","labelId":"LABEL_LONG","description":"Name longer than a label record allows"},'
+				+ '{"name":"Receipt","labelId":"LABEL_RECEIPT","fieldId":"IGNORED_KEY","description":"Proof of payment"}'
+				+ ']')
+			.apply();
+
+		List<GoogleAiLabelDefinitionDTO> definitions = new GoogleMetadataConfigService().getAiLabelDefinitions();
+
+		Assert.areEqual(2, definitions.size());
+		Assert.areEqual('Invoice', definitions[0].name);
+		Assert.areEqual('LABEL_INVOICE', definitions[0].labelId);
+		Assert.areEqual('Receipt', definitions[1].name);
+		Assert.areEqual('LABEL_RECEIPT', definitions[1].labelId);
+	}
+
+	@IsTest
+	private static void testResolveConfigRecordPositiveReadsLongTextInFull() {
+		GoogleMetadataConfigService.configRecordOverride = null;
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
+		String longPrompt = 'Summarize the document in one sentence. '.repeat(10);
+		GSOQL.mock(GoogleClientConfigSelector.MOCK_ID).thenReturn(new List<GoogleClientConfig__mdt>{
+			new GoogleClientConfig__mdt(DeveloperName = 'GoogleClient', CustomSummaryPrompt__c = longPrompt)
+		});
+
+		String resolvedPrompt = new GoogleMetadataConfigService().getSummaryPrompt();
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
+
+		Assert.isTrue(longPrompt.length() > 255);
+		Assert.areEqual(longPrompt, resolvedPrompt);
+	}
+
+	@IsTest
+	private static void testGetAiLabelDefinitionsIgnoresUnreadableValue() {
+		GoogleCloudTestFactory.config().withAiLabelDefinitions('not json at all').apply();
+
+		Assert.areEqual(0, new GoogleMetadataConfigService().getAiLabelDefinitions().size());
+	}
+
+	@IsTest
+	private static void testSaveConfigAppliesLabelingDefaultsOnlyWhenEnabled() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client',
+			IsFileIntelligenceEnabled__c = true
+		);
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'IsAiLabelingEnabled__c' => true });
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_LABELING_PROMPT, savedValues.get('CustomLabelingPrompt__c'));
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_LABELING_MIN_CONFIDENCE, savedValues.get('AiLabelingMinConfidence__c'));
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_LABELING_THINKING_BUDGET, savedValues.get('AiLabelingThinkingBudget__c'));
+	}
+
+	@IsTest
+	private static void testSaveConfigLeavesLabelingFieldsAloneWhenDisabled() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client'
+		);
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'cloudrylabs.com' });
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isFalse(savedValues.containsKey('CustomLabelingPrompt__c'));
+		Assert.isFalse(savedValues.containsKey('AiLabelingMinConfidence__c'));
+	}
+
+	@IsTest
+	private static void testDeactivateAiConfigClearsEveryAiSettingAndTurnsAnalysisOff() {
+		GoogleCloudTestFactory.config()
+			.asPackagedRecord()
+			.withUploadFolderId('PRIMARY')
+			.withFileIntelligence(true)
+			.withAiLabeling(true)
+			.withGeminiApiKey('api-key-1')
+			.withAiModel('gemini-2.0-flash')
+			.withAgentProjectId('project-1')
+			.withAgentLocation('global')
+			.withSummaryPrompt('Summarize')
+			.withQuestionPrompt('Answer')
+			.withQuestionMaxOutputTokens(512)
+			.withAiSafetyMode('Strict')
+			.withAiPromptSafetyGuardClass('MyGuard')
+			.withLabelingPrompt('Label')
+			.withAiLabelingMinConfidence(90)
+			.withAiLabelingThinkingBudget(1024)
+			.withAiLabelDefinitions('[{"name":"Invoice","labelId":"L1","description":"Bills"}]')
+			.apply();
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		Id deploymentId = new GoogleMetadataConfigService(deployer).deactivateAiConfig();
+		Test.stopTest();
+
+		Assert.isNotNull(deploymentId, 'Deactivation must be sent to the Metadata API like any other save');
+		Map<String, Object> savedValues = deployer.capturedValues();
+		for (String fieldApiName : GoogleMetadataConfigService.AI_CONFIGURATION_FIELDS) {
+			Assert.isTrue(savedValues.containsKey(fieldApiName), fieldApiName + ' must be part of the deactivation');
+			Assert.isNull(savedValues.get(fieldApiName), fieldApiName + ' must be cleared');
+		}
+		for (String fieldApiName : GoogleMetadataConfigService.AI_FEATURE_FLAG_FIELDS) {
+			Assert.areEqual(false, savedValues.get(fieldApiName), fieldApiName + ' must be switched off');
+		}
+		Assert.isFalse(savedValues.containsKey('DefaultGoogleUploadFolderId__c'), 'Google Drive settings must stay untouched');
+		Assert.isFalse(savedValues.containsKey('CustomGoogleServiceAccount__c'), 'Google Drive settings must stay untouched');
+	}
+
+	@IsTest
+	private static void testDeactivateAiConfigDoesNotReapplyPromptDefaults() {
+		GoogleCloudTestFactory.config()
+			.asPackagedRecord()
+			.withFileIntelligence(true)
+			.withGeminiApiKey('api-key-1')
+			.withAiModel('gemini-2.0-flash')
+			.apply();
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).deactivateAiConfig();
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isNull(savedValues.get('CustomSummaryPrompt__c'), 'Turning analysis off must not bring the shipped prompt back');
+		Assert.isNull(savedValues.get('QuestionMaxOutputTokens__c'));
+		Assert.isNull(savedValues.get('AiSafetyMode__c'));
 	}
 
 	@IsTest

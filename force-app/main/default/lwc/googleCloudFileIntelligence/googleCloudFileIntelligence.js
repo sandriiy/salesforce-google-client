@@ -3,366 +3,409 @@ import { LightningElement, api, track } from 'lwc';
 import retrieveFileIntelligenceState from '@salesforce/apex/GoogleCloudFileIntelligenceController.retrieveFileIntelligenceState';
 import answerFileQuestion from '@salesforce/apex/GoogleCloudFileIntelligenceController.answerFileQuestion';
 import {
-	DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE,
-	createDefaultFileIntelligenceState,
-	normalizeFileIntelligenceState,
-	resolveFileIntelligencePanelOpen
+    DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE,
+    createDefaultFileIntelligenceState,
+    normalizeFileIntelligenceState,
+    isFileIntelligencePanelAvailable,
+    resolveFileIntelligencePanelOpen
 } from 'c/googleCloudFileIntelligenceUtils';
 
 const MAX_QUESTION_CHARACTERS = 255;
 const DEFAULT_FILE_INTELLIGENCE_QUESTION_ERROR_MESSAGE = 'We could not answer that question. Try again in a moment.';
 const PARTIAL_RESPONSE_NOTE = 'Response may be incomplete.';
+const QUESTION_DISABLED_MESSAGE = 'Questions about this file are turned off. Contact your administrator for more information.';
 
 export default class GoogleCloudFileIntelligence extends LightningElement {
-	@track intelligenceState = createDefaultFileIntelligenceState();
-	@track isLoading = false;
-	@track isOpen = false;
-	@track messages = [];
-	@track draftQuestion = '';
-	@track questionError = '';
-	@track isQuestionLoading = false;
+    @track intelligenceState = createDefaultFileIntelligenceState();
+    @track isLoading = false;
+    @track isOpen = false;
+    @track messages = [];
+    @track draftQuestion = '';
+    @track questionError = '';
+    @track isQuestionLoading = false;
 
-	requestSequence = 0;
-	questionRequestSequence = 0;
-	userOpenPreference = null;
-	versionIdValue;
-	messageSequence = 0;
-	shouldScrollConversation = false;
-	questionCharacterLimit = MAX_QUESTION_CHARACTERS;
+    requestSequence = 0;
+    questionRequestSequence = 0;
+    userOpenPreference = null;
+    versionIdValue;
+    messageSequence = 0;
+    shouldScrollConversation = false;
+    questionCharacterLimit = MAX_QUESTION_CHARACTERS;
 
-	renderedCallback() {
-		if (this.shouldScrollConversation !== true) {
-			return;
-		}
+    renderedCallback() {
+        if (this.shouldScrollConversation !== true) {
+            return;
+        }
 
-		const conversation = this.template.querySelector('.intelligence-conversation');
-		if (conversation) {
-			conversation.scrollTop = conversation.scrollHeight;
-		}
+        const conversation = this.template.querySelector('.intelligence-conversation');
+        if (conversation) {
+            conversation.scrollTop = conversation.scrollHeight;
+        }
 
-		this.shouldScrollConversation = false;
-	}
+        this.shouldScrollConversation = false;
+    }
 
-	@api
-	get versionId() {
-		return this.versionIdValue;
-	}
+    @api
+    get versionId() {
+        return this.versionIdValue;
+    }
 
-	set versionId(value) {
-		const normalizedVersionId = value || undefined;
-		if (this.versionIdValue === normalizedVersionId) {
-			return;
-		}
+    set versionId(value) {
+        const normalizedVersionId = value || undefined;
+        if (this.versionIdValue === normalizedVersionId) {
+            return;
+        }
 
-		this.versionIdValue = normalizedVersionId;
-		this.userOpenPreference = null;
-		this.requestSequence += 1;
-		this.questionRequestSequence += 1;
-		this.intelligenceState = createDefaultFileIntelligenceState(normalizedVersionId);
-		this.isLoading = false;
-		this.isOpen = false;
-		this.resetConversationState();
+        this.versionIdValue = normalizedVersionId;
+        this.userOpenPreference = null;
+        this.requestSequence += 1;
+        this.questionRequestSequence += 1;
+        this.intelligenceState = createDefaultFileIntelligenceState(normalizedVersionId);
+        this.isLoading = false;
+        this.isOpen = false;
+        this.resetConversationState();
 
-		if (!normalizedVersionId) {
-			this.emitStateChange();
-			return;
-		}
+        if (!normalizedVersionId) {
+            this.emitStateChange();
+            return;
+        }
 
-		void this.loadIntelligenceState(normalizedVersionId);
-	}
+        void this.loadIntelligenceState(normalizedVersionId);
+    }
 
-	@api
-	async refresh() {
-		if (!this.versionIdValue) {
-			return;
-		}
+    @api
+    async refresh() {
+        if (!this.versionIdValue) {
+            return;
+        }
 
-		this.questionError = '';
-		await this.loadIntelligenceState(this.versionIdValue);
-	}
+        this.questionError = '';
+        await this.loadIntelligenceState(this.versionIdValue);
+    }
 
-	handleOpen() {
-		this.userOpenPreference = true;
-		this.isOpen = true;
-		this.dispatchEvent(new CustomEvent('panelopen'));
-		this.emitStateChange();
-	}
+    handleOpen() {
+        this.userOpenPreference = true;
+        this.isOpen = true;
+        this.dispatchEvent(new CustomEvent('panelopen'));
+        this.emitStateChange();
+    }
 
-	handleClose() {
-		this.userOpenPreference = false;
-		this.isOpen = false;
-		this.dispatchEvent(new CustomEvent('panelclose'));
-		this.emitStateChange();
-	}
+    handleClose() {
+        this.userOpenPreference = false;
+        this.isOpen = false;
+        this.dispatchEvent(new CustomEvent('panelclose'));
+        this.emitStateChange();
+    }
 
-	handleQuestionInput(event) {
-		this.draftQuestion = event.target?.value || '';
-		this.questionError = '';
-	}
+    handleQuestionInput(event) {
+        this.draftQuestion = event.target?.value || '';
+        this.questionError = '';
+    }
 
-	handleQuestionKeyDown(event) {
-		if (event.key !== 'Enter') {
-			return;
-		}
+    handleQuestionKeyDown(event) {
+        if (event.key !== 'Enter') {
+            return;
+        }
 
-		event.preventDefault();
-		void this.handleQuestionSend();
-	}
+        event.preventDefault();
+        void this.handleQuestionSend();
+    }
 
-	async handleQuestionSend() {
-		const question = this.normalizedQuestion;
-		if (!question || this.isQuestionLoading || !this.versionIdValue) {
-			return;
-		}
+    async handleQuestionSend() {
+        if (!this.isQuestionEnabled) {
+            return;
+        }
 
-		if (question.length > MAX_QUESTION_CHARACTERS) {
-			this.questionError = 'Questions must be 255 characters or fewer.';
-			return;
-		}
+        const question = this.normalizedQuestion;
+        if (!question || this.isQuestionLoading || !this.versionIdValue) {
+            return;
+        }
 
-		const pendingMessage = this.createPendingAssistantMessage();
-		const currentVersionId = this.versionIdValue;
-		const currentQuestionRequestSequence = ++this.questionRequestSequence;
+        if (question.length > MAX_QUESTION_CHARACTERS) {
+            this.questionError = 'Questions must be 255 characters or fewer.';
+            return;
+        }
 
-		this.messages = [
-			...this.messages,
-			this.createUserMessage(question),
-			pendingMessage
-		];
-		this.shouldScrollConversation = true;
-		this.draftQuestion = '';
-		this.questionError = '';
-		this.isQuestionLoading = true;
+        const pendingMessage = this.createPendingAssistantMessage();
+        const currentVersionId = this.versionIdValue;
+        const currentQuestionRequestSequence = ++this.questionRequestSequence;
 
-		try {
-			const result = await answerFileQuestion({
-				localFileVersionId: currentVersionId,
-				question
-			});
+        this.messages = [
+            ...this.messages,
+            this.createUserMessage(question),
+            pendingMessage
+        ];
+        this.shouldScrollConversation = true;
+        this.draftQuestion = '';
+        this.questionError = '';
+        this.isQuestionLoading = true;
 
-			if (currentQuestionRequestSequence !== this.questionRequestSequence || currentVersionId !== this.versionIdValue) {
-				return;
-			}
+        try {
+            const result = await answerFileQuestion({
+                localFileVersionId: currentVersionId,
+                question
+            });
 
-			if (result?.success === true && result?.text) {
-				this.replaceMessage(
-					pendingMessage.id,
-					this.createAssistantMessage(result.text, result?.finishReason, pendingMessage.id)
-				);
-				return;
-			}
+            if (currentQuestionRequestSequence !== this.questionRequestSequence || currentVersionId !== this.versionIdValue) {
+                return;
+            }
 
-			this.replaceMessage(
-				pendingMessage.id,
-				this.createAssistantErrorMessage(result?.errorMessage || DEFAULT_FILE_INTELLIGENCE_QUESTION_ERROR_MESSAGE, pendingMessage.id)
-			);
-		} catch (error) {
-			if (currentQuestionRequestSequence !== this.questionRequestSequence || currentVersionId !== this.versionIdValue) {
-				return;
-			}
+            if (result?.success === true && result?.text) {
+                this.replaceMessage(
+                    pendingMessage.id,
+                    this.createAssistantMessage(result.text, result?.finishReason, pendingMessage.id)
+                );
+                return;
+            }
 
-			this.replaceMessage(
-				pendingMessage.id,
-				this.createAssistantErrorMessage(this.normalizeQuestionError(error), pendingMessage.id)
-			);
-		} finally {
-			if (currentQuestionRequestSequence === this.questionRequestSequence && currentVersionId === this.versionIdValue) {
-				this.isQuestionLoading = false;
-			}
-		}
-	}
+            this.replaceMessage(
+                pendingMessage.id,
+                this.createAssistantErrorMessage(result?.errorMessage || DEFAULT_FILE_INTELLIGENCE_QUESTION_ERROR_MESSAGE, pendingMessage.id)
+            );
+        } catch (error) {
+            if (currentQuestionRequestSequence !== this.questionRequestSequence || currentVersionId !== this.versionIdValue) {
+                return;
+            }
 
-	async loadIntelligenceState(versionId) {
-		const currentRequestSequence = ++this.requestSequence;
-		this.isLoading = true;
-		this.emitStateChange();
+            this.replaceMessage(
+                pendingMessage.id,
+                this.createAssistantErrorMessage(this.normalizeQuestionError(error), pendingMessage.id)
+            );
+        } finally {
+            if (currentQuestionRequestSequence === this.questionRequestSequence && currentVersionId === this.versionIdValue) {
+                this.isQuestionLoading = false;
+            }
+        }
+    }
 
-		try {
-			const intelligenceState = await retrieveFileIntelligenceState({
-				localFileVersionId: versionId
-			});
+    async loadIntelligenceState(versionId) {
+        const currentRequestSequence = ++this.requestSequence;
+        this.isLoading = true;
+        this.emitStateChange();
 
-			if (currentRequestSequence !== this.requestSequence || versionId !== this.versionIdValue) {
-				return;
-			}
+        try {
+            const intelligenceState = await retrieveFileIntelligenceState({
+                localFileVersionId: versionId
+            });
 
-			this.intelligenceState = normalizeFileIntelligenceState(intelligenceState, versionId);
-			this.isOpen = resolveFileIntelligencePanelOpen(this.intelligenceState, this.userOpenPreference);
-		} catch (error) {
-			if (currentRequestSequence !== this.requestSequence || versionId !== this.versionIdValue) {
-				return;
-			}
+            if (currentRequestSequence !== this.requestSequence || versionId !== this.versionIdValue) {
+                return;
+            }
 
-			this.intelligenceState = createDefaultFileIntelligenceState(versionId);
-			this.isOpen = false;
-		} finally {
-			if (currentRequestSequence === this.requestSequence && versionId === this.versionIdValue) {
-				this.isLoading = false;
-				this.emitStateChange();
-			}
-		}
-	}
+            this.intelligenceState = normalizeFileIntelligenceState(intelligenceState, versionId);
+            this.isOpen = resolveFileIntelligencePanelOpen(this.intelligenceState, this.userOpenPreference);
+        } catch (error) {
+            if (currentRequestSequence !== this.requestSequence || versionId !== this.versionIdValue) {
+                return;
+            }
 
-	resetConversationState() {
-		this.messages = [];
-		this.draftQuestion = '';
-		this.questionError = '';
-		this.isQuestionLoading = false;
-		this.shouldScrollConversation = false;
-	}
+            this.intelligenceState = createDefaultFileIntelligenceState(versionId);
+            this.isOpen = false;
+        } finally {
+            if (currentRequestSequence === this.requestSequence && versionId === this.versionIdValue) {
+                this.isLoading = false;
+                this.emitStateChange();
+            }
+        }
+    }
 
-	nextMessageId() {
-		this.messageSequence += 1;
-		return `message-${this.messageSequence}`;
-	}
+    resetConversationState() {
+        this.messages = [];
+        this.draftQuestion = '';
+        this.questionError = '';
+        this.isQuestionLoading = false;
+        this.shouldScrollConversation = false;
+    }
 
-	createUserMessage(text) {
-		return this.buildMessage({
-			id: this.nextMessageId(),
-			role: 'user',
-			text
-		});
-	}
+    nextMessageId() {
+        this.messageSequence += 1;
+        return `message-${this.messageSequence}`;
+    }
 
-	createPendingAssistantMessage() {
-		return this.buildMessage({
-			id: this.nextMessageId(),
-			role: 'assistant',
-			text: '',
-			isPending: true
-		});
-	}
+    createUserMessage(text) {
+        return this.buildMessage({
+            id: this.nextMessageId(),
+            role: 'user',
+            text
+        });
+    }
 
-	createAssistantMessage(text, finishReason, id = this.nextMessageId()) {
-		return this.buildMessage({
-			id,
-			role: 'assistant',
-			text,
-			metaText: finishReason === 'MAX_TOKENS' ? PARTIAL_RESPONSE_NOTE : ''
-		});
-	}
+    createPendingAssistantMessage() {
+        return this.buildMessage({
+            id: this.nextMessageId(),
+            role: 'assistant',
+            text: '',
+            isPending: true
+        });
+    }
 
-	createAssistantErrorMessage(text, id = this.nextMessageId()) {
-		return this.buildMessage({
-			id,
-			role: 'assistant',
-			text,
-			isError: true
-		});
-	}
+    createAssistantMessage(text, finishReason, id = this.nextMessageId()) {
+        return this.buildMessage({
+            id,
+            role: 'assistant',
+            text,
+            metaText: finishReason === 'MAX_TOKENS' ? PARTIAL_RESPONSE_NOTE : ''
+        });
+    }
 
-	buildMessage({ id, role, text, isPending = false, isError = false, metaText = '' }) {
-		const isUser = role === 'user';
-		const rowClass = isUser ? 'intelligence-message-row intelligence-message-row--user' : 'intelligence-message-row intelligence-message-row--assistant';
-		let bubbleClass = isUser ? 'intelligence-message-bubble intelligence-message-bubble--user' : 'intelligence-message-bubble intelligence-message-bubble--assistant';
+    createAssistantErrorMessage(text, id = this.nextMessageId()) {
+        return this.buildMessage({
+            id,
+            role: 'assistant',
+            text,
+            isError: true
+        });
+    }
 
-		if (isError) {
-			bubbleClass += ' intelligence-message-bubble--error';
-		}
+    buildMessage({ id, role, text, isPending = false, isError = false, metaText = '' }) {
+        const isUser = role === 'user';
+        const rowClass = isUser ? 'intelligence-message-row intelligence-message-row--user' : 'intelligence-message-row intelligence-message-row--assistant';
+        let bubbleClass = isUser ? 'intelligence-message-bubble intelligence-message-bubble--user' : 'intelligence-message-bubble intelligence-message-bubble--assistant';
 
-		return {
-			id,
-			text,
-			isPending,
-			showMeta: Boolean(metaText),
-			metaText,
-			rowClass,
-			bubbleClass,
-			copyClass: isError
-				? 'intelligence-message__copy intelligence-message__copy--error'
-				: 'intelligence-message__copy'
-		};
-	}
+        if (isError) {
+            bubbleClass += ' intelligence-message-bubble--error';
+        }
 
-	replaceMessage(messageId, nextMessage) {
-		this.messages = this.messages.map((message) => (
-			message.id === messageId
-				? nextMessage
-				: message
-		));
-		
-		this.shouldScrollConversation = true;
-	}
+        return {
+            id,
+            text,
+            isPending,
+            showMeta: Boolean(metaText),
+            metaText,
+            rowClass,
+            bubbleClass,
+            copyClass: isError
+                ? 'intelligence-message__copy intelligence-message__copy--error'
+                : 'intelligence-message__copy'
+        };
+    }
 
-	normalizeQuestionError(error) {
-		const bodyMessage = error?.body?.message;
-		if (bodyMessage) {
-			return bodyMessage;
-		}
+    replaceMessage(messageId, nextMessage) {
+        this.messages = this.messages.map((message) => (
+            message.id === messageId
+                ? nextMessage
+                : message
+        ));
+        
+        this.shouldScrollConversation = true;
+    }
 
-		return error?.message || DEFAULT_FILE_INTELLIGENCE_QUESTION_ERROR_MESSAGE;
-	}
+    normalizeQuestionError(error) {
+        const bodyMessage = error?.body?.message;
+        if (bodyMessage) {
+            return bodyMessage;
+        }
 
-	emitStateChange() {
-		this.dispatchEvent(new CustomEvent('statechange', {
-			detail: {
-				isEligible: this.intelligenceState?.isIntelligenceEligible === true,
-				isLoading: this.isLoading === true,
-				isOpen: this.isOpen === true
-			}
-		}));
-	}
+        return error?.message || DEFAULT_FILE_INTELLIGENCE_QUESTION_ERROR_MESSAGE;
+    }
 
-	get summaryCopy() {
-		return this.intelligenceState?.hasSummary === true && this.intelligenceState?.summary
-			? this.intelligenceState.summary
-			: DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE;
-	}
+    emitStateChange() {
+        this.dispatchEvent(new CustomEvent('statechange', {
+            detail: {
+                isEligible: this.intelligenceState?.isIntelligenceEligible === true,
+                isAvailable: this.isPanelAvailable,
+                isQuestionEnabled: this.isQuestionEnabled,
+                isLoading: this.isLoading === true,
+                isOpen: this.isOpen === true,
+                labels: [...this.labelNames]
+            }
+        }));
+    }
 
-	get summaryCopyClass() {
-		return this.intelligenceState?.hasSummary === true
-			? 'intelligence-summary-copy'
-			: 'intelligence-summary-copy intelligence-summary-copy--placeholder';
-	}
+    get summaryCopy() {
+        return this.intelligenceState?.hasSummary === true && this.intelligenceState?.summary
+            ? this.intelligenceState.summary
+            : DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE;
+    }
 
-	get normalizedQuestion() {
-		return typeof this.draftQuestion === 'string'
-			? this.draftQuestion.trim()
-			: '';
-	}
+    get labelNames() {
+        return Array.isArray(this.intelligenceState?.labels) ? this.intelligenceState.labels : [];
+    }
 
-	get questionShellClass() {
-		let classes = 'intelligence-question-shell';
-		if (this.normalizedQuestion) {
-			classes += ' intelligence-question-shell--active';
-		}
-		if (this.isQuestionLoading) {
-			classes += ' intelligence-question-shell--disabled';
-		}
-		return classes;
-	}
+    get labels() {
+        return this.labelNames.map((name, index) => ({ key: `${index}-${name}`, name }));
+    }
 
-	get showSendButton() {
-		return this.normalizedQuestion.length > 0 && this.isQuestionLoading !== true;
-	}
+    get hasLabels() {
+        return this.labelNames.length > 0;
+    }
 
-	get showComposerSpinner() {
-		return this.isQuestionLoading === true;
-	}
+    get summaryCopyClass() {
+        return this.intelligenceState?.hasSummary === true
+            ? 'intelligence-summary-copy'
+            : 'intelligence-summary-copy intelligence-summary-copy--placeholder';
+    }
 
-	get isQuestionInputDisabled() {
-		return this.isQuestionLoading === true || !this.versionIdValue;
-	}
+    get normalizedQuestion() {
+        return typeof this.draftQuestion === 'string'
+            ? this.draftQuestion.trim()
+            : '';
+    }
 
-	get questionCountCopy() {
-		return `${this.draftQuestion?.length || 0}/${MAX_QUESTION_CHARACTERS}`;
-	}
+    get questionShellClass() {
+        let classes = 'intelligence-question-shell';
+        if (this.normalizedQuestion) {
+            classes += ' intelligence-question-shell--active';
+        }
 
-	get questionCountClass() {
-		return (this.draftQuestion?.length || 0) >= MAX_QUESTION_CHARACTERS
-			? 'intelligence-question-count intelligence-question-count--danger'
-			: 'intelligence-question-count';
-	}
+        if (this.isQuestionLoading || !this.isQuestionEnabled) {
+            classes += ' intelligence-question-shell--disabled';
+        }
 
-	get showMessages() {
-		return this.messages.length > 0;
-	}
+        return classes;
+    }
 
-	get showTrigger() {
-		return this.intelligenceState?.isIntelligenceEligible === true && this.isOpen !== true;
-	}
+    get questionDisabledMessage() {
+        return QUESTION_DISABLED_MESSAGE;
+    }
 
-	get showPanel() {
-		return this.intelligenceState?.isIntelligenceEligible === true && this.isOpen === true;
-	}
+    get isQuestionEnabled() {
+        return this.intelligenceState?.isIntelligenceEligible === true;
+    }
+
+    get isPanelAvailable() {
+        return isFileIntelligencePanelAvailable(this.intelligenceState);
+    }
+
+    get showSendButton() {
+        return this.normalizedQuestion.length > 0 && this.isQuestionLoading !== true && this.isQuestionEnabled;
+    }
+
+    get showComposerSpinner() {
+        return this.isQuestionLoading === true;
+    }
+
+    get isQuestionInputDisabled() {
+        return this.isQuestionLoading === true || !this.versionIdValue;
+    }
+
+    get isQuestionInputReadOnly() {
+        return !this.isQuestionEnabled;
+    }
+
+    get questionInputAriaDisabled() {
+        return this.isQuestionEnabled ? 'false' : 'true';
+    }
+
+    get questionCountCopy() {
+        return `${this.draftQuestion?.length || 0}/${MAX_QUESTION_CHARACTERS}`;
+    }
+
+    get questionCountClass() {
+        return (this.draftQuestion?.length || 0) >= MAX_QUESTION_CHARACTERS
+            ? 'intelligence-question-count intelligence-question-count--danger'
+            : 'intelligence-question-count';
+    }
+
+    get showMessages() {
+        return this.messages.length > 0;
+    }
+
+    get showTrigger() {
+        return this.isPanelAvailable && this.isOpen !== true;
+    }
+
+    get showPanel() {
+        return this.isPanelAvailable && this.isOpen === true;
+    }
 }

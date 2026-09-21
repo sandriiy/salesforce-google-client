@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What a finished direct upload landed as. The Drive Id and folder come from Google by way of Apex, never
+ * from the browser, which is the point of sending the last piece from the server.
+ */
 public class GoogleDirectUploadResultDTO {
 	@AuraEnabled
 	public String googleDriveId;

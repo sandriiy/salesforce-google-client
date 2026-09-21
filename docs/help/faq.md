@@ -1,7 +1,7 @@
 # FAQ
 
 Have a question that isn't answered here?
-Open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ target="_blank" rel="noopener noreferrer" } or reach out directly at [ansukhetskyi@cloudrylabs.com](mailto:ansukhetskyi@cloudrylabs.com).
+Open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ target="_blank" rel="noopener noreferrer" } or reach out directly at [ansukh@astertrail.com](mailto:ansukh@astertrail.com).
 
 ---
 
@@ -49,4 +49,4 @@ Open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ tar
 
     No. AI & Intelligence is optional.
 
-    Upload, preview, download, sharing, public links, folder structure, file reuse, and versioning work without AI. When AI is configured, supported files can get stored summaries and file Q&A inside the preview window.
+    Upload, preview, download, sharing, public links, folder structure, file reuse, and versioning work without AI. When AI is configured, supported files can get stored summaries and file Q&A inside the preview window, and new files can be labeled automatically with one of your Google Drive labels.

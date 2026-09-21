@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * One File Explorer column. A catalog column is known to the component already, while a custom one
+ * carries the label and data type read from the field.
+ */
 public with sharing class GoogleFileColumnDTO {
 	@AuraEnabled
 	public String key;
@@ -32,6 +36,14 @@ public with sharing class GoogleFileColumnDTO {
 	public String dataType;
 
 	public GoogleFileColumnDTO() {}
+	/**
+	 * Holds one column.
+	 *
+	 * @param key The catalog token or the field API name.
+	 * @param isCustomField True when this is a field rather than a catalog column.
+	 * @param label What the header shows, for a custom field.
+	 * @param dataType How the value is rendered, for a custom field.
+	 */
 	public GoogleFileColumnDTO(String key, Boolean isCustomField, String label, String dataType) {
 		this.key = key;
 		this.isCustomField = isCustomField;

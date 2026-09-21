@@ -30,7 +30,7 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientReleaseTitle</shortDescription>
-        <value>Google Client v.2.1.0</value>
+        <value>Google Client v.2.2.0</value>
     </labels>
     <labels>
         <fullName>GoogleClientSupportEmail</fullName>
@@ -38,6 +38,6 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>GoogleClientSupportEmail</shortDescription>
-        <value>ansukhetskyi@cloudrylabs.com</value>
+        <value>ansukh@astertrail.com</value>
     </labels>
 </CustomLabels>

@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Sends bytes to Google Drive. When several upload folders are configured and the one in use hits a
+ * hard Drive capacity limit, it moves to the next folder and carries on, which is what keeps uploads
+ * working when a shared drive fills up.
+ */
 public without sharing class GoogleRemoteFileUploader {
 	public class GoogleRemoteFileUploaderException extends Exception {}
 
@@ -32,6 +37,13 @@ public without sharing class GoogleRemoteFileUploader {
 		this.remoteGoogleDrive = remoteFileService.retrieveGoogleDriveClient();
 	}
 
+    /**
+     * Uploads a small file in one request.
+     *
+     * @param fileName The name the file gets in Drive.
+     * @param contentToUpload The content, base64 encoded.
+     * @return The created Drive file with its Id and folder.
+     */
     public GoogleFileEntity uploadFile(String fileName, String contentToUpload) {
 		Blob decodedBlob = EncodingUtil.base64Decode(contentToUpload);
 		List<String> candidateFolders = resolveCandidateFolders();
@@ -67,6 +79,54 @@ public without sharing class GoogleRemoteFileUploader {
 		throw new GoogleRemoteFileUploaderException('Unable to upload the file. Please try again or contact your system administrator.');
 	}
 
+	/**
+	 * Uploads a whole file that is already in memory, opening a session and sending it in one piece. Apex
+	 * cannot slice a Blob, so the file has to fit in the heap, which is why anything large is queued rather
+	 * than sent this way.
+	 *
+	 * @param fileName The name the file gets in Drive.
+	 * @param mimeType What kind of file it is.
+	 * @param content The whole file.
+	 * @return The created Drive file with its Id and folder.
+	 */
+	public GoogleFileEntity uploadFileContent(String fileName, String mimeType, Blob content) {
+		if (content == null || content.size() == 0) {
+			throw new GoogleRemoteFileUploaderException('Unable to upload an empty file. Please try again or contact your system administrator.');
+		}
+
+		GoogleResumableSessionResult session = initializeResumableSession(fileName, mimeType);
+
+		GoogleBigFileEntity uploadedFile;
+		try {
+			uploadedFile = this.remoteGoogleDrive.files().resumableCreate()
+				.setExistingSessionUri(session.sessionUri)
+				.setFileName(fileName)
+				.setParentFolders(new List<String>{session.folderId})
+				.setSupportsAllDrives(true)
+				.setStartByte(0L)
+				.setTotalBytes(content.size())
+				.setBody(content)
+				.setFields('id, name, parents')
+				.execute();
+		} catch (Exception ex) {
+			throw new GoogleRemoteFileUploaderException('Unable to upload the file. Please try again or contact your system administrator.');
+		}
+
+		if (uploadedFile == null || uploadedFile.file == null || String.isBlank(uploadedFile.file.id)) {
+			throw new GoogleRemoteFileUploaderException('The upload did not complete on Google Drive. Please try again or contact your system administrator.');
+		}
+
+		return uploadedFile.file;
+	}
+
+	/**
+	 * Opens an upload session and reports which folder it was opened against, which matters because the
+	 * fallover may have moved it.
+	 *
+	 * @param fileName The name the file gets in Drive.
+	 * @param mimeType What kind of file it is.
+	 * @return The session address and the folder it belongs to.
+	 */
 	public GoogleResumableSessionResult initializeResumableSession(String fileName, String mimeType) {
 		List<String> candidateFolders = resolveCandidateFolders();
 		Integer candidateCount = candidateFolders.size();
@@ -106,6 +166,17 @@ public without sharing class GoogleRemoteFileUploader {
 		throw new GoogleRemoteFileUploaderException('Unable to start the file upload. Please try again or contact your system administrator.');
 	}
 
+	/**
+	 * Sends one chunk of a large upload. Google answers with the file once the last chunk lands and with
+	 * progress until then.
+	 *
+	 * @param fileName The name the file gets in Drive.
+	 * @param chunkToUpload This chunk, base64 encoded.
+	 * @param resumableSessionId The session to send to. Blank opens a new one.
+	 * @param startByte Where this chunk starts in the file.
+	 * @param totalBytes The whole file size, which every chunk must agree on.
+	 * @return The finished file, or the session and how far it has got.
+	 */
 	public GoogleBigFileEntity uploadBigFilePartial(String fileName, String chunkToUpload, String resumableSessionId, Long startByte, Long totalBytes) {
 		Blob decodedBlob = EncodingUtil.base64Decode(chunkToUpload);
 
@@ -184,10 +255,19 @@ public without sharing class GoogleRemoteFileUploader {
 		).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 	}
 
+	/**
+	 * An open upload session and the folder it was opened against.
+	 */
 	public class GoogleResumableSessionResult {
 		public String sessionUri;
 		public String folderId;
 
+		/**
+		 * Holds the session address and its folder.
+		 *
+		 * @param sessionUri Where the chunks are sent.
+		 * @param folderId The Drive folder the file will land in.
+		 */
 		public GoogleResumableSessionResult(String sessionUri, String folderId) {
 			this.sessionUri = sessionUri;
 			this.folderId = folderId;

@@ -104,7 +104,7 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 .toHttpResponse(req);
         }
 
-		if (method == 'GET' && endpointLower.contains('mimetype=text/plain')) {
+		if (method == 'GET' && (endpointLower.contains('mimetype=text/plain') || endpointLower.contains('mimetype=text%2fplain'))) {
 			return new BinaryResponses()
 				.downloadSuccess(Blob.valueOf('Quarterly budget review covering revenue planning, staffing updates, and milestone approvals.'), 'text/plain')
 				.toHttpResponse(req);
@@ -125,6 +125,12 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 .toHttpResponse(req);
         }
 
+        if (method == 'POST' && endpointLower.contains('/modifylabels')) {
+            return new JsonResponses()
+                .labelsModified('label_001')
+                .toHttpResponse(req);
+        }
+
         if (method == 'POST' &&
             (endpointLower.contains('/clone') ||
              endpointLower.contains('/copy'))) {
@@ -136,6 +142,12 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
         if (method == 'POST' && endpointLower.contains('/permissions')) {
             return new JsonResponses()
                 .permissionCreated('perm_anyone_reader_001')
+                .toHttpResponse(req);
+        }
+
+        if ((method == 'PATCH' || method == 'PUT') && endpointLower.contains('/permissions/')) {
+            return new JsonResponses()
+                .permissionModified('perm_user_reader_001')
                 .toHttpResponse(req);
         }
 
@@ -402,12 +414,61 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
                 );
         }
 
+        public MockResponse labelsModified(String labelId) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody(
+                    '{ "kind":"drive#modifyLabelsResponse", "modifiedLabels":[{ "id":"' + escapeJson(labelId) +
+                    '", "revisionId":"1", "fields":{} }] }'
+                );
+        }
+
+        public MockResponse fileSizeSuccess(String id, String size) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody('{ "id":"' + escapeJson(id) + '", "size":"' + escapeJson(size) + '" }');
+        }
+
         public MockResponse permissionCreated(String id) {
             return new MockResponse()
                 .withHeader('Content-Type', 'application/json')
                 .withBody(
                     '{ "id":"' + escapeJson(id) +
                     '", "type":"anyone", "role":"reader" }'
+                );
+        }
+
+        public MockResponse permissionModified(String id) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody(
+                    '{ "id":"' + escapeJson(id) +
+                    '", "type":"user", "role":"reader" }'
+                );
+        }
+
+        public MockResponse fileDetailsWithPermissionsSuccess(String id, String permissionId, String principalType, String emailAddress) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody(
+                    '{ "id":"' + escapeJson(id) +
+                    '", "webViewLink":"https://drive.google.com/file/d/' + escapeJson(id) +
+                    '/view", "permissions":[{ "id":"' + escapeJson(permissionId) +
+                    '", "type":"' + escapeJson(principalType) +
+                    '", "role":"reader", "emailAddress":"' + escapeJson(emailAddress) + '" }] }'
+                );
+        }
+
+        public MockResponse fileDetailsWithExpiringPermissionSuccess(String id, String permissionId, String principalType, String emailAddress, String expirationTime) {
+            return new MockResponse()
+                .withHeader('Content-Type', 'application/json')
+                .withBody(
+                    '{ "id":"' + escapeJson(id) +
+                    '", "webViewLink":"https://drive.google.com/file/d/' + escapeJson(id) +
+                    '/view", "permissions":[{ "id":"' + escapeJson(permissionId) +
+                    '", "type":"' + escapeJson(principalType) +
+                    '", "role":"reader", "expirationTime":"' + escapeJson(expirationTime) +
+                    '", "emailAddress":"' + escapeJson(emailAddress) + '" }] }'
                 );
         }
 

@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Moves newly uploaded files out of the upload folder and into the folder their record or user owns. A
+ * placement that could not settle, because another transaction was creating the same folder, is
+ * rescheduled a minute later and forced through on the last of three attempts, so a file is never left
+ * in the root folder because two uploads raced.
+ */
 public with sharing class GoogleFileCloudFolderJob extends GQueueableJob.AllowsCallouts {
     public class GoogleFileCloudFolderJobException extends Exception {}
 
@@ -33,6 +39,11 @@ public with sharing class GoogleFileCloudFolderJob extends GQueueableJob.AllowsC
     private final List<GoogleFileRelocationRequestDTO> requests;
     private final Integer placementAttempt;
 
+    /**
+     * Builds the job for one file.
+     *
+     * @param request The version to place and the record it belongs to.
+     */
     public GoogleFileCloudFolderJob(GoogleFileRelocationRequestDTO request) {
         this(
             request == null
@@ -42,10 +53,21 @@ public with sharing class GoogleFileCloudFolderJob extends GQueueableJob.AllowsC
         );
     }
 
+    /**
+     * Builds the job for several files.
+     *
+     * @param requests The versions to place.
+     */
     public GoogleFileCloudFolderJob(List<GoogleFileRelocationRequestDTO> requests) {
         this(requests, 1);
     }
 
+    /**
+     * Builds the job for a later attempt, which is how it reschedules itself.
+     *
+     * @param requests The versions still to place.
+     * @param placementAttempt Which attempt this is, counting from one.
+     */
     public GoogleFileCloudFolderJob(List<GoogleFileRelocationRequestDTO> requests, Integer placementAttempt) {
         this.requests = requests == null
             ? new List<GoogleFileRelocationRequestDTO>()
@@ -53,6 +75,10 @@ public with sharing class GoogleFileCloudFolderJob extends GQueueableJob.AllowsC
         this.placementAttempt = placementAttempt == null || placementAttempt < 1 ? 1 : placementAttempt;
     }
 
+    /**
+     * Places every file it was given, commits the new folder Ids together, and reschedules whatever has to
+     * wait for another transaction.
+     */
     public override void work() {
         if (skipExecution) return;
         if (this.requests.isEmpty()) return;

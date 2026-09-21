@@ -21,7 +21,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What the preview panel needs from the AI layer: the stored summary, the labels, whether questions can
+ * be asked at all, and the answers themselves. A stored summary is run past the safety guard again
+ * before it is shown, because the rules may have tightened since it was written.
+ */
 public without sharing class GoogleLocalFileIntelligenceService {
+	/**
+	 * Reads the AI state of one version.
+	 *
+	 * @param localFileVersionId The version being looked at.
+	 * @return The summary, the labels and whether questions are possible.
+	 */
 	public GoogleFileIntelligenceStateDTO retrieveIntelligenceState(Id localFileVersionId) {
 		if (localFileVersionId == null) {
 			return createDefaultState(null);
@@ -38,6 +49,12 @@ public without sharing class GoogleLocalFileIntelligenceService {
 		return intelligenceStates[0];
 	}
 
+	/**
+	 * Reads the AI state of several versions at once, with the labels loaded in one query for all of them.
+	 *
+	 * @param localFileVersionIds The versions being looked at.
+	 * @return One state per version, in the same order.
+	 */
 	public List<GoogleFileIntelligenceStateDTO> retrieveIntelligenceStates(List<Id> localFileVersionIds) {
 		List<GoogleFileIntelligenceStateDTO> intelligenceStates = new List<GoogleFileIntelligenceStateDTO>();
 		if (localFileVersionIds == null || localFileVersionIds.isEmpty()) {
@@ -62,18 +79,31 @@ public without sharing class GoogleLocalFileIntelligenceService {
 				.toList()
 		);
 
+		Map<Id, List<String>> labelNamesByVersionId = new GoogleLocalFileVersionLabelService().retrieveLabelNamesByVersionId(versionIds);
 		GoogleFileVersionContextResolver contextResolver = new GoogleFileVersionContextResolver();
 		Boolean isIntelligenceConfigured = new GoogleFileIntelligenceFactory().isConfigured();
 		IGoogleAiPromptSafetyGuard safetyGuard = new GoogleAiPromptSafetyGuardFactory().resolve();
 		String safetyMode = new GoogleMetadataConfigService().getAiSafetyMode();
 		for (Id versionId : localFileVersionIds) {
 			if (versionId == null) continue;
-			intelligenceStates.add(buildIntelligenceState(versionId, versionsById.get(versionId), contextResolver, isIntelligenceConfigured, safetyGuard, safetyMode));
+			GoogleFileIntelligenceStateDTO intelligenceState = buildIntelligenceState(versionId, versionsById.get(versionId), contextResolver, isIntelligenceConfigured, safetyGuard, safetyMode);
+			if (labelNamesByVersionId.containsKey(versionId)) {
+				intelligenceState.labels = labelNamesByVersionId.get(versionId);
+			}
+			intelligenceStates.add(intelligenceState);
 		}
 
 		return intelligenceStates;
 	}
 
+	/**
+	 * Answers a question about one file. With analysis turned off it comes back blocked with the reason
+	 * rather than throwing, so the panel can say why.
+	 *
+	 * @param localFileVersionId The version being asked about.
+	 * @param question What the user asked.
+	 * @return The answer, or why there is none.
+	 */
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localFileVersionId, String question) {
 		if (localFileVersionId == null) {
 			return null;
@@ -142,6 +172,7 @@ public without sharing class GoogleLocalFileIntelligenceService {
 		intelligenceState.summary = null;
 		intelligenceState.hasSummary = false;
 		intelligenceState.isIntelligenceEligible = false;
+		intelligenceState.labels = new List<String>();
 		return intelligenceState;
 	}
 }

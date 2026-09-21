@@ -21,10 +21,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * A place to keep values between transactions. Implement it to change where that is, or to supply an in
+ * memory one in tests so platform cache does not leak between methods.
+ */
 public interface IGoogleCacheProvider {
+	/**
+	 * Stores a value.
+	 *
+	 * @param key The key to store it under.
+	 * @param value The value to store.
+	 */
 	void put(String key, String value);
+	/**
+	 * Reads a value back.
+	 *
+	 * @param key The key to read.
+	 * @return The value, or null when nothing is there.
+	 */
 	Object get(String key);
+	/**
+	 * Drops a value.
+	 *
+	 * @param key The key to clear.
+	 */
 	void remove(String key);
+	/**
+	 * The session partition, for handing to a library that wants the partition itself.
+	 *
+	 * @return The partition, or null when this provider is not a session one.
+	 */
 	Cache.SessionPartition getSessionPartition();
+	/**
+	 * The org partition, for handing to a library that wants the partition itself.
+	 *
+	 * @return The partition, or null when this provider is not an org one.
+	 */
 	Cache.OrgPartition getOrgPartition();
 }

@@ -21,15 +21,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The Flow face of withdrawing a public link, which is what the shipped scheduled flow calls once a link
+ * has reached its expiration date.
+ */
 public with sharing class GoogleFileVersionExpireLinkAction {
+    /**
+     * The version whose public link should be withdrawn.
+     */
     public class Input {
         @InvocableVariable(required=true)
         public Id localFileRecordId;
     }
 
+    /**
+     * Withdraws the public links of every version the flow supplied, removing the permission in Google Drive
+     * as well as clearing the link in Salesforce.
+     *
+     * @param inputs One request per version.
+     */
     @InvocableMethod(
         label='Public Link Expiration'
         description='Public link expiration for a Google Drive file (Local Google File Version)'
+        category='Google Client'
+        iconName='slds:standard:link'
     )
     public static void expireLink(List<Input> inputs) {
         if (inputs == null || inputs.isEmpty()) return;

@@ -21,6 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The shared body of every AI operation: it exports the document text, runs the safety guard over the
+ * request and again over the answer, calls the model and shapes the result. A subclass supplies the
+ * prompts, the token budget and what makes a file eligible, and never talks to the model or the guard
+ * itself. Anything that reaches a model in this package goes through here, which is what keeps the
+ * guard impossible to skip.
+ */
 public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	private static final String DEFAULT_EXPORT_MIME_TYPE = 'text/plain';
 	private static final String DEFAULT_RESPONSE_MIME_TYPE = 'text/plain';
@@ -43,6 +50,17 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 		this.metadataConfigService = new GoogleMetadataConfigService();
 	}
 
+	/**
+	 * Runs the whole operation end to end and always answers with a result rather than throwing, so a
+	 * caller reads success, blocked and errorMessage instead of catching.
+	 *
+	 * @param localGoogleFileVersionId The version being analyzed.
+	 * @param providerName The provider name to report back, such as "Gemini" or "Agent Platform".
+	 * @param modelName The model to call.
+	 * @param genAiClient The client the request goes through.
+	 * @param inputText The user input for operations that take one, or null.
+	 * @return What happened, including the text when it worked and why not when it did not.
+	 */
 	public GoogleFileAnalysisResultDTO execute(Id localGoogleFileVersionId, String providerName, String modelName, IGenAiClient genAiClient, String inputText) {
 		GoogleFileAnalysisResultDTO result = createBaseResult(providerName);
 		String normalizedInput = normalizeInput(inputText);
@@ -77,6 +95,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 
 		try {
 			GoogleFileVersion__c localFileVersion = retrieveLocalFileVersion(localGoogleFileVersionId);
+			onLocalFileVersionLoaded(localFileVersion);
 			if (!isEligible(localFileVersion)) {
 				applyIneligibleResult(result);
 				return result;
@@ -132,65 +151,192 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 		}
 	}
 
+	/**
+	 * The operation name that goes into the result and the safety context, such as "SUMMARY", "QUESTION"
+	 * or "LABEL".
+	 *
+	 * @return The operation type of this command.
+	 */
 	public abstract String getOperationType();
+	/**
+	 * How this operation is named in the message a user sees when the AI configuration is missing.
+	 *
+	 * @return A short lower case name such as "summary" or "labeling".
+	 */
 	public abstract String getConfigurationLabel();
+	/**
+	 * How this operation is named in the message a user sees when the model returns nothing usable.
+	 *
+	 * @return A short phrase such as "summary generation".
+	 */
 	public abstract String getAnalysisContextLabel();
+	/**
+	 * The system prompt for this operation, normally the one the administrator configured. The guard wraps
+	 * it in its own envelope, so never put safety rules here.
+	 *
+	 * @return The system prompt to send.
+	 */
 	public abstract String getSystemPrompt();
+	/**
+	 * Builds the user turn from the document text and whatever the user asked.
+	 *
+	 * @param normalizedInput The cleaned user input, or null for operations that take none.
+	 * @param documentText The exported document content.
+	 * @return The user prompt to send.
+	 */
 	public abstract String buildUserPrompt(String normalizedInput, String documentText);
+	/**
+	 * How long the answer may be. Declare only the answer budget, the base class adds the thinking budget
+	 * on top because Gemini counts thinking against the same limit.
+	 *
+	 * @return The maximum tokens for the answer.
+	 */
 	public abstract Integer getMaxOutputTokens();
 
+	/**
+	 * How much the model may vary its answer. Zero by default, because these operations want the same
+	 * answer for the same document.
+	 *
+	 * @return The temperature to send.
+	 */
 	public virtual Double getTemperature() {
 		return 0.0;
 	}
 
+	/**
+	 * How much room the model gets to reason before answering. Zero by default, which turns reasoning off
+	 * and is the fastest and cheapest option.
+	 *
+	 * @return The thinking budget in tokens.
+	 */
 	public virtual Integer getThinkingBudget() {
 		return DEFAULT_THINKING_BUDGET;
 	}
 
+	/**
+	 * How many answers to ask for. One by default, and there is rarely a reason to change it.
+	 *
+	 * @return The number of candidates to request.
+	 */
 	public virtual Integer getCandidateCount() {
 		return DEFAULT_CANDIDATE_COUNT;
 	}
 
+	/**
+	 * The format the document is exported in before it goes to the model. Plain text by default.
+	 *
+	 * @return The MIME type to export the Workspace copy as.
+	 */
 	public virtual String getExportMimeType() {
 		return DEFAULT_EXPORT_MIME_TYPE;
 	}
 
+	/**
+	 * The format the answer is expected in. Plain text by default, and the shipped guard envelope forbids
+	 * JSON, so asking for JSON here means writing your own guard too.
+	 *
+	 * @return The response MIME type to request.
+	 */
 	public virtual String getResponseMimeType() {
 		return DEFAULT_RESPONSE_MIME_TYPE;
 	}
 
+	/**
+	 * Cleans the user input before anything else sees it. Collapses whitespace by default.
+	 *
+	 * @param inputText The raw input.
+	 * @return The cleaned input.
+	 */
 	public virtual String normalizeInput(String inputText) {
 		return normalizePlainText(inputText);
 	}
 
+	/**
+	 * Checks the input before the model is called. Return a message to refuse with, or null to carry on.
+	 *
+	 * @param normalizedInput The cleaned input.
+	 * @return The reason to refuse, or null when the input is fine.
+	 */
 	public virtual String validateInput(String normalizedInput) {
 		return null;
 	}
 
+	/**
+	 * Decides whether this version can be analyzed at all. By default it needs a Workspace copy and a size
+	 * within the limit, and a subclass narrows it further, for example to skip a file it already handled.
+	 *
+	 * @param localFileVersion The version loaded with its confidential fields.
+	 * @return True when the operation may run on this version.
+	 */
 	public virtual Boolean isEligible(GoogleFileVersion__c localFileVersion) {
 		return supportsInteractiveIntelligence(localFileVersion);
 	}
 
+	/**
+	 * Hands the loaded version to the subclass, which is how a command that needs the Drive Ids later gets
+	 * them without querying twice.
+	 *
+	 * @param localFileVersion The version that was just loaded.
+	 */
+	public virtual void onLocalFileVersionLoaded(GoogleFileVersion__c localFileVersion) {}
+
+	/**
+	 * Shapes the result when the file is not eligible. Marks it blocked by default, and a subclass adds the
+	 * message a user should see.
+	 *
+	 * @param result The result being returned.
+	 */
 	public virtual void applyIneligibleResult(GoogleFileAnalysisResultDTO result) {
 		result.blocked = true;
 	}
 
+	/**
+	 * Cleans the model answer. Collapses whitespace by default, which is what makes a two line answer
+	 * parseable as one string.
+	 *
+	 * @param generatedText The raw answer.
+	 * @return The cleaned answer.
+	 */
 	public virtual String normalizeGeneratedText(String generatedText) {
 		return normalizePlainText(generatedText);
 	}
 
+	/**
+	 * Last shaping of the answer before it is returned, which is where a subclass trims to a field length
+	 * or marks an answer that was cut short.
+	 *
+	 * @param generatedText The cleaned answer.
+	 * @param finishReason Why the model stopped, such as "STOP" or "MAX_TOKENS".
+	 * @return The answer as the user should see it.
+	 */
 	public virtual String finalizeGeneratedText(String generatedText, String finishReason) {
 		return generatedText;
 	}
 
+	/**
+	 * The message when the model or client is missing, which normally means the provider was never saved.
+	 *
+	 * @return The message to show.
+	 */
 	public virtual String buildConfigurationUnavailableMessage() {
 		return 'Google AI ' + getConfigurationLabel() + ' configuration is unavailable';
 	}
 
+	/**
+	 * The message when the document text could not be exported.
+	 *
+	 * @return The message to show.
+	 */
 	public virtual String buildExportFailureMessage() {
 		return 'Unable to export the document content for analysis';
 	}
 
+	/**
+	 * The message when the model answered with nothing usable.
+	 *
+	 * @param outcomeReason What the provider said about it, when it said anything.
+	 * @return The message to show.
+	 */
 	public virtual String buildAnalysisFailureMessage(String outcomeReason) {
 		String failureMessage = 'Unable to analyze the document content for ' + getAnalysisContextLabel();
 		return String.isBlank(outcomeReason)
@@ -198,12 +344,25 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			: failureMessage + ' (' + outcomeReason + ')';
 	}
 
+	/**
+	 * Collapses every run of whitespace into a single space and trims the result.
+	 *
+	 * @param text The text to clean.
+	 * @return The cleaned text, or null when there was nothing in it.
+	 */
 	public String normalizePlainText(String text) {
 		return String.isBlank(text)
 			? null
 			: text.replaceAll('\\s+', ' ').trim();
 	}
 
+	/**
+	 * Says whether the text ends in a full stop, question mark or exclamation mark, looking past a closing
+	 * quote or bracket. Useful for spotting an answer that was cut off mid sentence.
+	 *
+	 * @param text The text to check.
+	 * @return True when it ends like a finished sentence.
+	 */
 	public Boolean hasTerminalPunctuation(String text) {
 		if (String.isBlank(text)) {
 			return false;
@@ -221,6 +380,16 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 		}
 
 		return false;
+	}
+
+	/**
+	 * The provider a subclass reaches Drive through. Use this one rather than building another, so the
+	 * access token is resolved once for the whole operation.
+	 *
+	 * @return The provider this command was built with.
+	 */
+	protected GoogleClientApiProvider getGoogleApiProvider() {
+		return this.googleApiProvider;
 	}
 
 	private GoogleFileAnalysisResultDTO createBaseResult(String providerName) {
@@ -242,14 +411,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	}
 
 	private String exportDocumentText(GoogleFileVersion__c localFileVersion) {
-		GoogleFileEntity result = this.googleApiProvider.retrieveGoogleDriveClient().files().retrieve().export(localFileVersion.GoogleDocsFileId__c)
-			.setMimeType(getExportMimeType())
-			.setSearchOnAllDrives(true)
-			.execute();
-
-		return result == null || result.bodyAsBlob == null
-			? null
-			: result.bodyAsBlob.toString();
+		return new GoogleFileTextExportCommand(this.googleApiProvider).exportWorkspaceCopy(localFileVersion, getExportMimeType());
 	}
 
 	private GenAiRequest buildRequest(String modelName, String normalizedInput, String documentText, String effectiveSystemPrompt) {
@@ -258,7 +420,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			.addUserText(buildUserPrompt(normalizedInput, documentText))
 			.withCandidates(getCandidateCount())
 			.withTemperature(getTemperature())
-			.withMaxTokens(getMaxOutputTokens())
+			.withMaxTokens(getMaxOutputTokens() + getThinkingBudget())
 			.withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(getThinkingBudget()))
 			.withResponseMimeType(getResponseMimeType())
 			.build();

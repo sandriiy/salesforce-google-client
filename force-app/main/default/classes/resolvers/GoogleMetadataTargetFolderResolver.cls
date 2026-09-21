@@ -21,17 +21,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The shipped answer to where uploads go, which is the folder or folders configured in Google Client.
+ * Swap in your own implementation of IGoogleTargetFolderResolver to decide that per user or per record.
+ */
 public with sharing class GoogleMetadataTargetFolderResolver implements IGoogleTargetFolderResolver {
     private final GoogleMetadataConfigService config;
 
+    /**
+     * Builds the resolver on the configuration it reads.
+     *
+     * @param config The configuration holding the upload folders.
+     */
     public GoogleMetadataTargetFolderResolver(GoogleMetadataConfigService config) {
         this.config = config;
     }
 
+    /**
+     * The single folder the folder structure is built under.
+     *
+     * @return A list holding the primary upload folder.
+     */
     public List<String> resolveUploadFolderId() {
         return new List<String>{config.getDefaultUploadFolderId()};
     }
 
+    /**
+     * Every folder an upload may go to, in the order they should be tried when one is full.
+     *
+     * @return The upload folders in priority order.
+     */
     public List<String> resolveUploadFolderCandidates() {
         return config.getAllUploadFolderIds();
     }

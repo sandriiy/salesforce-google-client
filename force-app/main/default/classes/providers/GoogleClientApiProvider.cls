@@ -21,6 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The only door to Google. It builds the Drive client with the access token cache and the error handler
+ * already attached, so anything that goes around it and calls Google directly loses both, plus the
+ * ability to swap the authorizer an org configured.
+ */
 public with sharing class GoogleClientApiProvider {
 	private final String DEFAULT_ERROR_HANDLER = 'GoogleFileWebErrorHandler';
 	private final String DEFAULT_TOKEN_CACHE_NAME = 'accessToken';
@@ -32,6 +37,12 @@ public with sharing class GoogleClientApiProvider {
 	private GoogleCacheConfigService cacheService = new GoogleCacheConfigService();
 	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
+	/**
+	 * Checks that the configured service account and certificate really get a token, which is what the setup
+	 * screen calls.
+	 *
+	 * @return True when Google handed back an access token.
+	 */
 	public Boolean validateGoogleServiceAccount() {
 		String authorizerClassName = authorizerClassNameOverride != null
 			? authorizerClassNameOverride
@@ -44,12 +55,24 @@ public with sharing class GoogleClientApiProvider {
 		return String.isNotBlank(testCredential.accessToken);
 	}
 
+	/**
+	 * The Drive client to make calls with. Ask for it once per operation rather than per call, since each
+	 * one resolves the credential.
+	 *
+	 * @return A client ready to use, with the failure strategy attached.
+	 */
 	public GoogleDrive retrieveGoogleDriveClient() {
 		GoogleCredential googleDriveCredentials = retrieveGoogleCredential();
 		return new GoogleDrive(googleDriveCredentials, DEFAULT_AGENT_NAME)
 			.withFailureStrategy(DEFAULT_ERROR_HANDLER);
 	}
 
+	/**
+	 * The raw credential, for a caller that needs the token itself rather than the Drive client, such as the
+	 * Agent Platform provider.
+	 *
+	 * @return The credential holding the access token.
+	 */
 	public GoogleCredential retrieveGoogleClientCreds() {
 		return retrieveGoogleCredential();
 	}

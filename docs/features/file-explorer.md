@@ -33,7 +33,7 @@ By default, the table shows your accessible files with key details such as:
 
 Administrators can tailor which columns appear, and in what order, from the **Google Client** app → setup wizard → **Advanced → User Interface**.
 
-- Pick columns from the built-in catalog — **Title**, **Type**, **Size**, **Created By**, **Owner**, **Created Date**, **Last Modified Date**, **Is Linked?**, **Access**, and **Summary** (the AI-generated file summary) — and drag to reorder them.
+- Pick columns from the built-in catalog — **Title**, **Type**, **Size**, **Created By**, **Owner**, **Created Date**, **Last Modified Date**, **Is Linked?**, **Access**, **Summary** (the AI-generated file summary), and **Labels** (the Google Drive labels applied by AI) — and drag to reorder them.
 - **Title** is always displayed first and cannot be removed, because it is the link users click to preview a file.
 - A maximum of **7** columns can be displayed.
 
@@ -43,7 +43,7 @@ Need a field that isn't in the catalog? Enter any **Google File Version** field 
 
 ## Searching Files
 
-Use the **Search** box in the File Explorer header to filter the current view. The search matches on the **file name** and, when present, the file's **Summary** — so you can find a document by what it contains even if you do not remember its exact name. Files without a summary continue to match by name.
+Use the **Search** box in the File Explorer header to filter the current view. The search matches on the **file name** and, when present, the file's **Summary** and its **Labels** — so you can find a document by what it contains, or by the label the AI applied to it, even if you do not remember its exact name. Files without a summary or labels continue to match by name.
 
 Beyond the File Explorer, Google Files can also be found through Salesforce **global search**. Opening a file from a global search result takes you straight to its **File Details** page. Global search follows Salesforce's standard sharing (files you own or that are directly shared with you), while the File Explorer also shows files you can reach through record-based access.
 

@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What happens around a file version being saved: the follow up jobs are queued, the current version flag
+ * is kept right, and deleted versions are cleaned out of Google Drive. It runs inside a commit that is
+ * already under way, so the service beneath it opens its own unit of work rather than joining the
+ * caller's, which would corrupt a wave already being written.
+ */
 public with sharing class GoogleFileVersionTriggerHandler extends GTriggerHandler {
 	private List<GoogleFileVersion__c> newRecords;
 	private List<GoogleFileVersion__c> oldRecords;

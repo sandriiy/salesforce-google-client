@@ -1,10 +1,8 @@
 import { LightningElement, api } from 'lwc';
 
 import { asString } from 'c/googleCloudUtils';
-import QUICK_SETUP_LINK from '@salesforce/label/c.GoogleClientQuickSetupLink';
 
 const STRUCTURE_ORDER_SEPARATOR = '-';
-const QUICK_SETUP_URL = QUICK_SETUP_LINK;
 const UPLOAD_FOLDER_SEPARATOR = ';';
 const MAX_UPLOAD_FOLDERS = 10;
 const VALIDITY_KEY_DUPLICATES = 'upload-folder-duplicates';
@@ -35,6 +33,7 @@ export default class GoogleCloudDriveConfig extends LightningElement {
     dropTargetUploadFolderIndex = null;
     localUploadFolderRows = null;
     lastReportedHasDuplicates = null;
+    lastReportedVariant = null;
 
     @api reportValidity() {
         const inputs = Array.from(this.template.querySelectorAll('lightning-input, lightning-radio-group'));
@@ -51,6 +50,7 @@ export default class GoogleCloudDriveConfig extends LightningElement {
     renderedCallback() {
         this.reconcileLocalUploadFolderRows();
         this.evaluateUploadFolderValidity();
+        this.reportVariantChange();
     }
 
     dispatchFieldChange(field, value) {
@@ -67,8 +67,12 @@ export default class GoogleCloudDriveConfig extends LightningElement {
         }));
     }
 
-    openQuickSetupGuide() {
-        window.open(QUICK_SETUP_URL, '_blank');
+    reportVariantChange() {
+        const variant = this.authMode;
+        if (variant === this.lastReportedVariant) return;
+
+        this.lastReportedVariant = variant;
+        this.dispatchEvent(new CustomEvent('contextchange', { detail: { variant } }));
     }
 
     handleAuthModeChange(event) {
@@ -128,7 +132,7 @@ export default class GoogleCloudDriveConfig extends LightningElement {
             this.handleSaveValidate();
             return;
         }
-		
+        
         this.handleValidate();
     }
 

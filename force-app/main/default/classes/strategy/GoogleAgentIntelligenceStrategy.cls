@@ -21,7 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFileIntelligenceStrategy {
+/**
+ * Sends summaries, questions and labeling to Agent Platform, which runs in your own Google Cloud project
+ * and authenticates with the service account Drive already uses. This is the production fit, because AI
+ * usage then falls under the same project controls, billing and audit as the rest of the integration.
+ */
+public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFileIntelligenceStrategy, IGoogleFileLabelingStrategy {
     public class GoogleAgentConfigurationException extends Exception {}
 
     private static final String VALIDATION_PROMPT = 'Reply with OK.';
@@ -32,12 +37,18 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
     private IGenAiAccessTokenProvider tokenProvider;
 	private GoogleFileSummarizeCommand summarizeCommand = new GoogleFileSummarizeCommand();
     private GoogleFileQuestionCommand questionCommand = new GoogleFileQuestionCommand();
+	private GoogleFileLabelCommand labelCommand = new GoogleFileLabelCommand();
 	private IGenAiClient genAiClient;
 
     public GoogleAgentIntelligenceStrategy() {
         this(new GoogleMetadataConfigService(), new DefaultGoogleGenAiAccessTokenProvider());
     }
 
+    /**
+     * Builds the strategy on your own source of the access token.
+     *
+     * @param tokenProvider Where the token comes from.
+     */
     public GoogleAgentIntelligenceStrategy(IGenAiAccessTokenProvider tokenProvider) {
         this(new GoogleMetadataConfigService(), tokenProvider);
     }
@@ -55,6 +66,11 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
         );
     }
 
+	/**
+	 * Sends a tiny request to check the project, location, model and token really work.
+	 *
+	 * @return True when Agent Platform answered.
+	 */
 	public Boolean validate() {
         validateAgentConfiguration(true);
 
@@ -73,6 +89,12 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
         }
 	}
 
+    /**
+     * Summarizes a file with Agent Platform.
+     *
+     * @param localGoogleFileVersionId The version to summarize.
+     * @return The summary, or why there is none.
+     */
     public GoogleFileAnalysisResultDTO summarize(Id localGoogleFileVersionId) {
         if (localGoogleFileVersionId == null) {
             return null;
@@ -92,6 +114,13 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 		);
 	}
 
+	/**
+	 * Answers a question about a file with Agent Platform.
+	 *
+	 * @param localGoogleFileVersionId The version being asked about.
+	 * @param question What the user asked.
+	 * @return The answer, or why there is none.
+	 */
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localGoogleFileVersionId, String question) {
         if (localGoogleFileVersionId == null) {
             return null;
@@ -104,6 +133,26 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
         }
 
         return this.questionCommand.answerQuestion(localGoogleFileVersionId, question, 'Agent Platform', this.metadataService.getGoogleAiModel(), this.genAiClient);
+	}
+
+	/**
+	 * Chooses and applies a Google Drive label with Agent Platform.
+	 *
+	 * @param localGoogleFileVersionId The version to label.
+	 * @return The chosen label and whether Drive accepted it.
+	 */
+	public GoogleFileLabelResultDTO label(Id localGoogleFileVersionId) {
+		if (localGoogleFileVersionId == null) {
+			return null;
+		}
+
+		try {
+			validateAgentConfiguration(false);
+		} catch (Exception ex) {
+			return buildBlockedLabelResult(ex.getMessage());
+		}
+
+		return this.labelCommand.label(localGoogleFileVersionId, 'Agent Platform', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
     private void validateAgentConfiguration(Boolean resolveAccessToken) {
@@ -155,4 +204,12 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
         result.errorMessage = errorMessage;
         return result;
     }
+
+	private GoogleFileLabelResultDTO buildBlockedLabelResult(String errorMessage) {
+		GoogleFileLabelResultDTO result = new GoogleFileLabelResultDTO();
+		result.blocked = true;
+		result.provider = 'Agent Platform';
+		result.errorMessage = errorMessage;
+		return result;
+	}
 }

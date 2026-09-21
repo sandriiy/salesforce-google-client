@@ -21,6 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The shipped prompt inspection. It wraps the administrator's prompt in rules the model is told to keep
+ * whatever the document says, refuses questions that try to talk it out of them or fish for its
+ * configuration, and screens answers for leaked credentials and invented personal data. How hard it
+ * looks depends on the safety mode, and "Off" lets everything through. Replace it by writing your own
+ * IGoogleAiPromptSafetyGuard and naming it in the configuration.
+ */
 public with sharing class DefaultGoogleAiPromptSafetyGuard implements IGoogleAiPromptSafetyGuard {
 	private static final Integer MAX_USER_INPUT_STANDARD = 512;
 	private static final Integer MAX_USER_INPUT_STRICT = 255;
@@ -67,6 +74,13 @@ public with sharing class DefaultGoogleAiPromptSafetyGuard implements IGoogleAiP
 		'SPII'
 	};
 
+	/**
+	 * Puts the safety rules around the configured prompt, before it and after it, so the operator wording
+	 * sits inside rules it cannot override.
+	 *
+	 * @param context The operation and the prompt as configured.
+	 * @return The system prompt that is actually sent.
+	 */
 	public String wrapSystemPrompt(GoogleAiPromptContext context) {
 		String operatorPrompt = context == null || String.isBlank(context.rawSystemPrompt)
 			? ''
@@ -74,6 +88,13 @@ public with sharing class DefaultGoogleAiPromptSafetyGuard implements IGoogleAiP
 		return ENVELOPE_PREFIX + operatorPrompt + ENVELOPE_SUFFIX;
 	}
 
+	/**
+	 * Checks what the user typed for attempts to override the instructions, extract the configuration, or
+	 * ask about something other than the file, and caps how long it may be.
+	 *
+	 * @param context The operation and the user input.
+	 * @return Allowed, or blocked with a reason the user can read.
+	 */
 	public GoogleAiPromptSafetyDecision inspectRequest(GoogleAiPromptContext context) {
 		try {
 			String mode = resolveMode(context);
@@ -109,6 +130,14 @@ public with sharing class DefaultGoogleAiPromptSafetyGuard implements IGoogleAiP
 		}
 	}
 
+	/**
+	 * Checks the answer for credentials, keys and personal identifiers before anyone sees it, and honours a
+	 * provider that refused on its own.
+	 *
+	 * @param context The operation and the file.
+	 * @param response What the model answered and why it stopped.
+	 * @return Allowed, or blocked with a reason the user can read.
+	 */
 	public GoogleAiResponseSafetyDecision inspectResponse(GoogleAiPromptContext context, GoogleAiResponseSnapshot response) {
 		try {
 			String mode = resolveMode(context);

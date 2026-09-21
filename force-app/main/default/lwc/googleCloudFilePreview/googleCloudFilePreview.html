@@ -7,6 +7,12 @@
                     <span class="topbar-filename slds-truncate slds-text-heading_small" title={fileName}>
                         {fileName}
                     </span>
+                    <template lwc:if={hasIntelligenceLabels}>
+                        <span class="topbar-label" title={intelligenceLabelsTitle}>{primaryIntelligenceLabel}</span>
+                        <template lwc:if={hasMoreIntelligenceLabels}>
+                            <span class="topbar-label topbar-label_more" title={intelligenceLabelsTitle}>{moreIntelligenceLabelsCopy}</span>
+                        </template>
+                    </template>
                 </div>
 
                 <div class="slds-col slds-size_1-of-3 slds-grid slds-grid_align-center slds-grid_vertical-align-center">
@@ -16,6 +22,7 @@
                     <lightning-button-menu variant="bare-inverse" class="slds-m-left_small" alternative-text="More" icon-name="utility:chevrondown" menu-alignment="right">
                         <lightning-menu-item onclick={handleGoogleFileOpen} value="view" label="View File Details" disabled={isOldVersion}></lightning-menu-item>
                         <lightning-menu-item lwc:if={isDownloadAsAvailable} onclick={handleDownloadAs} value="downloadAs" label="Download As"></lightning-menu-item>
+                        <lightning-menu-item lwc:if={isOpenInDriveVisible} onclick={handleOpenInDrive} value="openInDrive" label="Open in Google Drive"></lightning-menu-item>
                         <lightning-menu-item onclick={handleNewVersionUpload} value="upload" label="Upload New Version" disabled={isOldOrReadMode}></lightning-menu-item>
                         <lightning-menu-item onclick={handleFileDetailsEdit} value="edit" label="Edit File Details" disabled={isReadMode}></lightning-menu-item>
                         <lightning-menu-item onclick={handleFileDelete} value="delete" label="Delete" disabled={isOldOrReadMode}></lightning-menu-item>

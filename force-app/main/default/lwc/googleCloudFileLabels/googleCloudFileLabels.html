@@ -1,0 +1,38 @@
+<template>
+    <c-google-cloud-base-card title="Labels" icon-name="utility:topic" badge-text={badgeText}>
+        <div class="labels__body">
+            <template lwc:if={isLoading}>
+                <div class="labels__state labels__state--loading">
+                    <lightning-spinner alternative-text="Loading labels" size="small"></lightning-spinner>
+                </div>
+            </template>
+            <template lwc:elseif={hasError}>
+                <div class="labels__state labels__state--error">
+                    <p>{errorMessage}</p>
+                </div>
+            </template>
+            <template lwc:elseif={hasLabels}>
+                <ul class="labels__rows">
+                    <template for:each={labels} for:item="label">
+                        <li key={label.id} class="labels__row">
+                            <c-google-cloud-base-entity
+                                value={label.id}
+                                title={label.name}
+                                meta={label.versionLabel}
+                                leading-icon-name="standard:topic"
+                                leading-icon-alternative-text="Label"
+                                trailing-primary={label.appliedDateLabel}
+                                trailing-secondary={label.confidenceLabel}
+                            ></c-google-cloud-base-entity>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+            <template lwc:else>
+                <div class="labels__state">
+                    <p>No labels have been applied to this file yet.</p>
+                </div>
+            </template>
+        </div>
+    </c-google-cloud-base-card>
+</template>

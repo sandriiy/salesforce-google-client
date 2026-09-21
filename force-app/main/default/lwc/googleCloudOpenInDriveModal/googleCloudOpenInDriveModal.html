@@ -1,0 +1,37 @@
+<template>
+    <lightning-modal-header label={label}></lightning-modal-header>
+
+    <lightning-modal-body>
+        <div class="drive-panel">
+            <template lwc:if={isLoading}>
+                <div class="drive-panel__stage" role="status">
+                    <div class="drive-loader" aria-hidden="true"></div>
+                    <div class="drive-panel__title">Opening in Google Drive</div>
+                    <div class="drive-panel__text">Getting this file ready for you.</div>
+                </div>
+            </template>
+
+            <template lwc:elseif={hasFailed}>
+                <div class="drive-panel__stage" role="alert">
+                    <div class="drive-panel__badge drive-panel__badge--failed" aria-hidden="true"></div>
+                    <div class="drive-panel__title">We couldn’t open this file</div>
+                    <div class="drive-panel__text">{failureMessage}</div>
+                </div>
+            </template>
+
+            <template lwc:else>
+                <div class="drive-panel__stage" role="status">
+                    <div class="drive-panel__badge drive-panel__badge--ready" aria-hidden="true"></div>
+                    <div class="drive-panel__title" title={fileName}>{displayFileName}</div>
+                    <div class="drive-panel__text">{accessMessage}</div>
+                </div>
+            </template>
+        </div>
+    </lightning-modal-body>
+
+    <lightning-modal-footer>
+        <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+        <lightning-button lwc:if={isReady} class="slds-m-left_x-small" label="Copy link" onclick={handleCopyLink}></lightning-button>
+        <lightning-button lwc:if={isReady} lwc:ref="openButton" class="slds-m-left_x-small" variant="brand" label="Open Google Drive" icon-name="utility:new_window" onclick={handleOpen}></lightning-button>
+    </lightning-modal-footer>
+</template>

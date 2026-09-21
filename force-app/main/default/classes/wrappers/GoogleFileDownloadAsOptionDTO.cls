@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * One format a file can be downloaded in, with the file name already worked out so the caller does not
+ * have to swap the extension itself.
+ */
 public with sharing class GoogleFileDownloadAsOptionDTO {
 	@AuraEnabled
 	public String label;
@@ -32,6 +36,13 @@ public with sharing class GoogleFileDownloadAsOptionDTO {
 	public String fileName;
 
 	public GoogleFileDownloadAsOptionDTO() {}
+	/**
+	 * Holds one download format.
+	 *
+	 * @param label What the menu shows.
+	 * @param mimeType What Google exports to.
+	 * @param fileExtension The extension the downloaded file gets.
+	 */
 	public GoogleFileDownloadAsOptionDTO(String label, String mimeType, String fileExtension) {
 		this.label = label;
 		this.mimeType = mimeType;

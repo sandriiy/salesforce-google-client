@@ -21,10 +21,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Answers a question about one file from its content alone. The question is capped at 255 characters
+ * and an answer that ran out of tokens is marked as unfinished rather than quietly cut.
+ */
 public with sharing class GoogleFileQuestionCommand extends GoogleFileIntelligenceCommandBase {
 	private static final String OPERATION_TYPE = 'QUESTION';
 	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
+	/**
+	 * Answers one question about one version.
+	 *
+	 * @param localGoogleFileVersionId The version being asked about.
+	 * @param question What the user asked.
+	 * @param providerName The provider name to report back.
+	 * @param modelName The model to call.
+	 * @param genAiClient The client the request goes through.
+	 * @return The answer in text, or why there is none.
+	 */
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localGoogleFileVersionId, String question, String providerName, String modelName, IGenAiClient genAiClient) {
 		return execute(localGoogleFileVersionId, providerName, modelName, genAiClient, question);
 	}

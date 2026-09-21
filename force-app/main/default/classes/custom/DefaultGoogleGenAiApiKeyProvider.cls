@@ -21,6 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Hands the Gemini Developer API key to the AI client, reading it from the Google Client configuration.
+ */
 public with sharing class DefaultGoogleGenAiApiKeyProvider implements IGenAiApiKeyProvider {
     private GoogleMetadataConfigService metadataService;
 
@@ -33,6 +36,11 @@ public with sharing class DefaultGoogleGenAiApiKeyProvider implements IGenAiApiK
         this.metadataService = metadataService;
     }
 
+    /**
+     * The configured key.
+     *
+     * @return The key, which reports itself as unconfigured when the field is empty.
+     */
     public GenAiApiKey apiKey() {
         String apiKeyValue = metadataService.getGoogleGeminiKey();
         return new GenAiApiKey(apiKeyValue);

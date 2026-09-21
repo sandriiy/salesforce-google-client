@@ -21,7 +21,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Renames a file and its version and changes the description, keeping the original extension and
+ * the 80 character limit on the name. It registers the changes and leaves the commit to the service.
+ */
 public without sharing class GoogleFileUpdateCommand {
+    /**
+     * What the command registered. A field is null when that record needed no change, which is how the
+     * service knows whether committing is worth it.
+     */
     public class GoogleFileUpdateResult {
         public GoogleFile__c localGoogleFileToUpdate;
         public GoogleFileVersion__c localGoogleFileVersionToUpdate;
@@ -36,27 +44,58 @@ public without sharing class GoogleFileUpdateCommand {
     private String fileVersionName;
     private String fileDescription;
 
+    /**
+     * Builds the command around the records being edited. Both records must carry their current Name,
+     * because the command compares against it and keeps the extension it finds there.
+     *
+     * @param uowRef The unit of work the updates are registered on.
+     * @param localGoogleFileRecord The file being renamed.
+     * @param localGoogleFileVersionRecord The version being renamed.
+     */
     public GoogleFileUpdateCommand(IGoogleUnitOfWork uowRef, GoogleFile__c localGoogleFileRecord, GoogleFileVersion__c localGoogleFileVersionRecord) {
         this.uowRef = uowRef;
         this.localGoogleFileRecord = localGoogleFileRecord;
         this.localGoogleFileVersionRecord = localGoogleFileVersionRecord;
     }
 
+    /**
+     * Sets the new file name. The extension of the current name is kept whatever you pass.
+     *
+     * @param value The new name, with or without the extension.
+     * @return This same instance, so the call chains onto build().
+     */
     public GoogleFileUpdateCommand changeFileNameTo(String value) {
         this.fileName = value;
         return this;
     }
 
+    /**
+     * Sets the new version name, which is the name users see on the version row.
+     *
+     * @param value The new version name, with or without the extension.
+     * @return This same instance, so the call chains onto build().
+     */
     public GoogleFileUpdateCommand changeFileVersionNameTo(String value) {
         this.fileVersionName = value;
         return this;
     }
 
+    /**
+     * Sets the new description. A blank value clears it.
+     *
+     * @param value The new description.
+     * @return This same instance, so the call chains onto build().
+     */
     public GoogleFileUpdateCommand changeFileDescriptionTo(String value) {
         this.fileDescription = value;
         return this;
     }
 
+    /**
+     * Works out what actually changed and registers only those records on the unit of work.
+     *
+     * @return The records that were registered, with a null for anything that did not need updating.
+     */
     public GoogleFileUpdateResult build() {
         Logger.info('File Update --> FileId=' + String.valueOf(localGoogleFileRecord.Id) + ', VersionId=' + String.valueOf(localGoogleFileVersionRecord.Id) + ', NewFileName=' + String.valueOf(fileName) + ', NewVersionName=' + String.valueOf(fileVersionName) + ', NewDescription=' + String.valueOf(fileDescription)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
         GoogleFileUpdateResult result = new GoogleFileUpdateResult();

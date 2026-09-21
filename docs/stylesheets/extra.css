@@ -96,3 +96,12 @@
 	height: 100%;
 	border: 0;
 }
+
+.md-typeset img:not(.emojione):not(.twemoji):not(.gemoji) {
+	border-radius: 8px;
+}
+
+.md-typeset .article-cover,
+.video-embed {
+	border-radius: 12px;
+}

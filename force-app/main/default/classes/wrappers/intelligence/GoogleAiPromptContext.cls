@@ -21,9 +21,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Everything a safety guard is told about a call: which operation it is, which provider and model, which
+ * file, the configured prompt, what the user typed and the document text. A custom guard reads this and
+ * nothing else, so it never has to query.
+ */
 public class GoogleAiPromptContext {
 	public static final String OPERATION_QUESTION = 'QUESTION';
 	public static final String OPERATION_SUMMARY = 'SUMMARY';
+	public static final String OPERATION_LABEL = 'LABEL';
 
 	public static final String MODE_OFF = 'Off';
 	public static final String MODE_RELAXED = 'Relaxed';

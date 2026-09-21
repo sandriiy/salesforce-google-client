@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * What a guard decided about a request. Blocking carries a reason code for the log and a message the user
+ * can read, and a guard may instead allow the call with a cleaned up version of what the user typed.
+ */
 public class GoogleAiPromptSafetyDecision {
 	public static final String REASON_INJECTION = 'Injection';
 	public static final String REASON_EXFILTRATION = 'Exfiltration';
@@ -33,12 +37,24 @@ public class GoogleAiPromptSafetyDecision {
 	public String userVisibleMessage;
 	public String sanitizedUserInput;
 
+	/**
+	 * Lets the request through unchanged.
+	 *
+	 * @return An allowing decision.
+	 */
 	public static GoogleAiPromptSafetyDecision allow() {
 		GoogleAiPromptSafetyDecision decision = new GoogleAiPromptSafetyDecision();
 		decision.allowed = true;
 		return decision;
 	}
 
+	/**
+	 * Refuses the request.
+	 *
+	 * @param reasonCode Why, for the log.
+	 * @param userVisibleMessage Why, for the person who asked.
+	 * @return A blocking decision.
+	 */
 	public static GoogleAiPromptSafetyDecision block(String reasonCode, String userVisibleMessage) {
 		GoogleAiPromptSafetyDecision decision = new GoogleAiPromptSafetyDecision();
 		decision.allowed = false;

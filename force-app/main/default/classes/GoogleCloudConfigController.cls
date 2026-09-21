@@ -81,6 +81,14 @@ public with sharing class GoogleCloudConfigController {
     }
 
 	@AuraEnabled
+	public static Id deactivateIntelligenceMetadataConfig() {
+		ensureMetadataConfigExists();
+
+		GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
+		return metadataService.deactivateAiConfig();
+	}
+
+	@AuraEnabled
 	public static void removeConfig(String configId) {
 		GoogleCacheConfigService cache = new GoogleCacheConfigService();
 		cache.removeConfig(configId);

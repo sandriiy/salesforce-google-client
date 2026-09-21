@@ -21,8 +21,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Inspects what goes to the AI provider and what comes back. Write your own and name it in the
+ * configuration to replace the shipped rules with your own. Every prompt in this package passes through
+ * a guard, so an implementation that lets everything through turns the protection off.
+ */
 public interface IGoogleAiPromptSafetyGuard {
+	/**
+	 * Wraps the administrator's prompt in whatever rules the model must not be talked out of.
+	 *
+	 * @param context The operation, the provider, the file and the prompt as configured.
+	 * @return The system prompt that is actually sent.
+	 */
 	String wrapSystemPrompt(GoogleAiPromptContext context);
+	/**
+	 * Decides whether the request may go to the provider at all, and may hand back a cleaned up version of
+	 * what the user typed instead of refusing.
+	 *
+	 * @param context The operation, the provider, the file and the user input.
+	 * @return Allowed with an optional replacement input, or blocked with a reason for the user.
+	 */
 	GoogleAiPromptSafetyDecision inspectRequest(GoogleAiPromptContext context);
+	/**
+	 * Decides whether the answer may be shown, and may hand back a cleaned up version instead of refusing.
+	 * It also runs over a stored summary before it is displayed, so tightening the rules covers what was
+	 * written earlier.
+	 *
+	 * @param context The operation, the provider and the file.
+	 * @param response What the model answered and why it stopped.
+	 * @return Allowed with optional replacement text, or blocked with a reason for the user.
+	 */
 	GoogleAiResponseSafetyDecision inspectResponse(GoogleAiPromptContext context, GoogleAiResponseSnapshot response);
 }

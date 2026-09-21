@@ -21,6 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * The transaction this package writes through. It is hand rolled rather than fflib, and its one trick is
+ * resolving parents to children itself: a child registered against a parent that has no Id yet waits
+ * until the parent is inserted and then has its lookup filled in. The order objects are written in is
+ * load bearing and not cosmetic, links have to land before versions or the version trigger cannot find
+ * the record its file belongs to. A failure rolls everything back to a savepoint.
+ */
 public class GoogleCloudUnitOfWork implements IGoogleUnitOfWork {
     public class UnitOfWorkException extends Exception {}
 
@@ -35,23 +42,51 @@ public class GoogleCloudUnitOfWork implements IGoogleUnitOfWork {
     private final List<SObject> pendingSparseUpdates = new List<SObject>();
 
 
+    /**
+     * Builds the unit of work with the order records are written in.
+     *
+     * @param writeOrder The object types in insert order, normally GoogleCloudConstants.DEFAULT_WRITE_ORDER.
+     */
     public GoogleCloudUnitOfWork(List<SObjectType> writeOrder) {
         this.writeOrder = (writeOrder == null) ? new List<SObjectType>() : new List<SObjectType>(writeOrder);
     }
 
+    /**
+     * Sets the order deletes run in, which otherwise is the reverse of the insert order.
+     *
+     * @param deleteOrder The object types in delete order.
+     */
     public void configureDeleteOrder(List<SObjectType> deleteOrder) {
         this.deleteOrder = (deleteOrder == null) ? null : new List<SObjectType>(deleteOrder);
     }
 
+    /**
+     * Queues one record for insert.
+     *
+     * @param record The record to insert.
+     */
     public void registerNew(SObject record) {
         if (record != null) pendingInserts.add(record);
     }
 
+    /**
+     * Queues several records for insert.
+     *
+     * @param records The records to insert.
+     */
     public void registerNew(List<SObject> records) {
         if (records == null) return;
         for (SObject record : records) if (record != null) pendingInserts.add(record);
     }
 
+    /**
+     * Queues a record whose parent is itself still waiting to be inserted, and fills the lookup in once the
+     * parent has an Id.
+     *
+     * @param record The child record to insert.
+     * @param relatedToParentField The lookup on the child pointing at the parent.
+     * @param relatedToParentRecord The parent, which must be queued for insert as well.
+     */
     public void registerNew(SObject record, Schema.SObjectField relatedToParentField, SObject relatedToParentRecord) {
         if (record == null) return;
         pendingInserts.add(record);
@@ -60,22 +95,45 @@ public class GoogleCloudUnitOfWork implements IGoogleUnitOfWork {
         }
     }
 
+    /**
+     * Points one queued record at another without queueing anything new.
+     *
+     * @param record The record whose lookup is being filled.
+     * @param relatedToField The lookup field.
+     * @param relatedTo The record it should point at.
+     */
     public void registerRelationship(SObject record, Schema.SObjectField relatedToField, SObject relatedTo) {
         if (record == null || relatedToField == null || relatedTo == null) return;
         bindings.add(new RelationshipBinding(record, relatedToField, relatedTo));
     }
 
+    /**
+     * Queues one record for update.
+     *
+     * @param record The record to update, which needs an Id.
+     */
     public void registerDirty(SObject record) {
         if (record == null) return;
         if ((Id)record.get('Id') == null) throw new UnitOfWorkException('registerDirty requires a record with an Id');
         pendingUpdates.add(record);
     }
 
+    /**
+     * Queues several records for update.
+     *
+     * @param records The records to update.
+     */
     public void registerDirty(List<SObject> records) {
         if (records == null) return;
         for (SObject record : records) if (record != null) registerDirty(record);
     }
 
+    /**
+     * Queues an update of only the fields you name, by copying them onto a bare record.
+     *
+     * @param record The record holding the new values.
+     * @param dirtyFields The fields to write. Empty writes the whole record.
+     */
     public void registerDirty(SObject record, List<Schema.SObjectField> dirtyFields) {
         if (record == null) return;
         if ((Id)record.get('Id') == null) throw new UnitOfWorkException('registerDirty requires a record with an Id');
@@ -86,22 +144,45 @@ public class GoogleCloudUnitOfWork implements IGoogleUnitOfWork {
         pendingSparseUpdates.add(buildSparseUpdate(record, dirtyFields));
     }
 
+    /**
+     * Queues an update of only the fields you name, across several records.
+     *
+     * @param records The records holding the new values.
+     * @param dirtyFields The fields to write.
+     */
     public void registerDirty(List<SObject> records, List<Schema.SObjectField> dirtyFields) {
         if (records == null) return;
         for (SObject record : records) if (record != null) registerDirty(record, dirtyFields);
     }
 
+    /**
+     * Queues one record for delete.
+     *
+     * @param record The record to delete, which needs an Id.
+     */
     public void registerDeleted(SObject record) {
         if (record == null) return;
         if ((Id)record.get('Id') == null) throw new UnitOfWorkException('registerDeleted requires a record with an Id');
         pendingDeletes.add(record);
     }
 
+    /**
+     * Queues several records for delete.
+     *
+     * @param records The records to delete.
+     */
     public void registerDeleted(List<SObject> records) {
         if (records == null) return;
         for (SObject record : records) if (record != null) registerDeleted(record);
     }
 
+    /**
+     * Writes everything that was registered, inserts first and then updates and deletes, resolving parents to
+     * children as it goes. On any failure it rolls back to the savepoint and throws, so nothing is left half
+     * saved.
+     *
+     * @param allOrNone True to fail the whole transaction on the first error.
+     */
     public void commitWork(Boolean allOrNone) {
         Savepoint sp = Database.setSavepoint();
         try {

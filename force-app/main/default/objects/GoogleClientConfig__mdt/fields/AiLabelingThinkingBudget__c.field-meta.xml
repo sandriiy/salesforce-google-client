@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AiLabelingThinkingBudget__c</fullName>
+    <defaultValue>1024</defaultValue>
+    <description>Number of reasoning tokens the AI may spend before choosing a label. 1024 (the default) suits the models that keep reasoning whatever they are told, which return nothing at all without room for it. 0 turns reasoning off, which is faster and cheaper on models where that works. Only Gemini models that support thinking use this value.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Number of reasoning tokens the AI may spend before choosing a label. 1024 is the default. 0 turns reasoning off, which some models answer with nothing at all. Only Gemini models that support thinking use this value.</inlineHelpText>
+    <label>AI Labeling Thinking Budget</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

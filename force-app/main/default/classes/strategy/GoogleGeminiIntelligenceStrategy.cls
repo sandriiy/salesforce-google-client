@@ -21,7 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFileIntelligenceStrategy {
+/**
+ * Sends summaries, questions and labeling to the Gemini Developer API, which authenticates with an API
+ * key and needs no Google Cloud project. Good for development and sandboxes, while Agent Platform is the
+ * better fit for production. A missing key or model comes back as a blocked result rather than an
+ * exception, so a caller reads the reason instead of catching.
+ */
+public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFileIntelligenceStrategy, IGoogleFileLabelingStrategy {
     public class GoogleGeminiConfigurationException extends Exception {}
 
     private static final String VALIDATION_PROMPT = 'Reply with OK.';
@@ -32,12 +38,19 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
     private IGenAiApiKeyProvider apiKeyProvider;
 	private GoogleFileSummarizeCommand summarizeCommand = new GoogleFileSummarizeCommand();
 	private GoogleFileQuestionCommand questionCommand = new GoogleFileQuestionCommand();
+	private GoogleFileLabelCommand labelCommand = new GoogleFileLabelCommand();
 	private IGenAiClient genAiClient;
 
 	public GoogleGeminiIntelligenceStrategy() {
         this(new GoogleMetadataConfigService(), new DefaultGoogleGenAiApiKeyProvider());
     }
 
+    /**
+     * Builds the strategy on your own source of the API key, for an org that keeps it somewhere other than
+     * the Google Client configuration.
+     *
+     * @param apiKeyProvider Where the key comes from.
+     */
     public GoogleGeminiIntelligenceStrategy(IGenAiApiKeyProvider apiKeyProvider) {
         this(new GoogleMetadataConfigService(), apiKeyProvider);
     }
@@ -49,6 +62,11 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 		this.genAiClient = new GenAiClientFactory().google(new GenAiGoogleDeveloperConfig(apiKeyProvider));
     }
 
+	/**
+	 * Sends a tiny request to check the key and model really work.
+	 *
+	 * @return True when Gemini answered.
+	 */
 	public Boolean validate() {
 		validateGeminiConfiguration();
 
@@ -67,6 +85,12 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
         }
 	}
 
+	/**
+	 * Summarizes a file with Gemini.
+	 *
+	 * @param localGoogleFileVersionId The version to summarize.
+	 * @return The summary, or why there is none.
+	 */
 	public GoogleFileAnalysisResultDTO summarize(Id localGoogleFileVersionId) {
 		if (localGoogleFileVersionId == null) {
 			return null;
@@ -81,6 +105,13 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 		return this.summarizeCommand.summarize(localGoogleFileVersionId, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
+	/**
+	 * Answers a question about a file with Gemini.
+	 *
+	 * @param localGoogleFileVersionId The version being asked about.
+	 * @param question What the user asked.
+	 * @return The answer, or why there is none.
+	 */
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localGoogleFileVersionId, String question) {
 		if (localGoogleFileVersionId == null) {
 			return null;
@@ -93,6 +124,26 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 		}
 
 		return this.questionCommand.answerQuestion(localGoogleFileVersionId, question, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
+	}
+
+	/**
+	 * Chooses and applies a Google Drive label with Gemini.
+	 *
+	 * @param localGoogleFileVersionId The version to label.
+	 * @return The chosen label and whether Drive accepted it.
+	 */
+	public GoogleFileLabelResultDTO label(Id localGoogleFileVersionId) {
+		if (localGoogleFileVersionId == null) {
+			return null;
+		}
+
+		try {
+			validateGeminiConfiguration();
+		} catch (Exception ex) {
+			return buildBlockedLabelResult(ex.getMessage());
+		}
+
+		return this.labelCommand.label(localGoogleFileVersionId, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
     private void validateGeminiConfiguration() {
@@ -117,6 +168,14 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 		result.blocked = true;
 		result.provider = 'Gemini';
 		result.operationType = operationType;
+		result.errorMessage = errorMessage;
+		return result;
+	}
+
+	private GoogleFileLabelResultDTO buildBlockedLabelResult(String errorMessage) {
+		GoogleFileLabelResultDTO result = new GoogleFileLabelResultDTO();
+		result.blocked = true;
+		result.provider = 'Gemini';
 		result.errorMessage = errorMessage;
 		return result;
 	}

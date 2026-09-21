@@ -27,7 +27,7 @@ private class GoogleFileVersionPreviewJobTest {
 		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
 			[
 				SELECT Id, Name, Summary__c, GoogleDriveFolderId__c, IsLatestFile__c, PublicLink__c, PublicLinkExpirationDate__c, PublicLinkPermissionId__c,
-					CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c
+					CreatedDate, LastModifiedDate, IsPreviewableFile__c, GoogleFileId__c, GoogleDriveFileId__c, GoogleDocsFileId__c, Type__c, Size__c, GoogleDocsFileSize__c, AiLabels__c
 				FROM GoogleFileVersion__c
 				WHERE Id = :versionId
 			]
@@ -62,6 +62,7 @@ private class GoogleFileVersionPreviewJobTest {
 	@IsTest
 	private static void testExecutePositiveWithPreviewableVersion() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleFileVersionPreviewSizeJob.skipExecution = true;
 
 		GoogleFileVersion__c version = createPreviewVersion('V1.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'GD_PJ_1', null);
 		mockPreviewQuery(version.Id);
@@ -76,6 +77,7 @@ private class GoogleFileVersionPreviewJobTest {
 	@IsTest
 	private static void testExecutePositiveWithPreviewablePdfVersion() {
 		GoogleCloudTestFactory.initMocks();
+		GoogleFileVersionPreviewSizeJob.skipExecution = true;
 
 		GoogleFileVersion__c version = createPreviewVersion('VPDF.pdf', 'application/pdf', 'GD_PJ_PDF', null);
 		mockPreviewQuery(version.Id);
@@ -91,6 +93,7 @@ private class GoogleFileVersionPreviewJobTest {
 	private static void testExecutePositiveWithImagePreviewableVersion() {
 		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
 		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleFileVersionPreviewSizeJob.skipExecution = true;
 
 		GTriggerHandler.setBypass('GoogleFileVersionTriggerHandler', true);
 		GoogleFileVersion__c version = createPreviewVersion('Preview.png', 'image/png', 'GD_PJ_IMG_1', null);
@@ -137,8 +140,27 @@ private class GoogleFileVersionPreviewJobTest {
 
 		Test.startTest();
 		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).work();
+		Integer scheduledJobs = Limits.getQueueableJobs();
 		Test.stopTest();
 
 		Assert.areEqual('DOCS_PJ_2', loadVersion(version.Id).GoogleDocsFileId__c);
+		Assert.areEqual(0, scheduledJobs);
+	}
+
+	@IsTest
+	private static void testExecutePositiveSchedulesPreviewSizeMeasurement() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleFileVersionPreviewSizeJob.skipExecution = true;
+
+		GoogleFileVersion__c version = createPreviewVersion('V3.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'GD_PJ_3', null);
+		mockPreviewQuery(version.Id);
+
+		Test.startTest();
+		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).work();
+		Integer scheduledJobs = Limits.getQueueableJobs();
+		Test.stopTest();
+
+		Assert.areEqual(1, scheduledJobs);
+		Assert.isTrue(String.isNotBlank(loadVersion(version.Id).GoogleDocsFileId__c));
 	}
 }

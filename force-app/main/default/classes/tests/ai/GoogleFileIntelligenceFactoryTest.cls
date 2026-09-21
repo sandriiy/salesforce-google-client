@@ -23,6 +23,77 @@
  */
 @IsTest
 private class GoogleFileIntelligenceFactoryTest {
+	private static final String LABEL_DEFINITIONS = '[{"name":"Invoice","labelId":"LABEL_INVOICE","description":"A bill requesting payment"}]';
+
+	@IsTest
+	private static void testCreateForLabelingNegativeLabelingDisabled() {
+		GoogleCloudTestFactory.config()
+			.withFileIntelligence(true)
+			.withGeminiApiKey('api-key-1')
+			.withAiModel('gemini-2.0-flash')
+			.withAiLabelDefinitions(LABEL_DEFINITIONS)
+			.apply();
+
+		Test.startTest();
+		try {
+			new GoogleFileIntelligenceFactory().createForLabeling();
+			Assert.fail('Labeling must stay off until the administrator enables it');
+		} catch (GoogleFileIntelligenceFactory.GoogleFileIntelligenceFactoryException ex) {
+			Assert.isTrue(ex.getMessage().contains('labeling is disabled'));
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testCreateForLabelingNegativeIntelligenceDisabled() {
+		GoogleCloudTestFactory.config()
+			.withAiLabeling(true)
+			.withGeminiApiKey('api-key-1')
+			.withAiModel('gemini-2.0-flash')
+			.withAiLabelDefinitions(LABEL_DEFINITIONS)
+			.apply();
+
+		Test.startTest();
+		try {
+			new GoogleFileIntelligenceFactory().createForLabeling();
+			Assert.fail('Labeling must not run while file intelligence is off');
+		} catch (GoogleFileIntelligenceFactory.GoogleFileIntelligenceFactoryException ex) {
+			Assert.isTrue(ex.getMessage().contains('intelligence is disabled'));
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testCreateForLabelingPositiveReturnsConfiguredStrategy() {
+		GoogleCloudTestFactory.config()
+			.withFileIntelligence(true)
+			.withAiLabeling(true)
+			.withGeminiApiKey('api-key-1')
+			.withAiModel('gemini-2.0-flash')
+			.withAiLabelDefinitions(LABEL_DEFINITIONS)
+			.apply();
+
+		Test.startTest();
+		GoogleFileIntelligenceFactory factory = new GoogleFileIntelligenceFactory();
+		IGoogleFileLabelingStrategy strategy = factory.createForLabeling();
+		Test.stopTest();
+
+		Assert.isTrue(factory.isLabelingConfigured());
+		Assert.isTrue(strategy instanceof GoogleGeminiIntelligenceStrategy);
+	}
+
+	@IsTest
+	private static void testIsLabelingConfiguredNegativeWithoutDefinitions() {
+		GoogleCloudTestFactory.config()
+			.withFileIntelligence(true)
+			.withAiLabeling(true)
+			.withGeminiApiKey('api-key-1')
+			.withAiModel('gemini-2.0-flash')
+			.apply();
+
+		Assert.isFalse(new GoogleFileIntelligenceFactory().isLabelingConfigured());
+	}
+
 	@IsTest
 	private static void testCreateNegativeNoConfig() {
 		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AiLabelDefinitions__c</fullName>
+    <description>Labels the AI may assign to a file, managed from the Google Client app under Advanced → AI Intelligence → AI Labeling. Each label has a name, its Google Drive label ID, and a plain-text description of the documents it applies to. Leave blank to assign no labels.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Managed from the Google Client app under Advanced → AI Intelligence → AI Labeling. Leave blank to assign no labels.</inlineHelpText>
+    <label>AI Label Definitions</label>
+    <length>131072</length>
+    <required>false</required>
+    <type>LongTextArea</type>
+    <unique>false</unique>
+    <visibleLines>10</visibleLines>
+</CustomField>

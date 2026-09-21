@@ -15,10 +15,16 @@
 
                     <div class="slds-col slds-grow-none">
                         <div class="header-actions">
-                            <button type="button" class={advancedToggleClass} onclick={toggleAdvancedView} aria-pressed={isAdvancedView}>
-                                <lightning-icon icon-name="utility:settings" size="x-small"></lightning-icon>
-                                <span class="action-label">{advancedToggleLabel}</span>
-                            </button>
+                            <div class="view-switch" role="tablist" aria-label="Configuration area">
+                                <button type="button" class={setupViewClass} role="tab" aria-selected={isMainView} title="Connect Google Drive and your AI provider" onclick={handleSetupViewClick}>
+                                    <lightning-icon icon-name="utility:setup_assistant_guide" size="x-small"></lightning-icon>
+                                    <span class="action-label">Setup</span>
+                                </button>
+                                <button type="button" class={advancedViewClass} role="tab" aria-selected={isAdvancedView} title="Previews, uploads, File Explorer columns, AI analysis and labeling, prompt safety" onclick={handleAdvancedViewClick}>
+                                    <lightning-icon icon-name="utility:settings" size="x-small"></lightning-icon>
+                                    <span class="action-label">Advanced</span>
+                                </button>
+                            </div>
 
                             <button type="button" class="action-button action-button-neutral" onclick={handleRevert} disabled={revertDisabled}>
                                 <lightning-icon icon-name="utility:undo" size="x-small"></lightning-icon>
@@ -32,38 +38,40 @@
                     </div>
                 </div>
 
-                <div class="config-selector-row slds-m-top_medium">
-                    <div class="config-selector" data-role="selectorRoot">
-                        <button type="button" class="config-selected-tile" onclick={toggleConfigMenu} aria-expanded={isConfigMenuOpen}>
-                            <span class="config-tile-icon">
-                                <lightning-icon icon-name={selectedConfig.icon} size="small"></lightning-icon>
-                            </span>
+                <template lwc:if={isMainView}>
+                    <div class="config-selector-row slds-m-top_medium">
+                        <div class="config-selector" data-role="selectorRoot">
+                            <button type="button" class="config-selected-tile" onclick={toggleConfigMenu} aria-expanded={isConfigMenuOpen}>
+                                <span class="config-tile-icon">
+                                    <lightning-icon icon-name={selectedConfig.icon} size="small"></lightning-icon>
+                                </span>
 
-                            <span class="config-tile-text">
-                                <span class="config-tile-title">{selectedConfig.label}</span>
-                                <span class="config-tile-desc">{selectedConfig.description}</span>
-                            </span>
+                                <span class="config-tile-text">
+                                    <span class="config-tile-title">{selectedConfig.label}</span>
+                                    <span class="config-tile-desc">{selectedConfig.description}</span>
+                                </span>
 
-                            <span class="config-tile-caret">
-                                <lightning-icon icon-name="utility:chevrondown" size="x-small"></lightning-icon>
-                            </span>
-                        </button>
+                                <span class="config-tile-caret">
+                                    <lightning-icon icon-name="utility:chevrondown" size="x-small"></lightning-icon>
+                                </span>
+                            </button>
 
-                        <div class={menuClass} role="menu">
-                            <template for:each={configMenuItems} for:item="item">
-                                <button key={item.key} type="button" class={item.className} role="menuitemradio" aria-checked={item.isSelected} data-key={item.key} onclick={handleSelectConfig}>
-                                    <span class="config-menu-icon">
-                                        <lightning-icon icon-name={item.icon} size="small"></lightning-icon>
-                                    </span>
-                                    <span class="config-menu-text">
-                                        <span class="config-menu-title">{item.label}</span>
-                                        <span class="config-menu-desc">{item.description}</span>
-                                    </span>
-                                </button>
-                            </template>
+                            <div class={menuClass} role="menu">
+                                <template for:each={configMenuItems} for:item="item">
+                                    <button key={item.key} type="button" class={item.className} role="menuitemradio" aria-checked={item.isSelected} data-key={item.key} onclick={handleSelectConfig}>
+                                        <span class="config-menu-icon">
+                                            <lightning-icon icon-name={item.icon} size="small"></lightning-icon>
+                                        </span>
+                                        <span class="config-menu-text">
+                                            <span class="config-menu-title">{item.label}</span>
+                                            <span class="config-menu-desc">{item.description}</span>
+                                        </span>
+                                    </button>
+                                </template>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </template>
             </section>
 
             <template lwc:if={isLoading}>
@@ -84,30 +92,15 @@
                         <div class="advanced-container">
                             <section class="panel-card">
                                 <div class="panel-padding">
-                                    <div class="advanced-header">
-                                        <div class="advanced-title">Advanced settings</div>
-                                    </div>
-
                                     <div class="advanced-step-bar">
-                                        <button class={fileManagementStepClass} data-step="fileManagement" onclick={handleAdvancedStepClick} type="button">
-                                            <span class="step-indicator"></span>
-                                            <span class="step-label">File Management</span>
-                                        </button>
-
-                                        <button class={userInterfaceStepClass} data-step="userInterface" onclick={handleAdvancedStepClick} type="button">
-                                            <span class="step-indicator"></span>
-                                            <span class="step-label">User Interface</span>
-                                        </button>
-
-                                        <button class={aiIntelligenceStepClass} data-step="aiIntelligence" onclick={handleAdvancedStepClick} type="button">
-                                            <span class="step-indicator"></span>
-                                            <span class="step-label">AI Intelligence</span>
-                                        </button>
-
-                                        <button class={safetyCustomizationStepClass} data-step="safetyCustomization" onclick={handleAdvancedStepClick} type="button">
-                                            <span class="step-indicator"></span>
-                                            <span class="step-label">Safety & Customization</span>
-                                        </button>
+                                        <template for:each={advancedTabs} for:item="tab">
+                                            <button key={tab.key} class={tab.className} data-step={tab.key} onclick={handleAdvancedStepClick} type="button">
+                                                <span class="step-indicator"></span>
+                                                <span class="step-copy">
+                                                    <span class="step-label">{tab.label}</span>
+                                                </span>
+                                            </button>
+                                        </template>
                                     </div>
 
                                     <div class={fileManagementPanelClass} data-tab="fileManagement">
@@ -161,6 +154,25 @@
                                             </div>
                                         </div>
 
+                                        <div class="tab-toggle-header slds-m-top_medium">
+                                            <div class="tab-toggle-copy">
+                                                <div class="tab-toggle-title">Open in Google Drive</div>
+                                                <div class="tab-toggle-subtitle">Lets file owners open a file directly in Google Drive. They get view access to that one file for a limited time, so they can read, print, download, or make their own copy. They cannot change or delete it, and the rest of the folder stays private.</div>
+                                            </div>
+                                            <div class="tab-toggle-control">
+                                                <lightning-input
+                                                    type="toggle"
+                                                    variant="label-hidden"
+                                                    checked={draft.isOpenInDriveEnabled}
+                                                    onchange={handleToggle}
+                                                    data-field="isOpenInDriveEnabled"
+                                                    label="Enable Open in Google Drive"
+                                                    message-toggle-active=""
+                                                    message-toggle-inactive="">
+                                                </lightning-input>
+                                            </div>
+                                        </div>
+
                                         <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_medium">
                                             <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                                                 <lightning-input
@@ -190,7 +202,7 @@
                                             <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                                                 <lightning-input
                                                     type="text"
-                                                    maxlength="255"
+                                                    max-length="255"
                                                     value={draft.organizationalDomain}
                                                     onchange={handleChangeText}
                                                     data-field="organizationalDomain"
@@ -243,7 +255,7 @@
                                                                 <div class="slds-col slds-grow">
                                                                     <lightning-input
                                                                         type="text"
-                                                                        maxlength="80"
+                                                                        max-length="80"
                                                                         variant="label-hidden"
                                                                         value={customColumnDraft}
                                                                         onchange={handleCustomColumnDraftChange}
@@ -271,64 +283,172 @@
                                     </div>
 
                                     <div class={aiIntelligencePanelClass} data-tab="aiIntelligence">
-                                        <div class="tab-toggle-header">
-                                            <div class="tab-toggle-copy">
-                                                <div class="tab-toggle-title">AI File Intelligence</div>
-                                                <div class="tab-toggle-subtitle">Generate summaries and answer questions about Google Drive files using Gemini or Agent Platform.</div>
+                                        <div class="ui-section">
+                                            <div class="ui-section-header ui-section-header-with-control">
+                                                <div class="ui-section-copy">
+                                                    <div class="ui-section-title">AI Analytics</div>
+                                                    <div class="ui-section-subtitle">Generate summaries and answer questions about Google Drive files using Gemini or Agent Platform.</div>
+                                                </div>
+                                                <div class="tab-toggle-control">
+                                                    <lightning-input
+                                                        type="toggle"
+                                                        variant="label-hidden"
+                                                        checked={draft.isFileIntelligenceEnabled}
+                                                        disabled={isIntelligenceToggleDisabled}
+                                                        onchange={handleIntelligenceToggle}
+                                                        data-field="isFileIntelligenceEnabled"
+                                                        label="Enable AI Analytics"
+                                                        message-toggle-active=""
+                                                        message-toggle-inactive="">
+                                                    </lightning-input>
+                                                </div>
                                             </div>
-                                            <div class="tab-toggle-control">
-                                                <lightning-input
-                                                    type="toggle"
-                                                    variant="label-hidden"
-                                                    checked={draft.isFileIntelligenceEnabled}
-                                                    onchange={handleToggle}
-                                                    data-field="isFileIntelligenceEnabled"
-                                                    label="Enable AI File Intelligence"
-                                                    message-toggle-active=""
-                                                    message-toggle-inactive="">
-                                                </lightning-input>
+
+                                            <div class="ui-section-body">
+                                                <template lwc:if={showProviderRequiredHint}>
+                                                    <div class="section-hint">
+                                                        <lightning-icon icon-name="utility:info" size="x-small" class="section-hint-icon"></lightning-icon>
+                                                        <span>
+                                                            No AI provider is connected yet. Specify and validate Gemini or Agent Platform, then come back to turn analysis on. <button type="button" class="section-hint-link" onclick={handleOpenProviderSetup}>Open Gemini &amp; Agent Platform</button>
+                                                        </span>
+                                                    </div>
+                                                </template>
+
+                                                <div class="slds-grid slds-wrap slds-gutters_small">
+                                                    <div class="slds-col slds-size_1-of-1">
+                                                        <lightning-textarea
+                                                            value={draft.customSummaryPrompt}
+                                                            onchange={handleChangeText}
+                                                            data-field="customSummaryPrompt"
+                                                            label="Summary Prompt"
+                                                            field-level-help="System prompt used when Google Client generates a file summary."
+                                                            max-length="32768"
+                                                            disabled={isIntelligenceDisabled}
+                                                            required={isIntelligenceEnabled}
+                                                        ></lightning-textarea>
+                                                    </div>
+
+                                                    <div class="slds-col slds-size_1-of-1">
+                                                        <lightning-textarea
+                                                            value={draft.customQuestionPrompt}
+                                                            onchange={handleChangeText}
+                                                            data-field="customQuestionPrompt"
+                                                            label="Question Prompt"
+                                                            field-level-help="System prompt used when Google Client answers questions about a file."
+                                                            max-length="32768"
+                                                            disabled={isIntelligenceDisabled}
+                                                            required={isIntelligenceEnabled}
+                                                        ></lightning-textarea>
+                                                    </div>
+
+                                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                                        <lightning-input
+                                                            type="number"
+                                                            value={draft.questionMaxOutputTokens}
+                                                            onchange={handleChangeNumber}
+                                                            data-field="questionMaxOutputTokens"
+                                                            label="Question Max Output Tokens"
+                                                            field-level-help="Maximum number of tokens returned for document question responses."
+                                                            placeholder="e.g. 1024"
+                                                            disabled={isIntelligenceDisabled}
+                                                            required={isIntelligenceEnabled}
+                                                        ></lightning-input>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div class="slds-grid slds-wrap slds-gutters_small slds-m-top_medium">
-                                            <div class="slds-col slds-size_1-of-1">
-                                                <lightning-textarea
-                                                    value={draft.customSummaryPrompt}
-                                                    onchange={handleChangeText}
-                                                    data-field="customSummaryPrompt"
-                                                    label="Summary Prompt"
-                                                    field-level-help="System prompt used when Google Client generates a file summary."
-                                                    max-length="32768"
-                                                    disabled={isIntelligenceDisabled}
-                                                    required={isIntelligenceEnabled}
-                                                ></lightning-textarea>
+                                        <div class="ui-section slds-m-top_medium">
+                                            <div class="ui-section-header ui-section-header-with-control">
+                                                <div class="ui-section-copy">
+                                                    <div class="ui-section-title">AI Labeling</div>
+                                                    <div class="ui-section-subtitle">Assign one of your Google Drive labels to each new file based on what it contains. Files the AI is not sure about stay unlabeled. Works on top of AI Analytics.</div>
+                                                </div>
+                                                <div class="tab-toggle-control">
+                                                    <lightning-input
+                                                        type="toggle"
+                                                        variant="label-hidden"
+                                                        checked={isLabelingEnabled}
+                                                        disabled={isLabelingToggleDisabled}
+                                                        onchange={handleLabelingToggle}
+                                                        data-field="isAiLabelingEnabled"
+                                                        label="Enable AI Labeling"
+                                                        message-toggle-active=""
+                                                        message-toggle-inactive="">
+                                                    </lightning-input>
+                                                </div>
                                             </div>
 
-                                            <div class="slds-col slds-size_1-of-1">
-                                                <lightning-textarea
-                                                    value={draft.customQuestionPrompt}
-                                                    onchange={handleChangeText}
-                                                    data-field="customQuestionPrompt"
-                                                    label="Question Prompt"
-                                                    field-level-help="System prompt used when Google Client answers questions about a file."
-                                                    max-length="32768"
-                                                    disabled={isIntelligenceDisabled}
-                                                    required={isIntelligenceEnabled}
-                                                ></lightning-textarea>
-                                            </div>
+                                            <div class="ui-section-body">
+                                                <template lwc:if={isIntelligenceDisabled}>
+                                                    <div class="section-hint">
+                                                        <lightning-icon icon-name="utility:info" size="x-small" class="section-hint-icon"></lightning-icon>
+                                                        <span>Turn on AI Analytics above to make labeling available.</span>
+                                                    </div>
+                                                </template>
 
-                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                                <lightning-input
-                                                    type="number"
-                                                    value={draft.questionMaxOutputTokens}
-                                                    onchange={handleChangeNumber}
-                                                    data-field="questionMaxOutputTokens"
-                                                    label="Question Max Output Tokens"
-                                                    field-level-help="Maximum number of tokens returned for document question responses."
-                                                    placeholder="e.g. 1024"
-                                                    disabled={isIntelligenceDisabled}
-                                                    required={isIntelligenceEnabled}
-                                                ></lightning-input>
+                                                <div class="slds-grid slds-wrap slds-gutters_small">
+                                                    <div class="slds-col slds-size_1-of-1">
+                                                        <lightning-textarea
+                                                            value={draft.customLabelingPrompt}
+                                                            onchange={handleChangeText}
+                                                            data-field="customLabelingPrompt"
+                                                            label="Labeling Prompt"
+                                                            field-level-help="System prompt used when Google Client decides which label, if any, describes a file. The label descriptions below are added to it automatically."
+                                                            max-length="32768"
+                                                            disabled={isLabelingDisabled}
+                                                            required={isLabelingEnabled}
+                                                        ></lightning-textarea>
+                                                    </div>
+
+                                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                                        <lightning-input
+                                                            type="number"
+                                                            value={draft.aiLabelingMinConfidence}
+                                                            onchange={handleChangeNumber}
+                                                            data-field="aiLabelingMinConfidence"
+                                                            label="Minimum Confidence (%)"
+                                                            field-level-help="How sure the AI must be before a label is applied, from 0 to 100. A file below this confidence stays unlabeled. 80 is a good starting point; raise it if labels are applied too eagerly, lower it if too few files get labeled."
+                                                            placeholder="e.g. 80"
+                                                            min={minConfidencePercent}
+                                                            max={maxConfidencePercent}
+                                                            step="1"
+                                                            disabled={isLabelingDisabled}
+                                                            required={isLabelingEnabled}
+                                                        ></lightning-input>
+                                                    </div>
+
+                                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                                        <lightning-input
+                                                            type="number"
+                                                            value={draft.aiLabelingThinkingBudget}
+                                                            onchange={handleChangeNumber}
+                                                            data-field="aiLabelingThinkingBudget"
+                                                            label="Thinking Budget (tokens)"
+                                                            field-level-help="How much room the AI gets to reason before choosing a label. 1024 is the default and suits models that keep reasoning whatever they are told, which otherwise answer with nothing. 0 turns reasoning off, which is faster and cheaper where the model allows it. Only models that support thinking use this."
+                                                            placeholder="e.g. 0"
+                                                            min="0"
+                                                            step="1"
+                                                            disabled={isLabelingDisabled}
+                                                            required={isLabelingEnabled}
+                                                        ></lightning-input>
+                                                    </div>
+
+                                                    <div class="slds-col slds-size_1-of-1 slds-m-top_small">
+                                                        <c-google-cloud-ai-label-editor
+                                                            value={draft.aiLabelDefinitions}
+                                                            disabled={isLabelingDisabled}
+                                                            max-labels={maxAiLabelDefinitions}
+                                                            ondefinitionschange={handleLabelDefinitionsChange}>
+                                                        </c-google-cloud-ai-label-editor>
+                                                    </div>
+
+                                                    <div class="slds-col slds-size_1-of-1">
+                                                        <div class="info-link">
+                                                            <a href={aiLabelingGuideUrl} target="_blank" rel="noopener noreferrer">Learn about AI Labeling →</a>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -361,7 +481,7 @@
                                             <div class="safety-field-col">
                                                 <lightning-input
                                                     type="text"
-                                                    maxlength="60"
+                                                    max-length="60"
                                                     value={draft.customAiPromptSafetyGuardClass}
                                                     onchange={handleChangeText}
                                                     data-field="customAiPromptSafetyGuardClass"
@@ -396,10 +516,12 @@
                                 busy={busy}
                                 is-loading={isLoading}
                                 onfieldchange={handleFieldChange}
+                                oncontextchange={handleSectionContextChange}
                                 onsave={handleSave}
                                 onsavevalidate={handleSaveValidate}
                                 onvalidate={handleValidate}
                                 onrevert={handleRevert}
+                                ondeactivate={handleDeactivateRequest}
                                 onsteperror={handleStepError}
                                 onvaliditychange={handleValidityChange}>
                             </lwc:component>
@@ -409,4 +531,59 @@
             </div>
         </div>
     </div>
+
+    <template lwc:if={visibleNotice}>
+        <div class="config-notice" role="status" aria-live="polite">
+            <div class="config-notice-icon">
+                <lightning-icon icon-name="utility:info_alt" size="small" variant="warning" alternative-text="Heads up"></lightning-icon>
+            </div>
+            <div class="config-notice-body">
+                <div class="config-notice-eyebrow">Heads up</div>
+                <div class="config-notice-title">{visibleNotice.title}</div>
+                <div class="config-notice-text">{visibleNotice.text}</div>
+                <button type="button" class="config-notice-action" onclick={handleNoticeAction}>{visibleNotice.actionLabel} →</button>
+            </div>
+            <div class="config-notice-close">
+                <lightning-button-icon icon-name="utility:close" variant="bare" size="small" alternative-text="Dismiss" title="Dismiss" onclick={handleNoticeDismiss}></lightning-button-icon>
+            </div>
+        </div>
+    </template>
+
+    <template lwc:if={showUnsavedChangesModal}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="unsaved-changes-title" class="slds-modal slds-fade-in-open slds-modal_small">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h1 id="unsaved-changes-title" class="slds-modal__title slds-hyphenate">Unsaved changes</h1>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p>You have changes that have not been saved yet. Save them before opening {pendingNavigationLabel}, or discard them to continue with the last saved configuration.</p>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button label="Keep editing" onclick={handleNavigationCancel} disabled={busy}></lightning-button>
+                    <lightning-button class="slds-m-left_x-small" label="Discard changes" onclick={handleNavigationDiscard} disabled={busy}></lightning-button>
+                    <lightning-button class="slds-m-left_x-small" variant="brand" label="Save and continue" onclick={handleNavigationSave} disabled={busy}></lightning-button>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <template lwc:if={isDeactivateAiModalOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="deactivate-ai-title" class="slds-modal slds-fade-in-open slds-modal_small">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h1 id="deactivate-ai-title" class="slds-modal__title slds-hyphenate">{deactivateAiModalTitle}</h1>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p>AI Analytics and AI Labeling will be turned off for everyone, and the provider details, prompts, label definitions and safety settings will be cleared. Summaries and labels already stored on files are kept.</p>
+                    <p class="slds-m-top_small">You can connect a provider and turn AI back on at any time.</p>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button label="Keep AI" onclick={handleDeactivateCancel} disabled={busy}></lightning-button>
+                    <lightning-button class="slds-m-left_x-small" variant="destructive" label="Deactivate" onclick={handleDeactivateConfirm} disabled={busy}></lightning-button>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
 </template>

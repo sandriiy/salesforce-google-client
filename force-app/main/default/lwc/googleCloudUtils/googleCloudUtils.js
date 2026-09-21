@@ -147,6 +147,7 @@ const formatExistingLocalFiles = (localGoogleFiles) => {
 			summary: latestVersion.Summary__c || '',
 			hoverSummaryText: resolveFileHoverText(latestVersion.Summary__c, latestVersion.Name, DEFAULT_FILE_NAME),
 			hasSummary: Boolean(latestVersion.Summary__c),
+			labels: latestVersion.AiLabels__c || '',
         });
     });
 

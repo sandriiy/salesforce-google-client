@@ -1,6 +1,48 @@
 .container {
     border-radius: 12px;
-	margin-bottom: 5%;
+    margin-bottom: 5%;
+}
+
+.guide-step {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.guide-step-number {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    font-weight: 600;
+    font-size: 12px;
+    background: rgba(1, 118, 211, 0.15);
+    color: #014486;
+}
+
+.guide-step-copy {
+    min-width: 0;
+}
+
+.guide-step-title {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.guide-step-text {
+    display: block;
+    font-size: 12.5px;
+    opacity: 0.85;
+    line-height: 1.4;
+}
+
+.guide-button-row {
+    display: flex;
+    justify-content: center;
+    padding-top: 14px;
+    margin-top: 4px;
 }
 
 .sectionBody {

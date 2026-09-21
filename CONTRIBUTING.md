@@ -52,6 +52,6 @@ You may develop and test changes using any Salesforce environment of your choice
 
 ## Questions & Communication
 
-For questions related to contributing, architecture decisions, or project direction, you may contact: [ansukhetskyi@cloudrylabs.com](mailto:ansukhetskyi@cloudrylabs.com)
+For questions related to contributing, architecture decisions, or project direction, you may contact: [ansukh@astertrail.com](mailto:ansukh@astertrail.com)
 
 Thank you for contributing.

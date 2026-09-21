@@ -7,8 +7,39 @@ const PROVIDER = {
     AGENT: 'agent'
 };
 
-const GEMINI_SETUP_URL = 'https://ai.google.dev/gemini-api/docs/api-key';
-const AGENT_SETUP_URL = 'https://cloud.google.com/vertex-ai/generative-ai/docs/start';
+const AI_STATUS = {
+    on: {
+        className: 'ai-status ai-status-on',
+        title: 'AI Analytics is on',
+        text: 'Summaries, questions and labeling are available to your users.'
+    },
+    off: {
+        className: 'ai-status ai-status-off',
+        title: 'AI Analytics is off',
+        text: 'Provider details are saved, but nothing is sent to the provider until AI Analytics is turned on under Advanced → AI Intelligence.'
+    },
+    notConnected: {
+        className: 'ai-status ai-status-not-connected',
+        title: 'AI is not connected',
+        text: 'Connect Gemini or Agent Platform below to make summaries, questions and labeling available.'
+    }
+};
+
+const SAVED_INTELLIGENCE_KEYS = [
+    'customGeminiApiKey',
+    'customModelName',
+    'customAgentLocation',
+    'customAgentProjectId',
+    'customSummaryPrompt',
+    'customQuestionPrompt',
+    'questionMaxOutputTokens',
+    'aiSafetyMode',
+    'customAiPromptSafetyGuardClass',
+    'customLabelingPrompt',
+    'aiLabelingMinConfidence',
+    'aiLabelingThinkingBudget',
+    'aiLabelDefinitions'
+];
 
 export default class GoogleCloudIntelligenceConfig extends LightningElement {
     @api draft;
@@ -17,6 +48,11 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
     @api isLoading = false;
 
     currentProvider = null;
+    lastReportedVariant = null;
+
+    renderedCallback() {
+        this.reportVariantChange();
+    }
 
     @api reportValidity() {
         const inputs = Array.from(this.template.querySelectorAll('lightning-input'));
@@ -35,12 +71,26 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         return isValid;
     }
 
+    @api resetProviderSelection() {
+        this.currentProvider = null;
+    }
+
     dispatchFieldChange(field, value) {
         this.dispatchEvent(new CustomEvent('fieldchange', { detail: { field, value } }));
     }
 
     dispatchAction(name) {
         this.dispatchEvent(new CustomEvent(name));
+    }
+
+    reportVariantChange() {
+        const variant = this.provider;
+        if (variant === this.lastReportedVariant) {
+            return;
+        }
+
+        this.lastReportedVariant = variant;
+        this.dispatchEvent(new CustomEvent('contextchange', { detail: { variant } }));
     }
 
     handleProviderChange(event) {
@@ -91,8 +141,8 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         this.dispatchAction('revert');
     }
 
-    handleOpenSelectedGuide() {
-        window.open(this.selectedGuideUrl, '_blank');
+    handleDeactivate() {
+        this.dispatchAction('deactivate');
     }
 
     inferProviderFromDraft() {
@@ -141,18 +191,6 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         return `step-button provider-option ${this.isAgentMode ? 'is-active' : ''}`;
     }
 
-    get selectedGuideUrl() {
-        return this.isGeminiMode ? GEMINI_SETUP_URL : AGENT_SETUP_URL;
-    }
-
-    get setupGuideButtonLabel() {
-        return this.isGeminiMode ? 'Open Gemini Setup Guide' : 'Open Agent Platform Setup Guide';
-    }
-
-    get quickSetupTitle() {
-        return this.isGeminiMode ? 'Gemini Quick Setup' : 'Agent Platform Quick Setup';
-    }
-
     get primaryActionLabel() {
         if (!this.isConfigDirty) {
             return 'Validate';
@@ -161,12 +199,50 @@ export default class GoogleCloudIntelligenceConfig extends LightningElement {
         return 'Save & Validate';
     }
 
-    get isIntelligenceEnabled() {
-        return !!this.draft?.isFileIntelligenceEnabled;
+    get isAnalysisOn() {
+        return !!this.server?.isFileIntelligenceEnabled;
     }
 
-    get isIntelligenceDisabled() {
-        return !this.isIntelligenceEnabled;
+    get isProviderSaved() {
+        const hasModel = !!asString(this.server?.customModelName).trim();
+        const hasGemini = !!asString(this.server?.customGeminiApiKey).trim();
+        const hasAgent = !!asString(this.server?.customAgentProjectId).trim() && !!asString(this.server?.customAgentLocation).trim();
+        return hasModel && (hasGemini || hasAgent);
+    }
+
+    get hasSavedIntelligenceSetup() {
+        if (this.isAnalysisOn || !!this.server?.isAiLabelingEnabled) {
+            return true;
+        }
+
+        return SAVED_INTELLIGENCE_KEYS.some((key) => {
+            const value = this.server?.[key];
+            return value !== null && value !== undefined && asString(value).trim() !== '';
+        });
+    }
+
+    get showDeactivation() {
+        return !!this.server?.hasPersistedRecord && this.hasSavedIntelligenceSetup;
+    }
+
+    get status() {
+        if (this.isAnalysisOn) {
+            return AI_STATUS.on;
+        }
+
+        return this.isProviderSaved ? AI_STATUS.off : AI_STATUS.notConnected;
+    }
+
+    get statusClass() {
+        return this.status.className;
+    }
+
+    get statusTitle() {
+        return this.status.title;
+    }
+
+    get statusText() {
+        return this.status.text;
     }
 
     get isConfigDirty() {

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AiLabelingMinConfidence__c</fullName>
+    <defaultValue>80</defaultValue>
+    <description>Minimum confidence, from 0 to 100, the AI must report before a label is applied to a file. Files below this confidence stay unlabeled. Blank means 80.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Minimum confidence, from 0 to 100, the AI must report before a label is applied to a file. Files below this confidence stay unlabeled. Blank means 80.</inlineHelpText>
+    <label>AI Labeling Minimum Confidence</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

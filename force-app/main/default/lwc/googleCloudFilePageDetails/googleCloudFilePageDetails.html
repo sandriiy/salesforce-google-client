@@ -62,6 +62,12 @@
                                                 onclick={handlePublicLinkCreate}
                                             ></lightning-menu-item>
                                             <lightning-menu-item
+                                                lwc:if={isOpenInDriveVisible}
+                                                label="Open in Google Drive"
+                                                value="openInDrive"
+                                                onclick={handleOpenInDrive}
+                                            ></lightning-menu-item>
+                                            <lightning-menu-item
                                                 label="Delete"
                                                 value="delete"
                                                 onclick={handleFileDelete}
@@ -134,6 +140,15 @@
                                     record-id={recordId}
                                     onlatestversionselected={handleLatestVersionSelection}>
                                 </c-google-cloud-file-versions>
+                            </template>
+                        </section>
+
+                        <section class="record-layout__card">
+                            <template lwc:if={isContentReady}>
+                                <c-google-cloud-file-labels
+                                    lwc:ref="labels"
+                                    record-id={recordId}>
+                                </c-google-cloud-file-labels>
                             </template>
                         </section>
 

@@ -21,6 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/**
+ * Queues everything that has to happen after new versions are committed: the Workspace preview copy,
+ * the summary, the folder placement and the label. All of it needs a Drive callout, which cannot follow
+ * uncommitted DML, which is why it is chained rather than done inline. Versions are handled in chunks of
+ * ten so each chunk gets its own callout budget.
+ */
 public with sharing class GoogleFileInsertFinalizeCommand {
     private static final Integer MAX_CHAIN_BATCH_SIZE = 10;
 
@@ -31,11 +37,24 @@ public with sharing class GoogleFileInsertFinalizeCommand {
         this(new GoogleMetadataConfigService(), new GoogleFileVersionContextResolver());
     }
 
+    /**
+     * Builds the command on services the caller already holds, which saves resolving the configuration
+     * again in a trigger context.
+     *
+     * @param googleConfig The configuration to read. A null gets a fresh one.
+     * @param versionContextResolver The resolver that decides what each version needs. A null gets a fresh one.
+     */
     public GoogleFileInsertFinalizeCommand(GoogleMetadataConfigService googleConfig, GoogleFileVersionContextResolver versionContextResolver) {
         this.googleConfig = googleConfig == null ? new GoogleMetadataConfigService() : googleConfig;
         this.versionContextResolver = versionContextResolver == null ? new GoogleFileVersionContextResolver() : versionContextResolver;
     }
 
+    /**
+     * Works out what the new versions need and chains the jobs in order, folder placement ahead of the
+     * label, so a slow AI call never holds a file in the wrong folder.
+     *
+     * @param newFileVersions The versions that were just inserted.
+     */
     public void execute(List<GoogleFileVersion__c> newFileVersions) {
         if (newFileVersions == null || newFileVersions.isEmpty()) return;
 
@@ -70,6 +89,10 @@ public with sharing class GoogleFileInsertFinalizeCommand {
                     hasJobs = true;
                 }
             }
+
+			if (!summaryCandidateVersionIds.isEmpty() && new GoogleFileIntelligenceFactory().isLabelingConfigured()) {
+				jobsChainer.chain(new GoogleFileVersionLabelJob(summaryCandidateVersionIds)).deepClone();
+			}
 
             if (hasJobs) {
                 jobsChainer.enqueue();

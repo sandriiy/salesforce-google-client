@@ -59,7 +59,7 @@ Starting with 2.0.0, this codebase is also maintained in parallel as an Enterpri
 
 ## Installation
 
-This client depends on two required packages, which **must be installed first**: <a href="https://github.com/jongpie/NebulaLogger" target="_blank" rel="noopener noreferrer"><strong>Nebula Logger</strong></a> and <a href="https://github.com/sandriiy/salesforce-google-drive-library" target="_blank" rel="noopener noreferrer"><strong>Apex Google Drive Library</strong></a>. Once both dependencies are installed, you can install the Google Client for Salesforce package.
+This client depends on two required packages, which **must be installed first**: <a href="https://github.com/jongpie/NebulaLogger" target="_blank" rel="noopener noreferrer"><strong>Nebula Logger</strong></a> v4.16.5 or later and <a href="https://github.com/sandriiy/salesforce-google-drive-library" target="_blank" rel="noopener noreferrer"><strong>Apex Google Drive Library</strong></a> v1.3.0 or later. Once both dependencies are installed, you can install the Google Client for Salesforce package.
 
 ### Install the package
 
@@ -70,7 +70,7 @@ This client depends on two required packages, which **must be installed first**:
 <p>Use this option to test Google Client for Salesforce before installing it in production.</p>
 
 <p>
-<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000XoFlIAK" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Sandbox-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Sandbox" height="52"></a>
+<a href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000ZTtZIAW" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Sandbox-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Sandbox" height="52"></a>
 </p>
 
 <br />
@@ -80,7 +80,7 @@ This client depends on two required packages, which **must be installed first**:
 <p>Use this option when you are ready to install the package in your production org.</p>
 
 <p>
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000XoFlIAK" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Production-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Production" height="52"></a>
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000ZTtZIAW" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Install%20Google%20Client%20for%20Salesforce-Production-0176D3?style=for-the-badge&logo=salesforce&logoColor=white" alt="Install Google Client for Salesforce in Production" height="52"></a>
 </p>
 
 </div>
@@ -90,7 +90,7 @@ This client depends on two required packages, which **must be installed first**:
 ### CLI Installation
 
 ```bash
-sf package install --wait 20 --security-type AdminsOnly --package 04tQy000000XoFlIAK
+sf package install --wait 20 --security-type AdminsOnly --package 04tQy000000ZTtZIAW
 ```
 
 <br />
@@ -104,7 +104,7 @@ Comprehensive documentation is available via GitHub Pages and provides step-by-s
 <br />
 
 > [!NOTE]
-> Need help with setup, configuration, or questions about the client? Reach out to <a href="mailto:ansukhetskyi@cloudrylabs.com" target="_blank" rel="noopener noreferrer">ansukhetskyi@cloudrylabs.com</a>.
+> Need help with setup, configuration, or questions about the client? Reach out to <a href="mailto:ansukh@astertrail.com" target="_blank" rel="noopener noreferrer">ansukh@astertrail.com</a>.
 
 <br />
 

@@ -425,7 +425,7 @@
                                                             onchange={handleChangeNumber}
                                                             data-field="aiLabelingThinkingBudget"
                                                             label="Thinking Budget (tokens)"
-                                                            field-level-help="How much room the AI gets to reason before choosing a label. 0 turns reasoning off, which is the fastest and cheapest option. Values around 1024 help with ambiguous documents. Only models that support thinking use this."
+                                                            field-level-help="How much room the AI gets to reason before choosing a label. 1024 is the default and suits models that keep reasoning whatever they are told, which otherwise answer with nothing. 0 turns reasoning off, which is faster and cheaper where the model allows it. Only models that support thinking use this."
                                                             placeholder="e.g. 0"
                                                             min="0"
                                                             step="1"

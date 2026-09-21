@@ -24,6 +24,7 @@
 @IsTest
 private class GoogleDriveAccessGrantCommandTest {
 	private static final String GRANTEE_EMAIL = 'grantee@example.com';
+	private static final String LAPSED_EXPIRATION_TIME = '2020-01-01T00:00:00Z';
 
 	@IsTest
 	private static void testGrantViewAccessPositiveCreatesReaderPermission() {
@@ -127,6 +128,56 @@ private class GoogleDriveAccessGrantCommandTest {
 		Assert.isTrue(String.isNotBlank(grantResult.permissionId), 'View access must survive when an end date is not supported');
 		Assert.isNull(grantResult.accessEndsOn, 'An end date Google refused must not be reported as applied');
 	}
+	@IsTest
+	private static void testGrantViewAccessPositiveReplacesPermissionThatAlreadyRanOut() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+				new GoogleDriveHttpMock.RequestMatcher().withMethod('GET').endpointContains('fields=')
+			)
+			.thenReturn(
+				new GoogleDriveHttpMock.JsonResponses()
+					.fileDetailsWithExpiringPermissionSuccess('GD_GRANT_9', 'perm_lapsed_009', 'user', GRANTEE_EMAIL, LAPSED_EXPIRATION_TIME)
+			);
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+
+		Test.startTest();
+		GoogleDriveAccessGrantCommand.GrantResult grantResult = new GoogleDriveAccessGrantCommand()
+			.grantViewAccess('GD_GRANT_9', GRANTEE_EMAIL, Datetime.now().addDays(7));
+		Test.stopTest();
+
+		Assert.isFalse(grantResult.wasAlreadyShared, 'A grant that already ran out is not access the user still has');
+		Assert.areNotEqual('perm_lapsed_009', grantResult.permissionId, 'A grant that already ran out must not be handed back');
+		Assert.isNotNull(findRequestBody(driveMock, 'POST', '/permissions'), 'Access must be granted again once an earlier grant ran out');
+	}
+
+	@IsTest
+	private static void testGrantViewAccessPositiveRecreatesPermissionGoogleNoLongerKnows() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+				new GoogleDriveHttpMock.RequestMatcher().withMethod('GET').endpointContains('fields=')
+			)
+			.thenReturn(
+				new GoogleDriveHttpMock.JsonResponses()
+					.fileDetailsWithPermissionsSuccess('GD_GRANT_10', 'perm_unknown_010', 'user', GRANTEE_EMAIL)
+			);
+		driveMock.whenRequestMatches(
+				new GoogleDriveHttpMock.RequestMatcher().endpointContains('/permissions/perm_unknown_010')
+			)
+			.thenReturnStatus(404, '{ "error": { "code": 404, "message": "Permission not found: perm_unknown_010.", "errors": [ { "reason": "notFound", "location": "permissionId" } ] } }');
+
+		GoogleCloudTestFactory.initMocks(driveMock);
+
+		Test.startTest();
+		GoogleDriveAccessGrantCommand.GrantResult grantResult = new GoogleDriveAccessGrantCommand()
+			.grantViewAccess('GD_GRANT_10', GRANTEE_EMAIL, Datetime.now().addDays(7));
+		Test.stopTest();
+
+		Assert.isFalse(grantResult.wasAlreadyShared, 'A permission Google cannot find is not access the user still has');
+		Assert.areNotEqual('perm_unknown_010', grantResult.permissionId, 'A permission Google cannot find must not be handed back');
+		Assert.isNotNull(findRequestBody(driveMock, 'POST', '/permissions'), 'Opening the file must grant access again rather than fail');
+	}
+
 	@IsTest
 	private static void testGrantViewAccessNegativeBlankRemoteFileId() {
 		GoogleCloudTestFactory.initMocks();

@@ -42,7 +42,7 @@
 - [X] At least one document contains clear business content for summary and Q&A testing
 - [X] At least one Google file owned by internal user A exists and is not yet linked to the target Salesforce record
 - [X] At least one Google file not owned by internal user A exists
-- [X ] At least one Google file is shared with a public group or a queue
+- [X] At least one Google file is shared with a public group or a queue
 - [X] Enough files exist for internal user A to fill more than one File Explorer page
 
 ## Full Validation Suite
@@ -1050,11 +1050,11 @@ If the release touched File Explorer upload or folder placement logic, also run 
 
 If the release touched folder structure logic, also run this reduced folder matrix.
 
-- [ ] No folder structure / Default folder only
-- [ ] Folder per Record
-- [ ] Folder per User
-- [ ] Folder per Record → User
-- [ ] Folder per User → Record
+- [X] No folder structure / Default folder only
+- [X] Folder per Record
+- [X] Folder per User
+- [X] Folder per Record → User
+- [X] Folder per User → Record
 
 ### Phase 9: Direct Browser Upload
 

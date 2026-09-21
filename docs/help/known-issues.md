@@ -1,6 +1,6 @@
 # Known Issues & Fixes
 
-If you run into something unexpected, check the list below. If your issue isn't covered, feel free to open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ target="_blank" rel="noopener noreferrer" } or reach out directly at [ansukhetskyi@cloudrylabs.com](mailto:ansukhetskyi@cloudrylabs.com).
+If you run into something unexpected, check the list below. If your issue isn't covered, feel free to open a [GitHub issue](https://github.com/sandriiy/salesforce-google-client){ target="_blank" rel="noopener noreferrer" } or reach out directly at [ansukh@astertrail.com](mailto:ansukh@astertrail.com).
 
 ---
 

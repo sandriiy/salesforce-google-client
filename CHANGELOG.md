@@ -2,7 +2,7 @@
 
 All notable changes to this client will be documented in this file.
 
-## [2.2.0] - TBA
+## [2.2.0] - 2026-09-20
 
 ### Added
 

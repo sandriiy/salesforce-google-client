@@ -66,9 +66,11 @@ public inherited sharing class GoogleMetadataConfigService {
 	 */
 	public static final Integer DEFAULT_AI_LABELING_MIN_CONFIDENCE = 80;
 	/**
-	 * How much reasoning a labeling call gets when nothing is configured, which is none.
+	 * How much reasoning a labeling call gets when nothing is configured. Recent Gemini models keep
+	 * thinking even when told not to, and then answer with nothing at all, so the default leaves room
+	 * for it. Set the field to 0 to turn reasoning off on a model where that works.
 	 */
-	public static final Integer DEFAULT_AI_LABELING_THINKING_BUDGET = 0;
+	public static final Integer DEFAULT_AI_LABELING_THINKING_BUDGET = 1024;
 	/**
 	 * How many labels an administrator may define. Anything past this is ignored rather than sent.
 	 */

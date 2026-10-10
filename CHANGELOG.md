@@ -2,6 +2,15 @@
 
 All notable changes to this client will be documented in this file.
 
+## [2.3.0] - TBA
+
+This version is in development. Changes are listed here as they are completed.
+
+### Changed
+
+- Downloads, previews, Download As and Flow uploads handle larger files in fewer steps on Winter '27 organizations. Google Client now sizes every request to what your Salesforce release allows: files up to 3.5 MB download and preview in one request instead of 2 MB, uploads through Salesforce move in 2.5 MB pieces, and Flow uploads of up to about 11 MB finish in the background. Organizations on earlier releases keep exactly the sizes they had, and nothing needs to be configured.
+- Maximum Preview File Size under Advanced → File Management may now be left blank, which means the largest size your Salesforce release supports; the help text next to the field shows the size that applies. Organizations that saved their settings in an earlier version have 2 MB stored in that field and can clear it to switch to the automatic size.
+
 ## [2.2.0] - 2026-09-20
 
 ### Added

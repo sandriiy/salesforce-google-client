@@ -181,8 +181,8 @@
                                                     onchange={handleChangeNumber}
                                                     data-field="defaultBigFileSize"
                                                     label="Maximum Preview File Size"
-                                                    field-level-help="Specifies the maximum file size, in bytes, allowed for preview generation. This setting does not apply to PDF files, as they can be previewed regardless of size. Setting this value too high may result in a heap size limit exception. The default value is 2,097,152 bytes (2 MB)."
-                                                    placeholder="e.g. 5000000">
+                                                    field-level-help={bigFileSizeHelpText}
+                                                    placeholder="Automatic">
                                                 </lightning-input>
                                             </div>
 

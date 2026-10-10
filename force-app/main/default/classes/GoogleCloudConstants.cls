@@ -13,6 +13,11 @@ public class GoogleCloudConstants {
     public static final String DEFAULT_LOGGER_TAG = 'Google Client for Salesforce';
 	public static final Integer MAX_SUMMARY_CHARACTERS = 255;
 	public static final Long MAX_SUMMARY_FILE_SIZE_BYTES = 5242880L;
+	/**
+	 * The chunk size Google Drive requires for every piece of a resumable upload but the last. A piece that
+	 * is not a multiple of it is refused, so every size the package sends in pieces is aligned to this.
+	 */
+	public static final Long DRIVE_CHUNK_ALIGNMENT_BYTES = 262144L;
 
 	// Unit of Work insert order for the package object graph (deletes run in reverse).
 	// GoogleFileLink__c must be inserted before GoogleFileVersion__c: the version trigger

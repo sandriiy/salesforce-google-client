@@ -45,7 +45,6 @@ public without sharing class GoogleRemoteFileUploader {
      * @return The created Drive file with its Id and folder.
      */
     public GoogleFileEntity uploadFile(String fileName, String contentToUpload) {
-		Blob decodedBlob = EncodingUtil.base64Decode(contentToUpload);
 		List<String> candidateFolders = resolveCandidateFolders();
 		Integer candidateCount = candidateFolders.size();
 

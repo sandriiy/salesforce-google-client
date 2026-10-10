@@ -5,9 +5,8 @@ import USER_ID from '@salesforce/user/Id';
 import USER_NAME_FIELD from '@salesforce/schema/User.Name';
 
 import { saveGoogleFileLocally, saveGoogleFileVersionLocally, uploadInChunks, upload, prefetchUploadFolderStructure } from 'c/googleCloudUploadUtils';
-import { BIG_FILE_SIZE } from 'c/googleCloudUploadUtils';
 import { DEFAULT_FILE_UPLOAD_FAILURE } from 'c/googleCloudUtils';
-import { isEmpty, showToast, createNewFilePlaceholder } from 'c/googleCloudUtils';
+import { isEmpty, showToast, createNewFilePlaceholder, resolveTransferLimits } from 'c/googleCloudUtils';
 
 const UNABLE_TO_UPLOAD_MESSAGE = 'Unable to upload file(s)';
 export default class GoogleCloudUploaderModal extends LightningModal {
@@ -35,23 +34,26 @@ export default class GoogleCloudUploaderModal extends LightningModal {
         if (!isEmpty(this.inputFiles)) {
             prefetchUploadFolderStructure(this.recordId);
 
-            this.inputFiles.forEach(inputFile => {
-				if (inputFile.size > BIG_FILE_SIZE) {
-					this.handleLargeFileUpload(inputFile);
-				} else {
-					this.handleFileUpload(inputFile);
-				}
-            });
+            this.inputFiles.forEach(inputFile => this.handleFileUpload(inputFile));
         } else {
             this.dispatchEvent(new CustomEvent('nofiles'));
             this.close();
         }
     }
 
-    handleLargeFileUpload(selectedFile) {
+    async handleFileUpload(selectedFile) {
         let newFilePlaceholder = createNewFilePlaceholder(selectedFile);
         this.files.push(newFilePlaceholder);
 
+        const transferLimits = await resolveTransferLimits();
+        if (selectedFile.size > transferLimits.uploadChunkBytes) {
+            this.uploadLargeFile(newFilePlaceholder, selectedFile);
+        } else {
+            this.uploadSmallFile(newFilePlaceholder, selectedFile);
+        }
+    }
+
+    uploadLargeFile(newFilePlaceholder, selectedFile) {
         uploadInChunks(newFilePlaceholder.id, selectedFile, {
             onProgress: (uploadedId, parentFolderId, id, progress) => {
                 const fileIndex = this.files.findIndex(file => file.id === id);
@@ -142,10 +144,7 @@ export default class GoogleCloudUploaderModal extends LightningModal {
         this.handleCloseRequest();
     }
 
-    handleFileUpload(selectedFile) {
-        let newFilePlaceholder = createNewFilePlaceholder(selectedFile);
-        this.files.push(newFilePlaceholder);
-
+    uploadSmallFile(newFilePlaceholder, selectedFile) {
         upload(newFilePlaceholder.id, selectedFile, {
             onSuccess: (uploadedId, parentFolderId, id) => {
                 const fileIndex = this.files.findIndex(file => file.id === id);

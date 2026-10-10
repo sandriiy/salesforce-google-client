@@ -80,6 +80,11 @@ public with sharing class GoogleCloudFilesController {
 		return new GoogleFileExplorerColumnResolver().resolveColumns();
 	}
 
+	@AuraEnabled(cacheable=true)
+	public static GoogleTransferLimitDTO retrieveTransferLimits() {
+		return new GoogleTransferLimitResolver().resolveLimits();
+	}
+
 	@AuraEnabled
 	public static List<GoogleFile__c> retrieveAttachableOwnedGoogleFiles(Id relatedRecordId) {
 		GoogleLocalFileService recordService = new GoogleLocalFileService();

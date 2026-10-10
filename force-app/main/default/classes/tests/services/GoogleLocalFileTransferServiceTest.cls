@@ -25,6 +25,9 @@
 private class GoogleLocalFileTransferServiceTest {
 	private static final Long DEFAULT_BIG_FILE_SIZE = 2097152L;
 	private static final Long TINY_BIG_FILE_SIZE = 5L;
+	private static final Long BIG_FILE_SIZE_ABOVE_ANY_REQUEST = 30000000L;
+	private static final Integer HEAP_LIMIT_ABOVE_ANY_REQUEST = 30000000;
+	private static final Long ONE_BYTE_OVER_A_SYNCHRONOUS_REQUEST = 6000001L;
 
 	private static GoogleClientConfig__mdt buildConfig(Long bigFileSize) {
 		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
@@ -132,6 +135,47 @@ private class GoogleLocalFileTransferServiceTest {
 
 		Assert.isFalse(result.isQueued);
 		Assert.isNotNull(result.googleFileId, 'The background job relies on this path uploading whatever size it is given');
+	}
+
+	@IsTest
+	private static void testUploadSalesforceFileNowNegativeLargerThanOneRequestMayCarry() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(DEFAULT_BIG_FILE_SIZE);
+		GoogleCloudTestFactory.initMocks();
+		GoogleTransferLimitResolver.heapLimitOverride = HEAP_LIMIT_ABOVE_ANY_REQUEST;
+
+		ContentVersion sourceFile = GoogleCloudTestFactory.salesforceFile().withSize(ONE_BYTE_OVER_A_SYNCHRONOUS_REQUEST).mock();
+
+		GoogleFileUploadRequestDTO request = new GoogleFileUploadRequestDTO();
+		request.salesforceFileId = sourceFile.Id;
+
+		Test.startTest();
+		try {
+			new GoogleLocalFileTransferService().uploadSalesforceFileNow(request);
+			Assert.fail('A file no single request can carry must be refused before anything reaches Google Drive');
+		} catch (GoogleLocalFileTransferService.GoogleLocalFileTransferException ex) {
+			Assert.isTrue(ex.getMessage().contains('too large to be transferred'), ex.getMessage());
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testUploadSalesforceFilePositiveLargerThanOneRequestIsQueued() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(BIG_FILE_SIZE_ABOVE_ANY_REQUEST);
+		GoogleCloudTestFactory.initMocks();
+		GoogleFileBackgroundUploadJob.skipExecution = true;
+		GoogleTransferLimitResolver.heapLimitOverride = HEAP_LIMIT_ABOVE_ANY_REQUEST;
+
+		ContentVersion sourceFile = GoogleCloudTestFactory.salesforceFile().withSize(ONE_BYTE_OVER_A_SYNCHRONOUS_REQUEST).mock();
+
+		GoogleFileUploadRequestDTO request = new GoogleFileUploadRequestDTO();
+		request.salesforceFileId = sourceFile.Id;
+
+		Test.startTest();
+		GoogleFileUploadResultDTO result = new GoogleLocalFileTransferService().uploadSalesforceFile(request);
+		Test.stopTest();
+
+		Assert.isTrue(result.isQueued, 'A file that fits the heap but not one request continues in the background, where a request may carry more');
+		Assert.areEqual(0, [SELECT COUNT() FROM GoogleFile__c], 'Nothing is recorded until the background upload finishes');
 	}
 
 	@IsTest

@@ -1,9 +1,8 @@
 import { LightningElement, api, track, wire } from 'lwc';
 import { saveGoogleFileLocally, uploadInChunks, upload, prefetchUploadFolderStructure } from 'c/googleCloudUploadUtils';
-import { BIG_FILE_SIZE } from 'c/googleCloudUploadUtils';
 import { DEFAULT_OOPS_MESSAGE, DEFAULT_FILE_UPLOAD_FAILURE, DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
 import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
-import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension } from 'c/googleCloudUtils';
+import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension, resolveTransferLimits } from 'c/googleCloudUtils';
 import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
 
 import GoogleCloudFileDeleteModal from 'c/googleCloudFileDeleteModal';
@@ -27,6 +26,7 @@ export default class GoogleCloudUploader extends LightningElement {
 	apexRetryHandlers = new Map();
 
 	connectedCallback() {
+		resolveTransferLimits();
 		this.loadFiles();
 	}
 
@@ -49,13 +49,7 @@ export default class GoogleCloudUploader extends LightningElement {
 			} else {
 				prefetchUploadFolderStructure(this.recordId);
 
-				allowedFiles.forEach(allowedFile => {
-					if (allowedFile.size > BIG_FILE_SIZE) {
-						this.handleLargeFileUpload(allowedFile);
-					} else {
-						this.handleFileUpload(allowedFile);
-					}
-				});
+				allowedFiles.forEach(allowedFile => this.handleFileUpload(allowedFile));
 			}
         }
     }
@@ -100,10 +94,19 @@ export default class GoogleCloudUploader extends LightningElement {
 		input.value = null;
 	}
 
-    handleLargeFileUpload(selectedFile) {
+    async handleFileUpload(selectedFile) {
 		let newFilePlaceholder = createNewFilePlaceholder(selectedFile);
 		this.files.unshift(newFilePlaceholder);
 
+		const transferLimits = await resolveTransferLimits();
+		if (selectedFile.size > transferLimits.uploadChunkBytes) {
+			this.uploadLargeFile(newFilePlaceholder, selectedFile);
+		} else {
+			this.uploadSmallFile(newFilePlaceholder, selectedFile);
+		}
+	}
+
+    uploadLargeFile(newFilePlaceholder, selectedFile) {
 		uploadInChunks(newFilePlaceholder.id, selectedFile, {
 			onProgress: (uploadedId, parentFolderId, id, progress) => {
 				const fileIndex = this.files.findIndex(file => file.id === id);
@@ -181,10 +184,7 @@ export default class GoogleCloudUploader extends LightningElement {
 		this.removeFileById(filePlaceholderId);
 	}
 
-    handleFileUpload(selectedFile) {
-		let newFilePlaceholder = createNewFilePlaceholder(selectedFile);
-		this.files.unshift(newFilePlaceholder);
-
+    uploadSmallFile(newFilePlaceholder, selectedFile) {
 		upload(newFilePlaceholder.id, selectedFile, {
 			onSuccess: (uploadedId, parentFolderId, id) => {
 				const fileIndex = this.files.findIndex(file => file.id === id);

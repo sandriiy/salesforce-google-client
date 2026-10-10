@@ -24,8 +24,8 @@
 /**
  * Moves files between Salesforce and Google Drive for automation: a Salesforce file up into Drive as a
  * Google Client file, and a Google Client file back down as a Salesforce file. Content travels through
- * the Apex heap here, so a file past the configured big file size is handed to a background job instead
- * of being pushed through in one go.
+ * the Apex heap here and leaves in one request, so a file past the configured big file size, or past
+ * what one request may carry, is handed to a background job instead of being pushed through in one go.
  */
 public without sharing class GoogleLocalFileTransferService {
 	public class GoogleLocalFileTransferException extends Exception {}
@@ -51,6 +51,7 @@ public without sharing class GoogleLocalFileTransferService {
 
 	private final IGoogleUnitOfWork uow;
 	private final GoogleMetadataConfigService metadataService;
+	private final GoogleTransferLimitResolver transferLimits;
 	private final GoogleLocalFileVersionService versionService;
 	private GoogleRemoteFileUploader remoteUploader;
 
@@ -68,6 +69,7 @@ public without sharing class GoogleLocalFileTransferService {
 			? new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER)
 			: injectedUow;
 		this.metadataService = new GoogleMetadataConfigService();
+		this.transferLimits = new GoogleTransferLimitResolver();
 		this.versionService = new GoogleLocalFileVersionService();
 	}
 
@@ -200,7 +202,7 @@ public without sharing class GoogleLocalFileTransferService {
 			result.fileSize = fileSize;
 			results.add(result);
 
-			Boolean fitsNow = fitsInHeap(reservedBytes + fileSize);
+			Boolean fitsNow = fitsInHeap(reservedBytes + fileSize) && fitsInCallout(fileSize);
 			if (allowsBackgroundUpload && (fileSize > metadataService.getBigFileSizeInBytes() || !fitsNow)) {
 				result.isQueued = true;
 				backgroundRequests.add(request);
@@ -496,7 +498,11 @@ public without sharing class GoogleLocalFileTransferService {
 	}
 
 	private Boolean fitsInHeap(Long transferredBytes) {
-		return transferredBytes * HEAP_BYTES_PER_TRANSFERRED_BYTE + HEAP_RESERVE_BYTES <= Limits.getLimitHeapSize() - Limits.getHeapSize();
+		return transferredBytes * HEAP_BYTES_PER_TRANSFERRED_BYTE + HEAP_RESERVE_BYTES <= transferLimits.heapLimitBytes() - Limits.getHeapSize();
+	}
+
+	private Boolean fitsInCallout(Long fileSize) {
+		return fileSize <= transferLimits.calloutBodyLimitBytes();
 	}
 
 	private GoogleRemoteFileUploader getRemoteUploader() {

@@ -1,7 +1,7 @@
 import { LightningElement, api, wire } from 'lwc';
 import { gql, graphql } from 'lightning/uiGraphQLApi';
 import { publish, subscribe, unsubscribe, MessageContext } from 'lightning/messageService';
-import { isEmpty, showToast, normalizeError, extractGraphValue } from 'c/googleCloudUtils';
+import { isEmpty, showToast, normalizeError, extractGraphValue, formatFileSize, resolveTransferLimits, DEFAULT_TRANSFER_LIMITS } from 'c/googleCloudUtils';
 import {
     FILE_EXPLORER_COLUMN_OPTIONS,
     DEFAULT_FILE_EXPLORER_COLUMNS,
@@ -95,7 +95,7 @@ const QUERY = gql`
 
 const MAX_DEPLOY_STATUS_CHECKS = 10;
 const DEPLOY_STATUS_DELAY_MS = 1000;
-const DEFAULT_BIG_FILE_SIZE = 2097152;
+const AUTOMATIC_BIG_FILE_SIZE = 0;
 const DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 const DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
 const DEFAULT_AI_SAFETY_MODE = 'Standard';
@@ -170,7 +170,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         additionalGoogleUploadFolderIds: '',
         customGoogleUploadFolderStructure: '',
         organizationalDomain: '',
-        defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
+        defaultBigFileSize: null,
         isFilePreviewDisabled: false,
         isDirectBrowserUploadEnabled: false,
         isOpenInDriveEnabled: false,
@@ -213,8 +213,12 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     pendingNavigation = null;
     contextSubscription = null;
     isDeactivateAiModalOpen = false;
+    transferLimits = DEFAULT_TRANSFER_LIMITS;
 
     connectedCallback() {
+        resolveTransferLimits().then((transferLimits) => {
+            this.transferLimits = transferLimits;
+        });
         this.initActiveConfigComponent();
         this._windowClickHandler = this.handleWindowClick.bind(this);
         window.addEventListener('click', this._windowClickHandler);
@@ -832,7 +836,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             additionalGoogleUploadFolderIds: '',
             customGoogleUploadFolderStructure: '',
             organizationalDomain: '',
-            defaultBigFileSize: DEFAULT_BIG_FILE_SIZE,
+            defaultBigFileSize: null,
             isFilePreviewDisabled: false,
             isDirectBrowserUploadEnabled: false,
             isOpenInDriveEnabled: false,
@@ -868,7 +872,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             additionalGoogleUploadFolderIds: extractGraphValue(recordNode?.AdditionalGoogleUploadFolderIds__c) || '',
             customGoogleUploadFolderStructure: extractGraphValue(recordNode?.CustomGoogleUploadFolderStructure__c) || '',
             organizationalDomain: extractGraphValue(recordNode?.OrganizationalDomain__c) || '',
-            defaultBigFileSize: this.toNumberOrNull(extractGraphValue(recordNode?.DefaultBigFileSize__c)),
+            defaultBigFileSize: this.toConfiguredBigFileSize(extractGraphValue(recordNode?.DefaultBigFileSize__c)),
             isFilePreviewDisabled: !!extractGraphValue(recordNode?.IsFilePreviewDisabled__c),
             isDirectBrowserUploadEnabled: !!extractGraphValue(recordNode?.IsDirectBrowserUploadEnabled__c),
             isOpenInDriveEnabled: !!extractGraphValue(recordNode?.IsOpenInDriveEnabled__c),
@@ -949,6 +953,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'AdditionalGoogleUploadFolderIds__c', serverState.additionalGoogleUploadFolderIds, draftState.additionalGoogleUploadFolderIds);
         this.putIfChanged(changed, 'OrganizationalDomain__c', serverState.organizationalDomain, draftState.organizationalDomain);
         this.putIfChanged(changed, 'DefaultBigFileSize__c', serverState.defaultBigFileSize, draftState.defaultBigFileSize);
+        if ('DefaultBigFileSize__c' in changed && isEmpty(changed.DefaultBigFileSize__c)) {
+            changed.DefaultBigFileSize__c = AUTOMATIC_BIG_FILE_SIZE;
+        }
         this.putIfChanged(changed, 'IsFilePreviewDisabled__c', !!serverState.isFilePreviewDisabled, !!draftState.isFilePreviewDisabled);
         this.putIfChanged(changed, 'IsDirectBrowserUploadEnabled__c', !!serverState.isDirectBrowserUploadEnabled, !!draftState.isDirectBrowserUploadEnabled);
         this.putIfChanged(changed, 'IsOpenInDriveEnabled__c', !!serverState.isOpenInDriveEnabled, !!draftState.isOpenInDriveEnabled);
@@ -1068,6 +1075,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return Number.isFinite(numberValue) ? numberValue : null;
     }
 
+    toConfiguredBigFileSize(value) {
+        const numberValue = this.toNumberOrNull(value);
+        return numberValue > AUTOMATIC_BIG_FILE_SIZE ? numberValue : null;
+    }
+
     scopedAdvancedSelector(scope) {
         return ADVANCED_INPUT_SELECTOR
             .split(',')
@@ -1110,6 +1122,11 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
                 return;
             }
         }
+    }
+
+    get bigFileSizeHelpText() {
+        const automaticSize = formatFileSize(this.transferLimits.largeFileThresholdBytes);
+        return `The size, in bytes, above which a file is treated as large. It limits document and spreadsheet previews, Download As and uploads from Flows; PDF and image previews are not affected. Leave blank to use the largest size your Salesforce release supports (currently ${automaticSize}).`;
     }
 
     get hasError() {

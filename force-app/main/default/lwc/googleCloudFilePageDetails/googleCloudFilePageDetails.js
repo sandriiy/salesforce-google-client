@@ -4,9 +4,8 @@ import { NavigationMixin } from 'lightning/navigation';
 
 import { updateTabPresentation, closeWhenReady } from 'c/googleCloudCrossPlatformUtils';
 
-import { BIG_FILE_SIZE } from 'c/googleCloudDownloadUtils';
 import { download, downloadInChunks } from 'c/googleCloudDownloadUtils';
-import { isEmpty, showToast } from 'c/googleCloudUtils';
+import { isEmpty, showToast, resolveTransferLimits } from 'c/googleCloudUtils';
 import { DEFAULT_FILE_NAME, DEFAULT_ACCESS_RESTRICTED_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE } from 'c/googleCloudUtils';
 import { INT_VIEW_FILE_DETAILS_PAGE_NAME } from 'c/googleCloudCrossPlatformUtils';
 
@@ -289,7 +288,8 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	async downloadFile() {
 		try {
 			let googleVersion = this.latestVersionRecord;
-			if (googleVersion.Size__c <= BIG_FILE_SIZE) {
+			const transferLimits = await resolveTransferLimits();
+			if (googleVersion.Size__c <= transferLimits.downloadChunkBytes) {
 				await download(googleVersion.Id, {
 					fileName: googleVersion.Name,
 					mimeType: googleVersion.Type__c

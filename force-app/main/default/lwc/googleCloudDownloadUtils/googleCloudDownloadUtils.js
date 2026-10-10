@@ -2,8 +2,8 @@ import downloadFile from '@salesforce/apex/GoogleCloudFilesController.downloadFi
 import downloadFileAs from '@salesforce/apex/GoogleCloudFilesController.downloadFileAs';
 import downloadFilePartial from '@salesforce/apex/GoogleCloudFilesController.downloadLargeFilePartial';
 
-export const BIG_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
-const DEFAULT_CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB
+import { resolveTransferLimits } from 'c/googleCloudUtils';
+
 const DEFAULT_THREADS = 4;
 const ABORT_ERROR_NAME = 'GoogleCloudDownloadAbortError';
 const BYTE_YIELD_INTERVAL = 65536;
@@ -120,7 +120,7 @@ export async function downloadAs(localGoogleFileVersionId, options = {}) {
  * @param {number} options.size
  * @param {string} options.fileName
  * @param {string} [options.mimeType="application/octet-stream"]
- * @param {number} [options.chunkSize=DEFAULT_CHUNK_SIZE]
+ * @param {number} [options.chunkSize] - Defaults to what one request may carry in this org.
  * @param {number} [options.threads=DEFAULT_THREADS]
  * @param {function} [options.onError]
  */
@@ -129,7 +129,7 @@ export async function downloadInChunks(localGoogleFileVersionId, options = {}) {
         size,
         fileName = 'download.bin',
         mimeType = OCTET_STREAM_MIME_TYPE,
-        chunkSize = DEFAULT_CHUNK_SIZE,
+        chunkSize,
         threads = DEFAULT_THREADS,
         onError = () => {},
         returnBase64 = false,
@@ -143,9 +143,10 @@ export async function downloadInChunks(localGoogleFileVersionId, options = {}) {
         throw err;
     }
 
+    const resolvedChunkSize = chunkSize || (await resolveTransferLimits()).downloadChunkBytes;
     const ranges = [];
-    for (let start = 0; start < size; start += chunkSize) {
-        const endExclusive = Math.min(start + chunkSize, size);
+    for (let start = 0; start < size; start += resolvedChunkSize) {
+        const endExclusive = Math.min(start + resolvedChunkSize, size);
         ranges.push({ start, end: endExclusive - 1 });
     }
 

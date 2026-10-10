@@ -1,8 +1,7 @@
 import { LightningElement, api, track } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 
-import { isEmpty, showToast, normalizeError, getFileIcon, truncateFileName } from 'c/googleCloudUtils';
-import { BIG_FILE_SIZE } from 'c/googleCloudDownloadUtils';
+import { isEmpty, showToast, normalizeError, getFileIcon, truncateFileName, resolveTransferLimits, DEFAULT_TRANSFER_LIMITS } from 'c/googleCloudUtils';
 import { download, downloadInChunks, createOperationControl, abortOperation, isOperationAbortedError } from 'c/googleCloudDownloadUtils';
 import { 
 	DEFAULT_PREVIEW_UNAVAILABILITY_MESSAGE, 
@@ -58,6 +57,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	previewOperation;
 	previewBlobUrl;
 	previewRenderer = PREVIEW_RENDERER_PDF;
+	transferLimits = DEFAULT_TRANSFER_LIMITS;
 
 	@api async open(localGoogleDriveId) {
 		this.initialization();
@@ -131,6 +131,9 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 
 	connectedCallback() {
 		this.isExperienceSite = isExperienceCloudContext();
+		resolveTransferLimits().then((transferLimits) => {
+			this.transferLimits = transferLimits;
+		});
 	}
 
 	initialization() {
@@ -377,7 +380,8 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		let googleVersion = this.localLatestVersionRecord;
 
 		try {
-			if (googleVersion.Size__c <= BIG_FILE_SIZE) {
+			const transferLimits = await resolveTransferLimits();
+			if (googleVersion.Size__c <= transferLimits.downloadChunkBytes) {
 				return await download(googleVersion.Id, {
 					fileName: googleVersion.Name,
 					mimeType: googleVersion.Type__c,
@@ -696,7 +700,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 			&& this.isUnavailablePreview !== true
 			&& this.localLatestVersionRecord?.IsPreviewableFile__c === true
 			&& this.localLatestVersionRecord?.Size__c != null
-			&& this.localLatestVersionRecord.Size__c <= BIG_FILE_SIZE;
+			&& this.localLatestVersionRecord.Size__c <= this.transferLimits.largeFileThresholdBytes;
 	}
 
 	get stageClass() {

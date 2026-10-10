@@ -6,9 +6,9 @@ This setting is **off by default**. Until an administrator turns it on, uploads 
 
 ## Why It Is Faster
 
-On the standard path every byte crosses the network twice, and the browser must Base64-encode each chunk first, which inflates it by about a third. Chunks are also limited to 2 MB because a larger chunk would exceed the Apex heap limit.
+On the standard path every byte crosses the network twice, and the browser must Base64-encode each chunk first, which inflates it by about a third. Chunks are also kept small enough for one Salesforce request to carry.
 
-Sending the bytes directly removes the Base64 inflation, removes the second hop entirely, and allows much larger chunks. A 100 MB upload moves roughly 233 MB across the network on the standard path versus 100 MB directly, and uses 2 Apex transactions instead of about 50.
+Sending the bytes directly removes the Base64 inflation, removes the second hop entirely, and allows much larger chunks. A 100 MB upload moves roughly 233 MB across the network on the standard path versus 100 MB directly, and uses 2 Apex transactions instead of dozens.
 
 ## What Does Not Change
 
@@ -18,7 +18,7 @@ Direct Browser Upload only changes how file content reaches Google Drive. Everyt
 - Folder structure, including per-user and per-record folders
 - The Salesforce records created for the file, its version, and its record links
 - Versioning, preview generation, and AI summaries
-- Files under 2 MB, which continue to use the standard upload
+- Small files, which continue to use the standard upload
 
 ## Prerequisite: CSP Trusted Site
 

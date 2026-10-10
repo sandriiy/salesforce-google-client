@@ -427,6 +427,19 @@ private class GoogleCloudFilesControllerTest {
 	}
 
 	@IsTest
+	private static void testRetrieveTransferLimitsPositiveSizedForTheRunningOrg() {
+		Test.startTest();
+		GoogleTransferLimitDTO limits = GoogleCloudFilesController.retrieveTransferLimits();
+		Test.stopTest();
+
+		GoogleTransferLimitResolver resolver = new GoogleTransferLimitResolver();
+		Assert.areEqual(resolver.downloadChunkBytes(), limits.downloadChunkBytes);
+		Assert.areEqual(resolver.uploadChunkBytes(), limits.uploadChunkBytes);
+		Assert.areEqual(resolver.largeFileThresholdBytes(), limits.largeFileThresholdBytes);
+		Assert.isTrue(limits.uploadChunkBytes <= limits.downloadChunkBytes, 'An upload request never carries more than a download request may');
+	}
+
+	@IsTest
 	private static void testRetrieveDownloadAsOptionsPositive() {
 		GoogleCloudTestFactory.initMocks();
 		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(

@@ -4,6 +4,7 @@ import {
 	createDefaultFileIntelligenceState,
 	resolveFileHoverText
 } from 'c/googleCloudFileIntelligenceUtils';
+import retrieveTransferLimits from '@salesforce/apex/GoogleCloudFilesController.retrieveTransferLimits';
 
 export const DEFAULT_OOPS_MESSAGE = 'Oops!';
 export const DEFAULT_FILES_CAPACITY_MESSAGE = 'The maximum number of files has already been reached for this record';
@@ -64,6 +65,13 @@ export const FILE_ICON_MAP = {
     unknown: DEFAULT_FILE_ICON_TYPE
 };
 
+export const DEFAULT_TRANSFER_LIMITS = Object.freeze({
+    uploadChunkBytes: 2 * 1024 * 1024,
+    downloadChunkBytes: 2 * 1024 * 1024,
+    largeFileThresholdBytes: 2 * 1024 * 1024
+});
+
+let transferLimitsPromise;
 
 const showToast = (context, title, message, variant = 'info', mode = 'dismissable') => {
     context.dispatchEvent(new ShowToastEvent({
@@ -99,6 +107,27 @@ const generateId = (length = 8) => {
         .join('')
         .slice(0, length);
 }
+
+const normalizeTransferLimits = (limits) => {
+    const normalized = {};
+
+    Object.keys(DEFAULT_TRANSFER_LIMITS).forEach((key) => {
+        const value = Number(limits?.[key]);
+        normalized[key] = Number.isInteger(value) && value > 0 ? value : DEFAULT_TRANSFER_LIMITS[key];
+    });
+
+    return Object.freeze(normalized);
+};
+
+const resolveTransferLimits = () => {
+    if (!transferLimitsPromise) {
+        transferLimitsPromise = retrieveTransferLimits()
+            .then((limits) => normalizeTransferLimits(limits))
+            .catch(() => DEFAULT_TRANSFER_LIMITS);
+    }
+
+    return transferLimitsPromise;
+};
 
 const formatFileSize = (bytes, decimals = 1) => {
     if (bytes === 0 || isNaN(bytes)) return '0 B';
@@ -535,4 +564,4 @@ const asString = (value) => {
 	return String(extracted);
 };
 
-export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, resolveTransferLimits, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };

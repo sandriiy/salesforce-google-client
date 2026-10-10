@@ -31,7 +31,6 @@
 public without sharing class GoogleDirectUploadService {
 	public class GoogleDirectUploadException extends Exception {}
 
-	private static final Long CHUNK_ALIGNMENT = 262144L;
 	@TestVisible
 	private static final String OUTCOME_FAILED = 'failed';
 	@TestVisible
@@ -69,7 +68,7 @@ public without sharing class GoogleDirectUploadService {
 	public static Long resolveBrowserByteLimit(Long totalBytes) {
 		if (totalBytes == null || totalBytes <= 0) return 0;
 
-		Long alignment = CHUNK_ALIGNMENT;
+		Long alignment = GoogleCloudConstants.DRIVE_CHUNK_ALIGNMENT_BYTES;
 		Long alignedLimit = (totalBytes / alignment) * alignment;
 
 		if (alignedLimit >= totalBytes) {

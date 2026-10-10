@@ -314,12 +314,14 @@ public class GoogleCloudTestFactory {
 		private String title = 'Test File';
 		private String fileExtension = 'pdf';
 		private String content = 'salesforce file content';
+		private Long contentSize;
 
 		public SalesforceFileBuilder withVersionId(Id v) { versionId = v; return this; }
 		public SalesforceFileBuilder withDocumentId(Id v) { documentId = v; return this; }
 		public SalesforceFileBuilder withTitle(String v) { title = v; return this; }
 		public SalesforceFileBuilder withExtension(String v) { fileExtension = v; return this; }
 		public SalesforceFileBuilder withContent(String v) { content = v; return this; }
+		public SalesforceFileBuilder withSize(Long v) { contentSize = v; return this; }
 
 		public ContentVersion mock() {
 			ContentVersion salesforceFile = build();
@@ -335,6 +337,9 @@ public class GoogleCloudTestFactory {
 
 		public ContentVersion build() {
 			Blob body = Blob.valueOf(content);
+			Long resolvedContentSize = contentSize;
+			if (resolvedContentSize == null) resolvedContentSize = body.size();
+
 			return (ContentVersion) JSON.deserialize(
 				JSON.serialize(new Map<String, Object>{
 					'attributes' => new Map<String, Object>{ 'type' => 'ContentVersion' },
@@ -343,7 +348,7 @@ public class GoogleCloudTestFactory {
 					'Title' => title,
 					'PathOnClient' => title + '.' + fileExtension,
 					'FileExtension' => fileExtension,
-					'ContentSize' => body.size(),
+					'ContentSize' => resolvedContentSize,
 					'IsLatest' => true
 				}),
 				ContentVersion.class

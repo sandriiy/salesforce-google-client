@@ -313,7 +313,7 @@ private class GoogleMetadataConfigServiceTest {
 		Assert.isFalse(svc.isFileIntelligenceEnabled());
 		Assert.isFalse(svc.requiresRecordFolder());
 
-		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_BIG_FILE_SIZE, svc.getBigFileSizeInBytes());
+		Assert.areEqual(new GoogleTransferLimitResolver().largeFileThresholdBytes(), svc.getBigFileSizeInBytes());
 		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_MAX_DELETE_CHAIN_SIZE, svc.getDeleteChainSize());
 		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AUTH_CLASS_NAME, svc.getGoogleDriveAuthorizerClassName());
 		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_SAFETY_MODE, svc.getAiSafetyMode());
@@ -363,6 +363,51 @@ private class GoogleMetadataConfigServiceTest {
 		Assert.areEqual(5242880L, svc.getBigFileSizeInBytes());
 		Assert.areEqual(7, svc.getDeleteChainSize());
 		Assert.areEqual(2048, svc.getQuestionMaxOutputTokens());
+	}
+
+	@IsTest
+	private static void testGetBigFileSizeInBytesPositiveBlankFollowsTheHeapLimit() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		GoogleTransferLimitResolver.heapLimitOverride = 6000000;
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_BIG_FILE_SIZE, svc.getBigFileSizeInBytes(), 'An org whose heap did not grow keeps exactly the shipped size');
+
+		GoogleTransferLimitResolver.heapLimitOverride = 10000000;
+		Assert.areEqual(3670016L, svc.getBigFileSizeInBytes(), 'An org whose heap grew gets the larger size without any setting');
+	}
+
+	@IsTest
+	private static void testGetBigFileSizeInBytesPositiveZeroMeansAutomatic() {
+		GoogleTransferLimitResolver.heapLimitOverride = 10000000;
+		GoogleCloudTestFactory.config().withBigFileSize(0L).apply();
+
+		Assert.areEqual(3670016L, new GoogleMetadataConfigService().getBigFileSizeInBytes(), 'A cleared setting is stored as 0 and must behave like a blank one');
+	}
+
+	@IsTest
+	private static void testGetBigFileSizeInBytesPositiveConfiguredValueWins() {
+		GoogleTransferLimitResolver.heapLimitOverride = 10000000;
+		GoogleCloudTestFactory.config().withBigFileSize(1000L).apply();
+
+		Assert.areEqual(1000L, new GoogleMetadataConfigService().getBigFileSizeInBytes(), 'A size an administrator entered is never outgrown by the org');
+	}
+
+	@IsTest
+	private static void testSaveConfigPositiveLeavesBlankBigFileSizeBlank() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client'
+		);
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'example.com' });
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isFalse(savedValues.containsKey('DefaultBigFileSize__c'), 'A blank size means the org decides, so a save must not pin a number');
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_MAX_DELETE_CHAIN_SIZE, savedValues.get('MaxDeleteChainSize__c'), 'The other blank numbers still receive their defaults');
 	}
 
 	@IsTest

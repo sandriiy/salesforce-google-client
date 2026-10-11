@@ -126,6 +126,26 @@ public with sharing class GoogleFileVersionContextResolver {
     }
 
     /**
+     * Picks the versions that qualify for a summary only now that their Workspace copy is measured: the
+     * copy fits the analysis limit while the upload does not, so the pass at insert left them out.
+     *
+     * @param fileVersions The versions with the measured Workspace copy size already set on them.
+     * @return The Ids of the versions to summarize and label in a second pass.
+     */
+    public Set<Id> collectSummaryCandidatesAdmittedByWorkspaceCopy(List<GoogleFileVersion__c> fileVersions) {
+        Set<Id> admittedVersionIds = new Set<Id>();
+        if (fileVersions == null) return admittedVersionIds;
+
+        for (GoogleFileVersion__c fileVersion : fileVersions) {
+            if (supportsSummary(fileVersion) && !fitsAnalysisLimit(fileVersion.Size__c)) {
+                admittedVersionIds.add(fileVersion.Id);
+            }
+        }
+
+        return admittedVersionIds;
+    }
+
+    /**
      * Turns versions into the requests the folder job works from.
      *
      * @param fileVersions The versions to place.
@@ -231,7 +251,7 @@ public with sharing class GoogleFileVersionContextResolver {
 
     /**
      * Says whether a user can ask about this version right now, which needs a Workspace copy that already
-     * exists and a size within the limit.
+     * exists and fits the analysis limit, judged as resolveWorkspaceCopySizeInBytes() says.
      *
      * @param fileVersion The version to check.
      * @return True when summaries and questions can run against it.
@@ -239,14 +259,13 @@ public with sharing class GoogleFileVersionContextResolver {
     public Boolean supportsInteractiveIntelligence(GoogleFileVersion__c fileVersion) {
         return fileVersion != null
             && fileVersion.Id != null
-            && fileVersion.Size__c != null
-            && fileVersion.Size__c <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES
+            && fitsAnalysisLimit(resolveWorkspaceCopySizeInBytes(fileVersion))
             && String.isNotBlank(fileVersion.GoogleDocsFileId__c);
     }
 
     /**
      * Says whether this version is worth summarizing, which also covers a file whose Workspace copy is
-     * about to be made.
+     * about to be made. Until that copy is measured the upload size stands in for it.
      *
      * @param fileVersion The version to check.
      * @return True when the summary job should consider it.
@@ -254,11 +273,30 @@ public with sharing class GoogleFileVersionContextResolver {
     public Boolean supportsSummary(GoogleFileVersion__c fileVersion) {
         return fileVersion != null
             && fileVersion.Id != null
-            && fileVersion.Size__c != null
-            && fileVersion.Size__c <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES
+            && fitsAnalysisLimit(resolveWorkspaceCopySizeInBytes(fileVersion))
             && (
                 supportsInteractiveIntelligence(fileVersion)
                 || requiresGoogleWorkspaceFile(fileVersion)
             );
+    }
+
+    /**
+     * The size every operation reading the Workspace copy is judged by, previews and AI alike: the measured
+     * copy, or the upload while the copy has not been measured. The copy is usually far smaller, but a
+     * text heavy file can produce a larger one, so never compare against the upload alone.
+     *
+     * @param fileVersion The version to size.
+     * @return The size in bytes, or null when neither size is known.
+     */
+    public Decimal resolveWorkspaceCopySizeInBytes(GoogleFileVersion__c fileVersion) {
+        if (fileVersion == null) return null;
+
+        return fileVersion.GoogleDocsFileSize__c != null
+            ? fileVersion.GoogleDocsFileSize__c
+            : fileVersion.Size__c;
+    }
+
+    private Boolean fitsAnalysisLimit(Decimal sizeInBytes) {
+        return sizeInBytes != null && sizeInBytes <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES;
     }
 }

@@ -6,7 +6,7 @@ import { updateTabPresentation, closeWhenReady } from 'c/googleCloudCrossPlatfor
 
 import { download, downloadInChunks } from 'c/googleCloudDownloadUtils';
 import { isEmpty, showToast, resolveTransferLimits } from 'c/googleCloudUtils';
-import { DEFAULT_FILE_NAME, DEFAULT_ACCESS_RESTRICTED_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE } from 'c/googleCloudUtils';
+import { DEFAULT_FILE_NAME, DEFAULT_ACCESS_RESTRICTED_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE, DEFAULT_DOWNLOAD_STARTED_MESSAGE } from 'c/googleCloudUtils';
 import { INT_VIEW_FILE_DETAILS_PAGE_NAME } from 'c/googleCloudCrossPlatformUtils';
 
 import GoogleCloudUploadFileModal from 'c/googleCloudUploaderModal';
@@ -50,6 +50,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	@track isHeaderLoading = true;
 	@track isMainLoading = true;
 	@track isOpenInDriveAvailable = false;
+	@track isDownloadInProgress = false;
 
 	currentPageRef;
 	_recordId;
@@ -126,13 +127,26 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 
 	async handleFileDownload(event) {
 		this.showLatestVersionWarning();
-		await this.downloadFile();
+		if (this.isDownloadInProgress) return;
+
+		this.isDownloadInProgress = true;
+		showToast(this, 'Download started', DEFAULT_DOWNLOAD_STARTED_MESSAGE, 'info');
+
+		try {
+			await this.downloadFile();
+		} finally {
+			this.isDownloadInProgress = false;
+		}
 	}
 
 	handleFilePreview(event) {
 		this.showLatestVersionWarning();
 		let previewComponent = this.refs.filePreviewModal;
 		previewComponent.open(this.recordId);
+	}
+
+	handleVersionSelect(event) {
+		this.refs.filePreviewModal.openVersion(this.recordId, event.detail.versionId);
 	}
 
 	async handleFileSharing(event) {
@@ -147,7 +161,8 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 		await this.refs.linkedRecords?.refresh?.();
 	}
 
-	handleFileEdit(event) {
+	async handleFileEdit() {
+		await this.refs.versions?.refresh?.();
 		this.initializePage();
 	}
 
@@ -217,15 +232,23 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 		});
 
 		if (isDeleted === true) {
-			this.isHeaderLoading = true;
-			this.isMainLoading = true;
-
-			closeWhenReady({
-				getTabInfo: () => this.tabInfo,
-				maxRetries: TAB_MAX_RETRIES,
-				pollDelayMs: TAB_POLL_DELAY_MS
-			});
+			this.closeDeletedFile();
 		}
+	}
+
+	handlePreviewFileDeleted() {
+		this.closeDeletedFile();
+	}
+
+	closeDeletedFile() {
+		this.isHeaderLoading = true;
+		this.isMainLoading = true;
+
+		closeWhenReady({
+			getTabInfo: () => this.tabInfo,
+			maxRetries: TAB_MAX_RETRIES,
+			pollDelayMs: TAB_POLL_DELAY_MS
+		});
 	}
 
 	async initializePage() {

@@ -292,6 +292,48 @@ private class DefaultGoogleAiPromptSafetyGuardTest {
 	}
 
 	@IsTest
+	private static void testInspectResponseStrictModeAllowsUrlWithoutDocumentText() {
+		GoogleAiPromptContext context = buildQuestionContext(null, GoogleAiPromptContext.MODE_STRICT);
+		GoogleAiResponseSnapshot snapshot = buildSnapshot('This file describes the service terms published at https://example.com/terms.', 'STOP');
+
+		GoogleAiResponseSafetyDecision decision = new DefaultGoogleAiPromptSafetyGuard().inspectResponse(context, snapshot);
+
+		Assert.isTrue(decision.allowed);
+	}
+
+	@IsTest
+	private static void testInspectResponseAllowsSsnWithoutDocumentText() {
+		GoogleAiPromptContext context = buildQuestionContext(null, GoogleAiPromptContext.MODE_STANDARD);
+		GoogleAiResponseSnapshot snapshot = buildSnapshot('This file describes the employee record filed under 123-45-6789.', 'STOP');
+
+		GoogleAiResponseSafetyDecision decision = new DefaultGoogleAiPromptSafetyGuard().inspectResponse(context, snapshot);
+
+		Assert.isTrue(decision.allowed);
+	}
+
+	@IsTest
+	private static void testInspectResponseStrictModeKeepsSecretCheckWithoutDocumentText() {
+		GoogleAiPromptContext context = buildQuestionContext(null, GoogleAiPromptContext.MODE_STRICT);
+		GoogleAiResponseSnapshot snapshot = buildSnapshot('See https://example.com/terms and use AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456ab to sign in.', 'STOP');
+
+		GoogleAiResponseSafetyDecision decision = new DefaultGoogleAiPromptSafetyGuard().inspectResponse(context, snapshot);
+
+		Assert.isFalse(decision.allowed);
+		Assert.areEqual(GoogleAiResponseSafetyDecision.REASON_SECRET_LEAK, decision.reasonCode);
+	}
+
+	@IsTest
+	private static void testInspectResponseStrictModeKeepsCodeFenceCheckWithoutDocumentText() {
+		GoogleAiPromptContext context = buildQuestionContext(null, GoogleAiPromptContext.MODE_STRICT);
+		GoogleAiResponseSnapshot snapshot = buildSnapshot('Here is the code:\n```\nvar x = 1;\n```', 'STOP');
+
+		GoogleAiResponseSafetyDecision decision = new DefaultGoogleAiPromptSafetyGuard().inspectResponse(context, snapshot);
+
+		Assert.isFalse(decision.allowed);
+		Assert.areEqual(GoogleAiResponseSafetyDecision.REASON_OFF_TOPIC, decision.reasonCode);
+	}
+
+	@IsTest
 	private static void testInspectResponseStandardModeAllowsCodeFence() {
 		GoogleAiPromptContext context = buildQuestionContext('question', GoogleAiPromptContext.MODE_STANDARD);
 		GoogleAiResponseSnapshot snapshot = buildSnapshot('Here is the code:\n```\nvar x = 1;\n```', 'STOP');

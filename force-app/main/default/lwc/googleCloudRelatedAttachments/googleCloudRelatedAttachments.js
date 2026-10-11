@@ -232,6 +232,9 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 	handlePreviewCloseReset(event) {
 		this.isNewFileVersionUpload = false;
+		if (event.detail?.isIntelligenceUpdated === true) {
+			this.retrieveAllRelatedFiles();
+		}
 	}
 
 	resolveDisplayNameFields(objectInfo) {

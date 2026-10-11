@@ -24,8 +24,9 @@
 /**
  * Measures the Google Workspace copy a moment after it was made. Drive answers with a placeholder size
  * until the conversion is really finished, so this waits a minute, asks again, and tries up to three
- * times before leaving the size blank. A blank one simply means previews fall back to judging by the
- * uploaded size.
+ * times before leaving the size blank. A blank one simply means previews and AI analysis fall back to
+ * judging by the uploaded size. This is the first moment the copy size is known, so a version whose copy
+ * fits the analysis limit while its upload did not gets its summary and label chained from here.
  */
 public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFilePreviewSizeJobException extends Exception {}
@@ -41,6 +42,7 @@ public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.
 
 	private final Set<Id> versionIds;
 	private final Integer measurementAttempt;
+	private final Boolean chainIntelligence;
 
 	/**
 	 * Builds the job for a first attempt.
@@ -52,18 +54,23 @@ public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.
 	}
 
 	/**
-	 * Builds the job for a later attempt, which is how it reschedules itself.
+	 * Builds the job for a later attempt.
 	 *
 	 * @param versionIds The versions still to measure.
 	 * @param measurementAttempt Which attempt this is, counting from one.
 	 */
 	public GoogleFileVersionPreviewSizeJob(Set<Id> versionIds, Integer measurementAttempt) {
+		this(versionIds, measurementAttempt, true);
+	}
+
+	private GoogleFileVersionPreviewSizeJob(Set<Id> versionIds, Integer measurementAttempt, Boolean chainIntelligence) {
 		this.versionIds = versionIds == null
 			? new Set<Id>()
 			: new Set<Id>(versionIds);
 		this.measurementAttempt = measurementAttempt == null || measurementAttempt < FIRST_MEASUREMENT_ATTEMPT
 			? FIRST_MEASUREMENT_ATTEMPT
 			: measurementAttempt;
+		this.chainIntelligence = chainIntelligence != false;
 	}
 
 	/**
@@ -72,12 +79,25 @@ public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.
 	 * @param versionIds The versions to measure.
 	 */
 	public static void schedule(Set<Id> versionIds) {
-		schedule(versionIds, FIRST_MEASUREMENT_ATTEMPT);
+		schedule(versionIds, true);
 	}
 
 	/**
-	 * Reads the size of each Workspace copy and stores the ones Drive has finished converting, rescheduling
-	 * for the rest.
+	 * Queues the measurement a minute out and carries the caller's decision on AI analysis through every
+	 * attempt, since each one runs in a later transaction.
+	 *
+	 * @param versionIds The versions to measure.
+	 * @param chainIntelligence False to measure only, without the summary and label a fitting copy would
+	 * otherwise get. Null counts as true.
+	 */
+	public static void schedule(Set<Id> versionIds, Boolean chainIntelligence) {
+		schedule(versionIds, FIRST_MEASUREMENT_ATTEMPT, chainIntelligence);
+	}
+
+	/**
+	 * Reads the size of each Workspace copy, stores the ones Drive has finished converting and reschedules
+	 * for the rest. A stored size that admits a version to AI analysis chains its summary and label ahead of
+	 * the next attempt; when nothing is admitted, or AI is not configured, nothing extra is queued.
 	 */
 	public override void work() {
 		if (skipExecution) return;
@@ -93,7 +113,7 @@ public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.
 		IGoogleUnitOfWork uow = new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
 		GoogleClientApiProvider remoteFileService = new GoogleClientApiProvider();
 		Set<Id> unmeasuredVersionIds = new Set<Id>();
-		Boolean hasUpdates = false;
+		List<GoogleFileVersion__c> measuredVersions = new List<GoogleFileVersion__c>();
 
 		for (GoogleFileVersion__c localFileVersion : localFileVersions) {
 			if (String.isBlank(localFileVersion.GoogleDocsFileId__c) || localFileVersion.GoogleDocsFileSize__c != null) continue;
@@ -108,11 +128,12 @@ public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.
 				Id = localFileVersion.Id,
 				GoogleDocsFileSize__c = previewSizeInBytes
 			));
-			hasUpdates = true;
+			localFileVersion.GoogleDocsFileSize__c = previewSizeInBytes;
+			measuredVersions.add(localFileVersion);
 		}
 
-		if (hasUpdates) {
-			commitMeasuredSizes(uow);
+		if (!measuredVersions.isEmpty() && commitMeasuredSizes(uow)) {
+			chainAnalysisAdmittedByWorkspaceCopy(measuredVersions);
 		}
 
 		rescheduleUnmeasured(unmeasuredVersionIds);
@@ -142,16 +163,40 @@ public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.
 		return sizeInBytes > CONVERSION_PENDING_SIZE_BYTES ? sizeInBytes : null;
 	}
 
-	private void commitMeasuredSizes(IGoogleUnitOfWork uow) {
+	private Boolean commitMeasuredSizes(IGoogleUnitOfWork uow) {
 		try {
 			GTriggerHandler.setBypass('GoogleFileVersionTriggerHandler', true);
 			uow.commitWork(true);
+			return true;
 		} catch (Exception ex) {
 			Logger.error('Google File Version preview size update failed (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
+			return false;
 		} finally {
 			GTriggerHandler.clearAllBypasses();
 		}
+	}
+
+	private void chainAnalysisAdmittedByWorkspaceCopy(List<GoogleFileVersion__c> measuredVersions) {
+		if (this.chainIntelligence == false) return;
+
+		Set<Id> admittedVersionIds = new GoogleFileVersionContextResolver().collectSummaryCandidatesAdmittedByWorkspaceCopy(measuredVersions);
+		if (admittedVersionIds.isEmpty()) return;
+
+		GoogleFileIntelligenceFactory intelligenceFactory = new GoogleFileIntelligenceFactory();
+		if (!intelligenceFactory.isConfigured()) return;
+
+		GQueueableBuilder analysisChainer = GAsync.queueable()
+			.chain(new GoogleFileVersionSummaryJob(admittedVersionIds))
+			.deepClone();
+
+		if (intelligenceFactory.isLabelingConfigured()) {
+			analysisChainer.chain(new GoogleFileVersionLabelJob(admittedVersionIds)).deepClone();
+		}
+
+		Logger.info('Preview Size Measurement --> AI analysis chained for versions admitted by their Workspace copy: ' + String.join(admittedVersionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		Logger.saveLog();
+		analysisChainer.enqueue();
 	}
 
 	private void rescheduleUnmeasured(Set<Id> unmeasuredVersionIds) {
@@ -164,14 +209,14 @@ public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.
 		}
 
 		Logger.info('Preview Size Measurement --> Rescheduling, Unmeasured=' + String.valueOf(unmeasuredVersionIds.size()) + ', NextAttempt=' + String.valueOf(this.measurementAttempt + 1)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-		schedule(unmeasuredVersionIds, this.measurementAttempt + 1);
+		schedule(unmeasuredVersionIds, this.measurementAttempt + 1, this.chainIntelligence != false);
 	}
 
-	private static void schedule(Set<Id> versionIds, Integer measurementAttempt) {
+	private static void schedule(Set<Id> versionIds, Integer measurementAttempt, Boolean chainIntelligence) {
 		if (versionIds == null || versionIds.isEmpty()) return;
 
 		GAsync.queueable()
-			.chain(new GoogleFileVersionPreviewSizeJob(versionIds, measurementAttempt))
+			.chain(new GoogleFileVersionPreviewSizeJob(versionIds, measurementAttempt, chainIntelligence))
 			.deepClone()
 			.delay(MEASUREMENT_DELAY_MINUTES)
 			.enqueue();

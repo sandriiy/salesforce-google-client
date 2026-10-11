@@ -3,9 +3,10 @@ import { NavigationMixin } from 'lightning/navigation';
 
 import { isEmpty, showToast, normalizeError, getFileIcon, truncateFileName, resolveTransferLimits, DEFAULT_TRANSFER_LIMITS } from 'c/googleCloudUtils';
 import { download, downloadInChunks, createOperationControl, abortOperation, isOperationAbortedError } from 'c/googleCloudDownloadUtils';
-import { 
-	DEFAULT_PREVIEW_UNAVAILABILITY_MESSAGE, 
+import {
+	DEFAULT_PREVIEW_UNAVAILABILITY_MESSAGE,
 	DEFAULT_FAILED_DOWNLOAD_MESSAGE,
+	DEFAULT_DOWNLOAD_STARTED_MESSAGE,
 	DEFAULT_NO_VERSIONS_MESSAGE,
 	DEFAULT_ACCESS_RESTRICTED_MESSAGE,
 	DEFAULT_FILE_NAME,
@@ -31,6 +32,7 @@ import downloadFileAsPdf from '@salesforce/apex/GoogleCloudFilesController.downl
 import canOpenInDrive from '@salesforce/apex/GoogleCloudDriveAccessController.canOpenInDrive';
 
 const PREVIEW_SLOW_THRESHOLD_MS = 5000;
+const RECENT_UPLOAD_WINDOW_MS = 10 * 60 * 1000;
 const PREVIEW_RENDERER_PDF = 'pdf';
 const PREVIEW_RENDERER_IMAGE = 'image';
 const IMAGE_MIME_TYPE_PREFIX = 'image/';
@@ -53,7 +55,9 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	@track isIntelligencePanelOpen = false;
 	@track intelligenceLabels = [];
 	@track isOpenInDriveAvailable = false;
+	@track isDownloadInProgress = false;
 
+	isIntelligenceUpdated = false;
 	previewOperation;
 	previewBlobUrl;
 	previewRenderer = PREVIEW_RENDERER_PDF;
@@ -71,8 +75,6 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		this.initialization();
 		this.localGoogleRecordId = JSON.parse(JSON.stringify(localGoogleDriveId));
 		this.localVersionRecordId = JSON.parse(JSON.stringify(localGoogleVersionId));
-		
-		this.isOldVersion = true;
 		this.isOpen = true;
 
 		await this.resolveFilePreview();
@@ -142,12 +144,15 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		this.isUnavailablePreview = false;
 		this.isLoading = true;
 		this.isPreviewTakingTooLong = false;
+		this.isOldVersion = false;
 		this.localGoogleRecordId = undefined;
+		this.localVersionRecordId = undefined;
 		this.localGoogleRecord = undefined;
 		this.localLatestVersionRecord = undefined;
 		this.isIntelligenceAvailable = false;
 		this.isIntelligencePanelOpen = false;
 		this.intelligenceLabels = [];
+		this.isIntelligenceUpdated = false;
 		this.resetAllStyles();
 	}
 
@@ -163,12 +168,22 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 		this.isIntelligenceAvailable = event.detail?.isAvailable === true;
 		this.isIntelligencePanelOpen = event.detail?.isOpen === true;
 		this.intelligenceLabels = Array.isArray(event.detail?.labels) ? event.detail.labels : [];
+		if (event.detail?.isAnalysisUpdated === true) {
+			this.isIntelligenceUpdated = true;
+		}
 	}
 
 	async handleFileDownload(event) {
-		this.isLoading = true;
-		await this.downloadFile();
-		this.isLoading = false;
+		if (this.isDownloadInProgress) return;
+
+		this.isDownloadInProgress = true;
+		showToast(this, 'Download started', DEFAULT_DOWNLOAD_STARTED_MESSAGE, 'info');
+
+		try {
+			await this.downloadFile();
+		} finally {
+			this.isDownloadInProgress = false;
+		}
 	}
 
 	async handleDownloadAs(event) {
@@ -228,7 +243,6 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 
 	async handleFileDetailsEdit(event) {
 		if (this.denyOperationIfReadOnly()) return;
-		if (this.denyOperationIfOldVersion()) return;
 
 		let isEdited = await GoogleCloudFileDetailsModal.open({
             size: 'small',
@@ -302,9 +316,10 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 	}
 
 	resolvePreviewClosing() {
-		const eventDetail = { 
+		const eventDetail = {
 			localGoogleRecordId: this.localGoogleRecordId,
-			localGoogleVersionId: this.localLatestVersionRecord
+			localGoogleVersionId: this.localLatestVersionRecord,
+			isIntelligenceUpdated: this.isIntelligenceUpdated
 		};
 
 		this.dispatchEvent(new CustomEvent('previewclosed', { detail: eventDetail }));
@@ -434,15 +449,13 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 				'error'
 			);
 		} else {
-			if (this.isOldVersion === true) {
-				const found = record.GoogleFileVersions__r.find(
-					(v) => v.Id === this.localVersionRecordId
-				);
+			const latestVersion = record.GoogleFileVersions__r[0];
+			const requestedVersion = this.localVersionRecordId
+				? record.GoogleFileVersions__r.find((v) => v.Id === this.localVersionRecordId)
+				: undefined;
 
-				if (found) return found;
-			}
-
-			return record.GoogleFileVersions__r[0];
+			this.isOldVersion = !!requestedVersion && requestedVersion.Id !== latestVersion.Id;
+			return requestedVersion || latestVersion;
 		}
 	}
 
@@ -725,6 +738,11 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 
 	get intelligenceVersionId() {
 		return this.localLatestVersionRecord?.Id;
+	}
+
+	get isIntelligenceVersionRecent() {
+		const uploadedAt = Date.parse(this.localLatestVersionRecord?.CreatedDate);
+		return !Number.isNaN(uploadedAt) && Date.now() - uploadedAt <= RECENT_UPLOAD_WINDOW_MS;
 	}
 
 	get hasIntelligenceLabels() {

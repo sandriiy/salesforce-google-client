@@ -28,6 +28,7 @@
  */
 public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntelligenceCommandBase {
 	private static final Integer MAX_OUTPUT_TOKENS = 80;
+	private static final Integer THINKING_ALLOWANCE_TOKENS = 2048;
 	private static final String OPERATION_TYPE = 'SUMMARY';
 	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 
@@ -69,6 +70,10 @@ public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntellige
 
 	public override Integer getMaxOutputTokens() {
 		return MAX_OUTPUT_TOKENS;
+	}
+
+	public override Integer getThinkingAllowance() {
+		return Math.max(getThinkingBudget(), THINKING_ALLOWANCE_TOKENS);
 	}
 
 	public override Boolean isEligible(GoogleFileVersion__c localFileVersion) {

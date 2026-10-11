@@ -186,8 +186,8 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	 */
 	public abstract String buildUserPrompt(String normalizedInput, String documentText);
 	/**
-	 * How long the answer may be. Declare only the answer budget, the base class adds the thinking budget
-	 * on top because Gemini counts thinking against the same limit.
+	 * How long the answer may be. Declare only the answer budget, the base class adds the thinking
+	 * allowance on top because Gemini counts thinking against the same limit.
 	 *
 	 * @return The maximum tokens for the answer.
 	 */
@@ -211,6 +211,18 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	 */
 	public virtual Integer getThinkingBudget() {
 		return DEFAULT_THINKING_BUDGET;
+	}
+
+	/**
+	 * How much room the request leaves for reasoning on top of the answer, the thinking budget by default.
+	 * Gemini 3 models treat the budget as a hint and reason past it, zero included, so an operation whose
+	 * answer budget is small should leave more room than it asks for, or the answer comes back cut off or
+	 * empty. Keep it bounded: a request that reasons to the limit has to finish inside the callout timeout.
+	 *
+	 * @return The tokens reserved for reasoning on top of the answer budget.
+	 */
+	public virtual Integer getThinkingAllowance() {
+		return getThinkingBudget();
 	}
 
 	/**
@@ -420,7 +432,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			.addUserText(buildUserPrompt(normalizedInput, documentText))
 			.withCandidates(getCandidateCount())
 			.withTemperature(getTemperature())
-			.withMaxTokens(getMaxOutputTokens() + getThinkingBudget())
+			.withMaxTokens(getMaxOutputTokens() + getThinkingAllowance())
 			.withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(getThinkingBudget()))
 			.withResponseMimeType(getResponseMimeType())
 			.build();

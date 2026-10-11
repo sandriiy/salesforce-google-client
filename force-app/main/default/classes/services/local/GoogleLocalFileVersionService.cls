@@ -360,7 +360,7 @@ public without sharing class GoogleLocalFileVersionService {
 			return GoogleFilePreviewAction.DIRECT;
 		}
 
-		if (resolvePreviewSizeInBytes(localFileVersion) > this.googleConfig.getBigFileSizeInBytes()) {
+		if (new GoogleFileVersionContextResolver().resolveWorkspaceCopySizeInBytes(localFileVersion) > this.googleConfig.getBigFileSizeInBytes()) {
 			throw new GoogleFileVersionException('Oops! This file is too large to preview. Please download it to open');
 		} else if (isVersionPreviewDocInProgress(localFileVersion)) {
 			throw new GoogleFileVersionException('Preview is being prepared. Please try again shortly or download the file');
@@ -383,12 +383,6 @@ public without sharing class GoogleLocalFileVersionService {
 		return (
 			!fileVersion.IsPreviewableFile__c
 		);
-	}
-
-	private Decimal resolvePreviewSizeInBytes(GoogleFileVersion__c fileVersion) {
-		return fileVersion.GoogleDocsFileSize__c != null
-			? fileVersion.GoogleDocsFileSize__c
-			: fileVersion.Size__c;
 	}
 
 	private List<GoogleFileDownloadAsOptionDTO> buildDownloadAsOptions(GoogleFileVersion__c localFileVersion) {

@@ -132,7 +132,9 @@ public with sharing class DefaultGoogleAiPromptSafetyGuard implements IGoogleAiP
 
 	/**
 	 * Checks the answer for credentials, keys and personal identifiers before anyone sees it, and honours a
-	 * provider that refused on its own.
+	 * provider that refused on its own. A social security number, and under Strict a web address, is only
+	 * refused when the document text is known and does not contain it; without the text, as for a stored
+	 * summary, that comparison is skipped and every other check still runs.
 	 *
 	 * @param context The operation and the file.
 	 * @param response What the model answered and why it stopped.
@@ -205,7 +207,7 @@ public with sharing class DefaultGoogleAiPromptSafetyGuard implements IGoogleAiP
 		Matcher ssnMatcher = SSN_PATTERN.matcher(responseText);
 		while (ssnMatcher.find()) {
 			String match = ssnMatcher.group();
-			if (documentText == null || !documentText.contains(match)) {
+			if (documentText != null && !documentText.contains(match)) {
 				return true;
 			}
 		}
@@ -216,7 +218,7 @@ public with sharing class DefaultGoogleAiPromptSafetyGuard implements IGoogleAiP
 		Matcher urlMatcher = URL_PATTERN.matcher(responseText);
 		while (urlMatcher.find()) {
 			String match = urlMatcher.group();
-			if (documentText == null || !documentText.contains(match)) {
+			if (documentText != null && !documentText.contains(match)) {
 				return true;
 			}
 		}

@@ -10,6 +10,15 @@ This version is in development. Changes are listed here as they are completed.
 
 - Downloads, previews, Download As and Flow uploads handle larger files in fewer steps on Winter '27 organizations. Google Client now sizes every request to what your Salesforce release allows: files up to 3.5 MB download and preview in one request instead of 2 MB, uploads through Salesforce move in 2.5 MB pieces, and Flow uploads of up to about 11 MB finish in the background. Organizations on earlier releases keep exactly the sizes they had, and nothing needs to be configured.
 - Maximum Preview File Size under Advanced → File Management may now be left blank, which means the largest size your Salesforce release supports; the help text next to the field shows the size that applies. Organizations that saved their settings in an earlier version have 2 MB stored in that field and can clear it to switch to the automatic size.
+- The AI panel in the preview window fills in by itself once a newly uploaded file's analysis finishes; there is no need to close the preview or reload the page. The Notes & Attachments card picks up the new summary when the preview is closed.
+- Choosing Download in the preview window no longer covers the document with a loading indicator. In the preview window and on the File Details page the Download button pauses until the file is on its way, and a message confirms the download has started.
+
+### Fixed
+
+- Large documents are now analyzed when the Google Workspace version Google Client prepares for them is small enough, which is usually the case for PDFs and Office files with many images. Whether a file can be analyzed is decided by the size of that version, the same one previews are judged by, rather than by the size of the uploaded file. Such files get a summary, a label and the question panel a minute or two after upload, like any other file. Files uploaded before this version can be asked questions but do not receive a summary or label after the fact.
+- A stored summary that quotes a social security number from the document, or under the Strict safety setting a web address, is shown in the preview window again. It was hidden there, although it had been accepted when it was written and was visible in File Explorer.
+- Summaries are written reliably with newer Gemini models. Such a model could use up the space set aside for a summary while deciding what to write, and the file then got no summary at all, or a cut-off one such as "This file...". Files that already carry a cut-off summary keep it.
+- On the File Details page, the current version opened from the File Versions list can be edited, replaced with a new version or deleted, exactly as when the file is opened with the Preview button. An older version's details can be edited too, so each version can be renamed on its own, while uploading a new version and deleting the file are offered on the current version only. Edited details appear on the page straight away, including in the File Versions list, and deleting a file from its preview no longer asks for confirmation a second time.
 
 ## [2.2.0] - 2026-09-20
 

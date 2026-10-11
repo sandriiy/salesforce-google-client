@@ -40,6 +40,7 @@
                                         <lightning-button
                                             label="Download"
                                             onclick={handleFileDownload}
+                                            disabled={isDownloadInProgress}
                                         ></lightning-button>
                                         <lightning-button
                                             label="Preview"
@@ -138,7 +139,8 @@
                                 <c-google-cloud-file-versions
                                     lwc:ref="versions" 
                                     record-id={recordId}
-                                    onlatestversionselected={handleLatestVersionSelection}>
+                                    onlatestversionselected={handleLatestVersionSelection}
+                                    onversionselect={handleVersionSelect}>
                                 </c-google-cloud-file-versions>
                             </template>
                         </section>
@@ -169,6 +171,6 @@
         lwc:ref="filePreviewModal"
         onnewversionrequest={handleNewVersionRequest}
         onfilechange={handleFileEdit}
-        onfiledeleted={handleFileDelete}
+        onfiledeleted={handlePreviewFileDeleted}
     ></c-google-cloud-file-preview>
 </template>

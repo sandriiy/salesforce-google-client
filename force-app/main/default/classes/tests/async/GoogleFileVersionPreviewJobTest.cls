@@ -23,6 +23,12 @@
  */
 @IsTest
 private class GoogleFileVersionPreviewJobTest {
+	private static final String DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+	private static final String CLONED_WORKSPACE_COPY_ID = 'gdoc_preview_001';
+	private static final String FITTING_COPY_SIZE = '112000';
+	private static final Long UPLOAD_OVER_ANALYSIS_LIMIT_BYTES = GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES + 1;
+	private static final String SECOND_PASS_SUMMARY = 'This file describes a product brochure for the spring catalogue.';
+
 	private static void mockPreviewQuery(Id versionId) {
 		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
 			[
@@ -35,6 +41,10 @@ private class GoogleFileVersionPreviewJobTest {
 	}
 
 	private static GoogleFileVersion__c createPreviewVersion(String fileName, String mimeType, String driveId, String docsId) {
+		return createPreviewVersion(fileName, mimeType, driveId, docsId, 1L);
+	}
+
+	private static GoogleFileVersion__c createPreviewVersion(String fileName, String mimeType, String driveId, String docsId, Long uploadSize) {
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
 			.withName(fileName + '_Parent')
 			.withDescription('D')
@@ -44,15 +54,36 @@ private class GoogleFileVersionPreviewJobTest {
 			.forFile(parentFile.Id)
 			.withName(fileName)
 			.withType(mimeType)
-			.withSize(1)
+			.withSize(uploadSize)
 			.withDriveId(driveId)
 			.withDocsId(docsId)
 			.insertRecord();
 	}
 
+	private static GoogleDriveHttpMock mockMeasuredWorkspaceCopy(String size) {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.endpointContains('/files/' + CLONED_WORKSPACE_COPY_ID)
+		).thenReturn(new GoogleDriveHttpMock.JsonResponses().fileSizeSuccess(CLONED_WORKSPACE_COPY_ID, size));
+
+		return driveMock;
+	}
+
+	private static GoogleFileAnalysisResultDTO buildSummaryResult(String text) {
+		GoogleFileAnalysisResultDTO result = new GoogleFileAnalysisResultDTO();
+		result.success = true;
+		result.provider = 'Gemini';
+		result.operationType = 'SUMMARY';
+		result.text = text;
+		result.finishReason = 'STOP';
+		return result;
+	}
+
 	private static GoogleFileVersion__c loadVersion(Id versionId) {
 		return [
-			SELECT GoogleDocsFileId__c
+			SELECT GoogleDocsFileId__c, GoogleDocsFileSize__c, Summary__c
 			FROM GoogleFileVersion__c
 			WHERE Id = :versionId
 			LIMIT 1
@@ -162,5 +193,43 @@ private class GoogleFileVersionPreviewJobTest {
 
 		Assert.areEqual(1, scheduledJobs);
 		Assert.isTrue(String.isNotBlank(loadVersion(version.Id).GoogleDocsFileId__c));
+	}
+
+	@IsTest
+	private static void testExecutePositiveLargeUploadIsSummarizedOnceItsCopyIsMeasured() {
+		GoogleCloudTestFactory.config().withFileIntelligence(true).withGeminiApiKey('api-key-1').withAiModel('gemini-2.0-flash').apply();
+		GoogleCloudTestFactory.initMocks(mockMeasuredWorkspaceCopy(FITTING_COPY_SIZE));
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFileVersion__c version = createPreviewVersion('V4.docx', DOCX_MIME_TYPE, 'GD_PJ_4', null, UPLOAD_OVER_ANALYSIS_LIMIT_BYTES);
+		GoogleFileVersionSummaryJob.setTestResult(version.Id, buildSummaryResult(SECOND_PASS_SUMMARY));
+
+		Test.startTest();
+		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }).work();
+		Test.stopTest();
+
+		GoogleFileVersion__c analyzedVersion = loadVersion(version.Id);
+		Assert.areEqual(CLONED_WORKSPACE_COPY_ID, analyzedVersion.GoogleDocsFileId__c);
+		Assert.areEqual(Decimal.valueOf(FITTING_COPY_SIZE), analyzedVersion.GoogleDocsFileSize__c);
+		Assert.areEqual(SECOND_PASS_SUMMARY, analyzedVersion.Summary__c);
+	}
+
+	@IsTest
+	private static void testExecutePositiveWithoutAnalysisMeasuresTheCopyOnly() {
+		GoogleCloudTestFactory.config().withFileIntelligence(true).withGeminiApiKey('api-key-1').withAiModel('gemini-2.0-flash').apply();
+		GoogleCloudTestFactory.initMocks(mockMeasuredWorkspaceCopy(FITTING_COPY_SIZE));
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFileVersion__c version = createPreviewVersion('V5.docx', DOCX_MIME_TYPE, 'GD_PJ_5', null, UPLOAD_OVER_ANALYSIS_LIMIT_BYTES);
+		GoogleFileVersionSummaryJob.setTestResult(version.Id, buildSummaryResult(SECOND_PASS_SUMMARY));
+
+		Test.startTest();
+		new GoogleFileVersionPreviewJob(new Set<Id>{ version.Id }, false).work();
+		Integer scheduledJobs = Limits.getQueueableJobs();
+		Test.stopTest();
+
+		GoogleFileVersion__c measuredVersion = loadVersion(version.Id);
+		Assert.areEqual(1, scheduledJobs);
+		Assert.areEqual(CLONED_WORKSPACE_COPY_ID, measuredVersion.GoogleDocsFileId__c);
+		Assert.areEqual(Decimal.valueOf(FITTING_COPY_SIZE), measuredVersion.GoogleDocsFileSize__c);
+		Assert.isNull(measuredVersion.Summary__c);
 	}
 }

@@ -119,6 +119,59 @@ private class GoogleLocalFileIntelligenceServiceTest {
 	}
 
 	@IsTest
+	private static void testRetrieveIntelligenceStatesPositiveLargeUploadWithFittingWorkspaceCopy() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();
+		GoogleCloudTestFactory.bypassTriggers();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INT6').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('INT6.pdf')
+			.withType('application/pdf')
+			.withSize(GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES + 1)
+			.withDriveId('GD_INT_6')
+			.withDocsId('DOCS_INT_6')
+			.withDocsSize(112000)
+			.insertRecord();
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(1, states.size());
+		Assert.isTrue(states[0].isIntelligenceEligible);
+		Assert.isFalse(states[0].hasSummary);
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesNegativeSmallUploadWithOversizedWorkspaceCopy() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();
+		GoogleCloudTestFactory.bypassTriggers();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INT7').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('INT7.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId('GD_INT_7')
+			.withDocsId('DOCS_INT_7')
+			.withDocsSize(GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES + 1)
+			.insertRecord();
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(1, states.size());
+		Assert.isFalse(states[0].isIntelligenceEligible);
+	}
+
+	@IsTest
 	private static void testRetrieveIntelligenceStatesNegativeNoConfiguration() {
 		GoogleCloudTestFactory.initMocks();
 		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
@@ -195,6 +248,62 @@ private class GoogleLocalFileIntelligenceServiceTest {
 
 		Assert.areEqual(1, states.size());
 		Assert.areEqual('This file describes a signed project agreement.', states[0].summary);
+		Assert.isTrue(states[0].hasSummary);
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesKeepsHistoricalSummaryQuotingWebAddressUnderStrict() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleClientConfig__mdt strictConfig = buildGeminiConfig();
+		strictConfig.AiSafetyMode__c = GoogleAiPromptContext.MODE_STRICT;
+		GoogleMetadataConfigService.configRecordOverride = strictConfig;
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+		GoogleCloudTestFactory.bypassTriggers();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INT8').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('INT8.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId('GD_INT_8')
+			.withDocsId('DOCS_INT_8')
+			.withSummary('This file describes the service terms published at https://example.com/terms.')
+			.insertRecord();
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual('This file describes the service terms published at https://example.com/terms.', states[0].summary);
+		Assert.isTrue(states[0].hasSummary);
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesKeepsHistoricalSummaryQuotingSsn() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();
+		GoogleAiPromptSafetyGuardFactory.resetForTest();
+		GoogleCloudTestFactory.bypassTriggers();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('INT9').withDescription('D').insertRecord();
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('INT9.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId('GD_INT_9')
+			.withDocsId('DOCS_INT_9')
+			.withSummary('This file describes the employee record filed under 123-45-6789.')
+			.insertRecord();
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual('This file describes the employee record filed under 123-45-6789.', states[0].summary);
 		Assert.isTrue(states[0].hasSummary);
 	}
 }

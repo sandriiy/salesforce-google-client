@@ -91,6 +91,33 @@ private class GoogleFileSummarizeCommandTest {
 	}
 
 	@IsTest
+	private static void testSummarizePositiveLeavesRoomForReasoningPastTheBudget() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsFilePreviewDisabled__c = true);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('SUMCMD9')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('SUMCMD9.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(2048)
+			.withDocsId('DOCS_SUMCMD_9')
+			.insertRecord();
+
+		GenAiClientStub clientStub = new GenAiClientStub('This file describes a product brochure.', 'STOP');
+		Test.startTest();
+			new GoogleFileSummarizeCommand().summarize(version.Id, 'Agent Platform', 'gemini-3.8-flash', clientStub);
+		Test.stopTest();
+
+		GenAiGoogleOptions sentOptions = (GenAiGoogleOptions) clientStub.capturedRequest.providerOptions;
+		Assert.areEqual(0, sentOptions.thinkingBudget);
+		Assert.areEqual(80 + 2048, clientStub.capturedRequest.generation.maxTokens);
+	}
+
+	@IsTest
 	private static void testSummarizePositiveAcceptsCompleteMaxTokensResponse() {
 		GoogleCloudTestFactory.initMocks();
 		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsFilePreviewDisabled__c = true);
@@ -252,5 +279,71 @@ private class GoogleFileSummarizeCommandTest {
 		Assert.isTrue(result.blocked);
 		Assert.areNotEqual(true, result.success);
 		Assert.isNull(result.text);
+	}
+
+	@IsTest
+	private static void testSummarizePositiveLargeUploadWithFittingWorkspaceCopy() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsFilePreviewDisabled__c = true);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('SUMCMD7')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('SUMCMD7.pdf')
+			.withType('application/pdf')
+			.withSize(GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES + 1)
+			.withDocsId('DOCS_SUMCMD_7')
+			.withDocsSize(112000)
+			.insertRecord();
+
+		String generatedText = 'This file describes a product brochure for the spring catalogue.';
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileSummarizeCommand().summarize(
+				version.Id,
+				'Gemini',
+				'gemini-2.0-flash',
+				new GenAiClientStub(generatedText, 'STOP')
+			);
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual(generatedText, result.text);
+	}
+
+	@IsTest
+	private static void testSummarizeNegativeLargeUploadWithUnmeasuredWorkspaceCopy() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsFilePreviewDisabled__c = true);
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('SUMCMD8')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('SUMCMD8.pdf')
+			.withType('application/pdf')
+			.withSize(GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES + 1)
+			.withDocsId('DOCS_SUMCMD_8')
+			.insertRecord();
+
+		GenAiClientStub clientStub = new GenAiClientStub('This file describes a product brochure.', 'STOP');
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileSummarizeCommand().summarize(
+				version.Id,
+				'Gemini',
+				'gemini-2.0-flash',
+				clientStub
+			);
+		Test.stopTest();
+
+		Assert.isTrue(result.blocked);
+		Assert.areNotEqual(true, result.success);
+		Assert.isNull(clientStub.capturedRequest);
 	}
 }

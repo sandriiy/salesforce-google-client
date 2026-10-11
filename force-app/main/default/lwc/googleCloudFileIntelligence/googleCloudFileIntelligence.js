@@ -4,6 +4,8 @@ import retrieveFileIntelligenceState from '@salesforce/apex/GoogleCloudFileIntel
 import answerFileQuestion from '@salesforce/apex/GoogleCloudFileIntelligenceController.answerFileQuestion';
 import {
     DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE,
+    FILE_INTELLIGENCE_SUMMARY_PENDING_MESSAGE,
+    FILE_INTELLIGENCE_SUMMARY_DELAYED_MESSAGE,
     createDefaultFileIntelligenceState,
     normalizeFileIntelligenceState,
     isFileIntelligencePanelAvailable,
@@ -14,8 +16,11 @@ const MAX_QUESTION_CHARACTERS = 255;
 const DEFAULT_FILE_INTELLIGENCE_QUESTION_ERROR_MESSAGE = 'We could not answer that question. Try again in a moment.';
 const PARTIAL_RESPONSE_NOTE = 'Response may be incomplete.';
 const QUESTION_DISABLED_MESSAGE = 'Questions about this file are turned off. Contact your administrator for more information.';
+const INTELLIGENCE_RECHECK_DELAYS_MS = [20000, 60000];
 
 export default class GoogleCloudFileIntelligence extends LightningElement {
+    @api recentlyUploaded = false;
+
     @track intelligenceState = createDefaultFileIntelligenceState();
     @track isLoading = false;
     @track isOpen = false;
@@ -31,6 +36,14 @@ export default class GoogleCloudFileIntelligence extends LightningElement {
     messageSequence = 0;
     shouldScrollConversation = false;
     questionCharacterLimit = MAX_QUESTION_CHARACTERS;
+    recheckAttempt = 0;
+    recheckTimerId;
+    isRecheckActive = false;
+    isAnalysisUpdated = false;
+
+    disconnectedCallback() {
+        this.cancelIntelligenceRecheck();
+    }
 
     renderedCallback() {
         if (this.shouldScrollConversation !== true) {
@@ -63,6 +76,9 @@ export default class GoogleCloudFileIntelligence extends LightningElement {
         this.intelligenceState = createDefaultFileIntelligenceState(normalizedVersionId);
         this.isLoading = false;
         this.isOpen = false;
+        this.cancelIntelligenceRecheck();
+        this.recheckAttempt = 0;
+        this.isAnalysisUpdated = false;
         this.resetConversationState();
 
         if (!normalizedVersionId) {
@@ -178,10 +194,12 @@ export default class GoogleCloudFileIntelligence extends LightningElement {
         }
     }
 
-    async loadIntelligenceState(versionId) {
+    async loadIntelligenceState(versionId, { isRecheck = false } = {}) {
         const currentRequestSequence = ++this.requestSequence;
-        this.isLoading = true;
-        this.emitStateChange();
+        if (!isRecheck) {
+            this.isLoading = true;
+            this.emitStateChange();
+        }
 
         try {
             const intelligenceState = await retrieveFileIntelligenceState({
@@ -192,21 +210,57 @@ export default class GoogleCloudFileIntelligence extends LightningElement {
                 return;
             }
 
+            const wasAwaitingAnalysis = this.isAwaitingAnalysis;
             this.intelligenceState = normalizeFileIntelligenceState(intelligenceState, versionId);
             this.isOpen = resolveFileIntelligencePanelOpen(this.intelligenceState, this.userOpenPreference);
+            if (isRecheck && wasAwaitingAnalysis && this.hasAnalysis) {
+                this.isAnalysisUpdated = true;
+            }
+
+            this.scheduleIntelligenceRecheck(versionId);
         } catch (error) {
             if (currentRequestSequence !== this.requestSequence || versionId !== this.versionIdValue) {
                 return;
             }
 
-            this.intelligenceState = createDefaultFileIntelligenceState(versionId);
-            this.isOpen = false;
+            this.cancelIntelligenceRecheck();
+            if (!isRecheck) {
+                this.intelligenceState = createDefaultFileIntelligenceState(versionId);
+                this.isOpen = false;
+            }
         } finally {
             if (currentRequestSequence === this.requestSequence && versionId === this.versionIdValue) {
                 this.isLoading = false;
                 this.emitStateChange();
             }
         }
+    }
+
+    scheduleIntelligenceRecheck(versionId) {
+        this.cancelIntelligenceRecheck();
+        if (!this.isAwaitingAnalysis || this.recheckAttempt >= INTELLIGENCE_RECHECK_DELAYS_MS.length) {
+            return;
+        }
+
+        const recheckDelay = INTELLIGENCE_RECHECK_DELAYS_MS[this.recheckAttempt];
+        this.recheckAttempt += 1;
+        this.isRecheckActive = true;
+        // eslint-disable-next-line @lwc/lwc/no-async-operation
+        this.recheckTimerId = setTimeout(() => {
+            this.recheckTimerId = undefined;
+            if (versionId === this.versionIdValue) {
+                this.loadIntelligenceState(versionId, { isRecheck: true });
+            }
+        }, recheckDelay);
+    }
+
+    cancelIntelligenceRecheck() {
+        if (this.recheckTimerId) {
+            clearTimeout(this.recheckTimerId);
+            this.recheckTimerId = undefined;
+        }
+
+        this.isRecheckActive = false;
     }
 
     resetConversationState() {
@@ -307,15 +361,32 @@ export default class GoogleCloudFileIntelligence extends LightningElement {
                 isQuestionEnabled: this.isQuestionEnabled,
                 isLoading: this.isLoading === true,
                 isOpen: this.isOpen === true,
+                isAnalysisUpdated: this.isAnalysisUpdated === true,
                 labels: [...this.labelNames]
             }
         }));
     }
 
     get summaryCopy() {
-        return this.intelligenceState?.hasSummary === true && this.intelligenceState?.summary
-            ? this.intelligenceState.summary
-            : DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE;
+        if (this.intelligenceState?.hasSummary === true && this.intelligenceState?.summary) {
+            return this.intelligenceState.summary;
+        }
+
+        if (this.isAwaitingAnalysis) {
+            return this.isRecheckActive
+                ? FILE_INTELLIGENCE_SUMMARY_PENDING_MESSAGE
+                : FILE_INTELLIGENCE_SUMMARY_DELAYED_MESSAGE;
+        }
+
+        return DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE;
+    }
+
+    get hasAnalysis() {
+        return this.intelligenceState?.hasSummary === true || this.labelNames.length > 0;
+    }
+
+    get isAwaitingAnalysis() {
+        return this.recentlyUploaded === true && !this.hasAnalysis;
     }
 
     get labelNames() {

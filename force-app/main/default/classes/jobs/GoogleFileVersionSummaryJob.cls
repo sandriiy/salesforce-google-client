@@ -25,7 +25,7 @@
  * Writes the summary of each new file. A version that fails is logged and skipped rather than failing the
  * whole batch, because one document the model dislikes should not cost the others their summary.
  */
-public with sharing class GoogleFileVersionSummaryJob extends GQueueableJob.AllowsCallouts {
+public without sharing class GoogleFileVersionSummaryJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFileVersionSummaryJobException extends Exception {}
 
 	@TestVisible

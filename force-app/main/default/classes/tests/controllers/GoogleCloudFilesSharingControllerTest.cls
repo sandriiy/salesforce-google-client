@@ -211,6 +211,13 @@ private class GoogleCloudFilesSharingControllerTest {
 		Assert.areNotEqual(null, reloaded.PublicLinkExpirationDate__c);
 		Assert.isTrue(String.isNotBlank(reloaded.PublicLinkPermissionId__c));
 		Assert.areEqual('Pending Expiration', reloaded.PublicLinkStatus__c);
+
+		Assert.areEqual(reloaded.PublicLink__c, updatedVersion.PublicLink__c, 'The screen gets the link it shows');
+		Map<String, Object> returnedFields = updatedVersion.getPopulatedFieldsAsMap();
+		Assert.isFalse(returnedFields.containsKey('GoogleDriveFileId__c'), 'Google Drive Ids never reach the browser');
+		Assert.isFalse(returnedFields.containsKey('GoogleDocsFileId__c'));
+		Assert.isFalse(returnedFields.containsKey('GoogleDriveFolderId__c'));
+		Assert.isFalse(returnedFields.containsKey('PublicLinkPermissionId__c'));
 	}
 
 	@IsTest
@@ -385,5 +392,27 @@ private class GoogleCloudFilesSharingControllerTest {
 		Test.stopTest();
 
 		Assert.areNotEqual(null, isDomainConfigured);
+	}
+
+	@IsTest
+	private static void testPublicLinkEndpointsNegativeRefuseAVersionTheUserCannotOpen() {
+		GoogleCloudTestFactory.initMocks();
+		Id unknownVersionId = GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType);
+
+		Test.startTest();
+		try {
+			GoogleCloudFilesSharingController.createNewPublicLink(unknownVersionId, null, false);
+			Assert.fail('Creating a public link must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesSharingController.deleteExistingPublicLink(unknownVersionId);
+			Assert.fail('Removing a public link must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+		Test.stopTest();
 	}
 }

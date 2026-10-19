@@ -44,6 +44,25 @@ public inherited sharing class GoogleContentVersionSelector extends GSOQL implem
 	};
 
 	/**
+	 * What the migration needs to judge a Salesforce file and keep its owner, without the content.
+	 */
+	public static final List<SObjectField> MIGRATION_FIELDS = new List<SObjectField>{
+		ContentVersion.Id,
+		ContentVersion.Title,
+		ContentVersion.FileExtension,
+		ContentVersion.FileType,
+		ContentVersion.ContentSize,
+		ContentVersion.ContentLocation,
+		ContentVersion.ContentDocumentId,
+		ContentVersion.OwnerId,
+		ContentVersion.CreatedDate,
+		ContentVersion.IsLatest
+	};
+
+	private static final String STORED_IN_SALESFORCE_LOCATION = 'S';
+	private static final String ENHANCED_NOTE_FILE_TYPE = 'SNOTE';
+
+	/**
 	 * Starts a Salesforce file query.
 	 *
 	 * @return A fresh selector to narrow and run.
@@ -100,5 +119,96 @@ public inherited sharing class GoogleContentVersionSelector extends GSOQL implem
 	public GoogleContentVersionSelector withContent() {
 		with(ContentVersion.VersionData);
 		return this;
+	}
+
+	/**
+	 * Selects what the migration judges a Salesforce file by, the owner it keeps and when it was created.
+	 *
+	 * @return This same instance, so the call chains onto toList().
+	 */
+	public GoogleContentVersionSelector withMigrationFields() {
+		with(MIGRATION_FIELDS);
+		return this;
+	}
+
+	/**
+	 * Adds the owner's name and whether they are still active, which decides whether a copy of the file can
+	 * keep that owner.
+	 *
+	 * @return This same instance, so the call chains onto toList().
+	 */
+	public GoogleContentVersionSelector withOwnerDetails() {
+		with('Owner.Name, Owner.IsActive');
+		return this;
+	}
+
+	/**
+	 * Keeps the Salesforce files whose content lives in Salesforce, leaving out files that only point at an
+	 * external system and so have no bytes to copy.
+	 *
+	 * @return This same instance, so the call chains onto toList().
+	 */
+	public GoogleContentVersionSelector byStoredInSalesforce() {
+		whereAre(Filter.with(ContentVersion.ContentLocation).equal(STORED_IN_SALESFORCE_LOCATION));
+		return this;
+	}
+
+	/**
+	 * Leaves out enhanced notes, which are not files.
+	 *
+	 * @return This same instance, so the call chains onto toList().
+	 */
+	public GoogleContentVersionSelector excludingEnhancedNotes() {
+		whereAre(Filter.with(ContentVersion.FileType).notEqual(ENHANCED_NOTE_FILE_TYPE));
+		return this;
+	}
+
+	/**
+	 * Keeps the Salesforce files up to a size. The size is bound as an integer, which is the type Salesforce
+	 * gives the content size column and the only type a cursor accepts for it.
+	 *
+	 * @param maxSizeBytes The largest content size to include, in bytes.
+	 * @return This same instance, so the call chains onto toList().
+	 */
+	public GoogleContentVersionSelector byMaxSize(Long maxSizeBytes) {
+		whereAre(Filter.with(ContentVersion.ContentSize).lessOrEqual(maxSizeBytes.intValue()));
+		return this;
+	}
+
+	/**
+	 * Narrows by a condition written in SOQL, the way an administrator describes which files to migrate.
+	 * It is wrapped in parentheses and joined to the package's own conditions with AND, so it can only
+	 * narrow the result and never widen it.
+	 *
+	 * @param condition A WHERE condition on ContentVersion, without the WHERE keyword. Blank changes nothing.
+	 * @return This same instance, so the call chains onto toList().
+	 */
+	public GoogleContentVersionSelector byCondition(String condition) {
+		if (String.isBlank(condition)) return this;
+
+		whereAre('(' + condition.trim() + ')');
+		return this;
+	}
+
+	/**
+	 * Oldest first and then by Id, which keeps the order stable while a migration walks the files.
+	 *
+	 * @return This same instance, so the call chains onto toList().
+	 */
+	public GoogleContentVersionSelector orderByCreatedThenId() {
+		orderBy(ContentVersion.CreatedDate);
+		orderBy(ContentVersion.Id);
+		return this;
+	}
+
+	/**
+	 * Opens an Apex cursor over the query instead of running it, for a walk over more files than one
+	 * transaction can hold.
+	 *
+	 * @return The cursor, positioned before the first row.
+	 */
+	public Database.Cursor toCursor() {
+		String query = toString();
+		return Database.getCursorWithBinds(query, binding(), AccessLevel.SYSTEM_MODE);
 	}
 }

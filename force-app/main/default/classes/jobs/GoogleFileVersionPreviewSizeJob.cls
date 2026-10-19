@@ -28,7 +28,7 @@
  * judging by the uploaded size. This is the first moment the copy size is known, so a version whose copy
  * fits the analysis limit while its upload did not gets its summary and label chained from here.
  */
-public with sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.AllowsCallouts {
+public without sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFilePreviewSizeJobException extends Exception {}
 
 	private static final Integer FIRST_MEASUREMENT_ATTEMPT = 1;

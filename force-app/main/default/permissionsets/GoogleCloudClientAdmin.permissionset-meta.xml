@@ -16,10 +16,22 @@
         <apexClass>GoogleCloudDriveAccessController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>GoogleCloudMigrationController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+	<classAccesses>
+        <apexClass>GoogleCloudFilesController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>
         <name>GoogleClientConfig__mdt</name>
     </customMetadataTypeAccesses>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>GoogleClientAdminAccess</name>
+    </customPermissions>
     <description>Provides access to Google Cloud file management functionality, including the application, file metadata, and all related system integration and configuration settings.</description>
     <fieldPermissions>
         <editable>true</editable>
@@ -75,6 +87,10 @@
     <label>Google Cloud Client Admin</label>
     <tabSettings>
         <tab>GoogleClientAnalytics</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>GoogleClientMigration</tab>
         <visibility>Visible</visibility>
     </tabSettings>
     <userPermissions>

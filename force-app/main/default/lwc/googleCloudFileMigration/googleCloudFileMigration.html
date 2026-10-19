@@ -1,0 +1,384 @@
+<template>
+    <div class="gc-migration">
+        <template lwc:if={isPageLoading}>
+            <div class="gc-migration-section gc-migration-loading">
+                <lightning-spinner alternative-text="Loading..." size="medium"></lightning-spinner>
+            </div>
+        </template>
+
+        <template lwc:if={showBlockers}>
+            <section class="gc-migration-section">
+                <ul class="gc-migration-notes slds-m-top_none">
+                    <template for:each={blockers} for:item="blocker">
+                        <li key={blocker} class="gc-migration-note">
+                            <lightning-icon icon-name="utility:error" size="x-small" variant="error" alternative-text="Blocked"></lightning-icon>
+                            <span>{blocker}</span>
+                        </li>
+                    </template>
+                </ul>
+            </section>
+        </template>
+
+        <template lwc:if={showWorkspace}>
+            <section class="gc-migration-section gc-migration-wizard">
+                <div class="config-step-bar">
+                    <template for:each={stageItems} for:item="stage">
+                        <button key={stage.key} class={stage.className} data-stage={stage.key} onclick={handleStepClick} disabled={stage.disabled} type="button">
+                            <span class="step-indicator"></span>
+                            <span class="step-label">{stage.label}</span>
+                        </button>
+                    </template>
+                </div>
+
+                <template lwc:if={isReadinessStage}>
+                    <ul class="gc-migration-notes slds-m-top_large">
+                        <li class="gc-migration-note">
+                            <lightning-icon icon-name="utility:success" size="x-small" variant="success" alternative-text="Ready"></lightning-icon>
+                            <span>You can query every Salesforce file and Google Drive is connected.</span>
+                        </li>
+                        <li class="gc-migration-note">
+                            <lightning-icon icon-name="utility:info" size="x-small" alternative-text="Information" class="gc-migration-note-icon"></lightning-icon>
+                            <span>{uploadFolderText}</span>
+                        </li>
+                        <li class="gc-migration-note">
+                            <lightning-icon icon-name="utility:info" size="x-small" alternative-text="Information" class="gc-migration-note-icon"></lightning-icon>
+                            <span>{intelligenceStateText}</span>
+                        </li>
+                        <li class="gc-migration-note">
+                            <lightning-icon icon-name="utility:info" size="x-small" alternative-text="Information" class="gc-migration-note-icon"></lightning-icon>
+                            <span>{scopeStatement}</span>
+                        </li>
+                    </ul>
+                </template>
+
+                <template lwc:if={isCriteriaStage}>
+                    <div class="slds-m-top_large">
+                        <lightning-radio-group
+                            name="criteriaMode"
+                            label="Files"
+                            options={criteriaModeOptions}
+                            value={criteriaMode}
+                            type="radio"
+                            onchange={handleCriteriaModeChange}>
+                        </lightning-radio-group>
+
+                        <template lwc:if={isConditionMode}>
+                            <div class="slds-m-top_medium">
+                                <lightning-textarea
+                                    label="Condition"
+                                    field-level-help="A SOQL WHERE condition on ContentVersion, without the WHERE keyword. Any field of ContentVersion can be used, parent fields through ContentDocument, custom fields included. The size and scope rules are applied on top."
+                                    placeholder="CreatedDate = LAST_N_DAYS:365 AND FileExtension = 'pdf'"
+                                    value={condition}
+                                    onchange={handleConditionChange}>
+                                </lightning-textarea>
+
+                                <div class="gc-migration-chips slds-m-top_x-small">
+                                    <template for:each={starterSnippets} for:item="snippet">
+                                        <lightning-button
+                                            key={snippet.key}
+                                            label={snippet.label}
+                                            data-key={snippet.key}
+                                            onclick={handleSnippetClick}
+                                            variant="neutral"
+                                            class="slds-m-right_x-small slds-m-bottom_x-small">
+                                        </lightning-button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div class="slds-m-top_medium gc-migration-inline">
+                            <lightning-button variant="brand-outline" label="Check" onclick={handleCheck} disabled={isChecking}></lightning-button>
+                            <template lwc:if={isChecking}>
+                                <span>Counting files...</span>
+                            </template>
+                        </div>
+
+                        <template lwc:if={hasCheckError}>
+                            <p class="slds-text-color_error slds-m-top_medium">{checkError}</p>
+                        </template>
+
+                        <template lwc:if={hasCheckResult}>
+                            <ul class="gc-migration-notes slds-m-top_medium">
+                                <li class="gc-migration-note">
+                                    <lightning-icon icon-name={checkIconName} size="x-small" variant={checkIconVariant} alternative-text="Check result"></lightning-icon>
+                                    <span>{checkSummary}</span>
+                                </li>
+                            </ul>
+
+                            <template lwc:if={hasSampleRows}>
+                                <p class="gc-migration-caption slds-m-top_medium">{sampleCaption}</p>
+                                <div class="gc-migration-sample slds-m-top_x-small">
+                                    <lightning-datatable
+                                        key-field="contentDocumentId"
+                                        data={sampleRows}
+                                        columns={sampleColumns}
+                                        hide-checkbox-column
+                                        resize-column-disabled>
+                                    </lightning-datatable>
+                                </div>
+                            </template>
+                        </template>
+                    </div>
+                </template>
+
+                <template lwc:if={isScopeStage}>
+                    <div class="slds-m-top_large">
+                        <lightning-radio-group
+                            name="recordMode"
+                            label="Migrate Files From"
+                            options={recordModeOptions}
+                            value={recordMode}
+                            type="radio"
+                            onchange={handleRecordModeChange}>
+                        </lightning-radio-group>
+
+                        <template lwc:if={isObjectsMode}>
+                            <div class="gc-migration-object-row slds-m-top_medium">
+                                <lightning-input
+                                    label="Object API name"
+                                    placeholder="YourStandardOrCustomSobject__c"
+                                    value={objectInput}
+                                    onchange={handleObjectInputChange}
+                                    onkeydown={handleObjectInputKeyDown}
+                                    field-level-help="Type one object's API name and press Enter or Add. Only files attached to records of these objects are migrated."
+                                    class="gc-migration-object-input">
+                                </lightning-input>
+                                <lightning-button label="Add" onclick={handleAddObject} disabled={isValidatingObjects} class="gc-migration-object-add"></lightning-button>
+                            </div>
+
+                            <template lwc:if={hasObjectError}>
+                                <p class="slds-text-color_error slds-m-top_x-small">{objectError}</p>
+                            </template>
+
+                            <template lwc:if={hasObjects}>
+                                <div class="slds-m-top_x-small">
+                                    <lightning-pill-container items={objectPills} onitemremove={handleObjectRemove}></lightning-pill-container>
+                                </div>
+                            </template>
+                        </template>
+
+                        <ul class="gc-migration-notes slds-m-top_medium">
+                            <li class="gc-migration-note">
+                                <lightning-icon icon-name="utility:info" size="x-small" alternative-text="Information" class="gc-migration-note-icon"></lightning-icon>
+                                <span>Files not attached to any record are skipped whichever option you choose.</span>
+                            </li>
+                        </ul>
+
+                        <template lwc:if={isIntelligenceEnabled}>
+                            <div class="tab-toggle-header slds-m-top_medium">
+                                <div class="tab-toggle-copy">
+                                    <div class="tab-toggle-title">Skip AI analysis for these files</div>
+                                    <div class="tab-toggle-subtitle">Each migrated file is otherwise summarised and labelled like an upload, which costs AI calls. Previews and folder placement happen either way.</div>
+                                </div>
+                                <div class="tab-toggle-control">
+                                    <lightning-input
+                                        type="toggle"
+                                        variant="label-hidden"
+                                        checked={skipIntelligence}
+                                        onchange={handleSkipIntelligenceChange}
+                                        label="Skip AI analysis"
+                                        message-toggle-active=""
+                                        message-toggle-inactive="">
+                                    </lightning-input>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <template lwc:if={isReviewStage}>
+                    <div class="gc-migration-review slds-m-top_large">
+                        <div class="gc-migration-review-row">
+                            <div class="gc-migration-review-label">Files</div>
+                            <div class="gc-migration-review-value">{reviewFilesText}</div>
+                            <lightning-button variant="base" label="Edit" data-stage="criteria" onclick={handleEditStage}></lightning-button>
+                        </div>
+                        <div class="gc-migration-review-row">
+                            <div class="gc-migration-review-label">Migrate Files From</div>
+                            <div class="gc-migration-review-value">{reviewRecordsText}</div>
+                            <lightning-button variant="base" label="Edit" data-stage="scope" onclick={handleEditStage}></lightning-button>
+                        </div>
+                        <div class="gc-migration-review-row">
+                            <div class="gc-migration-review-label">AI analysis</div>
+                            <div class="gc-migration-review-value">{reviewIntelligenceText}</div>
+                            <lightning-button variant="base" label="Edit" data-stage="scope" onclick={handleEditStage}></lightning-button>
+                        </div>
+                        <div class="gc-migration-review-row">
+                            <div class="gc-migration-review-label">Files found</div>
+                            <div class="gc-migration-review-value">{reviewCountText}</div>
+                            <lightning-button variant="base" label="Check again" onclick={handleCheck} disabled={isChecking}></lightning-button>
+                        </div>
+                    </div>
+
+                    <template lwc:if={hasCheckError}>
+                        <p class="slds-text-color_error slds-m-top_medium">{checkError}</p>
+                    </template>
+
+                    <ul class="gc-migration-notes slds-m-top_medium">
+                        <li class="gc-migration-note">
+                            <lightning-icon icon-name="utility:clock" size="x-small" alternative-text="Duration" class="gc-migration-note-icon"></lightning-icon>
+                            <span>{estimateText}</span>
+                        </li>
+                    </ul>
+                </template>
+
+                <div class="gc-migration-footer slds-m-top_large">
+                    <template lwc:if={showBack}>
+                        <lightning-button variant="neutral" label="Back" onclick={handleBack} disabled={isStarting}></lightning-button>
+                    </template>
+
+                    <template lwc:if={isReviewStage}>
+                        <lightning-button variant="brand" label="Start migration" onclick={handleStart} disabled={isStartDisabled}></lightning-button>
+                    </template>
+                    <template lwc:else>
+                        <lightning-button variant="brand" label="Next" onclick={handleNext} disabled={isNextDisabled}></lightning-button>
+                    </template>
+                </div>
+            </section>
+
+            <section class="gc-migration-section">
+                <div class="gc-migration-section-header">
+                    <span class="gc-migration-tile">
+                        <lightning-icon icon-name="standard:task" size="small" alternative-text="Progress"></lightning-icon>
+                    </span>
+                    <span class="gc-migration-section-text">
+                        <span class="gc-migration-section-title">Progress</span>
+                        <span class="gc-migration-section-desc">Where the current or last migration stands</span>
+                    </span>
+                </div>
+
+                <template lwc:if={hasProgressContent}>
+                    <div class="gc-migration-status-row slds-m-top_medium">
+                        <span class={statusBadgeClass}>{statusLabel}</span>
+                        <span>{statusDetail}</span>
+                    </div>
+
+                    <template lwc:if={hasRunHandle}>
+                        <div class="slds-m-top_medium">
+                            <lightning-progress-bar value={progressPercent} size="large"></lightning-progress-bar>
+                        </div>
+                        <p class="gc-migration-progress-line slds-m-top_x-small">{progressLine}</p>
+
+                        <template lwc:if={hasFinishedNote}>
+                            <ul class="gc-migration-notes slds-m-top_small">
+                                <li class="gc-migration-note">
+                                    <lightning-icon icon-name="utility:success" size="x-small" variant="success" alternative-text="Finished"></lightning-icon>
+                                    <span>{finishedNote}</span>
+                                </li>
+                            </ul>
+                        </template>
+
+                        <div class="gc-migration-review slds-m-top_medium">
+                            <div class="gc-migration-review-row">
+                                <div class="gc-migration-review-label">Files</div>
+                                <div class="gc-migration-review-value">{runFilesText}</div>
+                            </div>
+                            <div class="gc-migration-review-row">
+                                <div class="gc-migration-review-label">Migrate Files From</div>
+                                <div class="gc-migration-review-value">{runRecordsText}</div>
+                            </div>
+                            <div class="gc-migration-review-row">
+                                <div class="gc-migration-review-label">AI analysis</div>
+                                <div class="gc-migration-review-value">{runIntelligenceText}</div>
+                            </div>
+                        </div>
+                    </template>
+                    <template lwc:else>
+                        <p class="slds-m-top_medium">{anonymousRunText}</p>
+                    </template>
+
+                    <div class="gc-migration-footer gc-migration-footer_start slds-m-top_large">
+                        <template lwc:if={showStop}>
+                            <lightning-button variant="destructive-text" label="Stop" onclick={handleStop}></lightning-button>
+                        </template>
+                        <template lwc:if={showRunAgain}>
+                            <lightning-button variant="brand" label="Run again" onclick={handleRunAgain}></lightning-button>
+                        </template>
+                        <template lwc:if={showDismiss}>
+                            <lightning-button variant="neutral" label="Dismiss" onclick={handleDismiss}></lightning-button>
+                        </template>
+                    </div>
+                </template>
+                <template lwc:else>
+                    <p class="slds-m-top_medium">{noRunMessage}</p>
+                </template>
+            </section>
+
+            <section class="gc-migration-section">
+                <div class="gc-migration-section-header gc-migration-section-header_actions">
+                    <div class="gc-migration-section-lead">
+                        <span class="gc-migration-tile">
+                            <lightning-icon icon-name="standard:document" size="small" alternative-text="Migrated files"></lightning-icon>
+                        </span>
+                        <span class="gc-migration-section-text">
+                            <span class="gc-migration-section-title">Migrated files</span>
+                            <span class="gc-migration-section-desc">{migratedMetaLine}</span>
+                        </span>
+                    </div>
+
+                    <div class="gc-migration-table-actions">
+                        <lightning-input
+                            type="search"
+                            variant="label-hidden"
+                            placeholder="Search migrated files..."
+                            value={migratedSearchTerm}
+                            onchange={handleMigratedSearch}
+                            label="Search migrated files"
+                            class="gc-migration-search">
+                        </lightning-input>
+                        <lightning-button-icon
+                            icon-name="utility:refresh"
+                            variant="border-filled"
+                            alternative-text="Refresh"
+                            title="Refresh"
+                            onclick={handleMigratedRefresh}
+                            disabled={isLoadingMigrated}>
+                        </lightning-button-icon>
+                    </div>
+                </div>
+
+                <template lwc:if={hasHiddenMigratedFiles}>
+                    <ul class="gc-migration-notes slds-m-top_medium">
+                        <li class="gc-migration-note">
+                            <lightning-icon icon-name="utility:lock" size="x-small" alternative-text="Hidden files" class="gc-migration-note-icon"></lightning-icon>
+                            <span>{hiddenMigratedFilesText}</span>
+                        </li>
+                    </ul>
+                </template>
+
+                <div class="gc-migration-table-wrap slds-m-top_medium">
+                    <c-google-cloud-file-explorer-data-table
+                        key-field="localId"
+                        data={migratedRows}
+                        columns={migratedColumns}
+                        hide-checkbox-column
+                        sorted-by={migratedSortedBy}
+                        sorted-direction={migratedSortedDirection}
+                        enable-infinite-loading={enableMigratedInfiniteLoading}
+                        load-more-offset="100"
+                        is-loading={isLoadingMoreMigrated}
+                        onloadmore={handleMigratedLoadMore}
+                        onsort={handleMigratedSort}
+                        ontitleclick={handleMigratedTitleClick}
+                        class="gc-migration-table">
+                    </c-google-cloud-file-explorer-data-table>
+
+                    <template lwc:if={hasNoMigratedFiles}>
+                        <p class="gc-migration-empty slds-text-align_center slds-p-around_medium">{noMigratedFilesMessage}</p>
+                    </template>
+
+                    <template lwc:if={isLoadingMigrated}>
+                        <lightning-spinner alternative-text="Loading migrated files..." size="small"></lightning-spinner>
+                    </template>
+                </div>
+            </section>
+        </template>
+    </div>
+
+    <c-google-cloud-file-preview
+        lwc:ref="filePreviewModal"
+        onfilechange={handleMigratedRefresh}
+        onfiledeleted={handleMigratedRefresh}>
+    </c-google-cloud-file-preview>
+</template>

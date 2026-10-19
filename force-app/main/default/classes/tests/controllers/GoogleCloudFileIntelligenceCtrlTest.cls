@@ -93,4 +93,26 @@ private class GoogleCloudFileIntelligenceCtrlTest {
 		Assert.areEqual('Gemini', result.provider);
 		Assert.areEqual('OK', result.text);
 	}
+
+	@IsTest
+	private static void testIntelligenceEndpointsNegativeRefuseAVersionTheUserCannotOpen() {
+		GoogleCloudTestFactory.initMocks();
+		Id unknownVersionId = GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType);
+
+		Test.startTest();
+		try {
+			GoogleCloudFileIntelligenceController.retrieveFileIntelligenceState(unknownVersionId);
+			Assert.fail('Reading the AI summary must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFileIntelligenceController.answerFileQuestion(unknownVersionId, 'What does it say?');
+			Assert.fail('Asking about the file must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+		Test.stopTest();
+	}
 }

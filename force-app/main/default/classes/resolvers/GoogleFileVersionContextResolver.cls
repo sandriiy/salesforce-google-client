@@ -153,14 +153,30 @@ public with sharing class GoogleFileVersionContextResolver {
      * @return One request per version that can be placed.
      */
     public List<GoogleFileRelocationRequestDTO> buildRelocationRequests(List<GoogleFileVersion__c> fileVersions, Map<Id, Id> linkIdsByFileId) {
+        return buildRelocationRequests(fileVersions, linkIdsByFileId, new Map<Id, Id>());
+    }
+
+    /**
+     * Builds the folder placement requests, placing each version against the running user unless its file
+     * was created on another user's behalf, in which case that owner's folder is the right one. Versions a
+     * user uploads themselves are unaffected, since they own the files they create.
+     *
+     * @param fileVersions The versions to place.
+     * @param linkIdsByFileId The latest link per file, from resolveLatestLinkIdsByFileId().
+     * @param delegatedOwnerIdsByFileId The owner per file created on their behalf, from
+     * resolveDelegatedOwnerIdsByFileId(). A file missing here is placed against the running user.
+     * @return One request per version with a file.
+     */
+    public List<GoogleFileRelocationRequestDTO> buildRelocationRequests(List<GoogleFileVersion__c> fileVersions, Map<Id, Id> linkIdsByFileId, Map<Id, Id> delegatedOwnerIdsByFileId) {
         List<GoogleFileRelocationRequestDTO> relocationRequests = new List<GoogleFileRelocationRequestDTO>();
         if (fileVersions == null) return relocationRequests;
 
         for (GoogleFileVersion__c fileVersion : fileVersions) {
             if (fileVersion == null || fileVersion.Id == null || fileVersion.GoogleFileId__c == null) continue;
 
+            Id delegatedOwnerId = delegatedOwnerIdsByFileId == null ? null : delegatedOwnerIdsByFileId.get(fileVersion.GoogleFileId__c);
             relocationRequests.add(new GoogleFileRelocationRequestDTO(
-                UserInfo.getUserId(),
+                delegatedOwnerId == null ? UserInfo.getUserId() : delegatedOwnerId,
                 fileVersion.GoogleFileId__c,
                 fileVersion.Id,
                 linkIdsByFileId == null ? null : linkIdsByFileId.get(fileVersion.GoogleFileId__c)
@@ -168,6 +184,30 @@ public with sharing class GoogleFileVersionContextResolver {
         }
 
         return relocationRequests;
+    }
+
+    /**
+     * Finds the files that were created on another user's behalf, which is what a migration does when it
+     * keeps the Salesforce file's owner. Such a file belongs in its owner's folder rather than in the folder
+     * of whoever ran the migration.
+     *
+     * @param parentFileIds The files to look up.
+     * @return The owner per file whose owner is not the user who created it.
+     */
+    public Map<Id, Id> resolveDelegatedOwnerIdsByFileId(Set<Id> parentFileIds) {
+        Map<Id, Id> delegatedOwnerIdsByFileId = new Map<Id, Id>();
+        if (parentFileIds == null || parentFileIds.isEmpty()) return delegatedOwnerIdsByFileId;
+
+        for (GoogleFile__c fileRecord : (List<GoogleFile__c>) GoogleFileSelector.query()
+            .withSpecificFields(new List<String>{ 'Id', 'OwnerId', 'CreatedById' })
+            .byIds(parentFileIds)
+            .toList()
+        ) {
+            if (fileRecord.OwnerId == null || fileRecord.OwnerId == fileRecord.CreatedById) continue;
+            delegatedOwnerIdsByFileId.put(fileRecord.Id, fileRecord.OwnerId);
+        }
+
+        return delegatedOwnerIdsByFileId;
     }
 
     /**

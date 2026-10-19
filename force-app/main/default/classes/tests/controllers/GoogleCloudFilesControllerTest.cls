@@ -276,7 +276,7 @@ private class GoogleCloudFilesControllerTest {
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFileVersion__c(Id = fileVersion.Id, Name = fileVersion.Name)
+			new GoogleFileVersion__c(Id = fileVersion.Id, Name = fileVersion.Name, GoogleFileId__c = parentFile.Id)
 		});
 
 		Test.startTest();
@@ -346,7 +346,7 @@ private class GoogleCloudFilesControllerTest {
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = baseFile.Id, Name = 'Base')
+			new GoogleFile__c(Id = baseFile.Id, Name = 'Base', OwnerId = UserInfo.getUserId())
 		});
 
 		Id relatedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
@@ -551,5 +551,86 @@ private class GoogleCloudFilesControllerTest {
 			.insertRecord();
 
 		return localFile;
+	}
+
+	@IsTest
+	private static void testReadEndpointsNegativeRefuseAVersionTheUserCannotOpen() {
+		GoogleCloudTestFactory.initMocks();
+		Id unknownVersionId = GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType);
+
+		Test.startTest();
+		try {
+			GoogleCloudFilesController.validateFilePreview(unknownVersionId);
+			Assert.fail('Checking a preview must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.retrieveLocalGoogleFileVersionById(unknownVersionId);
+			Assert.fail('Reading a version must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.downloadFile(unknownVersionId);
+			Assert.fail('Downloading must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.downloadFileAsPdf(unknownVersionId);
+			Assert.fail('Downloading as PDF must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.retrieveDownloadAsOptions(unknownVersionId);
+			Assert.fail('Listing download formats must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.downloadFileAs(unknownVersionId, 'text/plain');
+			Assert.fail('Downloading in another format must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.downloadLargeFilePartial(unknownVersionId, 0L, 10L);
+			Assert.fail('Downloading part of a large file must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testChangeEndpointsNegativeRefuseAFileTheUserCannotOpen() {
+		GoogleCloudTestFactory.initMocks();
+		Id unreachableFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+
+		Test.startTest();
+		try {
+			GoogleCloudFilesController.saveNewGoogleFileVersion(GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), unreachableFileId, 'New.pdf', 'application/pdf', 10L, 'GD_NEW', 'FOLDER', 'UI');
+			Assert.fail('Adding a version to a file the user cannot open must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.deleteExistingGoogleFile(unreachableFileId);
+			Assert.fail('Deleting a file the user cannot open must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+		Test.stopTest();
+
+		Assert.areEqual(0, [SELECT COUNT() FROM GoogleFileVersion__c], 'No version was added');
 	}
 }

@@ -41,6 +41,23 @@ public class GoogleCloudConstants {
 		GoogleFile__Share.SObjectType
 	};
 
+	/**
+	 * The Source a file and its link carry when nothing more specific was asked for, which is where the
+	 * Notes and Attachments component looks.
+	 */
+	public static final String FILE_SOURCE_NOTES_AND_ATTACHMENTS = 'Notes & Attachments';
+	/**
+	 * The Source a file copied in from Salesforce Files by the migration carries. Only the file carries it:
+	 * its links carry FILE_SOURCE_NOTES_AND_ATTACHMENTS, so the file shows on the record where the Salesforce
+	 * file used to, while the Migrated files list filters on this value.
+	 */
+	public static final String FILE_SOURCE_MIGRATION = 'Migration';
+	/**
+	 * The largest Salesforce file the migration takes, in bytes. It sits inside the query the migration builds
+	 * and is checked again per file, so the count an administrator sees is the count that migrates.
+	 */
+	public static final Long MAX_MIGRATION_FILE_SIZE_BYTES = 5242880L;
+
 	// Google Workspace target MIME types used when generating preview files.
 	public static final String GOOGLE_WORKSPACE_DOCUMENT_TYPE = 'application/vnd.google-apps.document';
 	public static final String GOOGLE_WORKSPACE_SPREADSHEET_TYPE = 'application/vnd.google-apps.spreadsheet';
@@ -188,4 +205,8 @@ public class GoogleCloudConstants {
 	public static final Integer FILE_EXPLORER_MAX_PAGE_SIZE = 200;
 	public static final String FILE_EXPLORER_BUCKET_OWNED = 'owned';
 	public static final String FILE_EXPLORER_BUCKET_SHARED = 'shared';
+	/**
+	 * The File Explorer bucket that lists the files the migration copied in, whoever owns them.
+	 */
+	public static final String FILE_EXPLORER_BUCKET_MIGRATED = 'migrated';
 }

@@ -6,8 +6,13 @@ All notable changes to this client are documented here. Each entry describes wha
 
 This version is in development. Changes are listed here as they are completed.
 
+### Added
+
+- Migrate Salesforce Files to Google Drive. The new **Migration** tab in the Google Client app moves the Salesforce Files you already have into Google Drive, a few at a time in the background, and turns each one into an ordinary Google Client file: it appears under Notes & Attachments on the same records, keeps its owner and who may see it, gets a preview and lands in the configured folder, and with AI Analytics on it is summarized and labeled like any upload unless you choose to skip that. Only files attached to a record and no larger than 5 MB are moved, and the Salesforce copy stays. Choose everything, or describe the files with a condition and narrow them to the objects they are attached to; the page counts what matches before you start, shows the progress while the migration runs and when you come back later, and lists the migrated files you can open, saying how many others are hidden from you. A file that was already copied is skipped, so stopping and running the same selection again simply continues where it left off. The tab needs the Google Cloud Client Admin permission set and the standard Query All Files permission.
+
 ### Changed
 
+- A Google Client file created from a Salesforce file, by the migration or by the Upload File to Google Drive action, now records the Salesforce file it came from in the new Salesforce File Id field, which is how a later migration recognizes it and leaves it alone.
 - Downloads, previews, Download As and Flow uploads handle larger files in fewer steps on Winter '27 organizations. Google Client now sizes every request to what your Salesforce release allows: files up to 3.5 MB download and preview in one request instead of 2 MB, uploads through Salesforce move in 2.5 MB pieces, and Flow uploads of up to about 11 MB finish in the background. Organizations on earlier releases keep exactly the sizes they had, and nothing needs to be configured.
 - Maximum Preview File Size under Advanced → File Management may now be left blank, which means the largest size your Salesforce release supports; the help text next to the field shows the size that applies. Organizations that saved their settings in an earlier version have 2 MB stored in that field and can clear it to switch to the automatic size.
 - The AI panel in the preview window fills in by itself once a newly uploaded file's analysis finishes; there is no need to close the preview or reload the page. The Notes & Attachments card picks up the new summary when the preview is closed.
@@ -19,6 +24,8 @@ This version is in development. Changes are listed here as they are completed.
 - A stored summary that quotes a social security number from the document, or under the Strict safety setting a web address, is shown in the preview window again. It was hidden there, although it had been accepted when it was written and was visible in File Explorer.
 - Summaries are written reliably with newer Gemini models. Such a model could use up the space set aside for a summary while deciding what to write, and the file then got no summary at all, or a cut-off one such as "This file...". Files that already carry a cut-off summary keep it.
 - On the File Details page, the current version opened from the File Versions list can be edited, replaced with a new version or deleted, exactly as when the file is opened with the Preview button. An older version's details can be edited too, so each version can be renamed on its own, while uploading a new version and deleting the file are offered on the current version only. Edited details appear on the page straight away, including in the File Versions list, and deleting a file from its preview no longer asks for confirmation a second time.
+- Previewing, downloading and asking questions about a file, adding a new version to it, deleting it, and creating or removing its public link now always check that you may open the file, or change it where that is needed. Before, these steps relied on the screens offering only files you had access to.
+- An administrator who holds the Google Cloud Client Admin permission set but not Google Cloud Client User is no longer told on the File Details page that they have no access to a file; the page says which permission set is missing.
 
 ## [2.2.0] - 2026-09-20
 

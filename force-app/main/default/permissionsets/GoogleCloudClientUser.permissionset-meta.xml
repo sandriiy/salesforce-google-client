@@ -132,6 +132,11 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
+        <editable>false</editable>
+        <field>GoogleFile__c.SalesforceFileId__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
         <editable>true</editable>
         <field>GoogleFile__c.UserAccessLevel__c</field>
         <readable>true</readable>

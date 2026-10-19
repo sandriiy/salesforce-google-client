@@ -2,6 +2,28 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
+???+ example "Release v2.3.0"
+
+    ### Validation Suite Used
+    - [ ] Full Validation Suite
+    - [ ] Quick Regression Suite
+    - [ ] Targeted Regression Suite
+
+    ### Release Changes
+    - [ ] Change 1: Salesforce Files can be migrated into Google Drive from the new Migration tab.
+
+        - [ ] Admin: Without the Query All Files permission the Migration tab explains what to ask for and offers nothing else.
+        - [ ] Admin: With the permission, Check counts the files a condition selects and shows the first ten, and a condition Salesforce cannot run is refused with a readable message.
+        - [ ] Admin: A run copies only files attached to a record and no larger than 5 MB; a file attached to two records gets both links, keeps its owner, and its links show under Notes & Attachments.
+        - [ ] Admin: The Progress card updates by itself, is still there after leaving and returning to the page, and ends as Finished with the number of files not copied.
+        - [ ] Admin: Stop ends as Stopped, and Run again skips the files already copied.
+        - [ ] Admin: With AI Analytics on, migrated files get a summary unless Skip AI analysis was chosen.
+        - [ ] Admin: The Migrated files card lists the copied files and opens the preview.
+        - [ ] Internal User: A migrated file shows under Notes & Attachments on its record and previews.
+
+    ### Notes
+    - 2026-10-11, `salesforcegoogleclient230`: 30 PDFs with AI on and 2,000 text files with AI skipped were migrated from Apex through `GoogleLocalFileMigrationService`; summaries, Workspace copies, links and the owner's folder were confirmed on the records. The wizard itself could not be exercised in that session because the scratch org administrator did not hold Query All Files; the blocked page was confirmed.
+
 ???+ example "Release v2.2.0"
 
     ### Validation Suite Used

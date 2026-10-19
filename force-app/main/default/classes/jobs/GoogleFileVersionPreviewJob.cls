@@ -26,7 +26,7 @@
  * labeling all read. It runs as a job because the clone is a Drive callout and a callout cannot follow
  * uncommitted DML in the same transaction.
  */
-public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.AllowsCallouts {
+public without sharing class GoogleFileVersionPreviewJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFilePreviewJobException extends Exception {}
 
 	@TestVisible

@@ -26,7 +26,7 @@
  * the current version flag right, and clean up in Google Drive. It opens its own unit of work on
  * purpose, since it runs inside a commit that is already under way.
  */
-public with sharing class GoogleLocalFileVersionLifecycleService {
+public without sharing class GoogleLocalFileVersionLifecycleService {
     public class GoogleFileVersionLifecycleException extends Exception {}
 
     private final GoogleMetadataConfigService googleConfig;

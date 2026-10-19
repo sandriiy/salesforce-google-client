@@ -27,7 +27,7 @@
  * rescheduled a minute later and forced through on the last of three attempts, so a file is never left
  * in the root folder because two uploads raced.
  */
-public with sharing class GoogleFileCloudFolderJob extends GQueueableJob.AllowsCallouts {
+public without sharing class GoogleFileCloudFolderJob extends GQueueableJob.AllowsCallouts {
     public class GoogleFileCloudFolderJobException extends Exception {}
 
     private static final Integer MAX_PLACEMENT_ATTEMPTS = 3;

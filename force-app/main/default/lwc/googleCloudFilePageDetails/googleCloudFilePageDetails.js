@@ -18,6 +18,8 @@ import GoogleCloudOpenInDriveModal from 'c/googleCloudOpenInDriveModal';
 import fetchFileAccess from '@salesforce/apex/GoogleCloudFilesController.fetchFileAccess';
 import fetchFileHeaderDetails from '@salesforce/apex/GoogleCloudFilesViewController.fetchFileHeaderDetails';
 import canOpenInDrive from '@salesforce/apex/GoogleCloudDriveAccessController.canOpenInDrive';
+import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
+import hasGoogleClientAdminAccess from '@salesforce/customPermission/GoogleClientAdminAccess';
 
 import yesAccesstemplate from './googleCloudFilePageDetails.html';
 import noAccessTemplate from './googleCloudFilePageDetailsNoAccess.html';
@@ -25,6 +27,10 @@ import noAccessTemplate from './googleCloudFilePageDetailsNoAccess.html';
 const OBJECT_API_NAME = 'GoogleFile__c';
 const TAB_POLL_DELAY_MS = 200;
 const TAB_MAX_RETRIES = 5;
+const NO_ACCESS_TITLE = 'You don’t have access to this file';
+const NO_ACCESS_MESSAGE = 'You can’t view this file with your current permissions. If you believe you should have access, contact the file owner or your system administrator.';
+const MISSING_USER_PERMISSION_TITLE = 'This file couldn’t be loaded';
+const MISSING_USER_PERMISSION_MESSAGE = 'You have the Google Cloud Client Admin permission set but not Google Cloud Client User, which opening files needs. Assign Google Cloud Client User, or the Google Cloud Client User & Admin group.';
 
 export default class GoogleCloudFilePageDetails extends NavigationMixin(LightningElement) {
 	@api
@@ -46,6 +52,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	@track accessLevel;
 
 	@track hasRecordAccess = false;
+	@track hasLoadError = false;
 	@track isAccessChecked = false;
 	@track isHeaderLoading = true;
 	@track isMainLoading = true;
@@ -256,6 +263,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 		this.isMainLoading = true;
 		this.isAccessChecked = false;
 		this.hasRecordAccess = false;
+		this.hasLoadError = false;
 
 		if (!this.recordId) {
 			this.hasRecordAccess = false;
@@ -298,6 +306,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 			}
 		} catch (error) {
 			this.hasRecordAccess = false;
+			this.hasLoadError = true;
 			this.fileName = undefined;
 			this.headerFieldData = [];
 		} finally {
@@ -347,7 +356,8 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	}
 
 	updateTabLabel() {
-		const baseTitle = this.hasRecordAccess && this.fileName ? this.fileName : 'No Access';
+		const unavailableTitle = this.isMissingUserPermission ? 'Unavailable' : 'No Access';
+		const baseTitle = this.hasRecordAccess && this.fileName ? this.fileName : unavailableTitle;
 		const label = `${baseTitle} | File`;
 
 		this.tabTitle = label;
@@ -435,6 +445,18 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 
 	get hasAccess() {
 		return isEmpty(this.accessLevel) ? false : true;
+	}
+
+	get isMissingUserPermission() {
+		return this.hasLoadError && hasGoogleClientAdminAccess === true && hasGoogleClientUserAccess !== true;
+	}
+
+	get unavailableTitle() {
+		return this.isMissingUserPermission ? MISSING_USER_PERMISSION_TITLE : NO_ACCESS_TITLE;
+	}
+
+	get unavailableMessage() {
+		return this.isMissingUserPermission ? MISSING_USER_PERMISSION_MESSAGE : NO_ACCESS_MESSAGE;
 	}
 
 	get isEditAccess() {

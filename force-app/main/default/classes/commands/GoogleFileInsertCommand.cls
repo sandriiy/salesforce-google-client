@@ -40,6 +40,11 @@ public without sharing class GoogleFileInsertCommand {
     private String googleDriveFileId;
     private String googleDriveFolderId;
     private String source;
+    private String linkSource;
+    private Id ownerId;
+    private String shareType;
+    private String visibility;
+    private Id salesforceFileId;
     private Id existingLocalGoogleFileId;
 
     /**
@@ -130,6 +135,63 @@ public without sharing class GoogleFileInsertCommand {
     }
 
     /**
+     * Sets where the link to the record shows up when that differs from the file's source, which is how
+     * a migrated file keeps the Migration source and still appears under Notes and Attachments.
+     *
+     * @param value A value of the Source picklist; blank means the same as the file's source.
+     * @return This same instance, so the setters chain onto save().
+     */
+    public GoogleFileInsertCommand setLinkSource(String value) {
+        this.linkSource = value;
+        return this;
+    }
+
+    /**
+     * Sets who owns the new file. Leave it unset and the running user owns it, as for any upload.
+     *
+     * @param value The owner's user Id.
+     * @return This same instance, so the setters chain onto save().
+     */
+    public GoogleFileInsertCommand setOwnerId(Id value) {
+        this.ownerId = value;
+        return this;
+    }
+
+    /**
+     * Sets the access the record link grants. Leave it unset and the running user's default applies.
+     *
+     * @param value "Viewer", "Collaborator", "InferredFromRecord" or "None".
+     * @return This same instance, so the setters chain onto save().
+     */
+    public GoogleFileInsertCommand setShareType(String value) {
+        this.shareType = value;
+        return this;
+    }
+
+    /**
+     * Sets who the record link is visible to. Leave it unset and the running user's default applies.
+     *
+     * @param value "InternalUsers" or "AllUsers".
+     * @return This same instance, so the setters chain onto save().
+     */
+    public GoogleFileInsertCommand setVisibility(String value) {
+        this.visibility = value;
+        return this;
+    }
+
+    /**
+     * Sets the Salesforce file the content was copied from, which is what tells a later migration the file
+     * is already in Google Drive.
+     *
+     * @param value The Content Document Id.
+     * @return This same instance, so the setters chain onto save().
+     */
+    public GoogleFileInsertCommand setSalesforceFileId(Id value) {
+        this.salesforceFileId = value;
+        return this;
+    }
+
+    /**
      * Points the upload at an existing GoogleFile__c, so save() registers a new version of that
      * file instead of a new file. The record Id and source are then ignored.
      *
@@ -184,6 +246,14 @@ public without sharing class GoogleFileInsertCommand {
             Source__c = source
         );
 
+        if (ownerId != null) {
+            fileRecord.OwnerId = ownerId;
+        }
+
+        if (salesforceFileId != null) {
+            fileRecord.SalesforceFileId__c = String.valueOf(salesforceFileId);
+        }
+
         GoogleFileVersion__c versionToBind = new GoogleFileVersion__c(
             Name = buildLocalFileName(false),
             Type__c = fileType,
@@ -207,7 +277,9 @@ public without sharing class GoogleFileInsertCommand {
             linkToBind = new GoogleFileLink__c(
                 LinkedObjectId__c = String.valueOf(relatedRecordId),
                 LinkedObjectType__c = relatedRecordId.getSObjectType().getDescribe().getName(),
-                Source__c = source
+                Source__c = String.isBlank(linkSource) ? source : linkSource,
+                ShareType__c = shareType,
+                Visibility__c = visibility
             );
 
             linkToBind = applyUserBasedChanges(linkToBind);

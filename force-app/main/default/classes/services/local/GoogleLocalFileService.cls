@@ -30,6 +30,8 @@
 public without sharing class GoogleLocalFileService {
     public class GoogleLocalFileException extends Exception {}
 
+    private static final String NO_FILE_ACCESS_MESSAGE = 'You don’t have access to this file. Ask the file owner or your system administrator for access';
+
     private final IGoogleUnitOfWork uow;
 
     public GoogleLocalFileService() {
@@ -129,6 +131,7 @@ public without sharing class GoogleLocalFileService {
 		criteria.cursorValue = request.decodedCursorValue();
 		criteria.cursorId = request.cursorId();
 		criteria.ownerScope = resolveOwnershipScope(request.bucket);
+		criteria.source = resolveSourceScope(request.bucket);
 		criteria.additionalVersionFields = new GoogleFileExplorerColumnResolver().resolveAdditionalVersionFields();
 		return criteria;
 	}
@@ -137,6 +140,10 @@ public without sharing class GoogleLocalFileService {
 		if (GoogleCloudConstants.FILE_EXPLORER_BUCKET_OWNED.equals(bucket)) return GoogleFileAccessResolver.OwnershipScope.OwnedByUser;
 		if (GoogleCloudConstants.FILE_EXPLORER_BUCKET_SHARED.equals(bucket)) return GoogleFileAccessResolver.OwnershipScope.NotOwnedByUser;
 		return GoogleFileAccessResolver.OwnershipScope.AnyOwner;
+	}
+
+	private String resolveSourceScope(String bucket) {
+		return GoogleCloudConstants.FILE_EXPLORER_BUCKET_MIGRATED.equals(bucket) ? GoogleCloudConstants.FILE_SOURCE_MIGRATION : null;
 	}
 
 	/**
@@ -315,7 +322,12 @@ public without sharing class GoogleLocalFileService {
 			.setFileSize(request.fileSize)
 			.setGoogleDriveId(request.googleDriveId)
 			.setParentFolderId(request.parentFolderId)
-			.setSource(request.source);
+			.setSource(request.source)
+			.setLinkSource(request.linkSource)
+			.setOwnerId(request.ownerId)
+			.setShareType(request.shareType)
+			.setVisibility(request.visibility)
+			.setSalesforceFileId(request.salesforceFileId);
 
 		if (request.localGoogleFileId != null) {
 			insertCommand = insertCommand.setLocalGoogleFileId(request.localGoogleFileId);
@@ -387,6 +399,55 @@ public without sharing class GoogleLocalFileService {
             Logger.saveLog();
             throw new GoogleLocalFileException('Unable to verify access to the requested files due to security restrictions. Please try again or contact your system administrator');
         }
+    }
+
+    /**
+     * Refuses unless the running user may open the file, or change it when edit is asked for. A screen runs
+     * this before it hands out a file's content or changes it; the services underneath do not check, because
+     * automation reaches them in system context and settles access itself.
+     *
+     * @param localFileId The GoogleFile__c to check.
+     * @param requiresEdit True when the caller is about to change the file rather than read it.
+     * @return The file, stamped with the running user's access level.
+     */
+    public GoogleFile__c requireFileAccess(Id localFileId, Boolean requiresEdit) {
+        List<GoogleFile__c> accessibleFiles = localFileId == null
+            ? new List<GoogleFile__c>()
+            : stripInaccessibleRecords().forFile(localFileId).forUser(UserInfo.getUserId()).strip();
+
+        if (accessibleFiles.isEmpty()) {
+            throw new GoogleLocalFileException(NO_FILE_ACCESS_MESSAGE);
+        }
+
+        GoogleFile__c accessibleFile = accessibleFiles.get(0);
+        if (requiresEdit == true && accessibleFile.UserAccessLevel__c != 'Edit') {
+            throw new GoogleLocalFileException('You can view this file but not change it. Ask the file owner for edit access');
+        }
+
+        return accessibleFile;
+    }
+
+    /**
+     * The same check for a version, judged by the file it belongs to. A version that does not exist is
+     * refused the same way, so the answer never says whether an Id is real.
+     *
+     * @param localFileVersionId The GoogleFileVersion__c to check.
+     * @param requiresEdit True when the caller is about to change the version rather than read it.
+     * @return The version's file, stamped with the running user's access level.
+     */
+    public GoogleFile__c requireVersionAccess(Id localFileVersionId, Boolean requiresEdit) {
+        List<GoogleFileVersion__c> versions = localFileVersionId == null
+            ? new List<GoogleFileVersion__c>()
+            : (List<GoogleFileVersion__c>) GoogleFileVersionSelector.query()
+                .withBaseFields()
+                .byId(localFileVersionId)
+                .toList();
+
+        if (versions.isEmpty()) {
+            throw new GoogleLocalFileException(NO_FILE_ACCESS_MESSAGE);
+        }
+
+        return requireFileAccess(versions.get(0).GoogleFileId__c, requiresEdit);
     }
 
 }

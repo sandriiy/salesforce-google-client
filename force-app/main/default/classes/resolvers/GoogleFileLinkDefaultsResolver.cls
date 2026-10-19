@@ -29,19 +29,28 @@
  */
 public without sharing class GoogleFileLinkDefaultsResolver {
 	/**
-	 * Stamps the share type and visibility on a link that does not have them yet.
+	 * Stamps the share type and visibility on a link that does not have them yet. A value already on the link
+	 * is kept, so a caller that knows what the link should grant is never second guessed, and a link that has
+	 * both does not cost a query.
 	 *
 	 * @param linkRecord The link being created.
 	 * @return The same link with its defaults filled in.
 	 */
 	public GoogleFileLink__c applyDefaultValues(GoogleFileLink__c linkRecord) {
 		if (linkRecord == null) return null;
+		if (String.isNotBlank(linkRecord.ShareType__c) && String.isNotBlank(linkRecord.Visibility__c)) return linkRecord;
 
 		User currentUser = loadCurrentUser();
 		Boolean isInternalUser = isInternalUserType(currentUser == null ? null : currentUser.UserType);
 
-		linkRecord.ShareType__c = isInternalUser ? 'Viewer' : 'InferredFromRecord';
-		linkRecord.Visibility__c = isInternalUser ? 'InternalUsers' : 'AllUsers';
+		if (String.isBlank(linkRecord.ShareType__c)) {
+			linkRecord.ShareType__c = isInternalUser ? 'Viewer' : 'InferredFromRecord';
+		}
+
+		if (String.isBlank(linkRecord.Visibility__c)) {
+			linkRecord.Visibility__c = isInternalUser ? 'InternalUsers' : 'AllUsers';
+		}
+
 		return linkRecord;
 	}
 

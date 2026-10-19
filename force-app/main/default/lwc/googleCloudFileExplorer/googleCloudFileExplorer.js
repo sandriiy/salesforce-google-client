@@ -8,16 +8,11 @@ import {
     showToast,
     isEmpty,
     normalizeError,
-    formatExistingLocalFiles,
-    formatDateAsDDMMYYYY_HHMM,
-    extractGraphValue,
-    asString,
     DEFAULT_FAILED_RETRIEVE_MESSAGE
 } from 'c/googleCloudUtils';
 import {
     buildDatatableColumns,
-    buildStandardColumnValues,
-    buildCustomColumnValues,
+    buildExplorerRows,
     resolveColumnLabel,
     resolveDefaultSortFieldName
 } from 'c/googleCloudFileExplorerColumns';
@@ -189,42 +184,7 @@ export default class GoogleCloudFileExplorer extends NavigationMixin(LightningEl
     }
 
     buildRows(rawFiles) {
-        const formattedFiles = formatExistingLocalFiles(rawFiles);
-        const rawByLocalId = this.indexRawFilesById(rawFiles);
-
-        return formattedFiles.map(file => {
-            const rawRecord = rawByLocalId.get(file.localId);
-            const latestVersion = rawRecord?.GoogleFileVersions__r?.[0];
-            const linksCount = Number(extractGraphValue(rawRecord?.NumberOfLinks__c) || 0);
-            const isLinked = linksCount > 0;
-            const createdByName = asString(rawRecord?.CreatedBy?.Name) || (file.createdBy?.name || '');
-            const createdById = asString(rawRecord?.CreatedById) || (file.createdBy?.id || '');
-            const fileOwner = asString(rawRecord?.Owner?.Name) || '';
-            const fileOwnerId = asString(rawRecord?.OwnerId) || '';
-            const accessLabel = asString(rawRecord?.UserAccessLevel__c) || 'View';
-
-            return {
-                ...file,
-                ...buildStandardColumnValues(file),
-                ...buildCustomColumnValues(this.resolvedColumns, latestVersion),
-                fileName: file.name || 'Untitled',
-                isLinkedLabel: isLinked ? 'Yes' : 'No',
-                accessLabel,
-                createdByName,
-                createdById,
-                fileOwner,
-                fileOwnerId,
-                lastModifiedDisplay: formatDateAsDDMMYYYY_HHMM(file.lastModifiedDate)
-            };
-        });
-    }
-
-    indexRawFilesById(rawFiles) {
-        const byId = new Map();
-        (rawFiles || []).forEach(record => {
-            if (record?.Id) byId.set(record.Id, record);
-        });
-        return byId;
+        return buildExplorerRows(rawFiles, this.resolvedColumns);
     }
 
     handleNavSelect(event) {

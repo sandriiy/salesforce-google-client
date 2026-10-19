@@ -29,6 +29,11 @@
                 <default>false</default>
                 <label>File Explorer</label>
             </value>
+            <value>
+                <fullName>Migration</fullName>
+                <default>false</default>
+                <label>Migration</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

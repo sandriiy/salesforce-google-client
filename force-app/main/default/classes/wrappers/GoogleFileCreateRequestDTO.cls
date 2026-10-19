@@ -34,4 +34,24 @@ public class GoogleFileCreateRequestDTO {
 	public String googleDriveId;
 	public String parentFolderId;
 	public String source;
+	/**
+	 * Where the link to the record shows up when that differs from source. Blank means the same as source.
+	 */
+	public String linkSource;
+	/**
+	 * Who owns the new file. Blank means the running user.
+	 */
+	public Id ownerId;
+	/**
+	 * The access the record link grants. Blank means the default for the running user.
+	 */
+	public String shareType;
+	/**
+	 * Who the record link is visible to. Blank means the default for the running user.
+	 */
+	public String visibility;
+	/**
+	 * The Salesforce file the content was copied from, as a Content Document Id, when there is one.
+	 */
+	public Id salesforceFileId;
 }

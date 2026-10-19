@@ -37,6 +37,8 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled
     public static String validateFilePreview(Id localFileVersionId) {
+		requireVersionAccess(localFileVersionId, false);
+
 		try {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
 			GoogleFilePreviewAction previewAction = localVersionService.validatePreviewEligible(localFileVersionId);
@@ -122,6 +124,8 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled
     public static GoogleFileVersion__c retrieveLocalGoogleFileVersionById(Id localGoogleFileVersionId) {
+		requireVersionAccess(localGoogleFileVersionId, false);
+
 		return (GoogleFileVersion__c) GoogleFileVersionSelector.query()
 			.withSharingFields()
 			.byId(localGoogleFileVersionId)
@@ -167,6 +171,8 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled
     public static GoogleFile__c saveNewGoogleFileVersion(Id recordId, Id localGoogleFileId, String fileName, String fileType, Long fileSize, String googleDriveId, String parentFolderId, String source) {
+		requireFileAccess(localGoogleFileId, true);
+
 		GoogleFileCreateRequestDTO request = new GoogleFileCreateRequestDTO();
 		request.recordId = recordId;
 		request.localGoogleFileId = localGoogleFileId;
@@ -183,6 +189,8 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled
     public static void deleteExistingGoogleFile(Id recordId) {
+        requireFileAccess(recordId, true);
+
         GoogleLocalFileService recordService = new GoogleLocalFileService();
         recordService.deleteGoogleFileRecord()
             .setRecordId(recordId)
@@ -221,6 +229,8 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled
 	public static String downloadFile(Id localGoogleFileVersionId) {
+		requireVersionAccess(localGoogleFileVersionId, false);
+
 		try {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
 			return localVersionService.downloadFileBase64Body(localGoogleFileVersionId);
@@ -235,6 +245,8 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled
 	public static String downloadFileAsPdf(Id localGoogleFileVersionId) {
+		requireVersionAccess(localGoogleFileVersionId, false);
+
 		try {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
 			return localVersionService.downloadFileBase64BodyAsPdf(localGoogleFileVersionId);
@@ -249,6 +261,8 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled
 	public static List<GoogleFileDownloadAsOptionDTO> retrieveDownloadAsOptions(Id localGoogleFileVersionId) {
+		requireVersionAccess(localGoogleFileVersionId, false);
+
 		try {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
 			return localVersionService.retrieveDownloadAsOptions(localGoogleFileVersionId);
@@ -263,6 +277,8 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled
 	public static String downloadFileAs(Id localGoogleFileVersionId, String exportMimeType) {
+		requireVersionAccess(localGoogleFileVersionId, false);
+
 		try {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
 			return localVersionService.downloadFileBase64BodyAs(localGoogleFileVersionId, exportMimeType);
@@ -278,6 +294,8 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled
 	public static String downloadLargeFilePartial(Id localGoogleFileVersionId, Long startByte, Long endByte) {
+		requireVersionAccess(localGoogleFileVersionId, false);
+
 		try {
 			GoogleLocalFileVersionService localVersionService = new GoogleLocalFileVersionService();
 			return localVersionService.downloadFileBase64Body(localGoogleFileVersionId, startByte, endByte);
@@ -288,6 +306,22 @@ public with sharing class GoogleCloudFilesController {
 			Logger.saveLog();
 
 			throw new AuraHandledException('We couldn’t download the large file. Please try again, or contact your system administrator');
+		}
+	}
+
+	private static void requireFileAccess(Id localGoogleFileId, Boolean requiresEdit) {
+		try {
+			new GoogleLocalFileService().requireFileAccess(localGoogleFileId, requiresEdit);
+		} catch (GoogleLocalFileService.GoogleLocalFileException ex) {
+			throw new AuraHandledException(ex.getMessage());
+		}
+	}
+
+	private static void requireVersionAccess(Id localFileVersionId, Boolean requiresEdit) {
+		try {
+			new GoogleLocalFileService().requireVersionAccess(localFileVersionId, requiresEdit);
+		} catch (GoogleLocalFileService.GoogleLocalFileException ex) {
+			throw new AuraHandledException(ex.getMessage());
 		}
 	}
 }

@@ -30,9 +30,9 @@
 public without sharing class GoogleLocalFileTransferService {
 	public class GoogleLocalFileTransferException extends Exception {}
 
-	private static final String DEFAULT_UPLOAD_SOURCE = 'Notes & Attachments';
 	private static final Integer HEAP_BYTES_PER_TRANSFERRED_BYTE = 2;
 	private static final Integer HEAP_RESERVE_BYTES = 1048576;
+	private static final Long UPLOAD_TIME_BUDGET_MILLIS = 60000L;
 	private static final String FILE_EXTENSION_SEPARATOR = '.';
 	private static final String SOURCE_LIST_SEPARATOR = '", "';
 	private static final String MISSING_SOURCE_FILE_MESSAGE = 'Provide the Salesforce file to upload as a Content Document Id or a Content Version Id';
@@ -42,12 +42,16 @@ public without sharing class GoogleLocalFileTransferService {
 	private static final String FILE_TOO_LARGE_MESSAGE = 'This file is too large to be transferred from Salesforce. Upload it through the Google Client components instead';
 	private static final String UPLOAD_FAILED_MESSAGE = 'Unable to upload the file to Google Drive. Please try again or contact your system administrator';
 	private static final String REMOVE_FAILED_MESSAGE = 'The file was uploaded to Google Drive, but the Salesforce copy could not be removed. Please remove it manually or contact your system administrator';
+	private static final String LINK_FAILED_MESSAGE = 'The file was uploaded to Google Drive, but it could not be attached to every record. Please attach it manually or contact your system administrator';
 	private static final String DOWNLOAD_FAILED_MESSAGE = 'Unable to download the file from Google Drive. Please try again or contact your system administrator';
 	private static final String DOWNLOAD_TOO_LARGE_MESSAGE = 'The files are too large to download in one run. Download fewer files at a time';
 	private static final String SAVE_FAILED_MESSAGE = 'Unable to save the downloaded file in Salesforce. Please try again or contact your system administrator';
 
 	@TestVisible
 	private static Map<Id, Blob> sourceContentOverride;
+
+	@TestVisible
+	private static Long uploadTimeBudgetMillisOverride;
 
 	private final IGoogleUnitOfWork uow;
 	private final GoogleMetadataConfigService metadataService;
@@ -93,7 +97,7 @@ public without sharing class GoogleLocalFileTransferService {
 	 * @return One result per request, in the same order.
 	 */
 	public List<GoogleFileUploadResultDTO> uploadSalesforceFiles(List<GoogleFileUploadRequestDTO> requests) {
-		return transferSalesforceFiles(requests, true);
+		return transferSalesforceFiles(requests, true, false);
 	}
 
 	/**
@@ -104,8 +108,22 @@ public without sharing class GoogleLocalFileTransferService {
 	 * @return What was uploaded.
 	 */
 	public GoogleFileUploadResultDTO uploadSalesforceFileNow(GoogleFileUploadRequestDTO request) {
-		List<GoogleFileUploadResultDTO> results = transferSalesforceFiles(new List<GoogleFileUploadRequestDTO>{ request }, false);
+		List<GoogleFileUploadResultDTO> results = transferSalesforceFiles(new List<GoogleFileUploadRequestDTO>{ request }, false, false);
 		return results.isEmpty() ? null : results[0];
+	}
+
+	/**
+	 * Sends several Salesforce files to Google Drive in this transaction, going on past any file that fails
+	 * and saying why on its result, which is what a migration step needs. A file that no longer fits once
+	 * the ones before it are reserved, or that would start after the uploads have used a minute, comes back
+	 * deferred rather than failed, as do the files after it, so the caller sends them again next time. The
+	 * first file is always sent. Nothing is queued to the background: this is the background.
+	 *
+	 * @param requests One request per Salesforce file, in the order they should be taken.
+	 * @return One result per request, in the same order.
+	 */
+	public List<GoogleFileUploadResultDTO> uploadSalesforceFilesNow(List<GoogleFileUploadRequestDTO> requests) {
+		return transferSalesforceFiles(requests, false, true);
 	}
 
 	/**
@@ -180,7 +198,7 @@ public without sharing class GoogleLocalFileTransferService {
 		return results;
 	}
 
-	private List<GoogleFileUploadResultDTO> transferSalesforceFiles(List<GoogleFileUploadRequestDTO> requests, Boolean allowsBackgroundUpload) {
+	private List<GoogleFileUploadResultDTO> transferSalesforceFiles(List<GoogleFileUploadRequestDTO> requests, Boolean allowsBackgroundUpload, Boolean continuesPastFailure) {
 		List<GoogleFileUploadResultDTO> results = new List<GoogleFileUploadResultDTO>();
 		if (requests == null || requests.isEmpty()) return results;
 
@@ -189,19 +207,28 @@ public without sharing class GoogleLocalFileTransferService {
 		List<GoogleFileUploadRequestDTO> backgroundRequests = new List<GoogleFileUploadRequestDTO>();
 		Set<Id> immediateVersionIds = new Set<Id>();
 		Long reservedBytes = 0;
+		Boolean transactionFull = false;
 
 		for (GoogleFileUploadRequestDTO request : requests) {
-			ContentVersion sourceFile = requireSourceFile(sourceFilesByRequestedId, request);
-			Long fileSize = resolveFileSize(sourceFile);
-			if (fileSize <= 0) {
-				throw new GoogleLocalFileTransferException(EMPTY_SOURCE_FILE_MESSAGE);
-			}
-
 			GoogleFileUploadResultDTO result = new GoogleFileUploadResultDTO();
-			result.fileName = resolveFileName(request.fileName, sourceFile);
-			result.fileSize = fileSize;
 			results.add(result);
 
+			ContentVersion sourceFile = sourceFilesByRequestedId.get(request.salesforceFileId);
+			if (sourceFile == null) {
+				result.errorMessage = failUnlessContinuing(SOURCE_FILE_NOT_FOUND_MESSAGE, continuesPastFailure);
+				continue;
+			}
+
+			Long fileSize = resolveFileSize(sourceFile);
+			result.fileName = resolveFileName(request.fileName, sourceFile);
+			result.fileSize = fileSize;
+
+			if (fileSize <= 0) {
+				result.errorMessage = failUnlessContinuing(EMPTY_SOURCE_FILE_MESSAGE, continuesPastFailure);
+				continue;
+			}
+
+			Boolean fitsAlone = fitsInHeap(fileSize) && fitsInCallout(fileSize);
 			Boolean fitsNow = fitsInHeap(reservedBytes + fileSize) && fitsInCallout(fileSize);
 			if (allowsBackgroundUpload && (fileSize > metadataService.getBigFileSizeInBytes() || !fitsNow)) {
 				result.isQueued = true;
@@ -209,8 +236,16 @@ public without sharing class GoogleLocalFileTransferService {
 				continue;
 			}
 
-			if (!fitsNow) {
-				throw new GoogleLocalFileTransferException(FILE_TOO_LARGE_MESSAGE);
+			if (!fitsAlone) {
+				result.errorMessage = failUnlessContinuing(FILE_TOO_LARGE_MESSAGE, continuesPastFailure);
+				continue;
+			}
+
+			if (transactionFull || !fitsNow) {
+				failUnlessContinuing(FILE_TOO_LARGE_MESSAGE, continuesPastFailure);
+				transactionFull = true;
+				result.isDeferred = true;
+				continue;
 			}
 
 			reservedBytes += fileSize;
@@ -221,27 +256,69 @@ public without sharing class GoogleLocalFileTransferService {
 		List<GoogleFileCreateRequestDTO> createRequests = new List<GoogleFileCreateRequestDTO>();
 		List<Integer> createResultIndexes = new List<Integer>();
 		List<SObject> salesforceFilesToRemove = new List<SObject>();
+		Boolean skipIntelligence = false;
+		Boolean uploadFailed = false;
+		Integer uploadsStarted = 0;
+		Integer deferredForUploadTime = 0;
+		Long uploadMillisSpent = 0;
 
 		for (Integer index = 0; index < requests.size(); index++) {
 			GoogleFileUploadResultDTO result = results[index];
-			if (result.isQueued == true) continue;
+			if (result.isQueued == true || result.isDeferred == true || result.errorMessage != null) continue;
 
 			GoogleFileUploadRequestDTO request = requests[index];
-			ContentVersion sourceFile = contentByVersionId.get(requireSourceFile(sourceFilesByRequestedId, request).Id);
+			ContentVersion sourceFile = contentByVersionId.get(sourceFilesByRequestedId.get(request.salesforceFileId).Id);
 			if (sourceFile == null) {
-				throw new GoogleLocalFileTransferException(SOURCE_FILE_NOT_FOUND_MESSAGE);
+				result.errorMessage = failUnlessContinuing(SOURCE_FILE_NOT_FOUND_MESSAGE, continuesPastFailure);
+				continue;
 			}
 
-			createRequests.add(uploadToDrive(request, sourceFile, result));
-			createResultIndexes.add(index);
-			sourceFile.VersionData = null;
+			if (continuesPastFailure && hasSpentUploadTime(uploadsStarted, uploadMillisSpent)) {
+				sourceFile.VersionData = null;
+				result.isDeferred = true;
+				deferredForUploadTime++;
+				continue;
+			}
+
+			Long uploadStartedAt = System.currentTimeMillis();
+			uploadsStarted++;
+			try {
+				createRequests.add(uploadToDrive(request, sourceFile, result));
+				createResultIndexes.add(index);
+			} catch (GoogleLocalFileTransferException ex) {
+				if (!continuesPastFailure) {
+					Logger.saveLog();
+					throw ex;
+				}
+
+				uploadFailed = true;
+				result.errorMessage = ex.getMessage();
+				continue;
+			} finally {
+				sourceFile.VersionData = null;
+				uploadMillisSpent += System.currentTimeMillis() - uploadStartedAt;
+			}
+
+			skipIntelligence = skipIntelligence || request.skipIntelligence == true;
 
 			if (request.removeSalesforceFile == true && sourceFile.ContentDocumentId != null) {
 				salesforceFilesToRemove.add(new ContentDocument(Id = sourceFile.ContentDocumentId));
 			}
 		}
 
+		if (deferredForUploadTime > 0) {
+			Logger.info('Upload Salesforce Files --> Deferred=' + deferredForUploadTime + ' after ' + uploadMillisSpent + ' ms of uploads').addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		}
+
+		if (uploadFailed) {
+			Logger.saveLog();
+		}
+
 		enqueueBackgroundUploads(backgroundRequests);
+
+		if (skipIntelligence) {
+			GoogleFileInsertFinalizeCommand.skipIntelligenceForThisTransaction();
+		}
 
 		List<GoogleFileInsertCommand.GoogleFileInsertResult> insertResults = new GoogleLocalFileService(uow).createGoogleFileRecords(createRequests);
 		for (Integer position = 0; position < insertResults.size(); position++) {
@@ -250,6 +327,7 @@ public without sharing class GoogleLocalFileTransferService {
 			result.googleFileVersionId = insertResults[position].getLocalGoogleFileVersionId();
 		}
 
+		attachAdditionalRecords(requests, results, continuesPastFailure);
 		removeSalesforceFiles(salesforceFilesToRemove);
 		return results;
 	}
@@ -322,13 +400,63 @@ public without sharing class GoogleLocalFileTransferService {
 			.toList());
 	}
 
-	private ContentVersion requireSourceFile(Map<Id, ContentVersion> sourceFilesByRequestedId, GoogleFileUploadRequestDTO request) {
-		ContentVersion sourceFile = sourceFilesByRequestedId.get(request.salesforceFileId);
-		if (sourceFile == null) {
-			throw new GoogleLocalFileTransferException(SOURCE_FILE_NOT_FOUND_MESSAGE);
+	private String failUnlessContinuing(String message, Boolean continuesPastFailure) {
+		if (!continuesPastFailure) {
+			throw new GoogleLocalFileTransferException(message);
 		}
 
-		return sourceFile;
+		return message;
+	}
+
+	private void attachAdditionalRecords(List<GoogleFileUploadRequestDTO> requests, List<GoogleFileUploadResultDTO> results, Boolean continuesPastFailure) {
+		Map<Integer, List<GoogleFileLink__c>> additionalLinksByRequestIndex = new Map<Integer, List<GoogleFileLink__c>>();
+
+		for (Integer index = 0; index < requests.size(); index++) {
+			GoogleFileUploadRequestDTO request = requests[index];
+			GoogleFileUploadResultDTO result = results[index];
+			if (result.googleFileId == null || request.additionalRecordIds == null || request.additionalRecordIds.isEmpty()) continue;
+
+			additionalLinksByRequestIndex.put(index, new GoogleFileLinkInsertCommand(uow)
+				.forFile(result.googleFileId)
+				.toRecords(request.additionalRecordIds)
+				.withSource(resolveLinkSource(request))
+				.withShareType(request.shareType)
+				.withVisibility(request.visibility)
+				.save());
+		}
+
+		if (additionalLinksByRequestIndex.isEmpty()) return;
+
+		try {
+			uow.commitWork(true);
+		} catch (Exception ex) {
+			Logger.error('Attach Additional Records After Upload (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			if (!continuesPastFailure) {
+				throw new GoogleLocalFileTransferException(LINK_FAILED_MESSAGE);
+			}
+
+			return;
+		}
+
+		for (Integer index : additionalLinksByRequestIndex.keySet()) {
+			GoogleFileUploadRequestDTO request = requests[index];
+			Id initiatorUserId = request.ownerId == null ? UserInfo.getUserId() : request.ownerId;
+
+			for (GoogleFileLink__c linkRecord : additionalLinksByRequestIndex.get(index)) {
+				new GoogleFileAttachFinalizeCommand()
+					.initiatedBy(initiatorUserId)
+					.forFile(results[index].googleFileId)
+					.forLink(linkRecord.Id)
+					.forRecord((Id) linkRecord.LinkedObjectId__c)
+					.onlyIfCreated(true)
+					.execute();
+			}
+		}
+	}
+
+	private String resolveLinkSource(GoogleFileUploadRequestDTO request) {
+		return resolveSource(String.isBlank(request.linkSource) ? request.source : request.linkSource);
 	}
 
 	private GoogleFileCreateRequestDTO uploadToDrive(GoogleFileUploadRequestDTO request, ContentVersion sourceFile, GoogleFileUploadResultDTO result) {
@@ -340,7 +468,6 @@ public without sharing class GoogleLocalFileTransferService {
 			uploadedFile = getRemoteUploader().uploadFileContent(result.fileName, mimeType, sourceFile.VersionData);
 		} catch (Exception ex) {
 			Logger.error('Upload Salesforce File (Local/Remote): ' + String.valueOf(sourceFile.Id) + ', message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			Logger.saveLog();
 			throw new GoogleLocalFileTransferException(UPLOAD_FAILED_MESSAGE);
 		}
 
@@ -355,6 +482,11 @@ public without sharing class GoogleLocalFileTransferService {
 		createRequest.googleDriveId = uploadedFile.id;
 		createRequest.parentFolderId = result.googleDriveFolderId;
 		createRequest.source = source;
+		createRequest.linkSource = String.isBlank(request.linkSource) ? null : resolveSource(request.linkSource);
+		createRequest.ownerId = request.ownerId;
+		createRequest.shareType = request.shareType;
+		createRequest.visibility = request.visibility;
+		createRequest.salesforceFileId = sourceFile.ContentDocumentId;
 		return createRequest;
 	}
 
@@ -436,7 +568,7 @@ public without sharing class GoogleLocalFileTransferService {
 	}
 
 	private String resolveSource(String requestedSource) {
-		if (String.isBlank(requestedSource)) return DEFAULT_UPLOAD_SOURCE;
+		if (String.isBlank(requestedSource)) return GoogleCloudConstants.FILE_SOURCE_NOTES_AND_ATTACHMENTS;
 
 		List<String> supportedSources = new List<String>();
 		for (Schema.PicklistEntry entry : GoogleFile__c.Source__c.getDescribe().getPicklistValues()) {
@@ -503,6 +635,11 @@ public without sharing class GoogleLocalFileTransferService {
 
 	private Boolean fitsInCallout(Long fileSize) {
 		return fileSize <= transferLimits.calloutBodyLimitBytes();
+	}
+
+	private Boolean hasSpentUploadTime(Integer uploadsStarted, Long uploadMillisSpent) {
+		Long budgetMillis = uploadTimeBudgetMillisOverride == null ? UPLOAD_TIME_BUDGET_MILLIS : uploadTimeBudgetMillisOverride;
+		return uploadsStarted > 0 && uploadMillisSpent >= budgetMillis;
 	}
 
 	private GoogleRemoteFileUploader getRemoteUploader() {

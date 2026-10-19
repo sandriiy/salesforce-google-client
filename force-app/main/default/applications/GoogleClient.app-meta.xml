@@ -24,6 +24,7 @@
     <navType>Standard</navType>
     <tabs>standard-home</tabs>
     <tabs>GoogleClientAnalytics</tabs>
+    <tabs>GoogleClientMigration</tabs>
     <uiType>Lightning</uiType>
     <utilityBar>Google_Client_UtilityBar</utilityBar>
 </CustomApplication>

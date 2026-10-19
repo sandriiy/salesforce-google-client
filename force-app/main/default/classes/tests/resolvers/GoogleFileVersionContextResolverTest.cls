@@ -123,4 +123,52 @@ private class GoogleFileVersionContextResolverTest {
 		Assert.areEqual(OVER_ANALYSIS_LIMIT_BYTES, resolver.resolveWorkspaceCopySizeInBytes(buildVersion(OVER_ANALYSIS_LIMIT_BYTES, 'DOCS_BROCHURE', null)));
 		Assert.isNull(resolver.resolveWorkspaceCopySizeInBytes(null));
 	}
+
+	private static GoogleFile__c buildFileOwnedBy(Id fileId, Id ownerId, Id createdById) {
+		return (GoogleFile__c) JSON.deserialize(
+			JSON.serialize(new Map<String, Object>{
+				'attributes' => new Map<String, Object>{ 'type' => 'GoogleFile__c' },
+				'Id' => fileId,
+				'OwnerId' => ownerId,
+				'CreatedById' => createdById
+			}),
+			GoogleFile__c.class
+		);
+	}
+
+	@IsTest
+	private static void testResolveDelegatedOwnerIdsByFileIdPositiveOnlyFilesCreatedOnAnotherUsersBehalf() {
+		GoogleCloudTestFactory.initMocks();
+		Id delegatedFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		Id ownFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		Id ownerId = GoogleCloudTestFactory.otherUserId();
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
+			buildFileOwnedBy(delegatedFileId, ownerId, UserInfo.getUserId()),
+			buildFileOwnedBy(ownFileId, UserInfo.getUserId(), UserInfo.getUserId())
+		});
+
+		Map<Id, Id> delegatedOwners = new GoogleFileVersionContextResolver().resolveDelegatedOwnerIdsByFileId(new Set<Id>{ delegatedFileId, ownFileId });
+
+		Assert.areEqual(1, delegatedOwners.size(), 'A file owned by its creator is placed against the running user as before');
+		Assert.areEqual(ownerId, delegatedOwners.get(delegatedFileId));
+	}
+
+	@IsTest
+	private static void testBuildRelocationRequestsPositivePlacesADelegatedFileAgainstItsOwner() {
+		Id delegatedFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		Id ownFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		Id ownerId = GoogleCloudTestFactory.otherUserId();
+		GoogleFileVersion__c delegatedVersion = new GoogleFileVersion__c(Id = GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType), GoogleFileId__c = delegatedFileId);
+		GoogleFileVersion__c ownVersion = new GoogleFileVersion__c(Id = GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType), GoogleFileId__c = ownFileId);
+
+		List<GoogleFileRelocationRequestDTO> requests = new GoogleFileVersionContextResolver().buildRelocationRequests(
+			new List<GoogleFileVersion__c>{ delegatedVersion, ownVersion },
+			new Map<Id, Id>(),
+			new Map<Id, Id>{ delegatedFileId => ownerId }
+		);
+
+		Assert.areEqual(2, requests.size());
+		Assert.areEqual(ownerId, requests[0].initiatorUserId, 'A file created on another user\'s behalf is placed in that user\'s folder');
+		Assert.areEqual(UserInfo.getUserId(), requests[1].initiatorUserId, 'Every other file is placed against the running user');
+	}
 }

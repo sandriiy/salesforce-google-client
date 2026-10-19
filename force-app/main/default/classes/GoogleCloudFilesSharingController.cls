@@ -69,13 +69,17 @@ public with sharing class GoogleCloudFilesSharingController {
 
     @AuraEnabled
     public static GoogleFileVersion__c createNewPublicLink(Id localFileVersionId, Datetime expirationDate, Boolean isDomainSkip) {
+		requireVersionAccess(localFileVersionId, true);
+
 		GoogleLocalFileVersionPublicLinkService localPublicLinkService = new GoogleLocalFileVersionPublicLinkService();
 		List<GoogleFileVersion__c> updatedFiles = localPublicLinkService.applyPublicLinkSharing(localFileVersionId, expirationDate, isDomainSkip);
-		return updatedFiles.isEmpty() ? null : updatedFiles.get(0);
+		return updatedFiles.isEmpty() ? null : toPublicLinkDetails(updatedFiles.get(0));
 	}
 
 	@AuraEnabled
     public static void deleteExistingPublicLink(Id localFileVersionId) {
+		requireVersionAccess(localFileVersionId, true);
+
 		GoogleLocalFileVersionPublicLinkService localPublicLinkService = new GoogleLocalFileVersionPublicLinkService();
 		localPublicLinkService.removePublicLinkSharing(localFileVersionId);
 	}
@@ -89,5 +93,22 @@ public with sharing class GoogleCloudFilesSharingController {
 
 	private static GoogleLocalFileSharingService resolveSharingService() {
 		return sharingServiceOverride != null ? sharingServiceOverride : new GoogleLocalFileSharingService();
+	}
+
+	private static void requireVersionAccess(Id localFileVersionId, Boolean requiresEdit) {
+		try {
+			new GoogleLocalFileService().requireVersionAccess(localFileVersionId, requiresEdit);
+		} catch (GoogleLocalFileService.GoogleLocalFileException ex) {
+			throw new AuraHandledException(ex.getMessage());
+		}
+	}
+
+	private static GoogleFileVersion__c toPublicLinkDetails(GoogleFileVersion__c localFileVersion) {
+		return new GoogleFileVersion__c(
+			Id = localFileVersion.Id,
+			PublicLink__c = localFileVersion.PublicLink__c,
+			PublicLinkExpirationDate__c = localFileVersion.PublicLinkExpirationDate__c,
+			PublicLinkStatus__c = localFileVersion.PublicLinkStatus__c
+		);
 	}
 }

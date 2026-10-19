@@ -4,6 +4,20 @@ If you run into something unexpected, check the list below. If your issue isn't 
 
 ---
 
+??? info "The migration leaves some Salesforce Files behind"
+
+    **When does it happen?**
+
+    After a migration from the **Migration** tab, some Salesforce Files are still only in Salesforce, and the count the wizard showed before the run was lower than the number of files on the records.
+
+    **Root Cause**
+
+    The migration moves only Salesforce Files that are attached to at least one record and are 5 MB or smaller. Files not attached to any record, files larger than 5 MB, files stored outside Salesforce, notes and classic Attachments are outside its scope by design, and the earlier versions of a file are never moved, only the current one.
+
+    **Fix**
+
+    Upload the remaining files through the Google Client components, or through the **Upload File to Google Drive** flow action, which takes larger files. A file that could not be copied for another reason is retried by running the same selection again: files already in Google Drive are skipped, so a second run only picks up what the first one left.
+
 ??? info ""View All" Attachments page opens and immediately closes"
 
     **When does it happen?**

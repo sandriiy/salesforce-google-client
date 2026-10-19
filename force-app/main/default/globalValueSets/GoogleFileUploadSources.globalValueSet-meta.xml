@@ -20,6 +20,11 @@
         <default>false</default>
         <label>File Explorer</label>
     </customValue>
+    <customValue>
+        <fullName>Migration</fullName>
+        <default>false</default>
+        <label>Migration</label>
+    </customValue>
     <masterLabel>Google File Upload Sources</masterLabel>
     <sorted>false</sorted>
 </GlobalValueSet>

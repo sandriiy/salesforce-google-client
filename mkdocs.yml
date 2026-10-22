@@ -83,6 +83,7 @@ nav:
       - File Explorer: features/file-explorer.md
       - File Reuse & Linked Records: features/file-reuse-linked-records.md
       - Preview: features/preview.md
+      - Bulk Download: features/bulk-download.md
       - Sharing: features/sharing.md
       - Public Links: features/public-links.md
       - Open in Google Drive: features/open-in-drive.md

@@ -1,0 +1,29 @@
+:host {
+    display: block;
+    min-width: 0;
+}
+
+.gc-bulk-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.gc-bulk-bar__progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.gc-bulk-bar__progress-bar {
+    flex: 0 1 16rem;
+    min-width: 6rem;
+}
+
+.gc-bulk-bar__action {
+    flex: 0 0 auto;
+}

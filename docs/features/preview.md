@@ -45,6 +45,10 @@ If Download As is not supported for the selected file, the action is hidden.
 
 ![Download Options](../assets/images/client_preview_download_options.png)
 
+To download several files of a record at once, use the **View All** page of Notes & Attachments.
+
+📘 See [Bulk Download](bulk-download.md)
+
 ## Available Actions
 
 Depending on the user’s access level, the preview window can provide:

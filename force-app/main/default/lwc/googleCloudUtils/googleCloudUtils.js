@@ -565,4 +565,37 @@ const asString = (value) => {
 	return String(extracted);
 };
 
-export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, resolveTransferLimits, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };
+const createBulkSelection = (selectedIds = []) => {
+    const ids = new Set(selectedIds);
+    const toArray = () => [...ids];
+
+    return Object.freeze({
+        count: ids.size,
+        isEmpty: ids.size === 0,
+        has: (id) => ids.has(id),
+        includesAll: (candidateIds) => candidateIds.length > 0 && candidateIds.every((id) => ids.has(id)),
+        toggle: (id) => {
+            const next = new Set(ids);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return createBulkSelection(next);
+        },
+        select: (idsToAdd) => createBulkSelection([...toArray(), ...idsToAdd]),
+        deselect: (idsToRemove) => {
+            const removal = new Set(idsToRemove);
+            return createBulkSelection(toArray().filter((id) => !removal.has(id)));
+        },
+        retain: (knownIds) => {
+            const known = new Set(knownIds);
+            return createBulkSelection(toArray().filter((id) => known.has(id)));
+        },
+        clear: () => createBulkSelection(),
+        pick: (rows, keyField = 'id') => (Array.isArray(rows) ? rows.filter((row) => ids.has(row[keyField])) : []),
+        toArray
+    });
+};
+
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, resolveTransferLimits, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString, createBulkSelection };

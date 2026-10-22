@@ -16,6 +16,12 @@
                     </div>
                 </div>
                 <div class="slds-col slds-no-flex slds-grid slds-align-top slds-p-bottom--xx-small">
+                    <template lwc:if={isBulkDownloadInProgress}>
+                        <lightning-button class="slds-m-right_x-small" label="Stop" variant="neutral" icon-name="utility:stop" onclick={handleBulkDownloadStop} disabled={isBulkDownloadStopping}></lightning-button>
+                    </template>
+                    <template lwc:elseif={hasSelectedFiles}>
+                        <lightning-button class="slds-m-right_x-small" label={bulkDownloadLabel} variant="brand" icon-name="utility:download" onclick={handleBulkDownload}></lightning-button>
+                    </template>
                     <lightning-button-group>
                         <lightning-button onclick={handleFileUpload} label="Upload Files" variant="neutral"></lightning-button>
                         <lightning-button-menu alternative-text="More actions" icon-name="utility:chevrondown" menu-alignment="right" onselect={handleHeaderActionSelect}>
@@ -26,10 +32,25 @@
                 </div>
             </div>
             <div class="slds-grid">
-                <div class="slds-col slds-align-bottom">
-                    <p class="slds-text-body_small slds-text-body--small">
-                        {files.length} items • Sorted by {sortedByLabel}
-                    </p>
+                <div class="slds-col slds-align-bottom slds-has-flexi-truncate">
+                    <template lwc:if={isBulkBarVisible}>
+                        <c-google-cloud-bulk-action-bar
+                            class="full-page-bulk-bar"
+                            selected-count={selection.count}
+                            total-count={files.length}
+                            busy-label="Downloading"
+                            busy={isBulkDownloadInProgress}
+                            is-stopping={isBulkDownloadStopping}
+                            progress={bulkDownloadProgress}
+                            hide-actions
+                            onclearselection={handleSelectionClear}>
+                        </c-google-cloud-bulk-action-bar>
+                    </template>
+                    <template lwc:else>
+                        <p class="slds-text-body_small slds-text-body--small">
+                            {files.length} items • Sorted by {sortedByLabel}
+                        </p>
+                    </template>
                 </div>
                 <div class="slds-col slds-no-flex slds-grid slds-align-bottom">
                     <lightning-input type="text" variant="label-hidden" placeholder="Search..." onkeyup={handleSearch}></lightning-input>
@@ -45,6 +66,7 @@
                             <div class="slds-table_edit_container slds-table--edit_container slds-is-relative">
                                 <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_fixed-layout">
                                     <colgroup>
+                                        <col class="select-column" />
                                         <col style="width: 35%;" />
                                         <col style="width: 20%;" />
                                         <col style="width: 25%;" />
@@ -52,6 +74,16 @@
                                     </colgroup>
                                     <thead>
                                         <tr class="slds-text-title_caps">
+                                            <th class="select-cell" scope="col">
+                                                <lightning-input
+                                                    type="checkbox"
+                                                    variant="label-hidden"
+                                                    label="Select all shown files"
+                                                    checked={isEveryDisplayedFileSelected}
+                                                    disabled={isSelectAllDisabled}
+                                                    onchange={handleVisibleSelectionChange}>
+                                                </lightning-input>
+                                            </th>
                                             <th data-id="name" data-name="Title" class="sortable-column" scope="col" onclick={handleColumnSort}>
                                                 <div class="slds-truncate" title="Title">Title</div>
                                             </th>
@@ -67,8 +99,19 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <template for:each={displayedFiles} for:item="file">
-                                            <tr key={file.id} data-id={file.localId}>
+                                        <template for:each={selectableFiles} for:item="file">
+                                            <tr key={file.id} data-id={file.localId} class={file.rowClass}>
+                                                <td class="select-cell">
+                                                    <lightning-input
+                                                        type="checkbox"
+                                                        variant="label-hidden"
+                                                        label={file.selectLabel}
+                                                        data-id={file.localId}
+                                                        checked={file.isSelected}
+                                                        disabled={isSelectionLocked}
+                                                        onchange={handleFileSelectionChange}>
+                                                    </lightning-input>
+                                                </td>
                                                 <th scope="row">
                                                     <div class="file-title-cell" title={file.hoverSummaryText}>
                                                         <div class="slds-truncate file-title-cell__link-wrap" title={file.hoverSummaryText}>

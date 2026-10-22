@@ -63,7 +63,9 @@ Log in as Admin.
 - [ ] Confirm the `GoogleDriveDirectUpload` CSP Trusted Site exists and is active in Setup
 - [ ] Confirm Org Cache is allocated to the `GoogleCloudClient` Platform Cache partition
 - [ ] Confirm File Explorer columns in Advanced → User Interface are at their default selection
+- [ ] Confirm Maximum Preview File Size in Advanced → File Management is blank and the help text names the automatic size
 - [ ] Confirm neither `Google Client: View All Files` nor `Google Client: Edit All Files` is assigned to any test user
+- [ ] Open the Migration tab and confirm it renders without errors
 - [ ] Open configuration tabs and confirm there are no page-level errors
 - [ ] Confirm admin-only configuration pages are available to the admin user
 - [ ] Confirm Analytics tab renders for the admin user
@@ -151,6 +153,19 @@ Log in as Internal User A.
 - [ ] Confirm the file opens read only and the folder around it cannot be reached
 - [ ] Confirm Open in Google Drive is not offered for a file owned by another user
 
+Log in as Admin.
+
+- [ ] Enter 1 MB in Maximum Preview File Size under Advanced → File Management and save
+
+Log in as Internal User A.
+
+- [ ] Confirm Download as... is no longer offered for a document larger than 1 MB
+- [ ] Confirm a document whose uploaded size is under 1 MB still previews and offers Download as...
+
+Log in as Admin.
+
+- [ ] Clear Maximum Preview File Size, save, and confirm the help text names the automatic size again
+
 ### Phase 4: Attachments Preview and File Actions
 
 Continue as Internal User A.
@@ -170,6 +185,12 @@ Use the Attachments component as the entry point for Preview in this phase. Do n
 - [ ] Confirm older version remains in the org
 - [ ] Confirm older version remains available where supported
 - [ ] Confirm preview and download use the latest active version
+- [ ] Open View All from the Attachments component and confirm every row has a checkbox
+- [ ] Tick two files, one of them larger than 3.5 MB, and confirm Download (2) appears next to Upload Files
+- [ ] Download them and confirm one ZIP archive named after the record arrives with both files intact
+- [ ] Search by part of a name, tick the checkbox in the column header, and confirm only the files shown are selected
+- [ ] Start a download of several large files, click Stop, and confirm nothing is saved and the selection is kept
+- [ ] Confirm Clear selection unticks every file
 
 ### Phase 5: File Explorer
 
@@ -421,6 +442,7 @@ Use the Experience Cloud Uploader component for upload checks and the Experience
 - [ ] Confirm Attachments renders without errors
 - [ ] Confirm files are not visible in the Experience Cloud Attachments component by default unless external visibility is enabled
 - [ ] Confirm View All navigation works from the Experience Cloud Attachments component
+- [ ] Tick two visible files on the View All page and confirm they download together as one ZIP archive
 - [ ] Confirm Preview opens from the Experience Cloud Attachments component for files the external user can access
 - [ ] Confirm Preview actions respect external user access level
 - [ ] Confirm internal-only actions are not available
@@ -876,7 +898,28 @@ Build one screen flow on a record page that calls the four actions in turn, each
 - [ ] Point one action at a file that does not exist and confirm the fault path shows a readable message
 - [ ] Confirm logs tagged `Google Client for Salesforce` show the expected outcomes and no unexpected errors
 
-### Phase 22: Final Sweep
+### Phase 22: Salesforce Files Migration
+
+Log in as Admin-level non-system user without Query All Files, but with Google Client Admin permission.
+
+- [ ] Open the Migration tab and confirm it explains that Query All Files is needed and offers nothing else
+
+Log in as Admin.
+
+Attach a few Salesforce Files to Record A and Record B first: one attached to both records, one larger than 5 MB, and one attached to no record at all.
+
+- [ ] Open the Migration tab and confirm Readiness shows the Google Drive connection and where files land
+- [ ] Choose Files Matching Conditions, enter a condition that selects the test files, click Check, and confirm the count and the sample match
+- [ ] Enter a condition Salesforce cannot run and confirm it is refused with a readable message
+- [ ] Narrow the run to the object of Record A and start the migration
+- [ ] Confirm the Progress card updates by itself and is still there after leaving and returning to the page
+- [ ] Confirm the run ends as Finished and that the file larger than 5 MB and the unattached file were not copied
+- [ ] Confirm the migrated files show under Notes & Attachments on Record A, keep their owner, and the file attached to both records is linked to both
+- [ ] Confirm the Migrated files card lists the copied files and opens the preview
+- [ ] With AI Analytics on, confirm migrated files get a summary unless Skip AI analysis was chosen
+- [ ] Start the same selection again, confirm the files already copied are skipped, and click Stop to confirm the run ends as Stopped
+
+### Phase 23: Final Sweep
 
 Use the final intended release configuration.
 
@@ -894,6 +937,7 @@ Use the final intended release configuration.
 - [ ] Preview works from File Explorer
 - [ ] Download works
 - [ ] Download as... works for previewable files
+- [ ] Two files ticked on the View All page download together as one ZIP archive
 - [ ] Sharing works from Preview
 - [ ] Public links work from Preview
 - [ ] Versioning works from Preview
@@ -910,6 +954,7 @@ Use the final intended release configuration.
 - [ ] A document larger than the Maximum Preview File Size setting previews
 - [ ] Open in Google Drive works for an owned file and is not offered to external users
 - [ ] Flow actions create a folder, upload, download and read file text without errors
+- [ ] The Migration tab opens and a run copies a Salesforce file into Google Drive
 - [ ] No critical errors appear in the UI
 - [ ] No critical errors appear in logs
 
@@ -921,13 +966,15 @@ Use this when changes are small and isolated, but you still want confidence acro
 
 Log in as Admin.
 
-- [X] Confirm Google Drive integration is configured and validated
-- [X] Confirm current folder structure configuration is known
-- [X] Confirm current AI provider configuration is known
-- [X] Confirm the `Enable AI File Intelligence` checkbox state is known
-- [X] Confirm the `Direct Browser Upload` state is known
-- [X] Confirm the configured File Explorer columns are known
-- [X] Open Google Client app and confirm configuration tabs render without errors
+- [ ] Confirm Google Drive integration is configured and validated
+- [ ] Confirm current folder structure configuration is known
+- [ ] Confirm current AI provider configuration is known
+- [ ] Confirm the `Enable AI File Intelligence` checkbox state is known
+- [ ] Confirm the `Direct Browser Upload` state is known
+- [ ] Confirm the configured File Explorer columns are known
+- [ ] Confirm the Maximum Preview File Size value is known
+- [ ] Open Google Client app and confirm configuration tabs render without errors
+- [ ] Open the Migration tab and confirm it renders without errors
 
 ### Phase 2: Upload and Preview
 
@@ -942,20 +989,21 @@ Use both record-page components in this phase:
 - Open the previewable file from the Uploader component
 - Open the non-previewable file from the Attachments component
 
-- [X] Open the Lightning record page
-- [X] Confirm Uploader component renders without errors
-- [X] Confirm Attachments component renders without errors
-- [X] Upload a previewable file using the Uploader component
-- [X] Confirm the previewable file appears in the Uploader component
-- [X] Open Preview for the previewable file from the Uploader component
-- [X] Confirm preview works
-- [X] Confirm download works
-- [X] Confirm Download as... is visible
-- [X] Upload a non-previewable file using the Attachments component
-- [X] Confirm the non-previewable file appears in the Attachments component
-- [X] Open Preview for the non-previewable file from the Attachments component
-- [X] Confirm non-previewable message is shown
-- [X] Confirm Download as... is not visible
+- [ ] Open the Lightning record page
+- [ ] Confirm Uploader component renders without errors
+- [ ] Confirm Attachments component renders without errors
+- [ ] Upload a previewable file using the Uploader component
+- [ ] Confirm the previewable file appears in the Uploader component
+- [ ] Open Preview for the previewable file from the Uploader component
+- [ ] Confirm preview works
+- [ ] Confirm download works
+- [ ] Confirm Download as... is visible
+- [ ] Upload a non-previewable file using the Attachments component
+- [ ] Confirm the non-previewable file appears in the Attachments component
+- [ ] Open Preview for the non-previewable file from the Attachments component
+- [ ] Confirm non-previewable message is shown
+- [ ] Confirm Download as... is not visible
+- [ ] Open View All from the Attachments component, tick two files and confirm they download together as one ZIP archive
 
 ### Phase 3: Versioning
 
@@ -963,10 +1011,10 @@ Continue as Internal User A.
 
 Use Preview opened from the same component where the previewable file was uploaded.
 
-- [X] Upload a new version for the previewable file from Preview
-- [X] Confirm the latest version becomes active
-- [X] Confirm Preview uses the expected latest version
-- [X] Confirm Download uses the expected latest version
+- [ ] Upload a new version for the previewable file from Preview
+- [ ] Confirm the latest version becomes active
+- [ ] Confirm Preview uses the expected latest version
+- [ ] Confirm Download uses the expected latest version
 
 ### Phase 4: Internal Sharing
 
@@ -974,19 +1022,19 @@ Continue as Internal User A.
 
 Use a file from the component where it is visible.
 
-- [X] Open Preview from the component where the file is visible
-- [X] Share the file with Internal User B as Viewer from Preview
+- [ ] Open Preview from the component where the file is visible
+- [ ] Share the file with Internal User B as Viewer from Preview
 
 Log in as Internal User B.
 
 Use the same component path where the shared file is expected to appear.
 
-- [X] Open the same record
-- [X] Confirm the shared file is visible in the expected component
-- [X] Open Preview from the expected component
-- [X] Confirm read-only behavior
-- [X] Confirm download works
-- [X] Confirm edit/version/delete/share/public link actions are not available
+- [ ] Open the same record
+- [ ] Confirm the shared file is visible in the expected component
+- [ ] Open Preview from the expected component
+- [ ] Confirm read-only behavior
+- [ ] Confirm download works
+- [ ] Confirm edit/version/delete/share/public link actions are not available
 
 ### Phase 5: File Explorer
 
@@ -994,13 +1042,13 @@ Log in as Internal User A.
 
 Use an account with more files than fit on a single page.
 
-- [X] Open File Explorer
-- [X] Confirm the list renders and the configured columns are shown
-- [X] Scroll to the bottom and confirm more rows are appended without repeats
-- [X] Search by part of a file name and confirm the expected file is found
-- [X] Sort by Last Modified Date and confirm the order is correct
-- [X] Select Refresh and confirm the list reloads
-- [X] Open Preview from File Explorer
+- [ ] Open File Explorer
+- [ ] Confirm the list renders and the configured columns are shown
+- [ ] Scroll to the bottom and confirm more rows are appended without repeats
+- [ ] Search by part of a file name and confirm the expected file is found
+- [ ] Sort by Last Modified Date and confirm the order is correct
+- [ ] Select Refresh and confirm the list reloads
+- [ ] Open Preview from File Explorer
 
 ### Phase 6: Attach Existing File
 
@@ -1008,13 +1056,13 @@ Log in as Internal User A.
 
 Use the Attachments component.
 
-- [X] Open another Salesforce record
-- [X] Open Attach Existing Files from the Attachments component
-- [X] Confirm owned files are available
-- [X] Attach an existing owned file
-- [X] Confirm the file appears on the second record in the Attachments component
-- [X] Confirm the same file still appears on the original record in the Attachments component where expected
-- [X] Confirm File Details shows linked records where available
+- [ ] Open another Salesforce record
+- [ ] Open Attach Existing Files from the Attachments component
+- [ ] Confirm owned files are available
+- [ ] Attach an existing owned file
+- [ ] Confirm the file appears on the second record in the Attachments component
+- [ ] Confirm the same file still appears on the original record in the Attachments component where expected
+- [ ] Confirm File Details shows linked records where available
 
 ### Phase 7: Access
 
@@ -1022,10 +1070,10 @@ Use a file linked to two records.
 
 Use the component where the file is expected to be visible for record-level visibility and Preview access checks.
 
-- [X] Confirm a user with access to a linked record can see the file in the expected component
-- [X] Confirm a user with access only to an unrelated record cannot see the file in the expected component
-- [X] Confirm direct Preview URL does not bypass access checks
-- [X] Confirm direct File Details URL does not bypass access checks
+- [ ] Confirm a user with access to a linked record can see the file in the expected component
+- [ ] Confirm a user with access only to an unrelated record cannot see the file in the expected component
+- [ ] Confirm direct Preview URL does not bypass access checks
+- [ ] Confirm direct File Details URL does not bypass access checks
 
 ### Phase 8: Folder Structure
 
@@ -1033,46 +1081,46 @@ Use the currently configured folder structure.
 
 Use the Uploader component, Attachments component, and Attach Existing Files flow explicitly in this phase.
 
-- [X] Upload one file from the Uploader component
-- [X] Confirm the file appears in the Uploader component
-- [X] Upload one file from the Attachments component
-- [X] Confirm the file appears in the Attachments component
-- [X] Confirm files are placed in the expected Google Drive folder
-- [X] Upload several files at once to a record that has no Google files yet, and confirm one folder is created for that record
-- [X] Attach an existing file to another record using Attach Existing Files from the Attachments component
-- [X] Confirm Drive placement or shortcut behavior matches the configured folder structure
+- [ ] Upload one file from the Uploader component
+- [ ] Confirm the file appears in the Uploader component
+- [ ] Upload one file from the Attachments component
+- [ ] Confirm the file appears in the Attachments component
+- [ ] Confirm files are placed in the expected Google Drive folder
+- [ ] Upload several files at once to a record that has no Google files yet, and confirm one folder is created for that record
+- [ ] Attach an existing file to another record using Attach Existing Files from the Attachments component
+- [ ] Confirm Drive placement or shortcut behavior matches the configured folder structure
 
 If the release touched File Explorer upload or folder placement logic, also run this File Explorer check.
 
-- [X] Upload one file from File Explorer
-- [X] Confirm the file appears in File Explorer
-- [X] Confirm File Explorer upload uses the expected Google Drive folder
+- [ ] Upload one file from File Explorer
+- [ ] Confirm the file appears in File Explorer
+- [ ] Confirm File Explorer upload uses the expected Google Drive folder
 
 If the release touched folder structure logic, also run this reduced folder matrix.
 
-- [X] No folder structure / Default folder only
-- [X] Folder per Record
-- [X] Folder per User
-- [X] Folder per Record → User
-- [X] Folder per User → Record
+- [ ] No folder structure / Default folder only
+- [ ] Folder per Record
+- [ ] Folder per User
+- [ ] Folder per Record → User
+- [ ] Folder per User → Record
 
 ### Phase 9: Direct Browser Upload
 
 Log in as Admin.
 
-- [X] Enable `Direct Browser Upload` and save
+- [ ] Enable `Direct Browser Upload` and save
 
 Log in as Internal User A.
 
-- [X] Upload one large file from the Uploader and confirm it completes and lands in the configured folder
+- [ ] Upload one large file from the Uploader and confirm it completes and lands in the configured folder
 
 Log in as Admin.
 
-- [X] Disable `Direct Browser Upload` and save
+- [ ] Disable `Direct Browser Upload` and save
 
 Log in as Internal User A.
 
-- [X] Upload one large file from the Uploader and confirm it completes and lands in the configured folder
+- [ ] Upload one large file from the Uploader and confirm it completes and lands in the configured folder
 
 ### Phase 10: Experience Cloud
 
@@ -1080,13 +1128,13 @@ Log in as External User E.
 
 Use Experience Cloud components only for this phase.
 
-- [X] Open Experience Cloud page containing Google Client Uploader and Attachments components
-- [X] Confirm Experience Cloud Uploader component renders without errors
-- [X] Confirm Experience Cloud Attachments component renders without errors
-- [X] Confirm files are hidden in the Experience Cloud Attachments component by default unless external visibility is enabled
-- [X] Open a visible file from the Experience Cloud Attachments component
-- [X] Confirm Preview works
-- [X] Confirm external user sees only allowed actions
+- [ ] Open Experience Cloud page containing Google Client Uploader and Attachments components
+- [ ] Confirm Experience Cloud Uploader component renders without errors
+- [ ] Confirm Experience Cloud Attachments component renders without errors
+- [ ] Confirm files are hidden in the Experience Cloud Attachments component by default unless external visibility is enabled
+- [ ] Open a visible file from the Experience Cloud Attachments component
+- [ ] Confirm Preview works
+- [ ] Confirm external user sees only allowed actions
 
 ### Phase 11: AI
 
@@ -1094,9 +1142,9 @@ Run this phase only if AI configuration or AI-related UI was touched.
 
 Log in as Admin.
 
-- [X] Confirm Gemini or Agent Platform / Vertex configuration is available
-- [X] Confirm the `Enable AI File Intelligence` checkbox is in the expected state
-- [X] Confirm prompts and token limits can be saved
+- [ ] Confirm Gemini or Agent Platform / Vertex configuration is available
+- [ ] Confirm the `Enable AI File Intelligence` checkbox is in the expected state
+- [ ] Confirm prompts and token limits can be saved
 
 Log in as Internal User A.
 
@@ -1104,28 +1152,28 @@ Use the component where the file should be validated.
 
 Files uploaded before `Enable AI File Intelligence` was enabled are not expected to receive summaries.
 
-- [X] If `Enable AI File Intelligence` is enabled, upload a new file with clear business content from the component being tested
-- [X] Confirm the new file appears in the same component where it was uploaded
-- [X] Open Preview for the new file from the same component
-- [X] Confirm summary behavior matches the current AI provider and `Enable AI File Intelligence` setting
-- [X] Confirm hover behavior matches the current AI provider and `Enable AI File Intelligence` setting in Uploader where supported
-- [X] Confirm hover behavior matches the current AI provider and `Enable AI File Intelligence` setting in Attachments where supported
-- [X] If `Enable AI File Intelligence` is enabled, confirm question answering works from Preview for files uploaded after the setting was enabled
-- [X] If `Enable AI File Intelligence` is enabled, confirm an obvious attempt to override the model's instructions is refused
-- [X] If `Enable AI File Intelligence` is disabled, confirm question answering is not available from Preview
-- [X] If `Enable AI File Intelligence` is disabled, confirm no new summary is generated for files uploaded while the setting is disabled
+- [ ] If `Enable AI File Intelligence` is enabled, upload a new file with clear business content from the component being tested
+- [ ] Confirm the new file appears in the same component where it was uploaded
+- [ ] Open Preview for the new file from the same component
+- [ ] Confirm summary behavior matches the current AI provider and `Enable AI File Intelligence` setting
+- [ ] Confirm hover behavior matches the current AI provider and `Enable AI File Intelligence` setting in Uploader where supported
+- [ ] Confirm hover behavior matches the current AI provider and `Enable AI File Intelligence` setting in Attachments where supported
+- [ ] If `Enable AI File Intelligence` is enabled, confirm question answering works from Preview for files uploaded after the setting was enabled
+- [ ] If `Enable AI File Intelligence` is enabled, confirm an obvious attempt to override the model's instructions is refused
+- [ ] If `Enable AI File Intelligence` is disabled, confirm question answering is not available from Preview
+- [ ] If `Enable AI File Intelligence` is disabled, confirm no new summary is generated for files uploaded while the setting is disabled
 
 ### Phase 12: Final Smoke Check
 
-- [X] Internal user can open Core Cloud record pages without errors
-- [X] External user can open Experience Cloud pages without errors
-- [X] Admin can open Google Client app without errors
-- [X] Uploader component works where expected
-- [X] Attachments component works where expected
-- [X] File Explorer works where expected
-- [X] Google Files are returned by global search and open on the Google Client file details page
-- [X] No critical errors appear in the UI
-- [X] No critical errors appear in logs
+- [ ] Internal user can open Core Cloud record pages without errors
+- [ ] External user can open Experience Cloud pages without errors
+- [ ] Admin can open Google Client app without errors
+- [ ] Uploader component works where expected
+- [ ] Attachments component works where expected
+- [ ] File Explorer works where expected
+- [ ] Google Files are returned by global search and open on the Google Client file details page
+- [ ] No critical errors appear in the UI
+- [ ] No critical errors appear in logs
 
 ## Targeted Regression Suite
 

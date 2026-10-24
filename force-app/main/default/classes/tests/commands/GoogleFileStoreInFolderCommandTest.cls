@@ -56,7 +56,7 @@ private class GoogleFileStoreInFolderCommandTest {
 
 		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(
 			UserInfo.getUserId(),
-			(Id) 'a0A000000000001AAA',
+			GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType),
 			null,
 			null
 		);
@@ -78,8 +78,8 @@ private class GoogleFileStoreInFolderCommandTest {
 
 		GoogleFileRelocationRequestDTO request = new GoogleFileRelocationRequestDTO(
 			UserInfo.getUserId(),
-			(Id) 'a0A000000000001AAA',
-			(Id) 'a0B000000000001AAA',
+			GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType),
+			GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType),
 			null
 		);
 

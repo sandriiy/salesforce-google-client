@@ -1,0 +1,35 @@
+<template>
+    <template lwc:if={busy}>
+        <div class="gc-bulk-bar">
+            <div class="gc-bulk-bar__progress">
+                <lightning-progress-bar class="gc-bulk-bar__progress-bar" value={progressPercent} size="small"></lightning-progress-bar>
+                <p class="slds-text-body_small slds-text-body--small slds-truncate" title={progressText}>{progressText}</p>
+            </div>
+            <lightning-button
+                lwc:if={showActions}
+                class="gc-bulk-bar__action"
+                label={stopLabel}
+                variant="neutral"
+                icon-name="utility:stop"
+                onclick={handleStop}
+                disabled={isStopping}>
+            </lightning-button>
+        </div>
+    </template>
+    <template lwc:elseif={isVisible}>
+        <div class="gc-bulk-bar">
+            <p class="slds-text-body_small slds-text-body--small">
+                {selectionText} • <a href="javascript:void(0)" onclick={handleClear}>Clear selection</a>
+            </p>
+            <lightning-button
+                lwc:if={showActions}
+                class="gc-bulk-bar__action"
+                label={primaryButtonLabel}
+                variant="brand"
+                icon-name={primaryIconName}
+                onclick={handleConfirm}
+                disabled={isPrimaryDisabled}>
+            </lightning-button>
+        </div>
+    </template>
+</template>

@@ -24,6 +24,8 @@
 public with sharing class GoogleCloudFileIntelligenceController {
 	@AuraEnabled
 	public static GoogleFileIntelligenceStateDTO retrieveFileIntelligenceState(Id localFileVersionId) {
+		requireVersionAccess(localFileVersionId, false);
+
 		try {
 			return new GoogleLocalFileIntelligenceService().retrieveIntelligenceState(localFileVersionId);
 		} catch (Exception ex) {
@@ -37,6 +39,8 @@ public with sharing class GoogleCloudFileIntelligenceController {
 
 	@AuraEnabled
 	public static GoogleFileAnalysisResultDTO answerFileQuestion(Id localFileVersionId, String question) {
+		requireVersionAccess(localFileVersionId, false);
+
 		try {
 			return new GoogleLocalFileIntelligenceService().answerQuestion(localFileVersionId, question);
 		} catch (Exception ex) {
@@ -45,6 +49,14 @@ public with sharing class GoogleCloudFileIntelligenceController {
 			Logger.saveLog();
 
 			throw new AuraHandledException('We could not answer your question about this file. Please try again or contact your system administrator');
+		}
+	}
+
+	private static void requireVersionAccess(Id localFileVersionId, Boolean requiresEdit) {
+		try {
+			new GoogleLocalFileService().requireVersionAccess(localFileVersionId, requiresEdit);
+		} catch (GoogleLocalFileService.GoogleLocalFileException ex) {
+			throw new AuraHandledException(ex.getMessage());
 		}
 	}
 }

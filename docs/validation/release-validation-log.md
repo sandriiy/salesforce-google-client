@@ -1,8 +1,96 @@
-﻿# Release Validation Log
+# Release Validation Log
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
-???+ example "Release v2.2.0"
+???+ example "Release v2.3.0"
+
+    ### Validation Suite Used
+    - [ ] Full Validation Suite
+    - [X] Quick Regression Suite
+    - [X] Targeted Regression Suite
+
+    ### Release Changes
+    - [X] Change 1: The upgrade lands on an already configured org without changing how it behaves.
+
+        - [X] Admin: Google Drive, folder structure, AI, safety and File Explorer column settings are unchanged after the upgrade, and Maximum Preview File Size still shows the value saved before it.
+        - [X] Admin: The Migration tab is present in the Google Client app, and Salesforce File Id is blank on every file created before the upgrade.
+        - [X] Internal User: Upload, preview, download, sharing and versioning behave exactly as before the upgrade.
+        - [X] External User: Experience Cloud pages open and behave exactly as before the upgrade.
+
+    - [X] Change 2: Larger files are handled in fewer steps on Winter '27, and Maximum Preview File Size can be left blank.
+
+        - [X] Admin: Clear Maximum Preview File Size under Advanced → File Management, confirm the help text names the automatic size, and save.
+        - [X] Internal User: Download a file between 2 MB and 3.5 MB and confirm it arrives complete.
+        - [X] Internal User: Open a document larger than 2 MB and confirm it previews and offers Download as....
+        - [X] Admin: Run Upload File to Google Drive with a file of about 8 MB, confirm it reports that the upload finishes in the background, and confirm the file appears on the record afterwards.
+        - [X] Admin: Enter 1 MB in Maximum Preview File Size, save, confirm Download as... is no longer offered for a document larger than 1 MB, then clear the field and save again.
+
+    - [X] Change 3: Large documents are analyzed by the size of their Google Workspace version, and the AI panel in the preview fills in by itself.
+
+        - [X] Admin: AI Analytics is on with a working provider.
+        - [X] Internal User: Upload a PDF larger than 5 MB with little text, open it straight away, and confirm no AI panel is shown yet.
+        - [X] Internal User: Keep the preview open and confirm the panel appears by itself with the summary within about two minutes, without closing the preview or reloading the page.
+        - [X] Internal User: Close the preview and confirm the Notes & Attachments card shows the new summary on hover.
+        - [X] Internal User: Open a file uploaded before the upgrade that has no summary and confirm the preview does not promise one.
+        - [X] Internal User: For a summary that quotes a number from the document, confirm it shows in the preview as well as in File Explorer.
+
+    - [X] Change 4: Download in the preview window and on the File Details page pauses the button and confirms the download instead of covering the document.
+
+        - [X] Internal User: Choose Download in the preview window and confirm the document stays visible, the button is paused until the file is on its way, and a message confirms the download started.
+        - [X] Internal User: Confirm the same from the File Details page.
+
+    - [X] Change 5: Every action on a version opened from the File Versions list works the way it does from the Preview button.
+
+        - [X] Internal User: Open the current version from the File Versions list and confirm Edit File Details, Upload New Version and Delete are offered and work.
+        - [X] Internal User: Open an older version from the list, rename it through Edit File Details, and confirm Upload New Version and Delete are greyed out.
+        - [X] Internal User: Confirm edited details appear on the page and in the File Versions list straight away.
+        - [X] Internal User: Delete a file from its preview and confirm it asks for confirmation once.
+
+    - [X] Change 6: Several files can be downloaded at once from the View All page of Notes & Attachments.
+
+        - [X] Internal User: Open View All and confirm every row has a checkbox and the page otherwise looks as before.
+        - [X] Internal User: Tick two files, one larger than 3.5 MB, and confirm "2 of N selected" with Clear selection appears under the title and Download (2) appears next to Upload Files.
+        - [X] Internal User: Click Download (2), confirm the progress bar names the file being fetched, and confirm one ZIP archive named after the record arrives with both files intact.
+        - [X] Internal User: Confirm the message says 2 files were downloaded and the selection is cleared.
+        - [X] Internal User: Search for part of a name, tick the checkbox in the column header, and confirm only the files shown are selected and stay selected after the search is cleared.
+        - [X] Internal User: Start a download of several large files, click Stop, and confirm nothing is saved and the selection is kept.
+        - [X] Internal User: Confirm Clear selection unticks every file.
+        - [X] External User: Open View All on Experience Cloud and download two visible files together.
+
+    - [X] Change 7: Salesforce Files can be migrated into Google Drive from the new Migration tab.
+
+        - [X] Admin: Without the Query All Files permission the Migration tab explains what to ask for and offers nothing else.
+        - [X] Admin: With the permission, Check counts the files a condition selects and shows the first ten, and a condition Salesforce cannot run is refused with a readable message.
+        - [X] Admin: A run copies only files attached to a record and no larger than 5 MB; a file attached to two records gets both links, keeps its owner, and its links show under Notes & Attachments.
+        - [X] Admin: The Progress card updates by itself, is still there after leaving and returning to the page, and ends as Finished with the number of files not copied.
+        - [X] Admin: Stop ends as Stopped, and Run again skips the files already copied.
+        - [X] Admin: With AI Analytics on, migrated files get a summary unless Skip AI analysis was chosen.
+        - [X] Admin: The Migrated files card lists the copied files and opens the preview.
+        - [X] Internal User: A migrated file shows under Notes & Attachments on its record and previews.
+        - [X] Internal User: A run started by a user without Modify All Data finishes, and its files reach Notes & Attachments with their original owner.
+
+    - [X] Change 8: Every file action checks access on the server, and an administrator without the user permission set is told what is missing.
+
+        - [X] Internal User B: Take the Id of a file Internal User A did not share, open its File Details URL and its preview, and confirm both are refused.
+        - [X] Admin: Holding Google Cloud Client Admin without Google Cloud Client User, open a File Details page and confirm it names the missing permission set instead of saying the file is not yours.
+
+    ### Boring Changes
+    - [X] Version number assigned to all hard-coded labels
+    - [X] Version ID is assigned to all installation guides.
+    - [X] All images for documentation are included.
+
+    ### Smoke Checks
+    - [X] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [X] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [X] Admin can open Google Client app and browse configuration tabs without errors
+
+    ### Suite Execution (only for Full or Quick)
+    - [X] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
+
+    ### Notes
+    - Found, not caused by 2.3.0: the File Details flows trust the read-only flag the page passes and run without sharing, so a user without access can open the flow by URL for someone else's file, see its name and save its description. A defect will be created.
+
+??? example "Release v2.2.0"
 
     ### Validation Suite Used
     - [ ] Full Validation Suite

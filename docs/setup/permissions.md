@@ -34,6 +34,9 @@ Assign permissions based on the user’s role and responsibilities.
 !!! note
     The Google Client components only appear for users holding **Google Cloud Client User**. Without it, the Uploader and Attachments components stay hidden on the page instead of loading and failing.
 
+!!! note
+    The **Migration** tab is visible to holders of **Google Cloud Client Admin**, and running a migration also needs the standard **Query All Files** permission on the user's profile or on a permission set. Without it the tab says what to ask for and offers nothing else. See [Migrate Salesforce Files](../features/migrate-salesforce-files.md).
+
 <h2>How to assign</h2>
 
 <ol>

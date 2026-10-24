@@ -154,8 +154,11 @@ export default class GoogleCloudAttachments extends NavigationMixin(LightningEle
 		previewComponent.open(parentContainerId);
 	}
 
-	handlePreviewCloseReset(event) {
+	async handlePreviewCloseReset(event) {
 		this.isNewFileVersionUpload = false;
+		if (event.detail?.isIntelligenceUpdated === true) {
+			await refreshApex(this.wiredFilesResult);
+		}
 	}
 
 	async openSeparateTab(event) {

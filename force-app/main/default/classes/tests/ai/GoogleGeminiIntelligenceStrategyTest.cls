@@ -104,6 +104,8 @@ private class GoogleGeminiIntelligenceStrategyTest {
 
 	@IsTest
 	private static void testSummarizePositiveNull() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+
 		Test.startTest();
 		GoogleFileAnalysisResultDTO result = new GoogleGeminiIntelligenceStrategy().summarize(null);
 		Test.stopTest();
@@ -139,6 +141,8 @@ private class GoogleGeminiIntelligenceStrategyTest {
 
 	@IsTest
 	private static void testAnswerQuestionPositiveNull() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+
 		Test.startTest();
 		GoogleFileAnalysisResultDTO result = new GoogleGeminiIntelligenceStrategy().answerQuestion(null, null);
 		Test.stopTest();

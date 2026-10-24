@@ -118,6 +118,34 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
     }
 
     /**
+     * Keeps the files copied from any of those Salesforce files, which is how a migration knows a file is
+     * already in Google Drive.
+     *
+     * @param salesforceFileIds The Content Document Ids to match.
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector bySalesforceFileIds(Set<Id> salesforceFileIds) {
+        List<String> salesforceFileIdValues = new List<String>();
+        for (Id salesforceFileId : salesforceFileIds) {
+            salesforceFileIdValues.add(String.valueOf(salesforceFileId));
+        }
+
+        whereAre(Filter.with(GoogleFile__c.SalesforceFileId__c).isIn(salesforceFileIdValues));
+        return this;
+    }
+
+    /**
+     * Keeps the files created at or after a moment, which is how a migration counts what it has copied so far.
+     *
+     * @param createdOnOrAfter The earliest creation moment to include.
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector byCreatedOnOrAfter(Datetime createdOnOrAfter) {
+        whereAre(Filter.with(GoogleFile__c.CreatedDate).greaterOrEqual(createdOnOrAfter));
+        return this;
+    }
+
+    /**
      * Keeps the files whose links derive their access from the linked record, which is how a user reaches a
      * file nobody shared with them directly.
      *

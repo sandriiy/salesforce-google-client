@@ -2,6 +2,31 @@
 
 All notable changes to this client are documented here. Each entry describes what changed for administrators and end users of an installed package version.
 
+## [2.3.0] - 2026-10-23
+
+### Added
+
+- Download several files at once from Notes & Attachments. On the **View All** page every file has a checkbox, the checkbox in the column header selects all the files shown, and once at least one file is ticked a **Download** button with the count in it appears next to **Upload Files**. The selected files arrive as one ZIP archive named after the record, a progress bar shows how far the download has got and which file is being fetched, and **Stop** cancels it before anything is saved. A file that could not be fetched is left out, named in the message and kept selected so it can be tried again. Up to 100 files and 512 MB can be downloaded together.
+- Migrate Salesforce Files to Google Drive. The new **Migration** tab in the Google Client app moves the Salesforce Files you already have into Google Drive, a few at a time in the background, and turns each one into an ordinary Google Client file: it appears under Notes & Attachments on the same records, keeps its owner and who may see it, gets a preview and lands in the configured folder, and with AI Analytics on it is summarized and labeled like any upload unless you choose to skip that.
+
+### Changed
+
+- A Google Client file created from a Salesforce file, by the migration or by the Upload File to Google Drive action, now records the Salesforce file it came from in the new Salesforce File Id field, which is how a later migration recognizes it and leaves it alone.
+- Downloads, previews, Download As and Flow uploads handle larger files in fewer steps on Winter '27 organizations. Google Client now sizes every request to what your Salesforce release allows: files up to 3.5 MB download and preview in one request instead of 2 MB, uploads through Salesforce move in 2.5 MB pieces, and Flow uploads of up to about 11 MB finish in the background.
+- Maximum Preview File Size under Advanced → File Management may now be left blank/0, which means the largest size your Salesforce release supports.
+- The AI panel in the preview window fills in by itself once a newly uploaded file's analysis finishes. There is no need to close the preview or reload the page.
+- Choosing Download in the preview window no longer covers the document with a loading indicator. In the preview window and on the File Details page the Download button pauses until the file is on its way, and a message confirms the download has started.
+
+### Fixed
+
+- Large documents are now analyzed when the Google Workspace version Google Client prepares for them is small enough, which is usually the case for PDFs and Office files with many images. Whether a file can be analyzed is decided by the size of that version, the same one previews are judged by, rather than by the size of the uploaded file.
+- A stored summary that quotes a social security number from the document, or under the Strict safety setting a web address, is shown in the preview window again.
+- Summaries are written reliably with newer Gemini models. Such a model could use up the space set aside for a summary while deciding what to write, and the file then got no summary at all, or a cut-off one such as "This file...".
+- On the File Details page, the current version opened from the File Versions list can be edited, replaced with a new version or deleted, exactly as when the file is opened with the Preview button. An older version's details can be edited too, so each version can be renamed on its own, while uploading a new version and deleting the file are offered on the current version only.
+- Previewing, downloading and asking questions about a file, adding a new version to it, deleting it, and creating or removing its public link now always check that you may open the file, or change it where that is needed.
+- An administrator who holds the Google Cloud Client Admin permission set but not Google Cloud Client User is no longer told on the File Details page that they have no access to a file. Instead, the page says which permission set is missing.
+- Download As is offered only for documents within the Maximum Preview File Size set under Advanced → File Management. A larger document no longer offers it only to report that no formats are available.
+
 ## [2.2.0] - 2026-09-20
 
 ### Added

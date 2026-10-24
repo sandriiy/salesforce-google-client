@@ -50,7 +50,8 @@ public inherited sharing class GoogleMetadataConfigService {
 	public static final String DEFAULT_FILE_EXPLORER_COLUMNS = 'title;isLinked;access;owner;lastModified';
 	public static final Set<String> SUPPORTED_AI_SAFETY_MODES = new Set<String>{ 'Strict', 'Standard', 'Relaxed', 'Off' };
 	/**
-	 * The size in bytes above which a file is treated as large, for previews and for uploads alike.
+	 * The smallest size above which a file is treated as large, for previews and for uploads alike. A blank
+	 * setting, or one of 0, takes this or the larger size the running org allows, never less.
 	 */
 	public static final Long DEFAULT_BIG_FILE_SIZE = 2097152L;
 	/**
@@ -212,13 +213,15 @@ public inherited sharing class GoogleMetadataConfigService {
 	}
 
 	/**
-	 * The size above which a file counts as large.
+	 * The size above which a file counts as large. A setting of 0 means the same as a blank one, because a
+	 * saved number field cannot be emptied again.
 	 *
-	 * @return The configured size, or the shipped default.
+	 * @return The configured size, or the largest size the running org allows.
 	 */
 	public Long getBigFileSizeInBytes() {
 		Decimal configuredValue = configRecord.DefaultBigFileSize__c;
-		return configuredValue == null ? DEFAULT_BIG_FILE_SIZE : configuredValue.longValue();
+		Boolean isAutomatic = configuredValue == null || configuredValue <= 0;
+		return isAutomatic ? new GoogleTransferLimitResolver().largeFileThresholdBytes() : configuredValue.longValue();
     }
 
 	/**
@@ -578,7 +581,6 @@ public inherited sharing class GoogleMetadataConfigService {
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsFilePreviewDisabled__c', configRecord.IsFilePreviewDisabled__c, false);
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsDirectBrowserUploadEnabled__c', configRecord.IsDirectBrowserUploadEnabled__c, false);
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsOpenInDriveEnabled__c', configRecord.IsOpenInDriveEnabled__c, false);
-		applyNumberDefaultIfMissing(normalizedValues, 'DefaultBigFileSize__c', configRecord.DefaultBigFileSize__c, DEFAULT_BIG_FILE_SIZE);
 		applyNumberDefaultIfMissing(normalizedValues, 'MaxDeleteChainSize__c', configRecord.MaxDeleteChainSize__c, DEFAULT_MAX_DELETE_CHAIN_SIZE);
 
 		Boolean isIntelligenceEnabled = resolveBooleanValue(normalizedValues, 'IsFileIntelligenceEnabled__c', configRecord.IsFileIntelligenceEnabled__c);

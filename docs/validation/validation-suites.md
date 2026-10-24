@@ -63,7 +63,9 @@ Log in as Admin.
 - [ ] Confirm the `GoogleDriveDirectUpload` CSP Trusted Site exists and is active in Setup
 - [ ] Confirm Org Cache is allocated to the `GoogleCloudClient` Platform Cache partition
 - [ ] Confirm File Explorer columns in Advanced → User Interface are at their default selection
+- [ ] Confirm Maximum Preview File Size in Advanced → File Management is blank and the help text names the automatic size
 - [ ] Confirm neither `Google Client: View All Files` nor `Google Client: Edit All Files` is assigned to any test user
+- [ ] Open the Migration tab and confirm it renders without errors
 - [ ] Open configuration tabs and confirm there are no page-level errors
 - [ ] Confirm admin-only configuration pages are available to the admin user
 - [ ] Confirm Analytics tab renders for the admin user
@@ -151,6 +153,19 @@ Log in as Internal User A.
 - [ ] Confirm the file opens read only and the folder around it cannot be reached
 - [ ] Confirm Open in Google Drive is not offered for a file owned by another user
 
+Log in as Admin.
+
+- [ ] Enter 1 MB in Maximum Preview File Size under Advanced → File Management and save
+
+Log in as Internal User A.
+
+- [ ] Confirm Download as... is no longer offered for a document larger than 1 MB
+- [ ] Confirm a document whose uploaded size is under 1 MB still previews and offers Download as...
+
+Log in as Admin.
+
+- [ ] Clear Maximum Preview File Size, save, and confirm the help text names the automatic size again
+
 ### Phase 4: Attachments Preview and File Actions
 
 Continue as Internal User A.
@@ -170,6 +185,12 @@ Use the Attachments component as the entry point for Preview in this phase. Do n
 - [ ] Confirm older version remains in the org
 - [ ] Confirm older version remains available where supported
 - [ ] Confirm preview and download use the latest active version
+- [ ] Open View All from the Attachments component and confirm every row has a checkbox
+- [ ] Tick two files, one of them larger than 3.5 MB, and confirm Download (2) appears next to Upload Files
+- [ ] Download them and confirm one ZIP archive named after the record arrives with both files intact
+- [ ] Search by part of a name, tick the checkbox in the column header, and confirm only the files shown are selected
+- [ ] Start a download of several large files, click Stop, and confirm nothing is saved and the selection is kept
+- [ ] Confirm Clear selection unticks every file
 
 ### Phase 5: File Explorer
 
@@ -421,6 +442,7 @@ Use the Experience Cloud Uploader component for upload checks and the Experience
 - [ ] Confirm Attachments renders without errors
 - [ ] Confirm files are not visible in the Experience Cloud Attachments component by default unless external visibility is enabled
 - [ ] Confirm View All navigation works from the Experience Cloud Attachments component
+- [ ] Tick two visible files on the View All page and confirm they download together as one ZIP archive
 - [ ] Confirm Preview opens from the Experience Cloud Attachments component for files the external user can access
 - [ ] Confirm Preview actions respect external user access level
 - [ ] Confirm internal-only actions are not available
@@ -876,7 +898,28 @@ Build one screen flow on a record page that calls the four actions in turn, each
 - [ ] Point one action at a file that does not exist and confirm the fault path shows a readable message
 - [ ] Confirm logs tagged `Google Client for Salesforce` show the expected outcomes and no unexpected errors
 
-### Phase 22: Final Sweep
+### Phase 22: Salesforce Files Migration
+
+Log in as Admin-level non-system user without Query All Files, but with Google Client Admin permission.
+
+- [ ] Open the Migration tab and confirm it explains that Query All Files is needed and offers nothing else
+
+Log in as Admin.
+
+Attach a few Salesforce Files to Record A and Record B first: one attached to both records, one larger than 5 MB, and one attached to no record at all.
+
+- [ ] Open the Migration tab and confirm Readiness shows the Google Drive connection and where files land
+- [ ] Choose Files Matching Conditions, enter a condition that selects the test files, click Check, and confirm the count and the sample match
+- [ ] Enter a condition Salesforce cannot run and confirm it is refused with a readable message
+- [ ] Narrow the run to the object of Record A and start the migration
+- [ ] Confirm the Progress card updates by itself and is still there after leaving and returning to the page
+- [ ] Confirm the run ends as Finished and that the file larger than 5 MB and the unattached file were not copied
+- [ ] Confirm the migrated files show under Notes & Attachments on Record A, keep their owner, and the file attached to both records is linked to both
+- [ ] Confirm the Migrated files card lists the copied files and opens the preview
+- [ ] With AI Analytics on, confirm migrated files get a summary unless Skip AI analysis was chosen
+- [ ] Start the same selection again, confirm the files already copied are skipped, and click Stop to confirm the run ends as Stopped
+
+### Phase 23: Final Sweep
 
 Use the final intended release configuration.
 
@@ -894,6 +937,7 @@ Use the final intended release configuration.
 - [ ] Preview works from File Explorer
 - [ ] Download works
 - [ ] Download as... works for previewable files
+- [ ] Two files ticked on the View All page download together as one ZIP archive
 - [ ] Sharing works from Preview
 - [ ] Public links work from Preview
 - [ ] Versioning works from Preview
@@ -910,6 +954,7 @@ Use the final intended release configuration.
 - [ ] A document larger than the Maximum Preview File Size setting previews
 - [ ] Open in Google Drive works for an owned file and is not offered to external users
 - [ ] Flow actions create a folder, upload, download and read file text without errors
+- [ ] The Migration tab opens and a run copies a Salesforce file into Google Drive
 - [ ] No critical errors appear in the UI
 - [ ] No critical errors appear in logs
 
@@ -927,7 +972,9 @@ Log in as Admin.
 - [X] Confirm the `Enable AI File Intelligence` checkbox state is known
 - [X] Confirm the `Direct Browser Upload` state is known
 - [X] Confirm the configured File Explorer columns are known
+- [X] Confirm the Maximum Preview File Size value is known
 - [X] Open Google Client app and confirm configuration tabs render without errors
+- [X] Open the Migration tab and confirm it renders without errors
 
 ### Phase 2: Upload and Preview
 
@@ -956,6 +1003,7 @@ Use both record-page components in this phase:
 - [X] Open Preview for the non-previewable file from the Attachments component
 - [X] Confirm non-previewable message is shown
 - [X] Confirm Download as... is not visible
+- [X] Open View All from the Attachments component, tick two files and confirm they download together as one ZIP archive
 
 ### Phase 3: Versioning
 

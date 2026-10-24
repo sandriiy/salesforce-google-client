@@ -1,4 +1,4 @@
-import { formatDateAsDDMMYYYY_HHMM } from 'c/googleCloudUtils';
+import { formatDateAsDDMMYYYY_HHMM, formatExistingLocalFiles, extractGraphValue, asString } from 'c/googleCloudUtils';
 
 const MAX_FILE_EXPLORER_COLUMNS = 7;
 const DEFAULT_FILE_EXPLORER_COLUMNS = 'title;isLinked;access;owner;lastModified';
@@ -186,6 +186,40 @@ const resolveDefaultSortFieldName = (resolvedColumns) => {
     return (firstSortable || { fieldName: 'lastModifiedDisplay' }).fieldName;
 };
 
+const buildExplorerRows = (rawFiles, resolvedColumns) => {
+    const files = Array.isArray(rawFiles) ? rawFiles : [];
+    const rawByLocalId = new Map();
+    files.forEach((record) => {
+        if (record?.Id) rawByLocalId.set(record.Id, record);
+    });
+
+    return formatExistingLocalFiles(files).map((file) => {
+        const rawRecord = rawByLocalId.get(file.localId);
+        const latestVersion = rawRecord?.GoogleFileVersions__r?.[0];
+        const linksCount = Number(extractGraphValue(rawRecord?.NumberOfLinks__c) || 0);
+        const isLinked = linksCount > 0;
+        const createdByName = asString(rawRecord?.CreatedBy?.Name) || (file.createdBy?.name || '');
+        const createdById = asString(rawRecord?.CreatedById) || (file.createdBy?.id || '');
+        const fileOwner = asString(rawRecord?.Owner?.Name) || '';
+        const fileOwnerId = asString(rawRecord?.OwnerId) || '';
+        const accessLabel = asString(rawRecord?.UserAccessLevel__c) || 'View';
+
+        return {
+            ...file,
+            ...buildStandardColumnValues(file),
+            ...buildCustomColumnValues(resolvedColumns, latestVersion),
+            fileName: file.name || 'Untitled',
+            isLinkedLabel: isLinked ? 'Yes' : 'No',
+            accessLabel,
+            createdByName,
+            createdById,
+            fileOwner,
+            fileOwnerId,
+            lastModifiedDisplay: formatDateAsDDMMYYYY_HHMM(file.lastModifiedDate)
+        };
+    });
+};
+
 export {
     FILE_EXPLORER_COLUMN_OPTIONS,
     DEFAULT_FILE_EXPLORER_COLUMNS,
@@ -193,6 +227,7 @@ export {
     buildDatatableColumns,
     buildStandardColumnValues,
     buildCustomColumnValues,
+    buildExplorerRows,
     resolveColumnLabel,
     resolveDefaultSortFieldName
 };

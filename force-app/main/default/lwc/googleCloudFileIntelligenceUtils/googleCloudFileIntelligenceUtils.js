@@ -1,4 +1,6 @@
 export const DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE = 'No summary is currently available for this file. It may still be processing, so try refreshing the page. If it still does not appear, the file may be too large or unsupported for analysis.';
+export const FILE_INTELLIGENCE_SUMMARY_PENDING_MESSAGE = 'This file is still being analyzed. The summary will appear here when it is ready.';
+export const FILE_INTELLIGENCE_SUMMARY_DELAYED_MESSAGE = 'No summary is available yet. Open the file again in a few minutes.';
 
 const DEFAULT_FILE_INTELLIGENCE_NAME = 'Untitled';
 

@@ -30,8 +30,20 @@
 public with sharing class GoogleFileInsertFinalizeCommand {
     private static final Integer MAX_CHAIN_BATCH_SIZE = 10;
 
+    @TestVisible
+    private static Boolean intelligenceSkipped = false;
+
     private final GoogleMetadataConfigService googleConfig;
     private final GoogleFileVersionContextResolver versionContextResolver;
+
+    /**
+     * Leaves the AI summary and label out of every version committed in the rest of this transaction,
+     * keeping the preview copy and the folder placement. The migration asks for this before it commits;
+     * an upload never does.
+     */
+    public static void skipIntelligenceForThisTransaction() {
+        intelligenceSkipped = true;
+    }
 
     public GoogleFileInsertFinalizeCommand() {
         this(new GoogleMetadataConfigService(), new GoogleFileVersionContextResolver());
@@ -62,8 +74,13 @@ public with sharing class GoogleFileInsertFinalizeCommand {
         Boolean folderPlacementEnabled = !String.isBlank(this.googleConfig.getGoogleDriveFolderStructure());
         if (previewDisabled && !folderPlacementEnabled) return;
 
+        Boolean analyzeVersions = !intelligenceSkipped;
+        Set<Id> parentFileIds = this.versionContextResolver.collectParentFileIds(newFileVersions);
         Map<Id, Id> linkIdsByFileId = folderPlacementEnabled == true
-            ? this.versionContextResolver.resolveLatestLinkIdsByFileId(this.versionContextResolver.collectParentFileIds(newFileVersions))
+            ? this.versionContextResolver.resolveLatestLinkIdsByFileId(parentFileIds)
+            : new Map<Id, Id>();
+        Map<Id, Id> delegatedOwnerIdsByFileId = folderPlacementEnabled == true
+            ? this.versionContextResolver.resolveDelegatedOwnerIdsByFileId(parentFileIds)
             : new Map<Id, Id>();
 
         for (List<GoogleFileVersion__c> versionChunk : this.versionContextResolver.partition(newFileVersions, MAX_CHAIN_BATCH_SIZE)) {
@@ -72,18 +89,20 @@ public with sharing class GoogleFileInsertFinalizeCommand {
 
             Set<Id> previewableVersionIds = this.versionContextResolver.collectGoogleWorkspaceVersionIds(versionChunk, previewDisabled);
             if (!previewableVersionIds.isEmpty()) {
-                jobsChainer.chain(new GoogleFileVersionPreviewJob(previewableVersionIds)).deepClone();
+                jobsChainer.chain(new GoogleFileVersionPreviewJob(previewableVersionIds, analyzeVersions)).deepClone();
                 hasJobs = true;
             }
 
-			Set<Id> summaryCandidateVersionIds = this.versionContextResolver.collectSummaryCandidateVersionIds(versionChunk);
+			Set<Id> summaryCandidateVersionIds = analyzeVersions
+				? this.versionContextResolver.collectSummaryCandidateVersionIds(versionChunk)
+				: new Set<Id>();
 			if (!summaryCandidateVersionIds.isEmpty()) {
 				jobsChainer.chain(new GoogleFileVersionSummaryJob(summaryCandidateVersionIds)).deepClone();
 				hasJobs = true;
 			}
 
             if (folderPlacementEnabled) {
-                List<GoogleFileRelocationRequestDTO> relocationRequests = this.versionContextResolver.buildRelocationRequests(versionChunk, linkIdsByFileId);
+                List<GoogleFileRelocationRequestDTO> relocationRequests = this.versionContextResolver.buildRelocationRequests(versionChunk, linkIdsByFileId, delegatedOwnerIdsByFileId);
                 if (!relocationRequests.isEmpty()) {
                     jobsChainer.chain(new GoogleFileCloudFolderJob(relocationRequests)).deepClone();
                     hasJobs = true;

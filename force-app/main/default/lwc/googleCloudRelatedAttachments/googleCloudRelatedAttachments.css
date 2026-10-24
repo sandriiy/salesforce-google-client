@@ -52,6 +52,24 @@
     position: static;
 }
 
+.full-page-bulk-bar {
+    display: block;
+    padding-right: 0.75rem;
+}
+
+.select-column {
+    width: 3rem;
+}
+
+.select-cell {
+    text-align: center;
+}
+
+.select-cell lightning-input {
+    display: inline-block;
+    vertical-align: middle;
+}
+
 .sortable-column {
     cursor: pointer;
     transition: background-color .2s;

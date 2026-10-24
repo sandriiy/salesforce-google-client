@@ -100,17 +100,19 @@ private class GoogleMetadataConfigServiceTest {
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new ThrowingDeployer());
 
 		Test.startTest();
-		svc.saveConfig(null);
-		svc.saveConfig(new Map<String, Object>());
+		Id nullChangesDeploymentId = svc.saveConfig(null);
+		Id emptyChangesDeploymentId = svc.saveConfig(new Map<String, Object>());
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.isNull(nullChangesDeploymentId, 'With nothing to change no deployment is started');
+		Assert.isNull(emptyChangesDeploymentId, 'With nothing to change no deployment is started');
 	}
 
 	@IsTest
 	private static void testSaveConfigPositiveEnqueue() {
 		GoogleMetadataConfigService.configRecordOverride = buildConfig(false);
-		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new SuccessDeployer());
+		CapturingDeployer deployer = new CapturingDeployer();
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(deployer);
 
 		Map<String, Object> changes = new Map<String, Object>{
 			'DefaultGoogleUploadFolderId__c' => 'folder_123',
@@ -118,10 +120,13 @@ private class GoogleMetadataConfigServiceTest {
 		};
 
 		Test.startTest();
-		svc.saveConfig(changes);
+		Id deploymentId = svc.saveConfig(changes);
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isNotNull(deploymentId, 'The deployment Id is handed back to follow');
+		Assert.areEqual('folder_123', savedValues.get('DefaultGoogleUploadFolderId__c'));
+		Assert.areEqual(true, savedValues.get('IsFilePreviewDisabled__c'));
 	}
 
 	@IsTest
@@ -294,12 +299,17 @@ private class GoogleMetadataConfigServiceTest {
 	@IsTest
 	private static void testResolveConfigRecordNeverReturnsNull() {
 		GoogleMetadataConfigService.configRecordOverride = null;
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
+		GSOQL.mock(GoogleClientConfigSelector.MOCK_ID).thenReturn(new List<GoogleClientConfig__mdt>());
+
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
 
 		Assert.isNotNull(svc.getConfig());
-		Assert.isNotNull(svc.getAiSafetyMode());
-		Assert.isNotNull(svc.getFileExplorerColumns());
-		Assert.isNotNull(svc.getAllUploadFolderIds());
+		Assert.isFalse(svc.hasConfigRecord());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_SAFETY_MODE, svc.getAiSafetyMode());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_FILE_EXPLORER_COLUMNS.split(';').size(), svc.getFileExplorerColumns().size());
+		Assert.areEqual(0, svc.getAllUploadFolderIds().size());
 	}
 
 	@IsTest
@@ -313,7 +323,7 @@ private class GoogleMetadataConfigServiceTest {
 		Assert.isFalse(svc.isFileIntelligenceEnabled());
 		Assert.isFalse(svc.requiresRecordFolder());
 
-		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_BIG_FILE_SIZE, svc.getBigFileSizeInBytes());
+		Assert.areEqual(new GoogleTransferLimitResolver().largeFileThresholdBytes(), svc.getBigFileSizeInBytes());
 		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_MAX_DELETE_CHAIN_SIZE, svc.getDeleteChainSize());
 		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AUTH_CLASS_NAME, svc.getGoogleDriveAuthorizerClassName());
 		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_SAFETY_MODE, svc.getAiSafetyMode());
@@ -363,6 +373,51 @@ private class GoogleMetadataConfigServiceTest {
 		Assert.areEqual(5242880L, svc.getBigFileSizeInBytes());
 		Assert.areEqual(7, svc.getDeleteChainSize());
 		Assert.areEqual(2048, svc.getQuestionMaxOutputTokens());
+	}
+
+	@IsTest
+	private static void testGetBigFileSizeInBytesPositiveBlankFollowsTheHeapLimit() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+
+		GoogleTransferLimitResolver.heapLimitOverride = 6000000;
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_BIG_FILE_SIZE, svc.getBigFileSizeInBytes(), 'An org whose heap did not grow keeps exactly the shipped size');
+
+		GoogleTransferLimitResolver.heapLimitOverride = 10000000;
+		Assert.areEqual(3670016L, svc.getBigFileSizeInBytes(), 'An org whose heap grew gets the larger size without any setting');
+	}
+
+	@IsTest
+	private static void testGetBigFileSizeInBytesPositiveZeroMeansAutomatic() {
+		GoogleTransferLimitResolver.heapLimitOverride = 10000000;
+		GoogleCloudTestFactory.config().withBigFileSize(0L).apply();
+
+		Assert.areEqual(3670016L, new GoogleMetadataConfigService().getBigFileSizeInBytes(), 'A cleared setting is stored as 0 and must behave like a blank one');
+	}
+
+	@IsTest
+	private static void testGetBigFileSizeInBytesPositiveConfiguredValueWins() {
+		GoogleTransferLimitResolver.heapLimitOverride = 10000000;
+		GoogleCloudTestFactory.config().withBigFileSize(1000L).apply();
+
+		Assert.areEqual(1000L, new GoogleMetadataConfigService().getBigFileSizeInBytes(), 'A size an administrator entered is never outgrown by the org');
+	}
+
+	@IsTest
+	private static void testSaveConfigPositiveLeavesBlankBigFileSizeBlank() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client'
+		);
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'example.com' });
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isFalse(savedValues.containsKey('DefaultBigFileSize__c'), 'A blank size means the org decides, so a save must not pin a number');
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_MAX_DELETE_CHAIN_SIZE, savedValues.get('MaxDeleteChainSize__c'), 'The other blank numbers still receive their defaults');
 	}
 
 	@IsTest

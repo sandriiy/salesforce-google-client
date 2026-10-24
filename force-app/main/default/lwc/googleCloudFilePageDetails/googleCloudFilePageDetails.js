@@ -4,10 +4,9 @@ import { NavigationMixin } from 'lightning/navigation';
 
 import { updateTabPresentation, closeWhenReady } from 'c/googleCloudCrossPlatformUtils';
 
-import { BIG_FILE_SIZE } from 'c/googleCloudDownloadUtils';
 import { download, downloadInChunks } from 'c/googleCloudDownloadUtils';
-import { isEmpty, showToast } from 'c/googleCloudUtils';
-import { DEFAULT_FILE_NAME, DEFAULT_ACCESS_RESTRICTED_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE } from 'c/googleCloudUtils';
+import { isEmpty, showToast, resolveTransferLimits } from 'c/googleCloudUtils';
+import { DEFAULT_FILE_NAME, DEFAULT_ACCESS_RESTRICTED_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE, DEFAULT_DOWNLOAD_STARTED_MESSAGE } from 'c/googleCloudUtils';
 import { INT_VIEW_FILE_DETAILS_PAGE_NAME } from 'c/googleCloudCrossPlatformUtils';
 
 import GoogleCloudUploadFileModal from 'c/googleCloudUploaderModal';
@@ -19,6 +18,8 @@ import GoogleCloudOpenInDriveModal from 'c/googleCloudOpenInDriveModal';
 import fetchFileAccess from '@salesforce/apex/GoogleCloudFilesController.fetchFileAccess';
 import fetchFileHeaderDetails from '@salesforce/apex/GoogleCloudFilesViewController.fetchFileHeaderDetails';
 import canOpenInDrive from '@salesforce/apex/GoogleCloudDriveAccessController.canOpenInDrive';
+import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
+import hasGoogleClientAdminAccess from '@salesforce/customPermission/GoogleClientAdminAccess';
 
 import yesAccesstemplate from './googleCloudFilePageDetails.html';
 import noAccessTemplate from './googleCloudFilePageDetailsNoAccess.html';
@@ -26,6 +27,10 @@ import noAccessTemplate from './googleCloudFilePageDetailsNoAccess.html';
 const OBJECT_API_NAME = 'GoogleFile__c';
 const TAB_POLL_DELAY_MS = 200;
 const TAB_MAX_RETRIES = 5;
+const NO_ACCESS_TITLE = 'You don’t have access to this file';
+const NO_ACCESS_MESSAGE = 'You can’t view this file with your current permissions. If you believe you should have access, contact the file owner or your system administrator.';
+const MISSING_USER_PERMISSION_TITLE = 'This file couldn’t be loaded';
+const MISSING_USER_PERMISSION_MESSAGE = 'You have the Google Cloud Client Admin permission set but not Google Cloud Client User, which opening files needs. Assign Google Cloud Client User, or the Google Cloud Client User & Admin group.';
 
 export default class GoogleCloudFilePageDetails extends NavigationMixin(LightningElement) {
 	@api
@@ -47,10 +52,12 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	@track accessLevel;
 
 	@track hasRecordAccess = false;
+	@track hasLoadError = false;
 	@track isAccessChecked = false;
 	@track isHeaderLoading = true;
 	@track isMainLoading = true;
 	@track isOpenInDriveAvailable = false;
+	@track isDownloadInProgress = false;
 
 	currentPageRef;
 	_recordId;
@@ -127,13 +134,26 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 
 	async handleFileDownload(event) {
 		this.showLatestVersionWarning();
-		await this.downloadFile();
+		if (this.isDownloadInProgress) return;
+
+		this.isDownloadInProgress = true;
+		showToast(this, 'Download started', DEFAULT_DOWNLOAD_STARTED_MESSAGE, 'info');
+
+		try {
+			await this.downloadFile();
+		} finally {
+			this.isDownloadInProgress = false;
+		}
 	}
 
 	handleFilePreview(event) {
 		this.showLatestVersionWarning();
 		let previewComponent = this.refs.filePreviewModal;
 		previewComponent.open(this.recordId);
+	}
+
+	handleVersionSelect(event) {
+		this.refs.filePreviewModal.openVersion(this.recordId, event.detail.versionId);
 	}
 
 	async handleFileSharing(event) {
@@ -148,7 +168,8 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 		await this.refs.linkedRecords?.refresh?.();
 	}
 
-	handleFileEdit(event) {
+	async handleFileEdit() {
+		await this.refs.versions?.refresh?.();
 		this.initializePage();
 	}
 
@@ -218,15 +239,23 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 		});
 
 		if (isDeleted === true) {
-			this.isHeaderLoading = true;
-			this.isMainLoading = true;
-
-			closeWhenReady({
-				getTabInfo: () => this.tabInfo,
-				maxRetries: TAB_MAX_RETRIES,
-				pollDelayMs: TAB_POLL_DELAY_MS
-			});
+			this.closeDeletedFile();
 		}
+	}
+
+	handlePreviewFileDeleted() {
+		this.closeDeletedFile();
+	}
+
+	closeDeletedFile() {
+		this.isHeaderLoading = true;
+		this.isMainLoading = true;
+
+		closeWhenReady({
+			getTabInfo: () => this.tabInfo,
+			maxRetries: TAB_MAX_RETRIES,
+			pollDelayMs: TAB_POLL_DELAY_MS
+		});
 	}
 
 	async initializePage() {
@@ -234,6 +263,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 		this.isMainLoading = true;
 		this.isAccessChecked = false;
 		this.hasRecordAccess = false;
+		this.hasLoadError = false;
 
 		if (!this.recordId) {
 			this.hasRecordAccess = false;
@@ -276,6 +306,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 			}
 		} catch (error) {
 			this.hasRecordAccess = false;
+			this.hasLoadError = true;
 			this.fileName = undefined;
 			this.headerFieldData = [];
 		} finally {
@@ -289,7 +320,8 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	async downloadFile() {
 		try {
 			let googleVersion = this.latestVersionRecord;
-			if (googleVersion.Size__c <= BIG_FILE_SIZE) {
+			const transferLimits = await resolveTransferLimits();
+			if (googleVersion.Size__c <= transferLimits.downloadChunkBytes) {
 				await download(googleVersion.Id, {
 					fileName: googleVersion.Name,
 					mimeType: googleVersion.Type__c
@@ -324,7 +356,8 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	}
 
 	updateTabLabel() {
-		const baseTitle = this.hasRecordAccess && this.fileName ? this.fileName : 'No Access';
+		const unavailableTitle = this.isMissingUserPermission ? 'Unavailable' : 'No Access';
+		const baseTitle = this.hasRecordAccess && this.fileName ? this.fileName : unavailableTitle;
 		const label = `${baseTitle} | File`;
 
 		this.tabTitle = label;
@@ -412,6 +445,18 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 
 	get hasAccess() {
 		return isEmpty(this.accessLevel) ? false : true;
+	}
+
+	get isMissingUserPermission() {
+		return this.hasLoadError && hasGoogleClientAdminAccess === true && hasGoogleClientUserAccess !== true;
+	}
+
+	get unavailableTitle() {
+		return this.isMissingUserPermission ? MISSING_USER_PERMISSION_TITLE : NO_ACCESS_TITLE;
+	}
+
+	get unavailableMessage() {
+		return this.isMissingUserPermission ? MISSING_USER_PERMISSION_MESSAGE : NO_ACCESS_MESSAGE;
 	}
 
 	get isEditAccess() {

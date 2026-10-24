@@ -126,6 +126,26 @@ public with sharing class GoogleFileVersionContextResolver {
     }
 
     /**
+     * Picks the versions that qualify for a summary only now that their Workspace copy is measured: the
+     * copy fits the analysis limit while the upload does not, so the pass at insert left them out.
+     *
+     * @param fileVersions The versions with the measured Workspace copy size already set on them.
+     * @return The Ids of the versions to summarize and label in a second pass.
+     */
+    public Set<Id> collectSummaryCandidatesAdmittedByWorkspaceCopy(List<GoogleFileVersion__c> fileVersions) {
+        Set<Id> admittedVersionIds = new Set<Id>();
+        if (fileVersions == null) return admittedVersionIds;
+
+        for (GoogleFileVersion__c fileVersion : fileVersions) {
+            if (supportsSummary(fileVersion) && !fitsAnalysisLimit(fileVersion.Size__c)) {
+                admittedVersionIds.add(fileVersion.Id);
+            }
+        }
+
+        return admittedVersionIds;
+    }
+
+    /**
      * Turns versions into the requests the folder job works from.
      *
      * @param fileVersions The versions to place.
@@ -133,14 +153,30 @@ public with sharing class GoogleFileVersionContextResolver {
      * @return One request per version that can be placed.
      */
     public List<GoogleFileRelocationRequestDTO> buildRelocationRequests(List<GoogleFileVersion__c> fileVersions, Map<Id, Id> linkIdsByFileId) {
+        return buildRelocationRequests(fileVersions, linkIdsByFileId, new Map<Id, Id>());
+    }
+
+    /**
+     * Builds the folder placement requests, placing each version against the running user unless its file
+     * was created on another user's behalf, in which case that owner's folder is the right one. Versions a
+     * user uploads themselves are unaffected, since they own the files they create.
+     *
+     * @param fileVersions The versions to place.
+     * @param linkIdsByFileId The latest link per file, from resolveLatestLinkIdsByFileId().
+     * @param delegatedOwnerIdsByFileId The owner per file created on their behalf, from
+     * resolveDelegatedOwnerIdsByFileId(). A file missing here is placed against the running user.
+     * @return One request per version with a file.
+     */
+    public List<GoogleFileRelocationRequestDTO> buildRelocationRequests(List<GoogleFileVersion__c> fileVersions, Map<Id, Id> linkIdsByFileId, Map<Id, Id> delegatedOwnerIdsByFileId) {
         List<GoogleFileRelocationRequestDTO> relocationRequests = new List<GoogleFileRelocationRequestDTO>();
         if (fileVersions == null) return relocationRequests;
 
         for (GoogleFileVersion__c fileVersion : fileVersions) {
             if (fileVersion == null || fileVersion.Id == null || fileVersion.GoogleFileId__c == null) continue;
 
+            Id delegatedOwnerId = delegatedOwnerIdsByFileId == null ? null : delegatedOwnerIdsByFileId.get(fileVersion.GoogleFileId__c);
             relocationRequests.add(new GoogleFileRelocationRequestDTO(
-                UserInfo.getUserId(),
+                delegatedOwnerId == null ? UserInfo.getUserId() : delegatedOwnerId,
                 fileVersion.GoogleFileId__c,
                 fileVersion.Id,
                 linkIdsByFileId == null ? null : linkIdsByFileId.get(fileVersion.GoogleFileId__c)
@@ -148,6 +184,30 @@ public with sharing class GoogleFileVersionContextResolver {
         }
 
         return relocationRequests;
+    }
+
+    /**
+     * Finds the files that were created on another user's behalf, which is what a migration does when it
+     * keeps the Salesforce file's owner. Such a file belongs in its owner's folder rather than in the folder
+     * of whoever ran the migration.
+     *
+     * @param parentFileIds The files to look up.
+     * @return The owner per file whose owner is not the user who created it.
+     */
+    public Map<Id, Id> resolveDelegatedOwnerIdsByFileId(Set<Id> parentFileIds) {
+        Map<Id, Id> delegatedOwnerIdsByFileId = new Map<Id, Id>();
+        if (parentFileIds == null || parentFileIds.isEmpty()) return delegatedOwnerIdsByFileId;
+
+        for (GoogleFile__c fileRecord : (List<GoogleFile__c>) GoogleFileSelector.query()
+            .withSpecificFields(new List<String>{ 'Id', 'OwnerId', 'CreatedById' })
+            .byIds(parentFileIds)
+            .toList()
+        ) {
+            if (fileRecord.OwnerId == null || fileRecord.OwnerId == fileRecord.CreatedById) continue;
+            delegatedOwnerIdsByFileId.put(fileRecord.Id, fileRecord.OwnerId);
+        }
+
+        return delegatedOwnerIdsByFileId;
     }
 
     /**
@@ -231,7 +291,7 @@ public with sharing class GoogleFileVersionContextResolver {
 
     /**
      * Says whether a user can ask about this version right now, which needs a Workspace copy that already
-     * exists and a size within the limit.
+     * exists and fits the analysis limit, judged as resolveWorkspaceCopySizeInBytes() says.
      *
      * @param fileVersion The version to check.
      * @return True when summaries and questions can run against it.
@@ -239,14 +299,13 @@ public with sharing class GoogleFileVersionContextResolver {
     public Boolean supportsInteractiveIntelligence(GoogleFileVersion__c fileVersion) {
         return fileVersion != null
             && fileVersion.Id != null
-            && fileVersion.Size__c != null
-            && fileVersion.Size__c <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES
+            && fitsAnalysisLimit(resolveWorkspaceCopySizeInBytes(fileVersion))
             && String.isNotBlank(fileVersion.GoogleDocsFileId__c);
     }
 
     /**
      * Says whether this version is worth summarizing, which also covers a file whose Workspace copy is
-     * about to be made.
+     * about to be made. Until that copy is measured the upload size stands in for it.
      *
      * @param fileVersion The version to check.
      * @return True when the summary job should consider it.
@@ -254,11 +313,30 @@ public with sharing class GoogleFileVersionContextResolver {
     public Boolean supportsSummary(GoogleFileVersion__c fileVersion) {
         return fileVersion != null
             && fileVersion.Id != null
-            && fileVersion.Size__c != null
-            && fileVersion.Size__c <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES
+            && fitsAnalysisLimit(resolveWorkspaceCopySizeInBytes(fileVersion))
             && (
                 supportsInteractiveIntelligence(fileVersion)
                 || requiresGoogleWorkspaceFile(fileVersion)
             );
+    }
+
+    /**
+     * The size every operation reading the Workspace copy is judged by, previews and AI alike: the measured
+     * copy, or the upload while the copy has not been measured. The copy is usually far smaller, but a
+     * text heavy file can produce a larger one, so never compare against the upload alone.
+     *
+     * @param fileVersion The version to size.
+     * @return The size in bytes, or null when neither size is known.
+     */
+    public Decimal resolveWorkspaceCopySizeInBytes(GoogleFileVersion__c fileVersion) {
+        if (fileVersion == null) return null;
+
+        return fileVersion.GoogleDocsFileSize__c != null
+            ? fileVersion.GoogleDocsFileSize__c
+            : fileVersion.Size__c;
+    }
+
+    private Boolean fitsAnalysisLimit(Decimal sizeInBytes) {
+        return sizeInBytes != null && sizeInBytes <= GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES;
     }
 }

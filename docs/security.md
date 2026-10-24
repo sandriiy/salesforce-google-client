@@ -129,7 +129,7 @@ Google Client ships two **custom permissions** that grant elevated access to eve
 - **Google Client: View All Files** (`GoogleClientViewAllAccess`) — the user gets **at least View** on every File.
 - **Google Client: Edit All Files** (`GoogleClientEditAllAccess`) — the user gets **Edit** on every File.
 
-This is a **floor, not an override**: it only ever *raises* access, never lowers it. A File owner still keeps **Edit**, and a collaborator keeps whatever level they were granted; the permission simply guarantees a minimum for every other File. Users **without** either permission are evaluated exactly as before.
+This is a **floor, not an override**: it only ever *raises* access, never lowers it. A File owner still keeps **Edit**, and a collaborator keeps whatever level they were granted; the permission simply guarantees a minimum for every other File. Users **without** either permission are evaluated exactly as before. The permissions decide which Files a person may reach; they do not replace the **Google Cloud Client User** permission set, which a person still needs to open a File at all.
 
 For safety, the floor applies to **internal users only**. An external (Experience Cloud) user who somehow holds one of these permissions still honors the internal-vs-external visibility rules and never sees internal-only Files.
 

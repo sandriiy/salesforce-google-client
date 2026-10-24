@@ -139,6 +139,72 @@ private class GoogleFileQuestionCommandTest {
 	}
 
 	@IsTest
+	private static void testAnswerQuestionPositiveLargeUploadWithFittingWorkspaceCopy() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('QCMD9')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('QCMD9.pdf')
+			.withType('application/pdf')
+			.withSize(GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES + 1)
+			.withDocsId('DOCS_QCMD_9')
+			.withDocsSize(112000)
+			.insertRecord();
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileQuestionCommand().answerQuestion(
+				version.Id,
+				'What does this file cover?',
+				'Gemini',
+				'gemini-2.0-flash',
+				new GenAiClientStub('The brochure covers the spring catalogue.', 'STOP')
+			);
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual('The brochure covers the spring catalogue.', result.text);
+	}
+
+	@IsTest
+	private static void testAnswerQuestionNegativeSmallUploadWithOversizedWorkspaceCopy() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('QCMD10')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('QCMD10.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(2048)
+			.withDocsId('DOCS_QCMD_10')
+			.withDocsSize(GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES + 1)
+			.insertRecord();
+
+		GenAiClientStub clientStub = new GenAiClientStub('OK', 'STOP');
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileQuestionCommand().answerQuestion(
+				version.Id,
+				'What does this file cover?',
+				'Gemini',
+				'gemini-2.0-flash',
+				clientStub
+			);
+		Test.stopTest();
+
+		Assert.isTrue(result.blocked);
+		Assert.areEqual('This file is not available for AI questions', result.errorMessage);
+		Assert.isNull(clientStub.capturedRequest);
+	}
+
+	@IsTest
 	private static void testAnswerQuestionPositive() {
 		GoogleCloudTestFactory.initMocks();
 

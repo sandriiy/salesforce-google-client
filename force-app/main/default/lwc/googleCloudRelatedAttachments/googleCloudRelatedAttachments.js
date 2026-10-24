@@ -17,14 +17,27 @@ import {
 	normalizeAllowedTypes,
 	formatExistingLocalFiles,
 	formatDateAsDDMMYYYY_HHMM,
-	extractFileExtension
+	extractFileExtension,
+	createBulkSelection
 } from 'c/googleCloudUtils';
-import { DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
+import { DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE } from 'c/googleCloudUtils';
+import {
+	downloadMany,
+	resolveBulkDownloadRefusal,
+	createOperationControl,
+	abortOperation,
+	isOperationAbortedError,
+	BULK_DOWNLOAD_STOPPED_MESSAGE
+} from 'c/googleCloudDownloadUtils';
 import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
 import retrieveGoogleFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit';
 
 const UNABLE_TO_UPLOAD_MESSAGE = 'Unable to upload file(s)';
 const UNABLE_TO_RETRIEVE_FILES = 'Unable to retrieve file(s)';
+const UNABLE_TO_DOWNLOAD_FILES_MESSAGE = 'Unable to download files';
+const FILES_DOWNLOADED_MESSAGE = 'Files downloaded';
+const DOWNLOAD_STOPPED_MESSAGE = 'Download stopped';
+const UNSAFE_ARCHIVE_NAME_CHARACTERS = /[\\/:*?"<>|]/g;
 const TARGET_TAB_COMPONENT = 'c__googleCloudRelatedAttachments';
 const TAB_POLL_DELAY_MS = 200;
 const TAB_MAX_RETRIES = 5;
@@ -56,6 +69,11 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	sortedByLabel = 'Last Modified';
 	sortedBy = 'date';
 	sortDirection = 'desc';
+	selection = createBulkSelection();
+	isBulkDownloadInProgress = false;
+	isBulkDownloadStopping = false;
+	bulkDownloadProgress;
+	bulkDownloadControl;
 
 	@wire(CurrentPageReference)
 	currentPageReference;
@@ -232,6 +250,106 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 	handlePreviewCloseReset(event) {
 		this.isNewFileVersionUpload = false;
+		if (event.detail?.isIntelligenceUpdated === true) {
+			this.retrieveAllRelatedFiles();
+		}
+	}
+
+	handleFileSelectionChange(event) {
+		const fileId = event.target.dataset.id;
+		if (isEmpty(fileId)) return;
+
+		this.selection = event.target.checked
+			? this.selection.select([fileId])
+			: this.selection.deselect([fileId]);
+	}
+
+	handleVisibleSelectionChange(event) {
+		const visibleFileIds = this.displayedFiles.map((file) => file.localId);
+
+		this.selection = event.target.checked
+			? this.selection.select(visibleFileIds)
+			: this.selection.deselect(visibleFileIds);
+	}
+
+	handleSelectionClear() {
+		this.selection = this.selection.clear();
+	}
+
+	async handleBulkDownload() {
+		if (this.isBulkDownloadInProgress) return;
+
+		const selectedFiles = this.selection.pick(this.files, 'localId');
+		const refusal = resolveBulkDownloadRefusal(selectedFiles);
+		if (refusal) {
+			showToast(this, UNABLE_TO_DOWNLOAD_FILES_MESSAGE, refusal, 'warning');
+			return;
+		}
+
+		this.bulkDownloadControl = createOperationControl();
+		this.isBulkDownloadInProgress = true;
+		this.isBulkDownloadStopping = false;
+		this.bulkDownloadProgress = { current: 0, total: selectedFiles.length, percent: 0 };
+
+		try {
+			const result = await downloadMany(selectedFiles, {
+				zipName: (includedCount) => this.resolveArchiveName(includedCount),
+				control: this.bulkDownloadControl,
+				onProgress: (progress) => {
+					this.bulkDownloadProgress = progress;
+				}
+			});
+
+			this.reportBulkDownloadResult(result);
+		} catch (error) {
+			if (isOperationAbortedError(error)) {
+				showToast(this, DOWNLOAD_STOPPED_MESSAGE, BULK_DOWNLOAD_STOPPED_MESSAGE, 'info');
+			} else {
+				showToast(this, UNABLE_TO_DOWNLOAD_FILES_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE, 'error');
+			}
+		} finally {
+			this.isBulkDownloadInProgress = false;
+			this.isBulkDownloadStopping = false;
+			this.bulkDownloadProgress = undefined;
+			this.bulkDownloadControl = null;
+		}
+	}
+
+	handleBulkDownloadStop() {
+		this.isBulkDownloadStopping = true;
+		abortOperation(this.bulkDownloadControl);
+	}
+
+	reportBulkDownloadResult({ downloaded, failed }) {
+		const total = downloaded.length + failed.length;
+
+		if (failed.length === 0) {
+			showToast(this, FILES_DOWNLOADED_MESSAGE, `${this.describeFileCount(downloaded.length)} downloaded as one ZIP archive`, 'success');
+			this.selection = this.selection.clear();
+			return;
+		}
+
+		if (downloaded.length === 0) {
+			showToast(this, UNABLE_TO_DOWNLOAD_FILES_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE, 'error');
+			return;
+		}
+
+		const failedNames = failed.map((failure) => failure.file.name).join(', ');
+		showToast(this, FILES_DOWNLOADED_MESSAGE, `${downloaded.length} of ${this.describeFileCount(total)} downloaded as one ZIP archive. ${failedNames} could not be included and ${failed.length === 1 ? 'stays' : 'stay'} selected`, 'warning', 'sticky');
+		this.selection = this.selection.deselect(downloaded.map((file) => file.localId));
+	}
+
+	resolveArchiveName(fileCount) {
+		const baseName = String(this.recordIdentifierValue || this.title || 'Files')
+			.replace(UNSAFE_ARCHIVE_NAME_CHARACTERS, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
+
+		return `${baseName} - ${this.describeFileCount(fileCount)}.zip`;
+	}
+
+	describeFileCount(count) {
+		return `${count} ${count === 1 ? 'file' : 'files'}`;
 	}
 
 	resolveDisplayNameFields(objectInfo) {
@@ -356,6 +474,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 			.then((data) => {
 				const formattedFiles = this.formatFilesInfo(formatExistingLocalFiles(data));
 				this.files = formattedFiles;
+				this.selection = this.selection.retain(formattedFiles.map((file) => file.localId));
 				this.sortRecords(this.sortedBy);
 			})
 			.catch((error) => {
@@ -434,6 +553,47 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 				file.createdBy.name.toLowerCase().includes(this.searchTerm)
 			);
 		});
+	}
+
+	get selectableFiles() {
+		return this.displayedFiles.map((file) => {
+			const isSelected = this.selection.has(file.localId);
+
+			return {
+				...file,
+				isSelected,
+				rowClass: isSelected ? 'slds-is-selected' : '',
+				selectLabel: `Select ${file.name}`
+			};
+		});
+	}
+
+	get isBulkBarVisible() {
+		return this.isBulkDownloadInProgress || !this.selection.isEmpty;
+	}
+
+	get hasSelectedFiles() {
+		return !this.selection.isEmpty;
+	}
+
+	get bulkDownloadLabel() {
+		return `Download (${this.selection.count})`;
+	}
+
+	get isSelectionLocked() {
+		return this.isBulkDownloadInProgress;
+	}
+
+	get hasDisplayedFiles() {
+		return this.displayedFiles.length > 0;
+	}
+
+	get isEveryDisplayedFileSelected() {
+		return this.selection.includesAll(this.displayedFiles.map((file) => file.localId));
+	}
+
+	get isSelectAllDisabled() {
+		return this.isSelectionLocked || !this.hasDisplayedFiles;
 	}
 
 	get sobjectNameValue() {

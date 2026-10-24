@@ -45,7 +45,8 @@ public interface IGoogleAiPromptSafetyGuard {
 	/**
 	 * Decides whether the answer may be shown, and may hand back a cleaned up version instead of refusing.
 	 * It also runs over a stored summary before it is displayed, so tightening the rules covers what was
-	 * written earlier.
+	 * written earlier. That context carries no document text, so a check comparing the answer with the
+	 * document has nothing to compare against there.
 	 *
 	 * @param context The operation, the provider and the file.
 	 * @param response What the model answered and why it stopped.

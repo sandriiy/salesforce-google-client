@@ -239,6 +239,10 @@ public without sharing class GoogleFileAccessResolver {
 			.withLatestVersionSubquery(criteria.additionalVersionFields)
 			.bySearchTerm(criteria.searchTerm);
 
+		if (String.isNotBlank(criteria.source)) {
+			selector.bySource(criteria.source);
+		}
+
 		if (privilegedFloor() == null) {
 			applyOwnershipScope(selector, criteria.ownerScope, targetUserId);
 			selector.byAccessibleCandidates(targetUserId, resolveSharedFileIds(targetUserId));
@@ -286,6 +290,11 @@ public without sharing class GoogleFileAccessResolver {
 		public Object cursorValue;
 		public Id cursorId;
 		public OwnershipScope ownerScope = OwnershipScope.AnyOwner;
+		/**
+		 * Keeps only the files first uploaded from one source, a value of the Source picklist. Null means
+		 * every source.
+		 */
+		public String source;
 		public List<String> additionalVersionFields = new List<String>();
 
 		/**

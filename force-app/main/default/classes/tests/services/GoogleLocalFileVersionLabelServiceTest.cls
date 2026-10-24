@@ -59,6 +59,7 @@ private class GoogleLocalFileVersionLabelServiceTest {
 		GoogleFileVersion__c version = createVersion('LBLSVC1');
 
 		GoogleFileVersionLabel__c invoiceLabel = addLabel(version.Id, 'Invoice');
+		Test.setCreatedDate(invoiceLabel.Id, Datetime.now().addMinutes(-1));
 		Assert.areEqual('Invoice', loadLabelNames(version.Id));
 
 		GoogleFileVersionLabel__c contractLabel = addLabel(version.Id, 'Contract');
@@ -108,14 +109,12 @@ private class GoogleLocalFileVersionLabelServiceTest {
 			labelNames.add(String.valueOf(index).leftPad(LABEL_NAME_LENGTH, 'x'));
 		}
 
-		List<GoogleFileVersionLabel__c> versionLabels = new List<GoogleFileVersionLabel__c>();
-		for (String labelName : labelNames) {
-			versionLabels.add(GoogleCloudTestFactory.versionLabel().forVersion(version.Id).withName(labelName).build());
-		}
+		Datetime firstLabelAppliedAt = Datetime.now().addHours(-1);
 
-		Test.startTest();
-			insert versionLabels;
-		Test.stopTest();
+		for (Integer index = 0; index < labelNames.size(); index++) {
+			GoogleFileVersionLabel__c versionLabel = GoogleCloudTestFactory.versionLabel().forVersion(version.Id).withName(labelNames[index]).insertRecord();
+			Test.setCreatedDate(versionLabel.Id, firstLabelAppliedAt.addMinutes(index));
+		}
 
 		String storedNames = loadLabelNames(version.Id);
 		Assert.isTrue(storedNames.length() <= 255);

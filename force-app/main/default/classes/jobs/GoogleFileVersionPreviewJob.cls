@@ -26,23 +26,37 @@
  * labeling all read. It runs as a job because the clone is a Drive callout and a callout cannot follow
  * uncommitted DML in the same transaction.
  */
-public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.AllowsCallouts {
+public without sharing class GoogleFileVersionPreviewJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFilePreviewJobException extends Exception {}
 
 	@TestVisible
 	private static Boolean skipExecution = false;
 
     private final Set<Id> versionIds;
+	private final Boolean chainIntelligence;
     /**
      * Builds the job for a set of versions.
      *
      * @param versionIds The versions needing a Workspace copy.
      */
     public GoogleFileVersionPreviewJob(Set<Id> versionIds) {
-        this.versionIds = versionIds == null
+        this(versionIds, true);
+    }
+
+	/**
+	 * Builds the job and decides whether AI analysis may follow once the Workspace copy is measured. The
+	 * measurement runs transactions later, so passing false here is the only way to keep a file that was
+	 * uploaded without analysis from being summarized and labeled through its copy size.
+	 *
+	 * @param versionIds The versions needing a Workspace copy.
+	 * @param chainIntelligence False to measure the copy without analyzing it. Null counts as true.
+	 */
+	public GoogleFileVersionPreviewJob(Set<Id> versionIds, Boolean chainIntelligence) {
+		this.versionIds = versionIds == null
 			? new Set<Id>()
 			: new Set<Id>(versionIds);
-    }
+		this.chainIntelligence = chainIntelligence != false;
+	}
 
 	/**
 	 * Clones each version in Drive, stores the copy Id, and queues the size measurement afterwards. The size
@@ -97,6 +111,6 @@ public with sharing class GoogleFileVersionPreviewJob extends GQueueableJob.Allo
 			GTriggerHandler.clearAllBypasses();
 		}
 
-		GoogleFileVersionPreviewSizeJob.schedule(generatedPreviewVersionIds);
+		GoogleFileVersionPreviewSizeJob.schedule(generatedPreviewVersionIds, this.chainIntelligence != false);
     }
 }

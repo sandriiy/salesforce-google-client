@@ -873,4 +873,120 @@ private class GoogleLocalFileServiceTest {
 		Assert.areEqual(localFile.Id, visibleFiles[0].Id);
 		Assert.areEqual(0, hiddenFiles.size());
 	}
+
+	@IsTest
+	private static void testRetrieveGoogleFilesPagePositiveMigratedBucketListsOnlyMigratedFiles() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c migratedFile = GoogleCloudTestFactory.file()
+			.withName('Migrated')
+			.withDescription('D')
+			.withSource(GoogleCloudConstants.FILE_SOURCE_MIGRATION)
+			.insertRecord();
+		GoogleCloudTestFactory.file()
+			.withName('Uploaded')
+			.withDescription('D')
+			.withSource('Uploader')
+			.insertRecord();
+
+		GoogleFileExplorerPageRequestDTO request = GoogleFileExplorerPageRequestDTO.firstPage();
+		request.bucket = GoogleCloudConstants.FILE_EXPLORER_BUCKET_MIGRATED;
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = new GoogleLocalFileService().retrieveGoogleFilesPage(request, UserInfo.getUserId());
+		Test.stopTest();
+
+		Assert.areEqual(1, result.files.size(), 'The migrated bucket lists files whose source is Migration and nothing else');
+		Assert.areEqual(migratedFile.Id, result.files[0].Id);
+		Assert.isFalse(result.hasMore);
+	}
+
+	@IsTest
+	private static void testRequireFileAccessPositiveTheOwnerMayChangeTheFile() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('Owned').insertRecord();
+
+		Test.startTest();
+		GoogleFile__c accessibleFile = new GoogleLocalFileService().requireFileAccess(localFile.Id, true);
+		Test.stopTest();
+
+		Assert.areEqual(localFile.Id, accessibleFile.Id);
+		Assert.areEqual('Edit', accessibleFile.UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testRequireFileAccessNegativeAFileWithNoAccessPathIsRefused() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.denyAllRecordAccess();
+		Id unreachableFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
+			new GoogleFile__c(Id = unreachableFileId, OwnerId = GoogleCloudTestFactory.otherUserId())
+		});
+
+		Test.startTest();
+		try {
+			new GoogleLocalFileService().requireFileAccess(unreachableFileId, false);
+			Assert.fail('A file the user cannot open must be refused');
+		} catch (GoogleLocalFileService.GoogleLocalFileException ex) {
+			Assert.isTrue(ex.getMessage().contains('have access to this file'), ex.getMessage());
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testRequireFileAccessNegativeViewAccessCannotChangeTheFile() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.denyAllRecordAccess();
+		Id readableRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(readableRecordId, true, false);
+		Id viewableFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
+			new GoogleFile__c(Id = viewableFileId, OwnerId = GoogleCloudTestFactory.otherUserId())
+		});
+		GoogleCloudTestFactory.mockLinks(new List<GoogleFileLink__c>{
+			GoogleCloudTestFactory.link().forFile(viewableFileId).withLinkedRecord(readableRecordId).withShareType('Viewer').build()
+		});
+		GoogleLocalFileService localFileService = new GoogleLocalFileService();
+
+		Test.startTest();
+		GoogleFile__c viewableFile = localFileService.requireFileAccess(viewableFileId, false);
+		try {
+			localFileService.requireFileAccess(viewableFileId, true);
+			Assert.fail('View access must not be enough to change the file');
+		} catch (GoogleLocalFileService.GoogleLocalFileException ex) {
+			Assert.isTrue(ex.getMessage().contains('not change it'), ex.getMessage());
+		}
+		Test.stopTest();
+
+		Assert.areEqual('View', viewableFile.UserAccessLevel__c, 'A Viewer link to a readable record opens the file for reading');
+	}
+
+	@IsTest
+	private static void testRequireVersionAccessPositiveJudgesTheVersionByItsFile() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('Versioned').insertRecord();
+		GoogleFileVersion__c localVersion = GoogleCloudTestFactory.version().forFile(localFile.Id).insertRecord();
+
+		Test.startTest();
+		GoogleFile__c accessibleFile = new GoogleLocalFileService().requireVersionAccess(localVersion.Id, true);
+		Test.stopTest();
+
+		Assert.areEqual(localFile.Id, accessibleFile.Id, 'A version is judged by the file it belongs to');
+		Assert.areEqual('Edit', accessibleFile.UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testRequireVersionAccessNegativeAnUnknownVersionIsRefused() {
+		GoogleCloudTestFactory.initMocks();
+
+		Test.startTest();
+		try {
+			new GoogleLocalFileService().requireVersionAccess(GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType), false);
+			Assert.fail('A version that does not exist must be refused like one the user cannot open');
+		} catch (GoogleLocalFileService.GoogleLocalFileException ex) {
+			Assert.isTrue(ex.getMessage().contains('have access to this file'), ex.getMessage());
+		}
+		Test.stopTest();
+	}
 }

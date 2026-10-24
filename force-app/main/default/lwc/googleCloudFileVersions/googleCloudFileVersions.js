@@ -29,7 +29,11 @@ export default class GoogleCloudFileVersions extends LightningElement {
 	}
 
 	handleVersionClick(event) {
-		this.refs.filePreviewModal.openVersion(this.recordId, event.detail.value);
+		this.dispatchEvent(new CustomEvent('versionselect', {
+			detail: {
+				versionId: event.detail.value
+			}
+		}));
 	}
 
 	buildVersionViewModels(versions) {

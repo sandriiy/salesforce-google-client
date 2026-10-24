@@ -29,35 +29,54 @@ private class GoogleFileCloudDeleteJobTest {
 		);
 	}
 
+	private static List<String> collectTrashedDriveIds(GoogleDriveHttpMock driveMock) {
+		List<String> trashedDriveIds = new List<String>();
+		for (GoogleDriveHttpMock.CapturedRequest capturedRequest : driveMock.getCapturedRequests()) {
+			String endpoint = capturedRequest.endpoint == null ? '' : capturedRequest.endpoint;
+			if (capturedRequest.method != 'POST' || !endpoint.contains('/trash')) continue;
+
+			trashedDriveIds.add(endpoint.substringAfter('/files/').substringBefore('/trash'));
+		}
+
+		return trashedDriveIds;
+	}
+
 	@IsTest
 	private static void testExecutePositiveEmptyList() {
-		GoogleCloudTestFactory.initMocks();
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		Test.startTest();
 		new GoogleFileCloudDeleteJob(new List<String>()).execute(null);
+		Integer chainedJobs = Limits.getQueueableJobs();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'Nothing to delete means Google Drive is never called');
+		Assert.areEqual(0, chainedJobs);
 	}
 
 	@IsTest
 	private static void testExecutePositiveSingleId() {
-		GoogleCloudTestFactory.initMocks();
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		List<String> googleDriveIds = new List<String>{ 'GD_1' };
 
 		Test.startTest();
 		new GoogleFileCloudDeleteJob(googleDriveIds).execute(null);
+		Integer chainedJobs = Limits.getQueueableJobs();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.areEqual(new List<String>{ 'GD_1' }, collectTrashedDriveIds(driveMock));
+		Assert.areEqual(0, chainedJobs, 'A batch within the chain size is finished by a single job');
 	}
 
 	@IsTest
 	private static void testExecutePositiveFromVersions() {
-		GoogleCloudTestFactory.initMocks();
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('DJ1').insertRecord();
@@ -77,12 +96,13 @@ private class GoogleFileCloudDeleteJobTest {
 		new GoogleFileCloudDeleteJob(versions).execute(null);
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.areEqual(new List<String>{ 'GD_DEL_1', 'DOCS_DEL_1' }, collectTrashedDriveIds(driveMock), 'The upload and its Workspace copy are both trashed');
 	}
 
 	@IsTest
 	private static void testExecutePositiveFromIdSet() {
-		GoogleCloudTestFactory.initMocks();
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		Set<String> googleDriveIds = new Set<String>{ 'GD_SET_1', 'GD_SET_2' };
@@ -91,20 +111,25 @@ private class GoogleFileCloudDeleteJobTest {
 		new GoogleFileCloudDeleteJob(googleDriveIds).execute(null);
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		List<String> trashedDriveIds = collectTrashedDriveIds(driveMock);
+		Assert.areEqual(googleDriveIds.size(), trashedDriveIds.size());
+		Assert.areEqual(googleDriveIds, new Set<String>(trashedDriveIds));
 	}
 
 	@IsTest
 	private static void testExecutePositiveNullInputs() {
-		GoogleCloudTestFactory.initMocks();
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
 		GoogleMetadataConfigService.configRecordOverride = buildDeleteConfig();
 
 		Test.startTest();
 		new GoogleFileCloudDeleteJob((List<GoogleFileVersion__c>) null).execute(null);
 		new GoogleFileCloudDeleteJob((Set<String>) null).execute(null);
 		new GoogleFileCloudDeleteJob((List<String>) null).execute(null);
+		Integer chainedJobs = Limits.getQueueableJobs();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'Nothing to delete means Google Drive is never called');
+		Assert.areEqual(0, chainedJobs);
 	}
 }

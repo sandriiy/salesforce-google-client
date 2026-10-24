@@ -4,6 +4,7 @@ import {
 	createDefaultFileIntelligenceState,
 	resolveFileHoverText
 } from 'c/googleCloudFileIntelligenceUtils';
+import retrieveTransferLimits from '@salesforce/apex/GoogleCloudFilesController.retrieveTransferLimits';
 
 export const DEFAULT_OOPS_MESSAGE = 'Oops!';
 export const DEFAULT_FILES_CAPACITY_MESSAGE = 'The maximum number of files has already been reached for this record';
@@ -11,6 +12,7 @@ export const DEFAULT_FILE_UPLOAD_FAILURE = 'Verify that the file is not corrupte
 export const DEFAULT_FILE_NOT_ALLOWED_MESSAGE = 'Some files don’t meet the allowed type or size, please check and retry';
 export const DEFAULT_FAILED_RETRIEVE_MESSAGE = 'Unable to load files. Please refresh the page or contact your administrator';
 export const DEFAULT_FAILED_DOWNLOAD_MESSAGE = 'Unable to download the file. Please try again later or contact your system administrator';
+export const DEFAULT_DOWNLOAD_STARTED_MESSAGE = 'Your file is being downloaded and will arrive shortly';
 export const DEFAULT_FAILED_ATTACH_MESSAGE = 'Unable to attach the selected file. Please try again later or contact your system administrator';
 export const DEFAULT_NO_VERSIONS_MESSAGE = 'No versions were found for this file. Please verify that the file still exists';
 export const DEFAULT_ACCESS_RESTRICTED_MESSAGE = 'You can\’t perform this action on this file. Try another file or contact the file owner';
@@ -64,6 +66,14 @@ export const FILE_ICON_MAP = {
     unknown: DEFAULT_FILE_ICON_TYPE
 };
 
+export const DEFAULT_TRANSFER_LIMITS = Object.freeze({
+    uploadChunkBytes: 2 * 1024 * 1024,
+    downloadChunkBytes: 2 * 1024 * 1024,
+    largeFileThresholdBytes: 2 * 1024 * 1024,
+    maxPreviewFileSizeBytes: 2 * 1024 * 1024
+});
+
+let transferLimitsPromise;
 
 const showToast = (context, title, message, variant = 'info', mode = 'dismissable') => {
     context.dispatchEvent(new ShowToastEvent({
@@ -99,6 +109,27 @@ const generateId = (length = 8) => {
         .join('')
         .slice(0, length);
 }
+
+const normalizeTransferLimits = (limits) => {
+    const normalized = {};
+
+    Object.keys(DEFAULT_TRANSFER_LIMITS).forEach((key) => {
+        const value = Number(limits?.[key]);
+        normalized[key] = Number.isInteger(value) && value > 0 ? value : DEFAULT_TRANSFER_LIMITS[key];
+    });
+
+    return Object.freeze(normalized);
+};
+
+const resolveTransferLimits = () => {
+    if (!transferLimitsPromise) {
+        transferLimitsPromise = retrieveTransferLimits()
+            .then((limits) => normalizeTransferLimits(limits))
+            .catch(() => DEFAULT_TRANSFER_LIMITS);
+    }
+
+    return transferLimitsPromise;
+};
 
 const formatFileSize = (bytes, decimals = 1) => {
     if (bytes === 0 || isNaN(bytes)) return '0 B';
@@ -535,4 +566,37 @@ const asString = (value) => {
 	return String(extracted);
 };
 
-export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString };
+const createBulkSelection = (selectedIds = []) => {
+    const ids = new Set(selectedIds);
+    const toArray = () => [...ids];
+
+    return Object.freeze({
+        count: ids.size,
+        isEmpty: ids.size === 0,
+        has: (id) => ids.has(id),
+        includesAll: (candidateIds) => candidateIds.length > 0 && candidateIds.every((id) => ids.has(id)),
+        toggle: (id) => {
+            const next = new Set(ids);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return createBulkSelection(next);
+        },
+        select: (idsToAdd) => createBulkSelection([...toArray(), ...idsToAdd]),
+        deselect: (idsToRemove) => {
+            const removal = new Set(idsToRemove);
+            return createBulkSelection(toArray().filter((id) => !removal.has(id)));
+        },
+        retain: (knownIds) => {
+            const known = new Set(knownIds);
+            return createBulkSelection(toArray().filter((id) => known.has(id)));
+        },
+        clear: () => createBulkSelection(),
+        pick: (rows, keyField = 'id') => (Array.isArray(rows) ? rows.filter((row) => ids.has(row[keyField])) : []),
+        toArray
+    });
+};
+
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, resolveTransferLimits, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString, createBulkSelection };

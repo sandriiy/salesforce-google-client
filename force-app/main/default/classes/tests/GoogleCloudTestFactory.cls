@@ -314,12 +314,14 @@ public class GoogleCloudTestFactory {
 		private String title = 'Test File';
 		private String fileExtension = 'pdf';
 		private String content = 'salesforce file content';
+		private Long contentSize;
 
 		public SalesforceFileBuilder withVersionId(Id v) { versionId = v; return this; }
 		public SalesforceFileBuilder withDocumentId(Id v) { documentId = v; return this; }
 		public SalesforceFileBuilder withTitle(String v) { title = v; return this; }
 		public SalesforceFileBuilder withExtension(String v) { fileExtension = v; return this; }
 		public SalesforceFileBuilder withContent(String v) { content = v; return this; }
+		public SalesforceFileBuilder withSize(Long v) { contentSize = v; return this; }
 
 		public ContentVersion mock() {
 			ContentVersion salesforceFile = build();
@@ -335,6 +337,9 @@ public class GoogleCloudTestFactory {
 
 		public ContentVersion build() {
 			Blob body = Blob.valueOf(content);
+			Long resolvedContentSize = contentSize;
+			if (resolvedContentSize == null) resolvedContentSize = body.size();
+
 			return (ContentVersion) JSON.deserialize(
 				JSON.serialize(new Map<String, Object>{
 					'attributes' => new Map<String, Object>{ 'type' => 'ContentVersion' },
@@ -343,7 +348,7 @@ public class GoogleCloudTestFactory {
 					'Title' => title,
 					'PathOnClient' => title + '.' + fileExtension,
 					'FileExtension' => fileExtension,
-					'ContentSize' => body.size(),
+					'ContentSize' => resolvedContentSize,
 					'IsLatest' => true
 				}),
 				ContentVersion.class
@@ -396,6 +401,112 @@ public class GoogleCloudTestFactory {
 			GoogleClientConfig__mdt out = build();
 			GoogleMetadataConfigService.configRecordOverride = out;
 			return out;
+		}
+	}
+
+	public static MigrationCandidateBuilder migrationCandidate() {
+		return new MigrationCandidateBuilder();
+	}
+
+	public static ContentDocumentLink contentDocumentLink(Id contentDocumentId, Id linkedEntityId, String shareType, String visibility) {
+		return (ContentDocumentLink) JSON.deserialize(
+			JSON.serialize(new Map<String, Object>{
+				'attributes' => new Map<String, Object>{ 'type' => 'ContentDocumentLink' },
+				'Id' => fakeId(ContentDocumentLink.SObjectType),
+				'ContentDocumentId' => contentDocumentId,
+				'LinkedEntityId' => linkedEntityId,
+				'ShareType' => shareType,
+				'Visibility' => visibility
+			}),
+			ContentDocumentLink.class
+		);
+	}
+
+	public static AsyncApexJob backgroundStep(String status, Datetime completedDate) {
+		return (AsyncApexJob) JSON.deserialize(
+			JSON.serialize(new Map<String, Object>{
+				'attributes' => new Map<String, Object>{ 'type' => 'AsyncApexJob' },
+				'Id' => fakeId(AsyncApexJob.SObjectType),
+				'Status' => status,
+				'JobType' => 'Queueable',
+				'CreatedDate' => Datetime.now(),
+				'CompletedDate' => completedDate,
+				'CreatedBy' => new Map<String, Object>{
+					'attributes' => new Map<String, Object>{ 'type' => 'User' },
+					'Name' => 'Migration Admin'
+				}
+			}),
+			AsyncApexJob.class
+		);
+	}
+
+	public static CronTrigger scheduledStep(Datetime nextFireTime) {
+		return (CronTrigger) JSON.deserialize(
+			JSON.serialize(new Map<String, Object>{
+				'attributes' => new Map<String, Object>{ 'type' => 'CronTrigger' },
+				'Id' => fakeId(CronTrigger.SObjectType),
+				'State' => 'WAITING',
+				'NextFireTime' => nextFireTime,
+				'CronJobDetail' => new Map<String, Object>{
+					'attributes' => new Map<String, Object>{ 'type' => 'CronJobDetail' },
+					'Name' => GoogleFileMigrationJob.STEP_JOB_NAME_PREFIX + '/1/test'
+				}
+			}),
+			CronTrigger.class
+		);
+	}
+
+	public static PermissionSetAssignment queryAllFilesAssignment(Id assigneeId) {
+		return new PermissionSetAssignment(Id = fakeId(PermissionSetAssignment.SObjectType), AssigneeId = assigneeId);
+	}
+
+	public class MigrationCandidateBuilder {
+		private Id versionId = fakeId(ContentVersion.SObjectType);
+		private Id documentId = fakeId(ContentDocument.SObjectType);
+		private String title = 'Migrated File';
+		private String fileExtension = 'pdf';
+		private Long contentSize = 1024L;
+		private Id ownerId = UserInfo.getUserId();
+		private Boolean ownerActive = true;
+		private String content = 'migrated file content';
+
+		public MigrationCandidateBuilder withVersionId(Id v) { versionId = v; return this; }
+		public MigrationCandidateBuilder withDocumentId(Id v) { documentId = v; return this; }
+		public MigrationCandidateBuilder withTitle(String v) { title = v; return this; }
+		public MigrationCandidateBuilder withExtension(String v) { fileExtension = v; return this; }
+		public MigrationCandidateBuilder withSize(Long v) { contentSize = v; return this; }
+		public MigrationCandidateBuilder withOwner(Id v, Boolean isActive) { ownerId = v; ownerActive = isActive; return this; }
+		public MigrationCandidateBuilder withContent(String v) { content = v; return this; }
+
+		public ContentVersion build() {
+			if (GoogleLocalFileTransferService.sourceContentOverride == null) {
+				GoogleLocalFileTransferService.sourceContentOverride = new Map<Id, Blob>();
+			}
+			GoogleLocalFileTransferService.sourceContentOverride.put(versionId, Blob.valueOf(content));
+
+			return (ContentVersion) JSON.deserialize(
+				JSON.serialize(new Map<String, Object>{
+					'attributes' => new Map<String, Object>{ 'type' => 'ContentVersion' },
+					'Id' => versionId,
+					'ContentDocumentId' => documentId,
+					'Title' => title,
+					'PathOnClient' => title + '.' + fileExtension,
+					'FileExtension' => fileExtension,
+					'FileType' => fileExtension.toUpperCase(),
+					'ContentSize' => contentSize,
+					'ContentLocation' => 'S',
+					'OwnerId' => ownerId,
+					'IsLatest' => true,
+					'CreatedDate' => Datetime.now(),
+					'Owner' => new Map<String, Object>{
+						'attributes' => new Map<String, Object>{ 'type' => 'User' },
+						'Id' => ownerId,
+						'Name' => 'File Owner',
+						'IsActive' => ownerActive
+					}
+				}),
+				ContentVersion.class
+			);
 		}
 	}
 }

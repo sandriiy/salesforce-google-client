@@ -37,21 +37,23 @@ private class GoogleLocalFileLinkEnrichmentServiceTest {
 
 	@IsTest
 	private static void testApplyLinkedRecordAttributesNegativeNoEnrichment() {
+		Id resolvableRecordId = GoogleCloudTestFactory.linkedRecord('Linked Record Name');
+
 		GoogleFileLink__c linkWithExistingName = new GoogleFileLink__c(
 			LinkedObjectType__c = 'GoogleFile__c',
-			LinkedObjectId__c = (Id) 'a0B000000000001AAA',
+			LinkedObjectId__c = resolvableRecordId,
 			LinkedObjectName__c = 'Already Set'
 		);
 
 		GoogleFileLink__c linkWithBlankObjectType = new GoogleFileLink__c(
 			LinkedObjectType__c = null,
-			LinkedObjectId__c = (Id) 'a0B000000000001AAA',
+			LinkedObjectId__c = resolvableRecordId,
 			LinkedObjectName__c = null
 		);
 
 		GoogleFileLink__c linkWithUnknownObjectType = new GoogleFileLink__c(
 			LinkedObjectType__c = 'NoSuchObject__c',
-			LinkedObjectId__c = (Id) 'a0B000000000001AAA',
+			LinkedObjectId__c = resolvableRecordId,
 			LinkedObjectName__c = null
 		);
 
@@ -69,11 +71,13 @@ private class GoogleLocalFileLinkEnrichmentServiceTest {
 		};
 
 		GoogleLocalFileLinkEnrichmentService enrichmentService = new GoogleLocalFileLinkEnrichmentService();
-		try {
-			List<GoogleFileLink__c> outputLinks = enrichmentService.applyLinkedRecordAttributes(inputLinks);
-		} catch (Exception ex) {
-			Assert.isNotNull(ex.getMessage());
-		}
+		List<GoogleFileLink__c> outputLinks = enrichmentService.applyLinkedRecordAttributes(inputLinks);
+
+		Assert.areEqual(inputLinks, outputLinks);
+		Assert.areEqual('Already Set', linkWithExistingName.LinkedObjectName__c, 'A name that is already set is never overwritten');
+		Assert.isNull(linkWithBlankObjectType.LinkedObjectName__c, 'A link without an object type is left unnamed');
+		Assert.isNull(linkWithUnknownObjectType.LinkedObjectName__c, 'A link to an object that does not exist is left unnamed');
+		Assert.isNull(linkWithNullRecordId.LinkedObjectName__c, 'A link without a record is left unnamed');
 	}
 
 	@IsTest

@@ -351,6 +351,61 @@ private class GoogleFileLabelCommandTest {
 	}
 
 	@IsTest
+	private static void testLabelPositiveLargeUploadWithFittingWorkspaceCopy() {
+		labelingConfig().apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('LBLCMD20')
+			.insertRecord();
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('LBLCMD20.pdf')
+			.withType('application/pdf')
+			.withSize(GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES + 1)
+			.withDriveId('GD_LBLCMD20')
+			.withDocsId('DOCS_LBLCMD20')
+			.withDocsSize(112000)
+			.insertRecord();
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Gemini', 'gemini-2.0-flash', new GenAiClientStub('Label: Invoice\nConfidence: 92', 'STOP'));
+		Test.stopTest();
+
+		Assert.isTrue(result.applied);
+		Assert.areEqual('Invoice', result.labelName);
+		Assert.isTrue(findLabelRequest(driveMock).endpoint.contains('GD_LBLCMD20'));
+	}
+
+	@IsTest
+	private static void testLabelNegativeLargeUploadWithUnmeasuredWorkspaceCopy() {
+		labelingConfig().apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('LBLCMD21')
+			.insertRecord();
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('LBLCMD21.pdf')
+			.withType('application/pdf')
+			.withSize(GoogleCloudConstants.MAX_SUMMARY_FILE_SIZE_BYTES + 1)
+			.withDriveId('GD_LBLCMD21')
+			.withDocsId('DOCS_LBLCMD21')
+			.insertRecord();
+		GenAiClientStub clientStub = new GenAiClientStub('Label: Invoice\nConfidence: 92', 'STOP');
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Gemini', 'gemini-2.0-flash', clientStub);
+		Test.stopTest();
+
+		Assert.isTrue(result.blocked);
+		Assert.areNotEqual(true, result.applied);
+		Assert.isNull(clientStub.capturedRequest);
+		Assert.isNull(findLabelRequest(driveMock));
+	}
+
+	@IsTest
 	private static void testLabelNegativeUnavailableConfiguration() {
 		labelingConfig().apply();
 

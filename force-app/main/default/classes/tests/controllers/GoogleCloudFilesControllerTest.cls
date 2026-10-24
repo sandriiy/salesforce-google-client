@@ -249,15 +249,15 @@ private class GoogleCloudFilesControllerTest {
 	private static void testRetrieveLocalGoogleFileByIdNegativeNoAccess() {
 		GoogleCloudTestFactory.initMocks();
 
-		Id missingFileId = (Id) 'a0B000000000001AAA';
+		Id missingFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
 
 		try {
 			Test.startTest();
 			GoogleCloudFilesController.retrieveLocalGoogleFileById(missingFileId);
 			Test.stopTest();
-			Assert.isTrue(false);
-		} catch (Exception ex) {
-			Assert.isTrue(String.isNotBlank(ex.getMessage()));
+			Assert.fail('A file that does not exist must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
 		}
 	}
 
@@ -276,7 +276,7 @@ private class GoogleCloudFilesControllerTest {
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileVersionSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFileVersion__c(Id = fileVersion.Id, Name = fileVersion.Name)
+			new GoogleFileVersion__c(Id = fileVersion.Id, Name = fileVersion.Name, GoogleFileId__c = parentFile.Id)
 		});
 
 		Test.startTest();
@@ -302,7 +302,18 @@ private class GoogleCloudFilesControllerTest {
 		);
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		GoogleFileVersion__c savedVersion = [SELECT Name, Type__c, Size__c, GoogleDriveFileId__c, GoogleDriveFolderId__c, GoogleFileId__c, GoogleFileId__r.Name FROM GoogleFileVersion__c];
+		GoogleFileLink__c savedLink = [SELECT GoogleFileId__c, LinkedObjectId__c, Source__c FROM GoogleFileLink__c];
+
+		Assert.areEqual('My', savedVersion.GoogleFileId__r.Name);
+		Assert.areEqual('My.pdf', savedVersion.Name);
+		Assert.areEqual('application/pdf', savedVersion.Type__c);
+		Assert.areEqual(123L, savedVersion.Size__c.longValue());
+		Assert.areEqual('GD_NEW', savedVersion.GoogleDriveFileId__c);
+		Assert.areEqual('FOLDER1', savedVersion.GoogleDriveFolderId__c);
+		Assert.areEqual(savedVersion.GoogleFileId__c, savedLink.GoogleFileId__c);
+		Assert.areEqual(String.valueOf(relatedRecordId), savedLink.LinkedObjectId__c);
+		Assert.areEqual('Notes & Attachments', savedLink.Source__c);
 	}
 
 	@IsTest
@@ -327,7 +338,13 @@ private class GoogleCloudFilesControllerTest {
 		GoogleCloudFilesController.ensureGoogleDriveFolderStructure(linkedRecordId);
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Boolean recordFolderCreated = false;
+		for (GoogleDriveHttpMock.CapturedRequest captured : driveMock.getCapturedRequests()) {
+			if (captured.method == 'POST' && captured.body != null && captured.body.contains('ROOT_FOLDER_01') && captured.body.contains(String.valueOf(linkedRecordId))) {
+				recordFolderCreated = true;
+			}
+		}
+		Assert.isTrue(recordFolderCreated, 'The record folder must be created under the upload folder and carry the record it belongs to');
 	}
 
 	@IsTest
@@ -346,7 +363,7 @@ private class GoogleCloudFilesControllerTest {
 			.insertRecord();
 
 		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
-			new GoogleFile__c(Id = baseFile.Id, Name = 'Base')
+			new GoogleFile__c(Id = baseFile.Id, Name = 'Base', OwnerId = UserInfo.getUserId())
 		});
 
 		Id relatedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
@@ -424,6 +441,34 @@ private class GoogleCloudFilesControllerTest {
 		Test.stopTest();
 
 		Assert.areNotEqual(null, bigFileResult);
+	}
+
+	@IsTest
+	private static void testRetrieveTransferLimitsPositiveSizedForTheRunningOrg() {
+		GoogleCloudTestFactory.config().apply();
+
+		Test.startTest();
+		GoogleTransferLimitDTO limits = GoogleCloudFilesController.retrieveTransferLimits();
+		Test.stopTest();
+
+		GoogleTransferLimitResolver resolver = new GoogleTransferLimitResolver();
+		Assert.areEqual(resolver.downloadChunkBytes(), limits.downloadChunkBytes);
+		Assert.areEqual(resolver.uploadChunkBytes(), limits.uploadChunkBytes);
+		Assert.areEqual(resolver.largeFileThresholdBytes(), limits.largeFileThresholdBytes);
+		Assert.areEqual(resolver.largeFileThresholdBytes(), limits.maxPreviewFileSizeBytes, 'A blank Maximum Preview File Size follows the org');
+		Assert.isTrue(limits.uploadChunkBytes <= limits.downloadChunkBytes, 'An upload request never carries more than a download request may');
+	}
+
+	@IsTest
+	private static void testRetrieveTransferLimitsPositiveCarriesConfiguredPreviewSize() {
+		GoogleCloudTestFactory.config().withBigFileSize(1048576L).apply();
+
+		Test.startTest();
+		GoogleTransferLimitDTO limits = GoogleCloudFilesController.retrieveTransferLimits();
+		Test.stopTest();
+
+		Assert.areEqual(1048576L, limits.maxPreviewFileSizeBytes, 'Download As must stop at the size the server stops at');
+		Assert.areEqual(new GoogleTransferLimitResolver().largeFileThresholdBytes(), limits.largeFileThresholdBytes, 'A configured preview size never changes what one request can carry');
 	}
 
 	@IsTest
@@ -538,5 +583,86 @@ private class GoogleCloudFilesControllerTest {
 			.insertRecord();
 
 		return localFile;
+	}
+
+	@IsTest
+	private static void testReadEndpointsNegativeRefuseAVersionTheUserCannotOpen() {
+		GoogleCloudTestFactory.initMocks();
+		Id unknownVersionId = GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType);
+
+		Test.startTest();
+		try {
+			GoogleCloudFilesController.validateFilePreview(unknownVersionId);
+			Assert.fail('Checking a preview must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.retrieveLocalGoogleFileVersionById(unknownVersionId);
+			Assert.fail('Reading a version must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.downloadFile(unknownVersionId);
+			Assert.fail('Downloading must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.downloadFileAsPdf(unknownVersionId);
+			Assert.fail('Downloading as PDF must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.retrieveDownloadAsOptions(unknownVersionId);
+			Assert.fail('Listing download formats must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.downloadFileAs(unknownVersionId, 'text/plain');
+			Assert.fail('Downloading in another format must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.downloadLargeFilePartial(unknownVersionId, 0L, 10L);
+			Assert.fail('Downloading part of a large file must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testChangeEndpointsNegativeRefuseAFileTheUserCannotOpen() {
+		GoogleCloudTestFactory.initMocks();
+		Id unreachableFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+
+		Test.startTest();
+		try {
+			GoogleCloudFilesController.saveNewGoogleFileVersion(GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), unreachableFileId, 'New.pdf', 'application/pdf', 10L, 'GD_NEW', 'FOLDER', 'UI');
+			Assert.fail('Adding a version to a file the user cannot open must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+
+		try {
+			GoogleCloudFilesController.deleteExistingGoogleFile(unreachableFileId);
+			Assert.fail('Deleting a file the user cannot open must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+		Test.stopTest();
+
+		Assert.areEqual(0, [SELECT COUNT() FROM GoogleFileVersion__c], 'No version was added');
 	}
 }

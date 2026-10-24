@@ -27,7 +27,7 @@
  * makes the calls slow. Labels are saved in one commit at the end, after the Drive calls, since DML
  * cannot come before a callout.
  */
-public with sharing class GoogleFileVersionLabelJob extends GQueueableJob.AllowsCallouts {
+public without sharing class GoogleFileVersionLabelJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFileVersionLabelJobException extends Exception {}
 
 	@TestVisible

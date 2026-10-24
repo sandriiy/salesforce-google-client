@@ -48,4 +48,33 @@ public class GoogleFileUploadRequestDTO {
 	 * Salesforce storage.
 	 */
 	public Boolean removeSalesforceFile = false;
+	/**
+	 * Where the link to the record shows up, using a value of the Source picklist, when that differs from
+	 * source. Blank means the same place as source.
+	 */
+	public String linkSource;
+	/**
+	 * Who owns the resulting file. Blank means the running user, as for any upload.
+	 */
+	public Id ownerId;
+	/**
+	 * The access the record links grant, "Viewer", "Collaborator", "InferredFromRecord" or "None". Blank
+	 * means the default for the running user.
+	 */
+	public String shareType;
+	/**
+	 * Who the record links are visible to, "InternalUsers" or "AllUsers". Blank means the default for the
+	 * running user.
+	 */
+	public String visibility;
+	/**
+	 * Further records the file is attached to on top of relatedRecordId, with the same access as the first
+	 * link. They are linked once the file exists, the way Attach Existing File does it, shortcuts included.
+	 */
+	public List<Id> additionalRecordIds;
+	/**
+	 * True to leave out the AI summary and label for the files committed with this one, keeping the preview
+	 * copy and the folder placement. Off by default, which is what every upload does.
+	 */
+	public Boolean skipIntelligence = false;
 }

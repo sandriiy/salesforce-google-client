@@ -9,9 +9,9 @@ import initializeDirectUpload from '@salesforce/apex/GoogleCloudDirectUploadCont
 import finalizeDirectUpload from '@salesforce/apex/GoogleCloudDirectUploadController.finalizeDirectUpload';
 import reportDirectUploadOutcome from '@salesforce/apex/GoogleCloudDirectUploadController.reportDirectUploadOutcome';
 
-export const BIG_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
-const CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB
-const DIRECT_CHUNK_ALIGNMENT = 256 * 1024;
+import { resolveTransferLimits } from 'c/googleCloudUtils';
+
+const CHUNK_ALIGNMENT = 256 * 1024;
 const DIRECT_CHUNK_SIZE = 16 * 1024 * 1024; // 16 MB, a multiple of the 256 KB Google requires for every non-final chunk
 const DIRECT_CHUNK_TIMEOUT_MS = 180000;
 const MAX_DIRECT_CHUNK_ATTEMPTS = 5;
@@ -125,6 +125,7 @@ async function uploadThroughApex(fileId, file, options) {
     const onProgress = options?.onProgress ?? (() => {});
 
     const totalBytes = file.size;
+    const chunkSize = alignToChunkBoundary((await resolveTransferLimits()).uploadChunkBytes);
     let uploadedFileId;
     let uploaderParentFolderId;
     let resumeSessionId;
@@ -132,7 +133,7 @@ async function uploadThroughApex(fileId, file, options) {
 
     while (uploadedBytes < totalBytes) {
         const start = uploadedBytes;
-        const end = Math.min(start + CHUNK_SIZE, totalBytes);
+        const end = Math.min(start + chunkSize, totalBytes);
 
         const fileChunk = file.slice(start, end);
 
@@ -298,8 +299,12 @@ function resolveBrowserByteLimit(serverByteLimit, totalBytes) {
         return serverLimit;
     }
 
-    const alignedLimit = Math.floor(totalBytes / DIRECT_CHUNK_ALIGNMENT) * DIRECT_CHUNK_ALIGNMENT;
-    return alignedLimit >= totalBytes ? Math.max(0, alignedLimit - DIRECT_CHUNK_ALIGNMENT) : alignedLimit;
+    const alignedLimit = Math.floor(totalBytes / CHUNK_ALIGNMENT) * CHUNK_ALIGNMENT;
+    return alignedLimit >= totalBytes ? Math.max(0, alignedLimit - CHUNK_ALIGNMENT) : alignedLimit;
+}
+
+function alignToChunkBoundary(bytes) {
+    return Math.max(CHUNK_ALIGNMENT, Math.floor(bytes / CHUNK_ALIGNMENT) * CHUNK_ALIGNMENT);
 }
 
 function resolveCommittedBytes(rangeHeader, fallbackEnd) {

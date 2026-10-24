@@ -36,21 +36,21 @@ When it is on, only the **owner** of a file sees the option, and only if they ar
 
 ## Maximum Preview File Size
 
-The size, in bytes, above which a file is treated as a large upload and transferred in chunks rather than in one request. It also governs which files can be rendered by the large-file preview path.
+The size, in bytes, above which a file is treated as large. It limits document and spreadsheet previews, Download As, and files uploaded from Flows in the same run; larger Flow uploads finish in the background.
 
-The default is **2 MB** (`2097152`). Blank means the default is used.
+Leave it **blank** to let Google Client use the largest size your Salesforce release supports: 2 MB up to Summer '26 and 3.5 MB from Winter '27. The help text next to the field shows the size that applies to your organization. Organizations that saved their settings in an earlier version have `2097152` (2 MB) stored here; clear the field and save to switch to the automatic size. A cleared field is stored as `0`, which means the same as blank.
 
-PDFs are previewed regardless of this value.
+PDFs and images are previewed regardless of this value.
 
 For document and spreadsheet files the limit is compared against the Google Workspace preview version Google Client prepares, which is usually far smaller than the uploaded file, so a large upload can still be previewable. Files uploaded before 2.2.0 are compared by their uploaded size.
 
-Raising it is rarely useful. The chunked path exists because Salesforce limits how much data one operation can hold, and this setting does not change those limits — setting it too high produces errors rather than larger previews.
+Raising it above the automatic size is rarely useful. Salesforce limits how much data one operation can hold, and this setting does not change those limits — a value set too high produces errors rather than larger previews.
 
 ## Max Delete Chain Size
 
 How many background jobs Google Client may queue when removing a file's content from Google Drive.
 
-The default is **3**. Blank means the default is used.
+The default is **3**. Blank or 0 means the default is used.
 
 A file with many versions needs more than one background job to remove every copy from Drive, because each job can only reach Google a limited number of times. Raising this lets very large files finish cleaning up sooner; lowering it reduces the number of queued jobs Google Client adds to your org.
 

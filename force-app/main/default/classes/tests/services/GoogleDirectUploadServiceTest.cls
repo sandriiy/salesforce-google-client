@@ -222,9 +222,10 @@ private class GoogleDirectUploadServiceTest {
 
 		Test.startTest();
 		buildService().reportOutcome(GoogleDirectUploadService.OUTCOME_BLOCKED, 'bytes 0-16777215 attempt 1 status 0');
+		Integer unsavedLogEntries = Logger.getBufferSize();
 		Test.stopTest();
 
-		Assert.isTrue(true, 'Reporting an outcome must never surface an error to the uploading user');
+		Assert.areEqual(0, unsavedLogEntries, 'A failed upload must be saved to the log, not left waiting in the buffer');
 	}
 
 	@IsTest
@@ -234,8 +235,9 @@ private class GoogleDirectUploadServiceTest {
 
 		Test.startTest();
 		buildService().reportOutcome(GoogleDirectUploadService.OUTCOME_RECOVERED, 'retried once');
+		Integer unsavedLogEntries = Logger.getBufferSize();
 		Test.stopTest();
 
-		Assert.isTrue(true, 'A recovered upload is informational, not an error');
+		Assert.areEqual(0, unsavedLogEntries, 'A recovered upload must be saved to the log, not left waiting in the buffer');
 	}
 }

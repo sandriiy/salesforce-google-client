@@ -36,4 +36,14 @@ public class GoogleFileUploadResultDTO {
 	 * True when the upload is finishing in a background job, which means the Ids above are empty.
 	 */
 	public Boolean isQueued = false;
+	/**
+	 * True when the file was not attempted because the files before it already filled the transaction,
+	 * which only happens on the path that carries on past failures. Send it again next time.
+	 */
+	public Boolean isDeferred = false;
+	/**
+	 * Why this file was not uploaded, in words a user can read, on the path that carries on past failures.
+	 * Null when the upload succeeded, was queued or was deferred.
+	 */
+	public String errorMessage;
 }

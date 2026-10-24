@@ -84,7 +84,9 @@ public with sharing class GoogleCloudFilesController {
 
 	@AuraEnabled(cacheable=true)
 	public static GoogleTransferLimitDTO retrieveTransferLimits() {
-		return new GoogleTransferLimitResolver().resolveLimits();
+		GoogleTransferLimitDTO limits = new GoogleTransferLimitResolver().resolveLimits();
+		limits.maxPreviewFileSizeBytes = new GoogleMetadataConfigService().getBigFileSizeInBytes();
+		return limits;
 	}
 
 	@AuraEnabled

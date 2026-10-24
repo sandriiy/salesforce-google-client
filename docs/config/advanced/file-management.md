@@ -46,13 +46,11 @@ For document and spreadsheet files the limit is compared against the Google Work
 
 Raising it above the automatic size is rarely useful. Salesforce limits how much data one operation can hold, and this setting does not change those limits — a value set too high produces errors rather than larger previews.
 
-📘 See [File Size Limits](../../features/file-size-limits.md)
-
 ## Max Delete Chain Size
 
 How many background jobs Google Client may queue when removing a file's content from Google Drive.
 
-The default is **3**. Blank means the default is used.
+The default is **3**. Blank or 0 means the default is used.
 
 A file with many versions needs more than one background job to remove every copy from Drive, because each job can only reach Google a limited number of times. Raising this lets very large files finish cleaning up sooner; lowering it reduces the number of queued jobs Google Client adds to your org.
 

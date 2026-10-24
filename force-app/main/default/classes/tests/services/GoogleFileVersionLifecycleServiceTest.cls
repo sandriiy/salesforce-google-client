@@ -36,21 +36,31 @@ private class GoogleFileVersionLifecycleServiceTest {
 
 	@IsTest
 	private static void testMarkAsLatestVersionIfApplicablePositiveNoInput() {
+		GoogleCloudTestFactory.config().apply();
+
 		Test.startTest();
 		new GoogleLocalFileVersionLifecycleService().markAsLatestVersionIfApplicable(
 			new List<GoogleFileVersion__c>(),
 			new List<GoogleFileVersion__c>()
 		);
+		Integer queriesIssued = Limits.getQueries();
+		Integer dmlStatements = Limits.getDmlStatements();
 		Test.stopTest();
-		Assert.isTrue(true);
+
+		Assert.areEqual(0, queriesIssued, 'Without versions there is no file to look up');
+		Assert.areEqual(0, dmlStatements, 'Without versions no flag is rewritten');
 	}
 
 	@IsTest
 	private static void testProcessFileInsertFinalizerPositiveNoInput() {
+		GoogleCloudTestFactory.config().apply();
+
 		Test.startTest();
 		new GoogleLocalFileVersionLifecycleService().processFileInsertFinalizer(null);
+		Integer queuedJobs = Limits.getQueueableJobs();
 		Test.stopTest();
-		Assert.isTrue(true);
+
+		Assert.areEqual(0, queuedJobs, 'Without versions no follow-up work is queued');
 	}
 
 	@IsTest

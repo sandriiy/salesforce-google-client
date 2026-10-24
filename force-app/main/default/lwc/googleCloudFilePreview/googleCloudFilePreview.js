@@ -713,7 +713,7 @@ export default class GoogleCloudFilePreview extends NavigationMixin(LightningEle
 			&& this.isUnavailablePreview !== true
 			&& this.localLatestVersionRecord?.IsPreviewableFile__c === true
 			&& this.localLatestVersionRecord?.Size__c != null
-			&& this.localLatestVersionRecord.Size__c <= this.transferLimits.largeFileThresholdBytes;
+			&& this.localLatestVersionRecord.Size__c <= this.transferLimits.maxPreviewFileSizeBytes;
 	}
 
 	get stageClass() {

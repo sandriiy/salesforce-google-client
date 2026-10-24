@@ -88,7 +88,6 @@ nav:
       - Public Links: features/public-links.md
       - Open in Google Drive: features/open-in-drive.md
       - Versioning: features/versioning.md
-      - File Size Limits: features/file-size-limits.md
       - Migrate Salesforce Files: features/migrate-salesforce-files.md
       - Audit & Logging: features/audit.md
       - Flows & Automation:

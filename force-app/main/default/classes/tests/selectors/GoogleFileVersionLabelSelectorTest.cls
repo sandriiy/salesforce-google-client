@@ -75,8 +75,10 @@ private class GoogleFileVersionLabelSelectorTest {
 		GoogleFileVersion__c firstVersion = createVersion('SEL_LBL_3');
 		GoogleFileVersion__c secondVersion = createVersion('SEL_LBL_4');
 
-		GoogleCloudTestFactory.versionLabel().forVersion(firstVersion.Id).withName('Invoice').insertRecord();
-		GoogleCloudTestFactory.versionLabel().forVersion(secondVersion.Id).withName('Contract').insertRecord();
+		GoogleFileVersionLabel__c olderLabel = GoogleCloudTestFactory.versionLabel().forVersion(firstVersion.Id).withName('Invoice').insertRecord();
+		GoogleFileVersionLabel__c newerLabel = GoogleCloudTestFactory.versionLabel().forVersion(secondVersion.Id).withName('Contract').insertRecord();
+		Test.setCreatedDate(olderLabel.Id, Datetime.now().addMinutes(-2));
+		Test.setCreatedDate(newerLabel.Id, Datetime.now().addMinutes(-1));
 
 		List<GoogleFileVersionLabel__c> versionLabels = (List<GoogleFileVersionLabel__c>) GoogleFileVersionLabelSelector.query()
 			.withBaseFields()
@@ -85,7 +87,8 @@ private class GoogleFileVersionLabelSelectorTest {
 			.toList();
 
 		Assert.areEqual(2, versionLabels.size());
-		Assert.isTrue(versionLabels[0].CreatedDate >= versionLabels[1].CreatedDate);
+		Assert.areEqual(newerLabel.Id, versionLabels[0].Id);
+		Assert.areEqual(olderLabel.Id, versionLabels[1].Id);
 
 		List<GoogleFileVersionLabel__c> limitedLabels = (List<GoogleFileVersionLabel__c>) GoogleFileVersionLabelSelector.query()
 			.withBaseFields()

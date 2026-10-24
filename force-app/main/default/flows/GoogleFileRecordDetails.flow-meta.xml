@@ -62,7 +62,7 @@
         <displayField xsi:nil="true"/>
         <object xsi:nil="true"/>
         <picklistField>Source__c</picklistField>
-        <picklistObject>GoogleFile__c</picklistObject>
+        <picklistObject>GoogleFileLink__c</picklistObject>
     </dynamicChoiceSets>
     <environments>Default</environments>
     <interviewLabel>Google File Record Details {!$Flow.CurrentDateTime}</interviewLabel>

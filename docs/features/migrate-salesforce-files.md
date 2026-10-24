@@ -2,8 +2,6 @@
 
 The **Migration** tab moves the Salesforce Files you already have into Google Drive, a few at a time in the background, and turns each one into an ordinary Google Client file. A migrated file appears under **Notes & Attachments** on the same record, keeps its owner, is visible to the same people the Salesforce file was, gets a preview, lands in the configured folder, and with AI Analytics on it is summarized and labeled like any upload. The Salesforce copy stays where it is.
 
-<!-- IMAGE: migration_tab.png — the Migration tab with the New migration, Progress and Migrated files cards -->
-
 ## What moves, and what stays
 
 | Moves to Google Drive | Stays in Salesforce |
@@ -30,7 +28,7 @@ The steps at the top of the tab walk through a migration. **Next** stays off unt
 3. **Records & options.** Keep **Any record**, or list the objects a file must be attached to. With AI Analytics on, **Skip AI analysis for these files** copies the files without a summary or a label; previews and folder placement happen either way.
 4. **Review & start.** A summary of every choice, the count from the check and an estimate of the longest the run can take. The count includes files that are not attached to the records chosen in step 3, and the run skips those. **Start migration** queues the first step straight away.
 
-<!-- IMAGE: migration_wizard_files.png — the Files to migrate step with the condition box, the starter buttons and a check result -->
+![Files to migrate step of the Migration tab](../assets/images/migration_tab.png)
 
 ### Writing a condition
 
@@ -56,7 +54,7 @@ The **Progress** card shows the status of the current or last run, a progress ba
 
 Leaving the page and coming back in the same browser shows the same card. Another browser, or another administrator, sees that a migration is running and how many files have been copied, but not the selection it was started with.
 
-<!-- IMAGE: migration_progress.png — the Progress card while a run is going -->
+![Progress card while a migration runs](../assets/images/migration_progress.png)
 
 | Status | Meaning |
 |---|---|
@@ -79,6 +77,6 @@ Only one migration runs at a time. Starting another while one is in progress is 
 
 The **Migrated files** card lists the files the migration has copied in that you can open, with the same columns as [File Explorer](file-explorer.md). Search and sort work the same way, and clicking a file opens its preview.
 
-<!-- IMAGE: migration_migrated_files.png — the Migrated files card with a few rows -->
+![Migrated files card](../assets/images/migration_migrated_files.png)
 
 <br>

@@ -54,7 +54,7 @@ public with sharing class GoogleFileCloudDeleteJob implements Queueable, Databas
 		this.MAX_CALLS_PER_JOB = new GoogleMetadataConfigService().getDeleteChainSize();
         this.googleFileIds = googleFileIds == null 
 			? new List<String>()
-			: new List<String>(this.googleFileIds);
+			: new List<String>(googleFileIds);
     }
 
 	/**

@@ -59,19 +59,25 @@ private class GoogleFileEditDetailsActionTest {
 
 	@IsTest
 	private static void testEditDetailsPositiveNullInputs() {
+		GoogleCloudTestFactory.config().apply();
+
 		Test.startTest();
 		GoogleFileEditDetailsAction.editDetails(null);
+		Integer dmlStatements = Limits.getDmlStatements();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.areEqual(0, dmlStatements, 'Without inputs no record is changed');
 	}
 
 	@IsTest
 	private static void testEditDetailsPositiveEmptyInputs() {
+		GoogleCloudTestFactory.config().apply();
+
 		Test.startTest();
 		GoogleFileEditDetailsAction.editDetails(new List<GoogleFileEditDetailsAction.Input>());
+		Integer dmlStatements = Limits.getDmlStatements();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.areEqual(0, dmlStatements, 'Without inputs no record is changed');
 	}
 }

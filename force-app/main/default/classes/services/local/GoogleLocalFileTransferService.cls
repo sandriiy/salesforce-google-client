@@ -53,6 +53,9 @@ public without sharing class GoogleLocalFileTransferService {
 	@TestVisible
 	private static Long uploadTimeBudgetMillisOverride;
 
+	@TestVisible
+	private static List<String> activeFieldSourcesOverride;
+
 	private final IGoogleUnitOfWork uow;
 	private final GoogleMetadataConfigService metadataService;
 	private final GoogleTransferLimitResolver transferLimits;
@@ -570,14 +573,29 @@ public without sharing class GoogleLocalFileTransferService {
 	private String resolveSource(String requestedSource) {
 		if (String.isBlank(requestedSource)) return GoogleCloudConstants.FILE_SOURCE_NOTES_AND_ATTACHMENTS;
 
-		List<String> supportedSources = new List<String>();
-		for (Schema.PicklistEntry entry : GoogleFile__c.Source__c.getDescribe().getPicklistValues()) {
-			if (!entry.isActive()) continue;
-			if (entry.getValue().equalsIgnoreCase(requestedSource.trim())) return entry.getValue();
-			supportedSources.add(entry.getValue());
+		List<String> supportedSources = resolveSupportedSources();
+		for (String supportedSource : supportedSources) {
+			if (supportedSource.equalsIgnoreCase(requestedSource.trim())) return supportedSource;
 		}
 
 		throw new GoogleLocalFileTransferException('The file source must be one of "' + String.join(supportedSources, SOURCE_LIST_SEPARATOR) + '"');
+	}
+
+	private List<String> resolveSupportedSources() {
+		List<String> supportedSources = new List<String>();
+		if (activeFieldSourcesOverride != null) {
+			supportedSources.addAll(activeFieldSourcesOverride);
+		} else {
+			for (Schema.PicklistEntry entry : GoogleFile__c.Source__c.getDescribe().getPicklistValues()) {
+				if (entry.isActive()) supportedSources.add(entry.getValue());
+			}
+		}
+
+		if (!supportedSources.contains(GoogleCloudConstants.FILE_SOURCE_MIGRATION)) {
+			supportedSources.add(GoogleCloudConstants.FILE_SOURCE_MIGRATION);
+		}
+
+		return supportedSources;
 	}
 
 	private String resolveFileName(String requestedFileName, ContentVersion sourceFile) {

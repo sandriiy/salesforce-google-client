@@ -387,11 +387,24 @@ private class GoogleCloudFilesSharingControllerTest {
 
 	@IsTest
 	private static void testIsPublicLinkDomainPositive() {
+		GoogleCloudTestFactory.config().withOrganizationalDomain('example.com').apply();
+
 		Test.startTest();
 		Boolean isDomainConfigured = GoogleCloudFilesSharingController.isPublicLinkDomain();
 		Test.stopTest();
 
-		Assert.areNotEqual(null, isDomainConfigured);
+		Assert.isTrue(isDomainConfigured);
+	}
+
+	@IsTest
+	private static void testIsPublicLinkDomainNegativeNoDomain() {
+		GoogleCloudTestFactory.config().apply();
+
+		Test.startTest();
+		Boolean isDomainConfigured = GoogleCloudFilesSharingController.isPublicLinkDomain();
+		Test.stopTest();
+
+		Assert.isFalse(isDomainConfigured, 'A fresh install shares public links with anyone');
 	}
 
 	@IsTest

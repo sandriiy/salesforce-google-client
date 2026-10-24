@@ -45,6 +45,9 @@ private class GoogleFileVersionSelectorTest {
 			.withSize(20)
 			.insertRecord();
 
+		Test.setCreatedDate(firstVersion.Id, Datetime.now().addMinutes(-2));
+		Test.setCreatedDate(secondVersion.Id, Datetime.now().addMinutes(-1));
+
 		List<GoogleFileVersion__c> versions = (List<GoogleFileVersion__c>) GoogleFileVersionSelector.query()
 			.withBaseFields()
 			.byParentId(parentFile.Id)
@@ -52,8 +55,8 @@ private class GoogleFileVersionSelectorTest {
 			.toList();
 
 		Assert.areEqual(2, versions.size());
-		Assert.areEqual(new Set<Id>{ firstVersion.Id, secondVersion.Id }, new Map<Id, GoogleFileVersion__c>(versions).keySet());
-		Assert.isTrue(versions[0].CreatedDate >= versions[1].CreatedDate);
+		Assert.areEqual(secondVersion.Id, versions[0].Id);
+		Assert.areEqual(firstVersion.Id, versions[1].Id);
 		Assert.isTrue(String.isNotBlank(versions[0].Name));
 		Assert.isTrue(versions[0].Size__c != null);
 		Assert.isTrue(String.isNotBlank(versions[0].Type__c));

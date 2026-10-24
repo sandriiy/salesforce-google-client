@@ -143,24 +143,30 @@ private class GoogleFileVersionPreviewJobTest {
 
 	@IsTest
 	private static void testExecutePositiveEmptyVersionIds() {
-		GoogleCloudTestFactory.initMocks();
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
 
 		Test.startTest();
 		new GoogleFileVersionPreviewJob(new Set<Id>()).work();
+		Integer scheduledJobs = Limits.getQueueableJobs();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty());
+		Assert.areEqual(0, scheduledJobs);
 	}
 
 	@IsTest
 	private static void testExecutePositiveNullVersionIds() {
-		GoogleCloudTestFactory.initMocks();
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
 
 		Test.startTest();
 		new GoogleFileVersionPreviewJob(null).work();
+		Integer scheduledJobs = Limits.getQueueableJobs();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty());
+		Assert.areEqual(0, scheduledJobs);
 	}
 
 	@IsTest

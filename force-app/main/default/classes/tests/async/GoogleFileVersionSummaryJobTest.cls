@@ -206,16 +206,42 @@ private class GoogleFileVersionSummaryJobTest {
 
 	@IsTest
 	private static void testExecutePositiveReturnsEarlyWhenSkippedOrEmpty() {
+		GoogleMetadataConfigService.configRecordOverride = buildFinalizeDisabledConfig();
 		GoogleFileVersionSummaryJob.skipExecution = true;
 		GoogleFileVersionSummaryJob.clearTestResults();
 
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('SUMJOB5')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('SUMJOB5.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(2048)
+			.withDocsId('DOCS_SUMJOB_5')
+			.insertRecord();
+
+		GoogleFileVersionSummaryJob.setTestResult(
+			version.Id,
+			buildTestResult(true, null, 'A summary that a skipped job must never store.', 'STOP', null)
+		);
+
 		Test.startTest();
-			new GoogleFileVersionSummaryJob(new Set<Id>{ GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType) }).work();
+			new GoogleFileVersionSummaryJob(new Set<Id>{ version.Id }).work();
 			GoogleFileVersionSummaryJob.skipExecution = false;
 			new GoogleFileVersionSummaryJob(new Set<Id>()).work();
 			new GoogleFileVersionSummaryJob(null).work();
 		Test.stopTest();
+		GoogleFileVersionSummaryJob.clearTestResults();
 
-		Assert.isTrue(true);
+		GoogleFileVersion__c refreshedVersion = [
+			SELECT Summary__c
+			FROM GoogleFileVersion__c
+			WHERE Id = :version.Id
+			LIMIT 1
+		];
+
+		Assert.areEqual(null, refreshedVersion.Summary__c);
 	}
 }

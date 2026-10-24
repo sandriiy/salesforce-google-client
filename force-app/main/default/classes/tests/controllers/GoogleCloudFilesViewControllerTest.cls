@@ -43,11 +43,11 @@ private class GoogleCloudFilesViewControllerTest {
 
 		try {
 			Test.startTest();
-			GoogleCloudFilesViewController.fetchFileHeaderDetails('a0B000000000001AAA');
+			GoogleCloudFilesViewController.fetchFileHeaderDetails(GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 			Test.stopTest();
-			Assert.isTrue(false);
-		} catch (Exception ex) {
-			Assert.isTrue(String.isNotBlank(ex.getMessage()));
+			Assert.fail('The header of a file that does not exist must be refused');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
 		}
 	}
 
@@ -139,11 +139,11 @@ private class GoogleCloudFilesViewControllerTest {
 
 		try {
 			Test.startTest();
-			GoogleCloudFilesViewController.retrieveLocalGoogleFileLabels('a08000000000001AAA');
+			GoogleCloudFilesViewController.retrieveLocalGoogleFileLabels(GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 			Test.stopTest();
 			Assert.fail('Labels of an unreachable file must not be returned');
-		} catch (Exception ex) {
-			Assert.isTrue(String.isNotBlank(ex.getMessage()));
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
 		}
 	}
 
@@ -153,11 +153,11 @@ private class GoogleCloudFilesViewControllerTest {
 
 		try {
 			Test.startTest();
-			GoogleCloudFilesViewController.retrieveLocalGoogleFileVersions('a0B000000000001AAA');
+			GoogleCloudFilesViewController.retrieveLocalGoogleFileVersions(GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType));
 			Test.stopTest();
-			Assert.isTrue(false);
-		} catch (Exception ex) {
-			Assert.isTrue(String.isNotBlank(ex.getMessage()));
+			Assert.fail('The versions of an unreachable file must not be returned');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
 		}
 	}
 }

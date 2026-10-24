@@ -16,7 +16,7 @@ const MAX_QUESTION_CHARACTERS = 255;
 const DEFAULT_FILE_INTELLIGENCE_QUESTION_ERROR_MESSAGE = 'We could not answer that question. Try again in a moment.';
 const PARTIAL_RESPONSE_NOTE = 'Response may be incomplete.';
 const QUESTION_DISABLED_MESSAGE = 'Questions about this file are turned off. Contact your administrator for more information.';
-const INTELLIGENCE_RECHECK_DELAYS_MS = [20000, 60000];
+const INTELLIGENCE_RECHECK_DELAYS_MS = [20000, 60000, 30000];
 
 export default class GoogleCloudFileIntelligence extends LightningElement {
     @api recentlyUploaded = false;

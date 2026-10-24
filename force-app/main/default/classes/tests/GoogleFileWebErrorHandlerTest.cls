@@ -32,8 +32,9 @@ private class GoogleFileWebErrorHandlerTest {
 
 		Test.startTest();
 		new GoogleFileWebErrorHandler().onFailure(ex);
+		Integer unsavedLogEntries = Logger.getBufferSize();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.areEqual(0, unsavedLogEntries, 'The failure detail must be saved before the library throws');
 	}
 }

@@ -508,6 +508,9 @@ private class GoogleLocalFileMigrationServiceTest {
 		initMigrationMocks();
 		GSOQL.mock(GoogleAsyncApexJobSelector.MOCK_ID).thenReturn(new List<SObject>());
 		Id scheduledStepId = System.schedule(GoogleFileMigrationJob.STEP_JOB_NAME_PREFIX + '/9/test', FAR_FUTURE_CRON, new GoogleFileMigrationStepSchedulable(null));
+		GSOQL.mock(GoogleCronTriggerSelector.MOCK_ID).thenReturn(new List<SObject>{
+			[SELECT Id, State, NextFireTime, CreatedById, CronJobDetail.Name FROM CronTrigger WHERE Id = :scheduledStepId]
+		});
 
 		Test.startTest();
 		new GoogleLocalFileMigrationService().stop();
@@ -568,6 +571,7 @@ private class GoogleLocalFileMigrationServiceTest {
 
 	@IsTest
 	private static void testDescribeObjectsPositiveResolvesLabelsAndRefusesUnknownNames() {
+		GoogleCloudTestFactory.config().apply();
 		GoogleLocalFileMigrationService migrationService = new GoogleLocalFileMigrationService();
 
 		List<String> labels = migrationService.describeObjects(new List<String>{ 'googlefile__c' });

@@ -2,7 +2,7 @@
 
 All notable changes to this client are documented here. Each entry describes what changed for administrators and end users of an installed package version.
 
-## [2.3.0] - 2026-09-23
+## [2.3.0] - 2026-10-23
 
 ### Added
 
@@ -25,6 +25,7 @@ All notable changes to this client are documented here. Each entry describes wha
 - On the File Details page, the current version opened from the File Versions list can be edited, replaced with a new version or deleted, exactly as when the file is opened with the Preview button. An older version's details can be edited too, so each version can be renamed on its own, while uploading a new version and deleting the file are offered on the current version only.
 - Previewing, downloading and asking questions about a file, adding a new version to it, deleting it, and creating or removing its public link now always check that you may open the file, or change it where that is needed.
 - An administrator who holds the Google Cloud Client Admin permission set but not Google Cloud Client User is no longer told on the File Details page that they have no access to a file. Instead, the page says which permission set is missing.
+- Download As is offered only for documents within the Maximum Preview File Size set under Advanced → File Management. A larger document no longer offers it only to report that no formats are available.
 
 ## [2.2.0] - 2026-09-20
 

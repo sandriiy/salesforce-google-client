@@ -25,11 +25,16 @@
 private class GoogleFileCloudFolderJobTest {
 	@IsTest
 	private static void testExecutePositiveNullRequest() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
+
 		Test.startTest();
 		new GoogleFileCloudFolderJob((List<GoogleFileRelocationRequestDTO>) null).work();
+		Integer queuedJobs = Limits.getQueueableJobs();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'With nothing to place, Google Drive is never called');
+		Assert.areEqual(0, queuedJobs, 'With nothing to place, no retry is scheduled');
 	}
 
 	@IsTest
@@ -66,9 +71,13 @@ private class GoogleFileCloudFolderJobTest {
 
 		Test.startTest();
 		new GoogleFileCloudFolderJob(relocationRequest).work();
+		Integer calloutsMade = Limits.getCallouts();
+		Integer queuedJobs = Limits.getQueueableJobs();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.areEqual(0, calloutsMade, 'A version without a Drive file has nothing to move');
+		Assert.areEqual(0, queuedJobs, 'A version without a Drive file is settled, not retried');
+		Assert.isNull([SELECT GoogleDriveFolderId__c FROM GoogleFileVersion__c WHERE Id = :localFileVersion.Id].GoogleDriveFolderId__c);
 	}
 
 	@IsTest
@@ -77,9 +86,9 @@ private class GoogleFileCloudFolderJobTest {
 
 		GoogleFileRelocationRequestDTO relocationRequest = new GoogleFileRelocationRequestDTO(
 			UserInfo.getUserId(),
-			(Id) 'a0B000000000001AAA',
+			GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType),
 			null,
-			(Id) 'a0C000000000001AAA'
+			GoogleCloudTestFactory.fakeId(GoogleFileLink__c.SObjectType)
 		);
 
 		try {

@@ -966,15 +966,15 @@ Use this when changes are small and isolated, but you still want confidence acro
 
 Log in as Admin.
 
-- [ ] Confirm Google Drive integration is configured and validated
-- [ ] Confirm current folder structure configuration is known
-- [ ] Confirm current AI provider configuration is known
-- [ ] Confirm the `Enable AI File Intelligence` checkbox state is known
-- [ ] Confirm the `Direct Browser Upload` state is known
-- [ ] Confirm the configured File Explorer columns are known
-- [ ] Confirm the Maximum Preview File Size value is known
-- [ ] Open Google Client app and confirm configuration tabs render without errors
-- [ ] Open the Migration tab and confirm it renders without errors
+- [X] Confirm Google Drive integration is configured and validated
+- [X] Confirm current folder structure configuration is known
+- [X] Confirm current AI provider configuration is known
+- [X] Confirm the `Enable AI File Intelligence` checkbox state is known
+- [X] Confirm the `Direct Browser Upload` state is known
+- [X] Confirm the configured File Explorer columns are known
+- [X] Confirm the Maximum Preview File Size value is known
+- [X] Open Google Client app and confirm configuration tabs render without errors
+- [X] Open the Migration tab and confirm it renders without errors
 
 ### Phase 2: Upload and Preview
 
@@ -989,21 +989,21 @@ Use both record-page components in this phase:
 - Open the previewable file from the Uploader component
 - Open the non-previewable file from the Attachments component
 
-- [ ] Open the Lightning record page
-- [ ] Confirm Uploader component renders without errors
-- [ ] Confirm Attachments component renders without errors
-- [ ] Upload a previewable file using the Uploader component
-- [ ] Confirm the previewable file appears in the Uploader component
-- [ ] Open Preview for the previewable file from the Uploader component
-- [ ] Confirm preview works
-- [ ] Confirm download works
-- [ ] Confirm Download as... is visible
-- [ ] Upload a non-previewable file using the Attachments component
-- [ ] Confirm the non-previewable file appears in the Attachments component
-- [ ] Open Preview for the non-previewable file from the Attachments component
-- [ ] Confirm non-previewable message is shown
-- [ ] Confirm Download as... is not visible
-- [ ] Open View All from the Attachments component, tick two files and confirm they download together as one ZIP archive
+- [X] Open the Lightning record page
+- [X] Confirm Uploader component renders without errors
+- [X] Confirm Attachments component renders without errors
+- [X] Upload a previewable file using the Uploader component
+- [X] Confirm the previewable file appears in the Uploader component
+- [X] Open Preview for the previewable file from the Uploader component
+- [X] Confirm preview works
+- [X] Confirm download works
+- [X] Confirm Download as... is visible
+- [X] Upload a non-previewable file using the Attachments component
+- [X] Confirm the non-previewable file appears in the Attachments component
+- [X] Open Preview for the non-previewable file from the Attachments component
+- [X] Confirm non-previewable message is shown
+- [X] Confirm Download as... is not visible
+- [X] Open View All from the Attachments component, tick two files and confirm they download together as one ZIP archive
 
 ### Phase 3: Versioning
 
@@ -1011,10 +1011,10 @@ Continue as Internal User A.
 
 Use Preview opened from the same component where the previewable file was uploaded.
 
-- [ ] Upload a new version for the previewable file from Preview
-- [ ] Confirm the latest version becomes active
-- [ ] Confirm Preview uses the expected latest version
-- [ ] Confirm Download uses the expected latest version
+- [X] Upload a new version for the previewable file from Preview
+- [X] Confirm the latest version becomes active
+- [X] Confirm Preview uses the expected latest version
+- [X] Confirm Download uses the expected latest version
 
 ### Phase 4: Internal Sharing
 
@@ -1022,19 +1022,19 @@ Continue as Internal User A.
 
 Use a file from the component where it is visible.
 
-- [ ] Open Preview from the component where the file is visible
-- [ ] Share the file with Internal User B as Viewer from Preview
+- [X] Open Preview from the component where the file is visible
+- [X] Share the file with Internal User B as Viewer from Preview
 
 Log in as Internal User B.
 
 Use the same component path where the shared file is expected to appear.
 
-- [ ] Open the same record
-- [ ] Confirm the shared file is visible in the expected component
-- [ ] Open Preview from the expected component
-- [ ] Confirm read-only behavior
-- [ ] Confirm download works
-- [ ] Confirm edit/version/delete/share/public link actions are not available
+- [X] Open the same record
+- [X] Confirm the shared file is visible in the expected component
+- [X] Open Preview from the expected component
+- [X] Confirm read-only behavior
+- [X] Confirm download works
+- [X] Confirm edit/version/delete/share/public link actions are not available
 
 ### Phase 5: File Explorer
 
@@ -1042,13 +1042,13 @@ Log in as Internal User A.
 
 Use an account with more files than fit on a single page.
 
-- [ ] Open File Explorer
-- [ ] Confirm the list renders and the configured columns are shown
-- [ ] Scroll to the bottom and confirm more rows are appended without repeats
-- [ ] Search by part of a file name and confirm the expected file is found
-- [ ] Sort by Last Modified Date and confirm the order is correct
-- [ ] Select Refresh and confirm the list reloads
-- [ ] Open Preview from File Explorer
+- [X] Open File Explorer
+- [X] Confirm the list renders and the configured columns are shown
+- [X] Scroll to the bottom and confirm more rows are appended without repeats
+- [X] Search by part of a file name and confirm the expected file is found
+- [X] Sort by Last Modified Date and confirm the order is correct
+- [X] Select Refresh and confirm the list reloads
+- [X] Open Preview from File Explorer
 
 ### Phase 6: Attach Existing File
 
@@ -1056,13 +1056,13 @@ Log in as Internal User A.
 
 Use the Attachments component.
 
-- [ ] Open another Salesforce record
-- [ ] Open Attach Existing Files from the Attachments component
-- [ ] Confirm owned files are available
-- [ ] Attach an existing owned file
-- [ ] Confirm the file appears on the second record in the Attachments component
-- [ ] Confirm the same file still appears on the original record in the Attachments component where expected
-- [ ] Confirm File Details shows linked records where available
+- [X] Open another Salesforce record
+- [X] Open Attach Existing Files from the Attachments component
+- [X] Confirm owned files are available
+- [X] Attach an existing owned file
+- [X] Confirm the file appears on the second record in the Attachments component
+- [X] Confirm the same file still appears on the original record in the Attachments component where expected
+- [X] Confirm File Details shows linked records where available
 
 ### Phase 7: Access
 
@@ -1070,10 +1070,10 @@ Use a file linked to two records.
 
 Use the component where the file is expected to be visible for record-level visibility and Preview access checks.
 
-- [ ] Confirm a user with access to a linked record can see the file in the expected component
-- [ ] Confirm a user with access only to an unrelated record cannot see the file in the expected component
-- [ ] Confirm direct Preview URL does not bypass access checks
-- [ ] Confirm direct File Details URL does not bypass access checks
+- [X] Confirm a user with access to a linked record can see the file in the expected component
+- [X] Confirm a user with access only to an unrelated record cannot see the file in the expected component
+- [X] Confirm direct Preview URL does not bypass access checks
+- [X] Confirm direct File Details URL does not bypass access checks
 
 ### Phase 8: Folder Structure
 
@@ -1081,46 +1081,46 @@ Use the currently configured folder structure.
 
 Use the Uploader component, Attachments component, and Attach Existing Files flow explicitly in this phase.
 
-- [ ] Upload one file from the Uploader component
-- [ ] Confirm the file appears in the Uploader component
-- [ ] Upload one file from the Attachments component
-- [ ] Confirm the file appears in the Attachments component
-- [ ] Confirm files are placed in the expected Google Drive folder
-- [ ] Upload several files at once to a record that has no Google files yet, and confirm one folder is created for that record
-- [ ] Attach an existing file to another record using Attach Existing Files from the Attachments component
-- [ ] Confirm Drive placement or shortcut behavior matches the configured folder structure
+- [X] Upload one file from the Uploader component
+- [X] Confirm the file appears in the Uploader component
+- [X] Upload one file from the Attachments component
+- [X] Confirm the file appears in the Attachments component
+- [X] Confirm files are placed in the expected Google Drive folder
+- [X] Upload several files at once to a record that has no Google files yet, and confirm one folder is created for that record
+- [X] Attach an existing file to another record using Attach Existing Files from the Attachments component
+- [X] Confirm Drive placement or shortcut behavior matches the configured folder structure
 
 If the release touched File Explorer upload or folder placement logic, also run this File Explorer check.
 
-- [ ] Upload one file from File Explorer
-- [ ] Confirm the file appears in File Explorer
-- [ ] Confirm File Explorer upload uses the expected Google Drive folder
+- [X] Upload one file from File Explorer
+- [X] Confirm the file appears in File Explorer
+- [X] Confirm File Explorer upload uses the expected Google Drive folder
 
 If the release touched folder structure logic, also run this reduced folder matrix.
 
-- [ ] No folder structure / Default folder only
-- [ ] Folder per Record
-- [ ] Folder per User
-- [ ] Folder per Record → User
-- [ ] Folder per User → Record
+- [X] No folder structure / Default folder only
+- [X] Folder per Record
+- [X] Folder per User
+- [X] Folder per Record → User
+- [X] Folder per User → Record
 
 ### Phase 9: Direct Browser Upload
 
 Log in as Admin.
 
-- [ ] Enable `Direct Browser Upload` and save
+- [X] Enable `Direct Browser Upload` and save
 
 Log in as Internal User A.
 
-- [ ] Upload one large file from the Uploader and confirm it completes and lands in the configured folder
+- [X] Upload one large file from the Uploader and confirm it completes and lands in the configured folder
 
 Log in as Admin.
 
-- [ ] Disable `Direct Browser Upload` and save
+- [X] Disable `Direct Browser Upload` and save
 
 Log in as Internal User A.
 
-- [ ] Upload one large file from the Uploader and confirm it completes and lands in the configured folder
+- [X] Upload one large file from the Uploader and confirm it completes and lands in the configured folder
 
 ### Phase 10: Experience Cloud
 
@@ -1128,13 +1128,13 @@ Log in as External User E.
 
 Use Experience Cloud components only for this phase.
 
-- [ ] Open Experience Cloud page containing Google Client Uploader and Attachments components
-- [ ] Confirm Experience Cloud Uploader component renders without errors
-- [ ] Confirm Experience Cloud Attachments component renders without errors
-- [ ] Confirm files are hidden in the Experience Cloud Attachments component by default unless external visibility is enabled
-- [ ] Open a visible file from the Experience Cloud Attachments component
-- [ ] Confirm Preview works
-- [ ] Confirm external user sees only allowed actions
+- [X] Open Experience Cloud page containing Google Client Uploader and Attachments components
+- [X] Confirm Experience Cloud Uploader component renders without errors
+- [X] Confirm Experience Cloud Attachments component renders without errors
+- [X] Confirm files are hidden in the Experience Cloud Attachments component by default unless external visibility is enabled
+- [X] Open a visible file from the Experience Cloud Attachments component
+- [X] Confirm Preview works
+- [X] Confirm external user sees only allowed actions
 
 ### Phase 11: AI
 
@@ -1142,9 +1142,9 @@ Run this phase only if AI configuration or AI-related UI was touched.
 
 Log in as Admin.
 
-- [ ] Confirm Gemini or Agent Platform / Vertex configuration is available
-- [ ] Confirm the `Enable AI File Intelligence` checkbox is in the expected state
-- [ ] Confirm prompts and token limits can be saved
+- [X] Confirm Gemini or Agent Platform / Vertex configuration is available
+- [X] Confirm the `Enable AI File Intelligence` checkbox is in the expected state
+- [X] Confirm prompts and token limits can be saved
 
 Log in as Internal User A.
 
@@ -1152,28 +1152,28 @@ Use the component where the file should be validated.
 
 Files uploaded before `Enable AI File Intelligence` was enabled are not expected to receive summaries.
 
-- [ ] If `Enable AI File Intelligence` is enabled, upload a new file with clear business content from the component being tested
-- [ ] Confirm the new file appears in the same component where it was uploaded
-- [ ] Open Preview for the new file from the same component
-- [ ] Confirm summary behavior matches the current AI provider and `Enable AI File Intelligence` setting
-- [ ] Confirm hover behavior matches the current AI provider and `Enable AI File Intelligence` setting in Uploader where supported
-- [ ] Confirm hover behavior matches the current AI provider and `Enable AI File Intelligence` setting in Attachments where supported
-- [ ] If `Enable AI File Intelligence` is enabled, confirm question answering works from Preview for files uploaded after the setting was enabled
-- [ ] If `Enable AI File Intelligence` is enabled, confirm an obvious attempt to override the model's instructions is refused
-- [ ] If `Enable AI File Intelligence` is disabled, confirm question answering is not available from Preview
-- [ ] If `Enable AI File Intelligence` is disabled, confirm no new summary is generated for files uploaded while the setting is disabled
+- [X] If `Enable AI File Intelligence` is enabled, upload a new file with clear business content from the component being tested
+- [X] Confirm the new file appears in the same component where it was uploaded
+- [X] Open Preview for the new file from the same component
+- [X] Confirm summary behavior matches the current AI provider and `Enable AI File Intelligence` setting
+- [X] Confirm hover behavior matches the current AI provider and `Enable AI File Intelligence` setting in Uploader where supported
+- [X] Confirm hover behavior matches the current AI provider and `Enable AI File Intelligence` setting in Attachments where supported
+- [X] If `Enable AI File Intelligence` is enabled, confirm question answering works from Preview for files uploaded after the setting was enabled
+- [X] If `Enable AI File Intelligence` is enabled, confirm an obvious attempt to override the model's instructions is refused
+- [X] If `Enable AI File Intelligence` is disabled, confirm question answering is not available from Preview
+- [X] If `Enable AI File Intelligence` is disabled, confirm no new summary is generated for files uploaded while the setting is disabled
 
 ### Phase 12: Final Smoke Check
 
-- [ ] Internal user can open Core Cloud record pages without errors
-- [ ] External user can open Experience Cloud pages without errors
-- [ ] Admin can open Google Client app without errors
-- [ ] Uploader component works where expected
-- [ ] Attachments component works where expected
-- [ ] File Explorer works where expected
-- [ ] Google Files are returned by global search and open on the Google Client file details page
-- [ ] No critical errors appear in the UI
-- [ ] No critical errors appear in logs
+- [X] Internal user can open Core Cloud record pages without errors
+- [X] External user can open Experience Cloud pages without errors
+- [X] Admin can open Google Client app without errors
+- [X] Uploader component works where expected
+- [X] Attachments component works where expected
+- [X] File Explorer works where expected
+- [X] Google Files are returned by global search and open on the Google Client file details page
+- [X] No critical errors appear in the UI
+- [X] No critical errors appear in logs
 
 ## Targeted Regression Suite
 

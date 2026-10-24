@@ -477,6 +477,52 @@ private class GoogleLocalFileTransferServiceTest {
 	}
 
 	@IsTest
+	private static void testUploadSalesforceFilesNowPositiveAcceptsMigrationSourceTheUpgradedFieldLacks() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(DEFAULT_BIG_FILE_SIZE);
+		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudFolderJob.skipExecution = true;
+		GoogleLocalFileTransferService.activeFieldSourcesOverride = new List<String>{ GoogleCloudConstants.FILE_SOURCE_NOTES_AND_ATTACHMENTS, 'Uploader', 'File Details', 'File Explorer' };
+
+		ContentVersion sourceFile = GoogleCloudTestFactory.salesforceFile().withTitle('Agreement').mock();
+
+		GoogleFileUploadRequestDTO request = new GoogleFileUploadRequestDTO();
+		request.salesforceFileId = sourceFile.Id;
+		request.relatedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		request.source = GoogleCloudConstants.FILE_SOURCE_MIGRATION;
+		request.linkSource = GoogleCloudConstants.FILE_SOURCE_NOTES_AND_ATTACHMENTS;
+
+		Test.startTest();
+		List<GoogleFileUploadResultDTO> results = new GoogleLocalFileTransferService().uploadSalesforceFilesNow(new List<GoogleFileUploadRequestDTO>{ request });
+		Test.stopTest();
+
+		Assert.isNull(results[0].errorMessage);
+		GoogleFile__c createdFile = [SELECT Source__c FROM GoogleFile__c WHERE Id = :results[0].googleFileId];
+		Assert.areEqual(GoogleCloudConstants.FILE_SOURCE_MIGRATION, createdFile.Source__c, 'An org upgraded from 2.2.0 has no Migration value on the field, and the migration must still copy its files');
+	}
+
+	@IsTest
+	private static void testUploadSalesforceFileNegativeUnknownSourceListsMigrationTheUpgradedFieldLacks() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(DEFAULT_BIG_FILE_SIZE);
+		GoogleCloudTestFactory.initMocks();
+		GoogleLocalFileTransferService.activeFieldSourcesOverride = new List<String>{ GoogleCloudConstants.FILE_SOURCE_NOTES_AND_ATTACHMENTS, 'Uploader' };
+
+		ContentVersion sourceFile = GoogleCloudTestFactory.salesforceFile().mock();
+
+		GoogleFileUploadRequestDTO request = new GoogleFileUploadRequestDTO();
+		request.salesforceFileId = sourceFile.Id;
+		request.source = 'Somewhere else';
+
+		Test.startTest();
+		try {
+			new GoogleLocalFileTransferService().uploadSalesforceFile(request);
+			Assert.fail('An unknown source must still be refused');
+		} catch (GoogleLocalFileTransferService.GoogleLocalFileTransferException ex) {
+			Assert.areEqual('The file source must be one of "Notes & Attachments", "Uploader", "Migration"', ex.getMessage());
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
 	private static void testUploadSalesforceFilesNowPositiveCarriesOnPastAFileThatFails() {
 		GoogleMetadataConfigService.configRecordOverride = buildConfig(DEFAULT_BIG_FILE_SIZE);
 		GoogleCloudTestFactory.initMocks();

@@ -32,4 +32,6 @@ public class GoogleTransferLimitDTO {
 	public Long downloadChunkBytes;
 	@AuraEnabled
 	public Long largeFileThresholdBytes;
+	@AuraEnabled
+	public Long maxPreviewFileSizeBytes;
 }

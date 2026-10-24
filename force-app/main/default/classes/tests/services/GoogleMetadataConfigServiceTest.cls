@@ -100,17 +100,19 @@ private class GoogleMetadataConfigServiceTest {
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new ThrowingDeployer());
 
 		Test.startTest();
-		svc.saveConfig(null);
-		svc.saveConfig(new Map<String, Object>());
+		Id nullChangesDeploymentId = svc.saveConfig(null);
+		Id emptyChangesDeploymentId = svc.saveConfig(new Map<String, Object>());
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.isNull(nullChangesDeploymentId, 'With nothing to change no deployment is started');
+		Assert.isNull(emptyChangesDeploymentId, 'With nothing to change no deployment is started');
 	}
 
 	@IsTest
 	private static void testSaveConfigPositiveEnqueue() {
 		GoogleMetadataConfigService.configRecordOverride = buildConfig(false);
-		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(new SuccessDeployer());
+		CapturingDeployer deployer = new CapturingDeployer();
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService(deployer);
 
 		Map<String, Object> changes = new Map<String, Object>{
 			'DefaultGoogleUploadFolderId__c' => 'folder_123',
@@ -118,10 +120,13 @@ private class GoogleMetadataConfigServiceTest {
 		};
 
 		Test.startTest();
-		svc.saveConfig(changes);
+		Id deploymentId = svc.saveConfig(changes);
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isNotNull(deploymentId, 'The deployment Id is handed back to follow');
+		Assert.areEqual('folder_123', savedValues.get('DefaultGoogleUploadFolderId__c'));
+		Assert.areEqual(true, savedValues.get('IsFilePreviewDisabled__c'));
 	}
 
 	@IsTest
@@ -294,12 +299,17 @@ private class GoogleMetadataConfigServiceTest {
 	@IsTest
 	private static void testResolveConfigRecordNeverReturnsNull() {
 		GoogleMetadataConfigService.configRecordOverride = null;
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
+		GSOQL.mock(GoogleClientConfigSelector.MOCK_ID).thenReturn(new List<GoogleClientConfig__mdt>());
+
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
 
 		Assert.isNotNull(svc.getConfig());
-		Assert.isNotNull(svc.getAiSafetyMode());
-		Assert.isNotNull(svc.getFileExplorerColumns());
-		Assert.isNotNull(svc.getAllUploadFolderIds());
+		Assert.isFalse(svc.hasConfigRecord());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_AI_SAFETY_MODE, svc.getAiSafetyMode());
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_FILE_EXPLORER_COLUMNS.split(';').size(), svc.getFileExplorerColumns().size());
+		Assert.areEqual(0, svc.getAllUploadFolderIds().size());
 	}
 
 	@IsTest

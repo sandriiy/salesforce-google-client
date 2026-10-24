@@ -165,16 +165,21 @@ private class GoogleFileVersionLabelJobTest {
 
 	@IsTest
 	private static void testExecutePositiveReturnsEarlyWhenSkippedOrEmpty() {
+		GoogleMetadataConfigService.configRecordOverride = buildFinalizeDisabledConfig();
 		GoogleFileVersionLabelJob.skipExecution = true;
 		GoogleFileVersionLabelJob.clearTestResults();
 
+		GoogleFileVersion__c version = createLabelCandidate('LBLJOB6');
+		GoogleFileVersionLabelJob.setTestResult(version.Id, buildTestResult(true, null, true, 'Invoice', 92, null));
+
 		Test.startTest();
-			new GoogleFileVersionLabelJob(new Set<Id>{ GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType) }).work();
+			new GoogleFileVersionLabelJob(new Set<Id>{ version.Id }).work();
 			GoogleFileVersionLabelJob.skipExecution = false;
 			new GoogleFileVersionLabelJob(new Set<Id>()).work();
 			new GoogleFileVersionLabelJob(null).work();
 		Test.stopTest();
+		GoogleFileVersionLabelJob.clearTestResults();
 
-		Assert.isTrue(true);
+		Assert.isNull(loadLabel(version.Id), 'A skipped job must not store the label it would have applied');
 	}
 }

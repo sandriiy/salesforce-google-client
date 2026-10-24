@@ -42,24 +42,48 @@ private class GoogleFileCloudShortcutJobTest {
 
 	@IsTest
 	private static void testExecutePositiveSkipExecution() {
+		GoogleDriveHttpMock driveMock = buildExistingFolderMock('DEST_FOLDER_01');
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+		GoogleCloudTestFactory.bypassTriggers();
 		GoogleFileCloudShortcutJob.skipExecution = true;
 
+		Id relatedRecordId = GoogleCloudTestFactory.linkedRecord('Skipped Shortcut Record');
+
+		GoogleFile__c localFile = GoogleCloudTestFactory.file()
+			.withName('Skipped Shortcut File')
+			.insertRecord();
+
+		GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName('Skipped Shortcut File.pdf')
+			.withDriveId('GD_SKIPPED_TARGET')
+			.insertRecord();
+
+		GoogleFileLink__c link = GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(relatedRecordId)
+			.withLinkedType('GoogleFile__c')
+			.insertRecord();
+
 		Test.startTest();
-		new GoogleFileCloudShortcutJob(null, null, null).work();
+		new GoogleFileCloudShortcutJob(UserInfo.getUserId(), localFile.Id, link.Id).work();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'A skipped job must not reach Google Drive');
 	}
 
 	@IsTest
 	private static void testExecutePositiveNullLinkId() {
-		GoogleCloudTestFactory.initMocks();
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
 
 		Test.startTest();
-		new GoogleFileCloudShortcutJob(UserInfo.getUserId(), (Id) 'a0A000000000001AAA', null).work();
+		new GoogleFileCloudShortcutJob(UserInfo.getUserId(), GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), null).work();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'Without a link there is no record folder to place a shortcut in');
 	}
 
 	@IsTest

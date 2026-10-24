@@ -66,19 +66,29 @@ private class GoogleFileVersionExpireLinkActionTest {
 
 	@IsTest
 	private static void testExpireLinkPositiveNullInputs() {
+		GoogleCloudTestFactory.config().apply();
+
 		Test.startTest();
 		GoogleFileVersionExpireLinkAction.expireLink(null);
+		Integer calloutsMade = Limits.getCallouts();
+		Integer dmlStatements = Limits.getDmlStatements();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.areEqual(0, calloutsMade, 'Without inputs no permission is removed in Google Drive');
+		Assert.areEqual(0, dmlStatements, 'Without inputs no public link is cleared');
 	}
 
 	@IsTest
 	private static void testExpireLinkPositiveEmptyInputs() {
+		GoogleCloudTestFactory.config().apply();
+
 		Test.startTest();
 		GoogleFileVersionExpireLinkAction.expireLink(new List<GoogleFileVersionExpireLinkAction.Input>());
+		Integer calloutsMade = Limits.getCallouts();
+		Integer dmlStatements = Limits.getDmlStatements();
 		Test.stopTest();
 
-		Assert.isTrue(true);
+		Assert.areEqual(0, calloutsMade, 'Without inputs no permission is removed in Google Drive');
+		Assert.areEqual(0, dmlStatements, 'Without inputs no public link is cleared');
 	}
 }

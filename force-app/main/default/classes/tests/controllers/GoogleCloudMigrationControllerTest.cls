@@ -24,6 +24,7 @@
 @IsTest
 private class GoogleCloudMigrationControllerTest {
 	private static final Integer COPIED_FILES_COUNTED = 3;
+	private static final String FAR_FUTURE_CRON = '0 0 0 1 1 ? 2099';
 
 	private static void initMigrationMocks() {
 		GoogleCloudTestFactory.config().asPackagedRecord().withUploadFolderId('ROOT_FOLDER').withPreviewDisabled(true).apply();
@@ -67,6 +68,8 @@ private class GoogleCloudMigrationControllerTest {
 
 	@IsTest
 	private static void testDescribeMigrationObjectsPositiveAndNegative() {
+		GoogleCloudTestFactory.config().apply();
+
 		Test.startTest();
 		List<String> labels = GoogleCloudMigrationController.describeMigrationObjects(new List<String>{ 'GoogleFile__c' });
 		Assert.areEqual(GoogleFile__c.SObjectType.getDescribe().getLabel(), labels[0]);
@@ -146,12 +149,16 @@ private class GoogleCloudMigrationControllerTest {
 	@IsTest
 	private static void testStopMigrationPositive() {
 		initMigrationMocks();
-		mockNothingActive();
+		GSOQL.mock(GoogleAsyncApexJobSelector.MOCK_ID).thenReturn(new List<SObject>());
+		Id scheduledStepId = System.schedule(GoogleFileMigrationJob.STEP_JOB_NAME_PREFIX + '/9/test', FAR_FUTURE_CRON, new GoogleFileMigrationStepSchedulable(null));
+		GSOQL.mock(GoogleCronTriggerSelector.MOCK_ID).thenReturn(new List<SObject>{
+			[SELECT Id, State, NextFireTime, CreatedById, CronJobDetail.Name FROM CronTrigger WHERE Id = :scheduledStepId]
+		});
 
 		Test.startTest();
 		GoogleCloudMigrationController.stopMigration();
 		Test.stopTest();
 
-		Assert.isTrue(true, 'Stopping with nothing running is not an error');
+		Assert.areEqual(0, [SELECT COUNT() FROM CronTrigger WHERE Id = :scheduledStepId], 'Stop cancels the scheduled step');
 	}
 }

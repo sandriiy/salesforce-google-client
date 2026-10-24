@@ -69,7 +69,8 @@ export const FILE_ICON_MAP = {
 export const DEFAULT_TRANSFER_LIMITS = Object.freeze({
     uploadChunkBytes: 2 * 1024 * 1024,
     downloadChunkBytes: 2 * 1024 * 1024,
-    largeFileThresholdBytes: 2 * 1024 * 1024
+    largeFileThresholdBytes: 2 * 1024 * 1024,
+    maxPreviewFileSizeBytes: 2 * 1024 * 1024
 });
 
 let transferLimitsPromise;

@@ -30,7 +30,7 @@ Files uploaded through the flow go straight to Google Drive and are linked to th
 
 ## What Happens After Upload
 
-Once a file is uploaded, it is immediately sent to Google Drive and linked to the specified record. The user can see the file listed in the uploader, preview it, or delete it before moving to the next screen in the flow. All the same access controls and folder structure rules that apply elsewhere in Google Client apply here too.
+Once a file is uploaded, it is immediately sent to Google Drive and linked to the specified record. The user can see the file listed in the uploader, preview it, or delete it before moving to the next screen in the flow. They can also tick several files and [download them together](../bulk-download.md) as one ZIP archive; moving to the next screen while that download runs stops it. All the same access controls and folder structure rules that apply elsewhere in Google Client apply here too.
 
 ## Automating Without a Screen
 

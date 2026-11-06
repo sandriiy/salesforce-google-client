@@ -62,7 +62,8 @@ export default class GoogleCloudBulkActionBar extends LightningElement {
         this.dispatchEvent(new CustomEvent('confirm'));
     }
 
-    handleClear() {
+    handleClear(event) {
+        event.preventDefault();
         this.dispatchEvent(new CustomEvent('clearselection'));
     }
 

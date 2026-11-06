@@ -90,6 +90,28 @@
 	padding: 0 0.25rem 0.25rem;
 }
 
+.files-section,
+.files-container {
+    background-color: inherit;
+}
+
+.files-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding-bottom: 0.75rem;
+    background-color: inherit;
+    color: #181818;
+}
+
+.file-select {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-width: 1.5rem;
+    margin-right: 0.25rem;
+}
+
 .dropzone__icon {
     width: 42px;
     height: 42px;
@@ -115,6 +137,16 @@
 .file-card:hover {
 	background: rgba(139, 188, 230, 0.1);
 	box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.file-card--selected,
+.file-card--selected:hover {
+    border-color: var(--slds-g-color-brand-base-40, #0176D3);
+    background: rgba(1, 118, 211, 0.06);
+}
+
+.file-card--locked {
+    cursor: default;
 }
 
 .file-card__icon {

@@ -1,8 +1,20 @@
 import { LightningElement, api, track, wire } from 'lwc';
+import { getRecord } from 'lightning/uiRecordApi';
+import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import { saveGoogleFileLocally, uploadInChunks, upload, prefetchUploadFolderStructure } from 'c/googleCloudUploadUtils';
 import { DEFAULT_OOPS_MESSAGE, DEFAULT_FILE_UPLOAD_FAILURE, DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
 import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
-import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension, resolveTransferLimits } from 'c/googleCloudUtils';
+import { isEmpty, isPermissionMissing, showToast, normalizeAllowedTypes, formatExistingLocalFiles, createNewFilePlaceholder, extractFileExtension, resolveTransferLimits, createBulkSelection, resolveRecordNameFields, resolveRecordNameValue } from 'c/googleCloudUtils';
+import {
+	downloadMany,
+	resolveBulkDownloadRefusal,
+	resolveBulkArchiveName,
+	resolveBulkDownloadOutcome,
+	resolveBulkDownloadFailure,
+	createOperationControl,
+	abortOperation,
+	BULK_DOWNLOAD_FAILED_TITLE
+} from 'c/googleCloudDownloadUtils';
 import { FlowAttributeChangeEvent } from 'lightning/flowSupport';
 
 import GoogleCloudFileDeleteModal from 'c/googleCloudFileDeleteModal';
@@ -10,6 +22,8 @@ import GoogleCloudExistingFileAttachModal from 'c/googleCloudExistingFileAttachM
 import retrieveGoogleFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveGoogleFiles';
 
 const UPLOAD_SOURCE = 'Uploader';
+const RECORD_NAME_WAIT_MS = 3000;
+const FILE_CARD_CLASS = 'file-card slds-m-horizontal_small slds-theme_default slds-rounded_medium';
 export default class GoogleCloudUploader extends LightningElement {
     @api recordId;
     @api supportedFileExtensions;
@@ -24,10 +38,64 @@ export default class GoogleCloudUploader extends LightningElement {
     @track files = [];
 
 	apexRetryHandlers = new Map();
+	selection = createBulkSelection();
+	isBulkDownloadInProgress = false;
+	isBulkDownloadStopping = false;
+	isBulkDownloadAbandoned = false;
+	bulkDownloadProgress;
+	bulkDownloadControl;
+	recordNameLookupId;
+	recordNameObjectApiName;
+	recordNameFields;
+	recordNameFieldsRecordId;
+	recordName;
+	recordNameLookup;
+	settleRecordNameLookupPromise;
+
+	@wire(getRecord, { recordId: '$recordNameLookupId', layoutTypes: ['Compact'] })
+	wiredRecordForName({ data, error }) {
+		if (data) {
+			this.recordNameObjectApiName = data.apiName;
+		} else if (error) {
+			this.settleRecordNameLookup(null);
+		}
+	}
+
+	@wire(getObjectInfo, { objectApiName: '$recordNameObjectApiName' })
+	wiredObjectInfoForName({ data, error }) {
+		if (data) {
+			const nameFields = resolveRecordNameFields(data).map((nameField) => `${data.apiName}.${nameField}`);
+			if (isEmpty(nameFields)) {
+				this.settleRecordNameLookup(null);
+				return;
+			}
+
+			this.recordNameFields = nameFields;
+			this.recordNameFieldsRecordId = this.recordNameLookupId;
+		} else if (error) {
+			this.settleRecordNameLookup(null);
+		}
+	}
+
+	@wire(getRecord, { recordId: '$recordNameFieldsRecordId', fields: '$recordNameFields' })
+	wiredRecordName({ data, error }) {
+		if (data) {
+			this.settleRecordNameLookup(resolveRecordNameValue(data, this.recordNameFields));
+		} else if (error) {
+			this.settleRecordNameLookup(null);
+		}
+	}
 
 	connectedCallback() {
 		resolveTransferLimits();
 		this.loadFiles();
+	}
+
+	disconnectedCallback() {
+		if (this.bulkDownloadControl) {
+			this.isBulkDownloadAbandoned = true;
+			abortOperation(this.bulkDownloadControl);
+		}
 	}
 
     async handleFileSelected(event) {
@@ -216,7 +284,8 @@ export default class GoogleCloudUploader extends LightningElement {
 		const fileIndex = this.files?.findIndex?.(file => file?.id === fileId) ?? -1;
 		const fileProgress = this.files?.[fileIndex]?.progress;
 		const fileLocalId = this.files?.[fileIndex]?.localId;
-		
+		if (this.isFileLocked(fileLocalId)) return;
+
 		if (fileProgress == null && fileLocalId != null) {
 			let previewComponent = this.refs.filePreviewModal;
 			previewComponent.open(fileLocalId);
@@ -324,6 +393,126 @@ export default class GoogleCloudUploader extends LightningElement {
 	
 	handlePreviewCloseReset(event) {
 		this.isNewFileVersionUpload = false;
+		if (event.detail?.isIntelligenceUpdated === true) {
+			this.handleFilesRefresh();
+		}
+	}
+
+	handleFileSelectionChange(event) {
+		const fileId = event.target.dataset.id;
+		if (isEmpty(fileId)) return;
+
+		this.updateSelection(event.target.checked
+			? this.selection.select([fileId])
+			: this.selection.deselect([fileId]));
+	}
+
+	handleSelectionClear() {
+		this.updateSelection(this.selection.clear());
+	}
+
+	handleSelectionClick(event) {
+		event.stopPropagation();
+	}
+
+	async handleBulkDownload() {
+		if (this.isBulkDownloadInProgress) return;
+
+		const selectedFiles = this.selection.pick(this.files, 'localId');
+		const refusal = resolveBulkDownloadRefusal(selectedFiles);
+		if (refusal) {
+			showToast(this, BULK_DOWNLOAD_FAILED_TITLE, refusal, 'warning');
+			return;
+		}
+
+		const control = createOperationControl();
+		this.bulkDownloadControl = control;
+		this.isBulkDownloadInProgress = true;
+		this.isBulkDownloadStopping = false;
+		this.isBulkDownloadAbandoned = false;
+		this.bulkDownloadProgress = { current: 0, total: selectedFiles.length, percent: 0 };
+
+		try {
+			const recordName = await this.waitForRecordName();
+			const result = await downloadMany(selectedFiles, {
+				zipName: (includedCount) => resolveBulkArchiveName(recordName, includedCount),
+				control,
+				onProgress: (progress) => {
+					this.bulkDownloadProgress = progress;
+				}
+			});
+
+			this.reportBulkDownloadResult(result);
+		} catch (error) {
+			if (!this.isBulkDownloadAbandoned) {
+				this.showBulkDownloadToast(resolveBulkDownloadFailure(error));
+			}
+		} finally {
+			this.isBulkDownloadInProgress = false;
+			this.isBulkDownloadStopping = false;
+			this.isBulkDownloadAbandoned = false;
+			this.bulkDownloadProgress = undefined;
+			this.bulkDownloadControl = null;
+		}
+	}
+
+	handleBulkDownloadStop() {
+		this.isBulkDownloadStopping = true;
+		abortOperation(this.bulkDownloadControl);
+	}
+
+	reportBulkDownloadResult(result) {
+		this.showBulkDownloadToast(resolveBulkDownloadOutcome(result));
+		this.updateSelection(this.selection.deselect(result.downloaded.map((file) => file.localId)));
+	}
+
+	showBulkDownloadToast({ title, message, variant, mode }) {
+		showToast(this, title, message, variant, mode);
+	}
+
+	updateSelection(nextSelection) {
+		this.selection = nextSelection;
+		if (!nextSelection.isEmpty) {
+			this.startRecordNameLookup();
+		}
+	}
+
+	startRecordNameLookup() {
+		if (this.recordNameLookup || isEmpty(this.recordId)) return;
+
+		this.recordNameLookup = new Promise((resolve) => {
+			this.settleRecordNameLookupPromise = resolve;
+		});
+		this.recordNameLookupId = this.recordId;
+	}
+
+	settleRecordNameLookup(recordName) {
+		this.recordName = recordName;
+
+		if (this.settleRecordNameLookupPromise) {
+			this.settleRecordNameLookupPromise(recordName);
+			this.settleRecordNameLookupPromise = null;
+		}
+	}
+
+	async waitForRecordName() {
+		if (!this.settleRecordNameLookupPromise) {
+			return this.recordName;
+		}
+
+		let waitTimer;
+		const timeLimit = new Promise((resolve) => {
+			waitTimer = setTimeout(resolve, RECORD_NAME_WAIT_MS);
+		});
+
+		await Promise.race([this.recordNameLookup, timeLimit]);
+		clearTimeout(waitTimer);
+
+		return this.recordName;
+	}
+
+	isFileLocked(localId) {
+		return this.isBulkDownloadInProgress && !isEmpty(localId) && this.selection.has(localId);
 	}
 
 	retrieveAllowedFiles(selectedFiles) {
@@ -414,7 +603,13 @@ export default class GoogleCloudUploader extends LightningElement {
 				let formattedExistingFiles = formatExistingLocalFiles([result]);
 				let fileUpdated = formattedExistingFiles[0];
 				let fileIndex = this.files.findIndex(file => file.id === fileToUpload.id);
-				this.files[fileIndex] = fileUpdated;
+				const isAlreadyListed = this.files.some(file => file.localId === fileUpdated.localId);
+
+				if (isAlreadyListed) {
+					this.removeFileById(fileToUpload.id);
+				} else if (fileIndex !== -1) {
+					this.files[fileIndex] = fileUpdated;
+				}
 
 				const eventDetail = {
 					fileName: fileUpdated.name,
@@ -441,7 +636,11 @@ export default class GoogleCloudUploader extends LightningElement {
 				source: UPLOAD_SOURCE
 			});
 
-			this.files = formatExistingLocalFiles(data);
+			const savedFiles = formatExistingLocalFiles(data);
+			const unsavedFiles = this.files.filter(file => isEmpty(file.localId));
+
+			this.files = [...unsavedFiles, ...savedFiles];
+			this.selection = this.selection.retain(savedFiles.map(file => file.localId));
 		} catch (error) {
 			if (isPermissionMissing(error)) {
 				this.isAccessible = false;
@@ -490,5 +689,42 @@ export default class GoogleCloudUploader extends LightningElement {
 
 	get dropzoneClass() {
 		return this.isDropzoneActive ? 'dropzone dropzone--active' : 'dropzone';
+	}
+
+	get displayedFiles() {
+		return this.files.map(file => {
+			const isSelectable = !isEmpty(file.localId);
+			const isSelected = isSelectable && this.selection.has(file.localId);
+			const isLocked = this.isFileLocked(file.localId);
+
+			return {
+				...file,
+				isSelectable,
+				isSelected,
+				isLocked,
+				cardClass: `${FILE_CARD_CLASS}${isSelected ? ' file-card--selected' : ''}${isLocked ? ' file-card--locked' : ''}`,
+				selectLabel: `Select ${file.name}`
+			};
+		});
+	}
+
+	get selectableFileIds() {
+		return this.files.filter(file => !isEmpty(file.localId)).map(file => file.localId);
+	}
+
+	get selectableFileCount() {
+		return this.selectableFileIds.length;
+	}
+
+	get isBulkBarVisible() {
+		return this.isBulkDownloadInProgress || !this.selection.isEmpty;
+	}
+
+	get filesSectionClass() {
+		return this.isBulkBarVisible ? 'files-section slds-m-top_small' : 'files-section slds-m-top_medium';
+	}
+
+	get isSelectionLocked() {
+		return this.isBulkDownloadInProgress;
 	}
 }

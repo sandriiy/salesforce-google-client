@@ -146,6 +146,7 @@ Provides a dedicated upload interface for adding files to Google Drive from Expe
 <ul>
   <li>Controlled upload experience for external or community users.</li>
   <li>Supports the same preview, sharing, version, and attach-existing flows when the user has the required access.</li>
+  <li>Lets users tick several of the files they can see and download them together as one ZIP archive.</li>
 </ul>
 
 ## What Users Get After Placement

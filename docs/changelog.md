@@ -2,6 +2,17 @@
 
 All notable changes to this client are documented here. Each entry describes what changed for administrators and end users of an installed package version.
 
+## [2.4.0] - TBA
+
+### Added
+
+- Download several files at once from the Uploader. Every uploaded file in the Uploader has a checkbox. Once at least one file is ticked, a line appears above the list saying how many are selected, with a **Download** button that shows the count. The selected files arrive as one ZIP archive named after the record, a progress bar shows how far the download has got and which file is being fetched, and **Stop** cancels it before anything is saved. While the download runs, the selected files cannot be opened, replaced or removed, and leaving the page or the Flow screen stops it. It works on record pages, on Experience Cloud pages and in Screen Flows, with the same limits as Notes & Attachments: up to 100 files and 512 MB together.
+
+### Fixed
+
+- A file still uploading in the Uploader is no longer lost from the list, or saved as "Untitled" with no type or size, when another file is removed or attached while it uploads, or when a file's details are changed in the preview.
+- In the Uploader, a file's hover text shows its new summary as soon as the preview is closed after the AI panel filled in, as it already did in Notes & Attachments.
+
 ## [2.3.0] - 2026-10-23
 
 ### Added

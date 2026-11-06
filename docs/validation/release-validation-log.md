@@ -2,7 +2,54 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
-???+ example "Release v2.3.0"
+???+ example "Release v2.4.0"
+
+    ### Validation Suite Used
+    - [ ] Full Validation Suite
+    - [ ] Quick Regression Suite
+    - [ ] Targeted Regression Suite
+
+    ### Release Changes
+    - [ ] Change 1: The upgrade lands on an already configured org without changing how it behaves.
+
+        - [ ] Admin: Google Drive, folder structure, AI, safety and File Explorer column settings are unchanged after the upgrade.
+        - [ ] Internal User: Upload, preview, download, sharing and versioning behave exactly as before the upgrade.
+        - [ ] External User: Experience Cloud pages open and behave exactly as before the upgrade.
+
+    - [ ] Change 2: Several files can be downloaded at once from the Uploader.
+
+        - [ ] Internal User: Confirm every uploaded file in the Uploader has a checkbox, a file still uploading has none, and the line above the list says how many files there are.
+        - [ ] Internal User: Tick two files, one larger than 3.5 MB, and confirm "2 of N selected" with Clear selection and Download (2) appear above the list.
+        - [ ] Internal User: Click Download (2), confirm the progress bar names the file being fetched, and confirm one ZIP archive named after the record arrives with both files intact.
+        - [ ] Internal User: Confirm the message says 2 files were downloaded and the selection is cleared.
+        - [ ] Internal User: While a download runs, confirm the selected files cannot be opened, replaced or removed, while the other files still can.
+        - [ ] Internal User: Start a download of a large file, click Stop, and confirm nothing is saved and the selection is kept.
+        - [ ] Internal User: Tick a file you can only view and confirm it downloads with the others.
+        - [ ] Internal User: In a Screen Flow with the Uploader, download two files together, then start another download, click Next while it runs, and confirm nothing is saved.
+        - [ ] Internal User: Confirm the View All page of Notes & Attachments still downloads several files exactly as in 2.3.0.
+        - [ ] External User: On an Experience Cloud page with the Uploader, download two visible files together.
+
+    - [ ] Change 3: A file still uploading in the Uploader stays on the list, and its hover text shows its summary once the preview is closed.
+
+        - [ ] Internal User: While a large file uploads, remove another file, and confirm the large file finishes under its own name, size and type.
+        - [ ] Internal User: With AI Analytics on, open a newly uploaded file, wait for the AI panel to show its summary, close the preview, and confirm the card's hover text is the summary.
+
+    ### Boring Changes
+    - [ ] Version number assigned to all hard-coded labels
+    - [ ] Version ID is assigned to all installation guides.
+    - [ ] All images for documentation are included.
+
+    ### Smoke Checks
+    - [ ] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [ ] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [ ] Admin can open Google Client app and browse configuration tabs without errors
+
+    ### Suite Execution (only for Full or Quick)
+    - [ ] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
+
+    ### Notes
+
+??? example "Release v2.3.0"
 
     ### Validation Suite Used
     - [ ] Full Validation Suite

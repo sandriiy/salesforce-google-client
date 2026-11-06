@@ -2,7 +2,7 @@ import downloadFile from '@salesforce/apex/GoogleCloudFilesController.downloadFi
 import downloadFileAs from '@salesforce/apex/GoogleCloudFilesController.downloadFileAs';
 import downloadFilePartial from '@salesforce/apex/GoogleCloudFilesController.downloadLargeFilePartial';
 
-import { resolveTransferLimits, formatFileSize } from 'c/googleCloudUtils';
+import { resolveTransferLimits, formatFileSize, DEFAULT_FAILED_DOWNLOAD_MESSAGE } from 'c/googleCloudUtils';
 
 const DEFAULT_THREADS = 4;
 const ABORT_ERROR_NAME = 'GoogleCloudDownloadAbortError';
@@ -25,6 +25,7 @@ const ZIP = {
     FIRST_DOS_YEAR: 1980
 };
 const UNSAFE_FILE_NAME_CHARACTERS = /[\\/:*?"<>|]/g;
+const DEFAULT_ARCHIVE_BASE_NAME = 'Files';
 
 export const MAX_BULK_DOWNLOAD_FILES = 100;
 export const MAX_BULK_DOWNLOAD_BYTES = 512 * 1024 * 1024;
@@ -32,6 +33,9 @@ export const BULK_DOWNLOAD_NOTHING_SELECTED_MESSAGE = 'Select at least one file 
 export const BULK_DOWNLOAD_TOO_MANY_FILES_MESSAGE = `Select up to ${MAX_BULK_DOWNLOAD_FILES} files at a time`;
 export const BULK_DOWNLOAD_TOO_LARGE_MESSAGE = `The selected files add up to more than ${formatFileSize(MAX_BULK_DOWNLOAD_BYTES, 0)}. Select fewer files to download them together`;
 export const BULK_DOWNLOAD_STOPPED_MESSAGE = 'The download was stopped. Nothing was saved';
+export const BULK_DOWNLOAD_COMPLETE_TITLE = 'Files downloaded';
+export const BULK_DOWNLOAD_FAILED_TITLE = 'Unable to download files';
+export const BULK_DOWNLOAD_STOPPED_TITLE = 'Download stopped';
 
 export const createOperationControl = () => {
     return {
@@ -267,6 +271,93 @@ export const resolveBulkDownloadRefusal = (files) => {
     }
 
     return null;
+};
+
+/**
+ * Says how many files there are in the words every bulk download uses, "1 file" or "3 files".
+ *
+ * @param {number} count
+ */
+export const describeFileCount = (count) => {
+    return `${count} ${count === 1 ? 'file' : 'files'}`;
+};
+
+/**
+ * Names a bulk download archive after what the files belong to, for example "Acme - 3 files.zip".
+ * Characters a file system refuses are replaced, and a blank base name becomes "Files".
+ *
+ * @param {string} baseName - usually the record name
+ * @param {number} fileCount - how many files the archive ends up holding
+ */
+export const resolveBulkArchiveName = (baseName, fileCount) => {
+    const safeBaseName = String(baseName || '')
+        .replace(UNSAFE_FILE_NAME_CHARACTERS, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    return `${safeBaseName || DEFAULT_ARCHIVE_BASE_NAME} - ${describeFileCount(fileCount)}.zip`;
+};
+
+/**
+ * Describes how a finished bulk download went, in the words every host shows.
+ * Hosts then deselect the files that were downloaded, which clears a complete download
+ * and keeps the files that could not be included selected.
+ *
+ * @param {object} result - what downloadMany() returned
+ * @returns {{title: string, message: string, variant: string, mode: string}}
+ */
+export const resolveBulkDownloadOutcome = ({ downloaded = [], failed = [] } = {}) => {
+    if (failed.length === 0) {
+        return {
+            title: BULK_DOWNLOAD_COMPLETE_TITLE,
+            message: `${describeFileCount(downloaded.length)} downloaded as one ZIP archive`,
+            variant: 'success',
+            mode: 'dismissable'
+        };
+    }
+
+    if (downloaded.length === 0) {
+        return {
+            title: BULK_DOWNLOAD_FAILED_TITLE,
+            message: DEFAULT_FAILED_DOWNLOAD_MESSAGE,
+            variant: 'error',
+            mode: 'dismissable'
+        };
+    }
+
+    const failedNames = failed.map((failure) => failure.file.name).join(', ');
+    const total = downloaded.length + failed.length;
+
+    return {
+        title: BULK_DOWNLOAD_COMPLETE_TITLE,
+        message: `${downloaded.length} of ${describeFileCount(total)} downloaded as one ZIP archive. ${failedNames} could not be included and ${failed.length === 1 ? 'stays' : 'stay'} selected`,
+        variant: 'warning',
+        mode: 'sticky'
+    };
+};
+
+/**
+ * Describes a bulk download that ended without saving anything: stopped on request, or failed.
+ *
+ * @param {Error} error - what downloadMany() threw
+ * @returns {{title: string, message: string, variant: string, mode: string}}
+ */
+export const resolveBulkDownloadFailure = (error) => {
+    if (isOperationAbortedError(error)) {
+        return {
+            title: BULK_DOWNLOAD_STOPPED_TITLE,
+            message: BULK_DOWNLOAD_STOPPED_MESSAGE,
+            variant: 'info',
+            mode: 'dismissable'
+        };
+    }
+
+    return {
+        title: BULK_DOWNLOAD_FAILED_TITLE,
+        message: DEFAULT_FAILED_DOWNLOAD_MESSAGE,
+        variant: 'error',
+        mode: 'dismissable'
+    };
 };
 
 /**

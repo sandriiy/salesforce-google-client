@@ -1,4 +1,5 @@
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { getFieldValue } from 'lightning/uiRecordApi';
 import {
 	DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE,
 	createDefaultFileIntelligenceState,
@@ -599,4 +600,30 @@ const createBulkSelection = (selectedIds = []) => {
     });
 };
 
-export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, resolveTransferLimits, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString, createBulkSelection };
+const resolveRecordNameFields = (objectInfo) => {
+    const nameFields = objectInfo?.nameFields || [];
+    const fieldsByApiName = objectInfo?.fields || {};
+
+    for (const nameField of nameFields) {
+        const fieldInfo = fieldsByApiName[nameField];
+
+        if (fieldInfo?.compound) return [nameField];
+        if (fieldInfo?.compoundFieldName) return [fieldInfo.compoundFieldName];
+    }
+
+    return nameFields;
+};
+
+const resolveRecordNameValue = (record, qualifiedFieldNames) => {
+    for (const fieldName of qualifiedFieldNames || []) {
+        const fieldValue = getFieldValue(record, fieldName);
+
+        if (!isEmpty(fieldValue)) {
+            return fieldValue;
+        }
+    }
+
+    return null;
+};
+
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, resolveTransferLimits, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString, createBulkSelection, resolveRecordNameFields, resolveRecordNameValue };

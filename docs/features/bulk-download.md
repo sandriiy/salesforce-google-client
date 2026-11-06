@@ -5,8 +5,8 @@ Bulk download lets you pick several files and download them together as one ZIP 
 | Where | Available |
 |---|---|
 | Notes & Attachments, **View All** page | Yes |
+| Uploader | Yes |
 | File Explorer | In the next release |
-| Uploader | In the next release |
 
 ## Notes & Attachments
 
@@ -28,13 +28,28 @@ The **View All** page of Notes & Attachments lets you pick several files of a re
 
 The View All page of an Experience Cloud site offers the same checkboxes and the same **Download** button.
 
+## Uploader
+
+The Uploader lets you pick several of the files listed in it and download them together. This works on record pages, on Experience Cloud pages and in Screen Flows.
+
+<!-- IMAGE: bulk_download_uploader_selection.png — the Uploader on a record page with two files ticked, "2 of 5 selected • Clear selection" and the Download (2) button above the list -->
+
+### How it works
+
+1. Tick the files you want, one by one. Each uploaded file has a checkbox in front of its icon. A file that is still uploading gets its checkbox once the upload finishes.
+2. Click **Download (N)** above the list. The button appears as soon as one file is ticked and shows how many are selected.
+3. Watch the progress bar, which takes the place of the selection line. It says which file is being fetched and how far the download has got.
+4. The archive is saved by your browser like any other download, named after the record, for example `Acme Corporation - 3 files.zip`. When the record's name cannot be shown to you, the archive is called `Files - 3 files.zip`.
+
+**Clear selection** unticks everything, and **Stop** cancels a download that is running. A stopped download saves nothing.
+
+<!-- IMAGE: bulk_download_uploader_progress.png — the Uploader while a download runs, with the progress bar, "Downloading 1 of 2 · <file name>" and the Stop button -->
+
+While the download runs, the files you selected cannot be opened, replaced or removed. The other files can. Leaving the page, or moving to the next screen of a Flow, stops the download, and nothing is saved.
+
 ## File Explorer
 
 Bulk download from [File Explorer](file-explorer.md) will be delivered in the next release.
-
-## Uploader
-
-Bulk download from the Uploader component will be delivered in the next release.
 
 ## What is in the archive
 

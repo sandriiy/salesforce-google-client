@@ -76,6 +76,7 @@ Provides a dedicated upload interface for adding files to Google Drive from Sale
 <ul>
   <li>Replaces Salesforce Files with a dedicated upload experience for a specific record, including support for limiting the number of files (for example, one file per record).</li>
   <li>Allows users to attach existing owned Google Client files when the component is used on a record page.</li>
+  <li>Lets users tick several of the listed files and download them together as one ZIP archive.</li>
 </ul>
 
 ![Uploader component and its properties](../assets/images/usage_uploader_properties.png)

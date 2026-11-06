@@ -1,7 +1,7 @@
 import { LightningElement, track, api, wire } from 'lwc';
 import { CurrentPageReference } from 'lightning/navigation';
 import { NavigationMixin } from 'lightning/navigation';
-import { getRecord, getFieldValue } from 'lightning/uiRecordApi';
+import { getRecord } from 'lightning/uiRecordApi';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import { requestConfig, stopConfigSession } from 'c/googleCloudConfigBus';
 
@@ -18,26 +18,26 @@ import {
 	formatExistingLocalFiles,
 	formatDateAsDDMMYYYY_HHMM,
 	extractFileExtension,
-	createBulkSelection
+	createBulkSelection,
+	resolveRecordNameFields,
+	resolveRecordNameValue
 } from 'c/googleCloudUtils';
-import { DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE } from 'c/googleCloudUtils';
+import { DEFAULT_FAILED_RETRIEVE_MESSAGE, DEFAULT_FILE_NOT_ALLOWED_MESSAGE } from 'c/googleCloudUtils';
 import {
 	downloadMany,
 	resolveBulkDownloadRefusal,
+	resolveBulkArchiveName,
+	resolveBulkDownloadOutcome,
+	resolveBulkDownloadFailure,
 	createOperationControl,
 	abortOperation,
-	isOperationAbortedError,
-	BULK_DOWNLOAD_STOPPED_MESSAGE
+	BULK_DOWNLOAD_FAILED_TITLE
 } from 'c/googleCloudDownloadUtils';
 import hasGoogleClientUserAccess from '@salesforce/customPermission/GoogleClientUserAccess';
 import retrieveGoogleFiles from '@salesforce/apex/GoogleCloudFilesController.retrieveGoogleFilesWithoutLimit';
 
 const UNABLE_TO_UPLOAD_MESSAGE = 'Unable to upload file(s)';
 const UNABLE_TO_RETRIEVE_FILES = 'Unable to retrieve file(s)';
-const UNABLE_TO_DOWNLOAD_FILES_MESSAGE = 'Unable to download files';
-const FILES_DOWNLOADED_MESSAGE = 'Files downloaded';
-const DOWNLOAD_STOPPED_MESSAGE = 'Download stopped';
-const UNSAFE_ARCHIVE_NAME_CHARACTERS = /[\\/:*?"<>|]/g;
 const TARGET_TAB_COMPONENT = 'c__googleCloudRelatedAttachments';
 const TAB_POLL_DELAY_MS = 200;
 const TAB_MAX_RETRIES = 5;
@@ -81,7 +81,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@wire(getObjectInfo, { objectApiName: '$sobjectApiName' })
 	wiredObjectInfo({ data, error }) {
 		if (data) {
-			this.recordIdentifierNames = this.resolveDisplayNameFields(data).map((nameField) => `${this.sobjectApiName}.${nameField}`);
+			this.recordIdentifierNames = resolveRecordNameFields(data).map((nameField) => `${this.sobjectApiName}.${nameField}`);
 			this.recordIdentifierValue = null;
 		} else if (error) {
 			this.recordIdentifierNames = [];
@@ -92,7 +92,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@wire(getRecord, { recordId: '$recordId', fields: '$recordPrimaryField' })
 	wiredRecordInfo({ data, error }) {
 		if (data) {
-			this.recordIdentifierValue = this.resolveRecordIdentifierValue(data);
+			this.recordIdentifierValue = resolveRecordNameValue(data, this.recordIdentifierNames);
 		} else if (error) {
 			this.recordIdentifierValue = null;
 		}
@@ -282,7 +282,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 		const selectedFiles = this.selection.pick(this.files, 'localId');
 		const refusal = resolveBulkDownloadRefusal(selectedFiles);
 		if (refusal) {
-			showToast(this, UNABLE_TO_DOWNLOAD_FILES_MESSAGE, refusal, 'warning');
+			showToast(this, BULK_DOWNLOAD_FAILED_TITLE, refusal, 'warning');
 			return;
 		}
 
@@ -293,7 +293,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 		try {
 			const result = await downloadMany(selectedFiles, {
-				zipName: (includedCount) => this.resolveArchiveName(includedCount),
+				zipName: (includedCount) => resolveBulkArchiveName(this.recordIdentifierValue || this.title, includedCount),
 				control: this.bulkDownloadControl,
 				onProgress: (progress) => {
 					this.bulkDownloadProgress = progress;
@@ -302,11 +302,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 			this.reportBulkDownloadResult(result);
 		} catch (error) {
-			if (isOperationAbortedError(error)) {
-				showToast(this, DOWNLOAD_STOPPED_MESSAGE, BULK_DOWNLOAD_STOPPED_MESSAGE, 'info');
-			} else {
-				showToast(this, UNABLE_TO_DOWNLOAD_FILES_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE, 'error');
-			}
+			this.showBulkDownloadToast(resolveBulkDownloadFailure(error));
 		} finally {
 			this.isBulkDownloadInProgress = false;
 			this.isBulkDownloadStopping = false;
@@ -320,62 +316,13 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 		abortOperation(this.bulkDownloadControl);
 	}
 
-	reportBulkDownloadResult({ downloaded, failed }) {
-		const total = downloaded.length + failed.length;
-
-		if (failed.length === 0) {
-			showToast(this, FILES_DOWNLOADED_MESSAGE, `${this.describeFileCount(downloaded.length)} downloaded as one ZIP archive`, 'success');
-			this.selection = this.selection.clear();
-			return;
-		}
-
-		if (downloaded.length === 0) {
-			showToast(this, UNABLE_TO_DOWNLOAD_FILES_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE, 'error');
-			return;
-		}
-
-		const failedNames = failed.map((failure) => failure.file.name).join(', ');
-		showToast(this, FILES_DOWNLOADED_MESSAGE, `${downloaded.length} of ${this.describeFileCount(total)} downloaded as one ZIP archive. ${failedNames} could not be included and ${failed.length === 1 ? 'stays' : 'stay'} selected`, 'warning', 'sticky');
-		this.selection = this.selection.deselect(downloaded.map((file) => file.localId));
+	reportBulkDownloadResult(result) {
+		this.showBulkDownloadToast(resolveBulkDownloadOutcome(result));
+		this.selection = this.selection.deselect(result.downloaded.map((file) => file.localId));
 	}
 
-	resolveArchiveName(fileCount) {
-		const baseName = String(this.recordIdentifierValue || this.title || 'Files')
-			.replace(UNSAFE_ARCHIVE_NAME_CHARACTERS, ' ')
-			.replace(/\s+/g, ' ')
-			.trim();
-
-		return `${baseName} - ${this.describeFileCount(fileCount)}.zip`;
-	}
-
-	describeFileCount(count) {
-		return `${count} ${count === 1 ? 'file' : 'files'}`;
-	}
-
-	resolveDisplayNameFields(objectInfo) {
-		const nameFields = objectInfo.nameFields || [];
-		const fieldsByApiName = objectInfo.fields || {};
-
-		for (const nameField of nameFields) {
-			const fieldInfo = fieldsByApiName[nameField];
-
-			if (fieldInfo?.compound) return [nameField];
-			if (fieldInfo?.compoundFieldName) return [fieldInfo.compoundFieldName];
-		}
-
-		return nameFields;
-	}
-
-	resolveRecordIdentifierValue(recordInfo) {
-		for (const fieldName of this.recordIdentifierNames) {
-			const fieldValue = getFieldValue(recordInfo, fieldName);
-
-			if (!isEmpty(fieldValue)) {
-				return fieldValue;
-			}
-		}
-
-		return null;
+	showBulkDownloadToast({ title, message, variant, mode }) {
+		showToast(this, title, message, variant, mode);
 	}
 
 	getFieldValue(record, path) {

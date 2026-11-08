@@ -1,0 +1,71 @@
+<template>
+    <section class="gc-search-filters" aria-label="Search criteria">
+        <lightning-input
+            type="search"
+            class="gc-search-filters__phrases"
+            label="Key phrases"
+            variant="label-hidden"
+            placeholder={keyPhrasesPlaceholder}
+            value={keyPhrases}
+            onchange={handleKeyPhrasesChange}>
+        </lightning-input>
+
+        <div class="gc-search-filters__chips">
+            <template for:each={chips} for:item="chip">
+                <div key={chip.key} class="gc-search-chip-wrap" data-key={chip.key} onkeydown={handleChipKeyDown} onfocusout={handleChipFocusOut}>
+                    <div class={chip.chipClass}>
+                        <button type="button" class="gc-search-chip__main" data-key={chip.key} aria-haspopup="menu" aria-expanded={chip.expandedText} onclick={handleChipToggle}>
+                            <span class="gc-search-chip__label">{chip.label}</span>
+                            <lightning-icon class="gc-search-chip__icon" icon-name="utility:chevrondown" size="xx-small"></lightning-icon>
+                        </button>
+                        <template lwc:if={chip.isSet}>
+                            <button type="button" class="gc-search-chip__remove" data-key={chip.key} aria-label={chip.removeLabel} title={chip.removeLabel} onclick={handleChipRemove}>
+                                <lightning-icon class="gc-search-chip__icon" icon-name="utility:close" size="xx-small"></lightning-icon>
+                            </button>
+                        </template>
+                    </div>
+
+                    <template lwc:if={chip.isOpen}>
+                        <div class={chip.menuClass} tabindex="-1">
+                            <ul class="slds-dropdown__list" role="menu" aria-label={chip.name}>
+                                <template for:each={chip.options} for:item="option">
+                                    <li key={option.value} class="slds-dropdown__item" role="presentation">
+                                        <a href="#" class="gc-search-chip__option" role={chip.itemRole} aria-checked={option.checkedText} tabindex="-1" data-key={chip.key} data-value={option.value} data-label={option.label} onclick={handleOptionPick}>
+                                            <span class="slds-truncate gc-search-chip__option-text" title={option.label}>
+                                                <span class="gc-search-chip__tick">
+                                                    <template lwc:if={option.isChecked}>
+                                                        <lightning-icon icon-name="utility:check" size="x-small"></lightning-icon>
+                                                    </template>
+                                                </span>
+                                                {option.label}
+                                            </span>
+                                        </a>
+                                    </li>
+                                </template>
+                                <template lwc:if={chip.isLoadingOptions}>
+                                    <li class="slds-dropdown__item" role="presentation">
+                                        <span class="gc-search-chip__loading" role="status">
+                                            <span class="gc-search-chip__tick"></span>
+                                            Loading owners…
+                                        </span>
+                                    </li>
+                                </template>
+                            </ul>
+
+                            <template lwc:if={chip.showRange}>
+                                <div class="gc-search-chip__range">
+                                    <lightning-input type="date" class="gc-search-chip__day" label="From" value={chip.fromDay} data-key={chip.key} data-edge="from" onchange={handleRangeChange}></lightning-input>
+                                    <lightning-input type="date" class="gc-search-chip__day" label="To" value={chip.toDay} min={chip.fromDay} data-key={chip.key} data-edge="to" onchange={handleRangeChange}></lightning-input>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <template lwc:if={hasCriteria}>
+                <lightning-button variant="base" class="gc-search-filters__clear" label="Clear all" onclick={handleClearAll}></lightning-button>
+            </template>
+        </div>
+    </section>
+</template>

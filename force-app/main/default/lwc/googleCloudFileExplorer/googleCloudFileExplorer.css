@@ -23,12 +23,17 @@
 .gcdc-file-explorer-main-area {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 160px);
+    min-height: 20rem;
 }
 
 .gcdc-file-explorer-table-wrap {
     background: var(--lwc-colorBackgroundAlt, #ffffff);
     position: relative;
-    height: calc(100vh - 160px);
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .gcdc-file-explorer-table {
@@ -39,7 +44,7 @@
 
 .gcdc-file-explorer-section-label {
     font-size: 0.85rem;
-    color: var(--lwc-colorTextLabel, #706e6b);
+    color: #181818;
 }
 
 .gcdc-file-explorer-page-title {
@@ -48,13 +53,13 @@
 }
 
 .gcdc-file-explorer-meta-line {
-    color: var(--lwc-colorTextLabel, #706e6b);
+    color: #181818;
+    min-height: 1.5rem;
 }
 
 .gcdc-file-explorer-controls {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
 }
 
 .gcdc-file-explorer-search {
@@ -62,11 +67,22 @@
 }
 
 .gcdc-file-explorer-empty {
-    color: var(--lwc-colorTextLabel, #706e6b);
     position: absolute;
-    top: 40%;
-    left: 0;
+    top: 2.5rem;
     right: 0;
-    margin: 0;
-    pointer-events: none;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem 1rem;
+    background: #FFFFFF;
+    color: #181818;
+    text-align: center;
+}
+
+.gcdc-file-explorer-empty-icon {
+    --slds-c-icon-color-foreground-default: #181818;
 }

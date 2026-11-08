@@ -665,4 +665,200 @@ private class GoogleCloudFilesControllerTest {
 
 		Assert.areEqual(0, [SELECT COUNT() FROM GoogleFileVersion__c], 'No version was added');
 	}
+
+	private static GoogleFile__c insertSearchCandidate(String fileName, String versionName, String mimeType, Long sizeBytes, Integer versionCount, Boolean isLinked) {
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName(fileName).insertRecord();
+		List<GoogleFileVersion__c> versions = new List<GoogleFileVersion__c>();
+		for (Integer i = 1; i <= versionCount; i++) {
+			versions.add(GoogleCloudTestFactory.version()
+				.forFile(localFile.Id)
+				.withName(i == versionCount ? versionName : 'Old draft.pdf')
+				.withType(mimeType)
+				.withSize(sizeBytes)
+				.isLatest(i == versionCount)
+				.build());
+		}
+		
+		insert versions;
+
+		if (isLinked) {
+			GoogleCloudTestFactory.link().forFile(localFile.Id).withShareType('Viewer').insertRecord();
+		}
+
+		return localFile;
+	}
+
+	private static String dayString(Date day) {
+		return Datetime.newInstance(day, Time.newInstance(0, 0, 0, 0)).format('yyyy-MM-dd');
+	}
+
+	private static Set<Id> idsOf(List<GoogleFile__c> files) {
+		return new Map<Id, GoogleFile__c>(files).keySet();
+	}
+
+	private static void mockExternalVisibilityPage(GoogleFile__c internalOnlyFile, GoogleFile__c everyoneFile) {
+		GoogleCloudTestFactory.denyAllRecordAccess();
+		GoogleCloudTestFactory.mockExternalUser();
+		GoogleCloudTestFactory.mockNoGroupMemberships();
+		Id readableRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(readableRecordId, true, false);
+
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{ internalOnlyFile, everyoneFile });
+		GoogleCloudTestFactory.mockLinks(new List<GoogleFileLink__c>{
+			GoogleCloudTestFactory.link().forFile(internalOnlyFile.Id).withLinkedRecord(readableRecordId).withShareType('Viewer').withVisibility('InternalUsers').build(),
+			GoogleCloudTestFactory.link().forFile(everyoneFile.Id).withLinkedRecord(readableRecordId).withShareType('Viewer').withVisibility('AllUsers').build()
+		});
+	}
+
+	@IsTest
+	private static void testSearchFileExplorerFilesPositiveRebuildsTheRequestFromPrimitives() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.bypassTriggers();
+		String pdfType = GoogleCloudConstants.MIME_TYPE_PDF;
+
+		GoogleFile__c match = insertSearchCandidate('Match', 'Renewal brief.pdf', pdfType, 2097152L, 2, true);
+		GoogleFile__c createdEarlier = insertSearchCandidate('Created Earlier', 'Renewal brief.pdf', pdfType, 2097152L, 2, true);
+		GoogleFile__c createdLater = insertSearchCandidate('Created Later', 'Renewal brief.pdf', pdfType, 2097152L, 2, true);
+		List<GoogleFile__c> inRange = new List<GoogleFile__c>{
+			match,
+			insertSearchCandidate('No Phrase', 'Brief.pdf', pdfType, 2097152L, 2, true),
+			insertSearchCandidate('Wrong Type', 'Renewal brief.txt', GoogleCloudConstants.MIME_TYPE_TEXT, 2097152L, 2, true),
+			insertSearchCandidate('Too Small', 'Renewal brief.pdf', pdfType, 1000L, 2, true),
+			insertSearchCandidate('Too Large', 'Renewal brief.pdf', pdfType, 20971520L, 2, true),
+			insertSearchCandidate('Single Version', 'Renewal brief.pdf', pdfType, 2097152L, 1, true),
+			insertSearchCandidate('Many Versions', 'Renewal brief.pdf', pdfType, 2097152L, 4, true),
+			insertSearchCandidate('Unlinked', 'Renewal brief.pdf', pdfType, 2097152L, 2, false)
+		};
+		for (GoogleFile__c candidate : inRange) {
+			Test.setCreatedDate(candidate.Id, Datetime.newInstance(2025, 3, 3, 12, 0, 0));
+		}
+		Test.setCreatedDate(createdEarlier.Id, Datetime.newInstance(2025, 2, 1, 12, 0, 0));
+		Test.setCreatedDate(createdLater.Id, Datetime.newInstance(2025, 3, 10, 12, 0, 0));
+		String currentDay = dayString(Date.today());
+		String previousDay = dayString(Date.today().addDays(-1));
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO mine = GoogleCloudFilesController.searchFileExplorerFiles('renewal', 'pdf;docx', 1048576L, 10485760L, '2025-03-01', '2025-03-05', currentDay, currentDay, 2, 3, 'mine', 'linked', 'fileName', 'ASC', null, 50);
+		GoogleFileExplorerResultDTO others = GoogleCloudFilesController.searchFileExplorerFiles('renewal', 'pdf;docx', 1048576L, 10485760L, '2025-03-01', '2025-03-05', currentDay, currentDay, 2, 3, 'others', 'linked', 'fileName', 'ASC', null, 50);
+		GoogleFileExplorerResultDTO changedBefore = GoogleCloudFilesController.searchFileExplorerFiles('renewal', 'pdf;docx', 1048576L, 10485760L, '2025-03-01', '2025-03-05', null, previousDay, 2, 3, 'mine', 'linked', 'fileName', 'ASC', null, 50);
+		Test.stopTest();
+
+		Assert.areEqual(1, mine.files.size(), 'Each value sent from the screen must reach the search');
+		Assert.areEqual(match.Id, mine.files[0].Id);
+		Assert.isTrue(others.files.isEmpty(), 'The ownership value must reach the search');
+		Assert.isTrue(changedBefore.files.isEmpty(), 'The last modified range must reach the search');
+	}
+
+	@IsTest
+	private static void testSearchFileExplorerFilesPositiveSortCursorAndPageSizeReachThePage() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleCloudTestFactory.file().withName('Alpha').insertRecord();
+		GoogleFile__c bravo = GoogleCloudTestFactory.file().withName('Bravo').insertRecord();
+		GoogleFile__c charlie = GoogleCloudTestFactory.file().withName('Charlie').insertRecord();
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO firstPage = GoogleCloudFilesController.searchFileExplorerFiles(null, null, null, null, null, null, null, null, null, null, null, null, 'fileName', 'DESC', null, 1);
+		GoogleFileExplorerResultDTO secondPage = GoogleCloudFilesController.searchFileExplorerFiles(null, null, null, null, null, null, null, null, null, null, null, null, 'fileName', 'DESC', firstPage.nextCursor, 1);
+		Test.stopTest();
+
+		Assert.areEqual(1, firstPage.files.size());
+		Assert.areEqual(charlie.Id, firstPage.files[0].Id);
+		Assert.isTrue(firstPage.hasMore);
+		Assert.isNotNull(firstPage.nextCursor, 'More files must come with a cursor');
+		Assert.areEqual(1, secondPage.files.size());
+		Assert.areEqual(bravo.Id, secondPage.files[0].Id);
+	}
+
+	@IsTest
+	private static void testSearchFileExplorerFilesPositiveAllNullsListsEverything() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.bypassTriggers();
+
+		GoogleFile__c withVersion = insertSearchCandidate('With Version', 'With version.pdf', GoogleCloudConstants.MIME_TYPE_PDF, 2097152L, 1, false);
+		GoogleFile__c withoutVersion = GoogleCloudTestFactory.file().withName('Without Version').insertRecord();
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = GoogleCloudFilesController.searchFileExplorerFiles(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+		Test.stopTest();
+
+		Assert.areEqual(new Set<Id>{ withVersion.Id, withoutVersion.Id }, idsOf(result.files), 'With nothing entered, Search lists every file the user can open');
+		Assert.isFalse(result.hasMore);
+	}
+
+	@IsTest
+	private static void testSearchFileExplorerFilesNegativeExternalUserSeesOnlyFilesForAllUsers() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleFile__c internalOnlyFile = new GoogleFile__c(Id = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), Name = 'Internal Only', OwnerId = GoogleCloudTestFactory.otherUserId());
+		GoogleFile__c everyoneFile = new GoogleFile__c(Id = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), Name = 'Everyone', OwnerId = GoogleCloudTestFactory.otherUserId());
+		mockExternalVisibilityPage(internalOnlyFile, everyoneFile);
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = GoogleCloudFilesController.searchFileExplorerFiles(null, null, null, null, null, null, null, null, null, null, null, null, 'fileName', 'ASC', null, 50);
+		Test.stopTest();
+
+		Assert.areEqual(1, result.files.size(), 'An external user only gets files shown to all users');
+		Assert.areEqual(everyoneFile.Id, result.files[0].Id);
+		Assert.areEqual('View', result.files[0].UserAccessLevel__c);
+	}
+
+	@IsTest
+	private static void testSearchFileExplorerFilesNegativeViewAllFloorDoesNotReachExternalUsers() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.Edit);
+		GoogleFile__c internalOnlyFile = new GoogleFile__c(Id = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), Name = 'Internal Only', OwnerId = GoogleCloudTestFactory.otherUserId());
+		GoogleFile__c everyoneFile = new GoogleFile__c(Id = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType), Name = 'Everyone', OwnerId = GoogleCloudTestFactory.otherUserId());
+		mockExternalVisibilityPage(internalOnlyFile, everyoneFile);
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = GoogleCloudFilesController.searchFileExplorerFiles(null, null, null, null, null, null, null, null, null, null, null, null, 'fileName', 'ASC', null, 50);
+		Test.stopTest();
+
+		Assert.areEqual(1, result.files.size(), 'The Edit All floor must not open internal-only files to an external user');
+		Assert.areEqual(everyoneFile.Id, result.files[0].Id);
+		Assert.areEqual('View', result.files[0].UserAccessLevel__c, 'The floor is for internal users only');
+	}
+
+	@IsTest
+	private static void testSearchFileExplorerFilesNegativeUnreadableValuesAreIgnored() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.bypassTriggers();
+
+		GoogleFile__c withVersion = insertSearchCandidate('With Version', 'With version.pdf', GoogleCloudConstants.MIME_TYPE_PDF, 2097152L, 1, false);
+		GoogleFile__c withoutVersion = GoogleCloudTestFactory.file().withName('Without Version').insertRecord();
+
+		Test.startTest();
+		GoogleFileExplorerResultDTO result = GoogleCloudFilesController.searchFileExplorerFiles('', '%;dw g', -1L, -5L, 'garbage', 'later', 'soon', 'never', -2, -1, 'everyone', 'maybe', 'notAColumn', 'sideways', 'not a cursor', -10);
+		Test.stopTest();
+
+		Assert.areEqual(new Set<Id>{ withVersion.Id, withoutVersion.Id }, idsOf(result.files), 'Values the search cannot read are ignored, not refused');
+	}
+
+	@IsTest
+	private static void testRetrieveFileExplorerOwnersPositiveReturnsTheServicesOwners() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.bypassTriggers();
+
+		insert new List<GoogleFile__c>{
+			GoogleCloudTestFactory.file().withName('Owner Probe One').build(),
+			GoogleCloudTestFactory.file().withName('Owner Probe Two').build()
+		};
+		String runningUserName = [SELECT Name FROM User WHERE Id = :UserInfo.getUserId()].Name;
+
+		Test.startTest();
+		List<GoogleFileOwnerDTO> owners = GoogleCloudFilesController.retrieveFileExplorerOwners();
+		GoogleCloudTestFactory.setPrivilegedFloor(GoogleFileAccessResolver.AccessLevel.View);
+		List<GoogleFileOwnerDTO> everyOwner = GoogleCloudFilesController.retrieveFileExplorerOwners();
+		List<GoogleFileOwnerDTO> serviceOwners = new GoogleLocalFileService().retrieveFileExplorerOwners();
+		Test.stopTest();
+
+		Assert.areEqual(1, owners.size(), 'The running user owns both files, so they are the one owner');
+		Assert.areEqual(UserInfo.getUserId(), owners[0].ownerId);
+		Assert.areEqual(1, everyOwner.size(), 'One owner for a View All user too, however many files they own');
+		Assert.areEqual(UserInfo.getUserId(), everyOwner[0].ownerId);
+		Assert.areEqual(runningUserName, everyOwner[0].name);
+		Assert.areEqual(serviceOwners.size(), everyOwner.size());
+		Assert.areEqual(serviceOwners[0].ownerId, everyOwner[0].ownerId, 'The endpoint hands back what the service resolves');
+		Assert.areEqual(serviceOwners[0].name, everyOwner[0].name);
+	}
 }

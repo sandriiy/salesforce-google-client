@@ -31,6 +31,7 @@ public without sharing class GoogleLocalFileService {
     public class GoogleLocalFileException extends Exception {}
 
     private static final String NO_FILE_ACCESS_MESSAGE = 'You don’t have access to this file. Ask the file owner or your system administrator for access';
+    private static final Integer MAX_FILE_EXPLORER_OWNERS = 200;
 
     private final IGoogleUnitOfWork uow;
 
@@ -110,16 +111,89 @@ public without sharing class GoogleLocalFileService {
 	public GoogleFileExplorerResultDTO retrieveGoogleFilesPage(GoogleFileExplorerPageRequestDTO request, Id userId) {
 		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
 		try {
-			GoogleFileAccessResolver.FilePage page = accessResolver.resolveFilePage(buildPageCriteria(request), userId);
-
-			String nextCursor = (page.hasMore && page.cursorRow != null) ? request.encodeCursorFrom(page.cursorRow) : null;
-			Boolean isPrivileged = accessResolver.privilegedFloor() != null;
-			return new GoogleFileExplorerResultDTO(page.records, page.hasMore, isPrivileged, nextCursor);
+			return readFilePage(accessResolver, request, buildPageCriteria(request), userId);
 		} catch (Exception ex) {
 			Logger.error('Retrieve Google File Page (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 			throw new GoogleLocalFileException('Unable to retrieve files. Please try again or contact your system administrator');
 		}
+	}
+
+	/**
+	 * Reads one page of the Search view for the running user.
+	 *
+	 * @param request The key phrases, filters, sort and cursor.
+	 * @return The page, with the cursor for the next one when there is more.
+	 */
+	public GoogleFileExplorerResultDTO searchGoogleFilesPage(GoogleFileExplorerSearchRequestDTO request) {
+		return searchGoogleFilesPage(request, UserInfo.getUserId());
+	}
+
+	/**
+	 * Reads one page of the Search view for a given user. Every filter only narrows what the user can
+	 * already open, and the owner filter applies to users with View All or Edit All as well.
+	 *
+	 * @param request The key phrases, filters, sort and cursor.
+	 * @param userId Whose files to search.
+	 * @return The page, with the cursor for the next one when there is more.
+	 */
+	public GoogleFileExplorerResultDTO searchGoogleFilesPage(GoogleFileExplorerSearchRequestDTO request, Id userId) {
+		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
+		try {
+			GoogleFileExplorerPageRequestDTO pageRequest = request.pageRequest();
+			GoogleFileAccessResolver.FilePageCriteria criteria = buildPageCriteria(pageRequest);
+			criteria.ownerFilter = request.ownershipScope();
+			criteria.ownerId = request.ownerId();
+			criteria.searchPhrases = request.searchPhrases();
+			criteria.fileExtensions = request.extensions();
+			criteria.minSizeBytes = request.minSizeBytes();
+			criteria.maxSizeBytes = request.maxSizeBytes();
+			criteria.createdFrom = request.createdFrom();
+			criteria.createdBefore = request.createdBefore();
+			criteria.modifiedFrom = request.modifiedFrom();
+			criteria.modifiedBefore = request.modifiedBefore();
+			criteria.minVersionCount = request.minVersionCount();
+			criteria.maxVersionCount = request.maxVersionCount();
+			criteria.linkedToRecord = request.linkedToRecord();
+
+			return readFilePage(accessResolver, pageRequest, criteria, userId);
+		} catch (Exception ex) {
+			Logger.error('Search Google File Page (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileException('Unable to retrieve files. Please try again or contact your system administrator');
+		}
+	}
+
+	/**
+	 * The owners the Search view offers in its Owner filter: the users and queues owning files the running
+	 * user can open, sorted by name. Someone who can open every file gets every owner; anyone else gets the
+	 * owners found among the files they can reach that changed most recently.
+	 *
+	 * @return At most 200 owners, each with its Id and name.
+	 */
+	public List<GoogleFileOwnerDTO> retrieveFileExplorerOwners() {
+		GoogleFileAccessResolver accessResolver = new GoogleFileAccessResolver();
+		try {
+			List<GoogleFileOwnerDTO> owners = new List<GoogleFileOwnerDTO>();
+
+			for (GoogleFileAccessResolver.FileOwner fileOwner : accessResolver.resolveAccessibleFileOwners(MAX_FILE_EXPLORER_OWNERS)) {
+				owners.add(new GoogleFileOwnerDTO(fileOwner.ownerId, fileOwner.name));
+			}
+
+			return owners;
+		} catch (Exception ex) {
+			Logger.error('Retrieve File Explorer Owners (Local): ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			throw new GoogleLocalFileException('Unable to retrieve file owners. Please try again or contact your system administrator');
+		}
+	}
+
+	private GoogleFileExplorerResultDTO readFilePage(GoogleFileAccessResolver accessResolver, GoogleFileExplorerPageRequestDTO request, GoogleFileAccessResolver.FilePageCriteria criteria, Id userId) {
+		GoogleFileAccessResolver.FilePage page = accessResolver.resolveFilePage(criteria, userId);
+
+		String nextCursor = (page.hasMore && page.cursorRow != null) ? request.encodeCursorFrom(page.cursorRow) : null;
+		Boolean isPrivileged = accessResolver.privilegedFloor() != null;
+		return new GoogleFileExplorerResultDTO(page.records, page.hasMore, isPrivileged, nextCursor);
 	}
 
 	private GoogleFileAccessResolver.FilePageCriteria buildPageCriteria(GoogleFileExplorerPageRequestDTO request) {
@@ -128,12 +202,27 @@ public without sharing class GoogleLocalFileService {
 		criteria.sortPath = request.sortPath();
 		if (String.isNotBlank(request.sortDirection)) criteria.sortDirection = request.sortDirection;
 		criteria.searchTerm = request.searchTerm;
-		criteria.cursorValue = request.decodedCursorValue();
-		criteria.cursorId = request.cursorId();
 		criteria.ownerScope = resolveOwnershipScope(request.bucket);
 		criteria.source = resolveSourceScope(request.bucket);
 		criteria.additionalVersionFields = new GoogleFileExplorerColumnResolver().resolveAdditionalVersionFields();
+		applyCursorRow(criteria, request);
 		return criteria;
+	}
+
+	private void applyCursorRow(GoogleFileAccessResolver.FilePageCriteria criteria, GoogleFileExplorerPageRequestDTO request) {
+		Id cursorId = request.cursorId();
+		if (cursorId == null) return;
+
+		List<GoogleFile__c> cursorRows = (List<GoogleFile__c>) GoogleFileSelector.query()
+			.withAllFields()
+			.withCreatedByName()
+			.byIds(new Set<Id>{ cursorId })
+			.toList();
+
+		if (cursorRows.isEmpty()) return;
+
+		criteria.cursorId = cursorRows[0].Id;
+		criteria.cursorValue = request.sortValueOf(cursorRows[0]);
 	}
 
 	private GoogleFileAccessResolver.OwnershipScope resolveOwnershipScope(String bucket) {

@@ -97,7 +97,7 @@ export default class GoogleCloudOpenInDriveModal extends LightningModal {
 
     get accessMessage() {
         if (!this.expiresOn) {
-            return 'You have now view access to this file in Google Drive.';
+            return 'You have now view access to this file in Google Drive';
         }
 
         const readableDate = new Intl.DateTimeFormat(undefined, {
@@ -105,6 +105,6 @@ export default class GoogleCloudOpenInDriveModal extends LightningModal {
             timeStyle: 'short'
         }).format(new Date(this.expiresOn));
 
-        return `You have now view access to this file in Google Drive until ${readableDate}.`;
+        return `You have now view access to this file in Google Drive until ${readableDate}`;
     }
 }

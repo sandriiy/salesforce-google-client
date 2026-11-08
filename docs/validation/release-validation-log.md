@@ -34,6 +34,36 @@ This document tracks **test coverage, validation scenarios, and release checks**
         - [ ] Internal User: While a large file uploads, remove another file, and confirm the large file finishes under its own name, size and type.
         - [ ] Internal User: With AI Analytics on, open a newly uploaded file, wait for the AI panel to show its summary, close the preview, and confirm the card's hover text is the summary.
 
+    - [ ] Change 4: File Explorer has a Search view that finds files by words and narrows them with filters.
+
+        - [ ] Internal User: Confirm the left navigation shows Owned by Me, Shared with Me and Search, and that Search with nothing entered lists every file you can open as "N files".
+        - [ ] Internal User: Type a word from a file's name, then one found only in a file's AI summary, then one found only in its labels, and confirm each finds the file and the line says "N files match".
+        - [ ] Internal User: Search for two words in an order the file name does not have, then for the same words in double quotes, and confirm only the second search is narrowed to the exact phrase.
+        - [ ] Internal User: Use every filter once (File type with two types at once, Size, Created, Last modified, Versions, Owner, Linked) and confirm each narrows the list, shows its value on the chip and is removed by its ✕.
+        - [ ] Internal User: Set Created to a custom range and confirm the list changes only once both days are chosen, both its first and its last day are included and the "To" day cannot be set before the "From" day.
+        - [ ] Internal User: Confirm Owner: Me lists files you own even when someone else uploaded them, the Owner list names only people whose files you can open, and picking a name lists that person's files you can open.
+        - [ ] Internal User: Search for something that matches nothing and confirm "No files match your search" with a Clear all button that resets the view.
+        - [ ] Internal User: Leave File Explorer while in Search, come back in the same browser session, and confirm the words and filters are still there.
+        - [ ] Internal User: Confirm a file you cannot open never appears in Search, whatever you type or filter.
+        - [ ] Admin with View All Files: Confirm the navigation shows All Files and Search, All Files still lists every owner's files, and Owner: Me in Search narrows the list to your own files, and the Owner list names every file owner.
+
+    - [ ] Change 5: Several files can be downloaded at once from every File Explorer view.
+
+        - [ ] Internal User: In Owned by Me, tick two files, one larger than 3.5 MB, and confirm "2 selected" (or "2 of N selected" once the whole list is loaded) with Clear selection, and Download (2) next to Upload Files.
+        - [ ] Internal User: Click Download (2) and confirm one ZIP archive named "Files - 2 files.zip" arrives with both files intact and the selection is cleared.
+        - [ ] Internal User: Start a download in Search, then type new words, change a filter, scroll and open a preview while it runs, and confirm the progress stays in the header and the archive still holds the files ticked when it started.
+        - [ ] Internal User: Tick a file during a download and confirm it stays ticked afterwards.
+        - [ ] Internal User: Start a download, click Stop, and confirm nothing is saved.
+        - [ ] Internal User: Tick a file, search so that it leaves the list, and confirm it is unticked.
+
+    - [ ] Change 6: File Explorer shows the right dates, keeps loading while you search and says when a view is empty.
+
+        - [ ] Internal User: Confirm the Created Date and Last Modified Date columns show the file's dates, and that sorting by them puts the rows in the order those dates show.
+        - [ ] Admin: Confirm the Migrated files card on the Migration tab shows the same dates as File Explorer for the same files.
+        - [ ] Internal User: In a long list, scroll down, search while more files are loading, and confirm scrolling then keeps loading more files.
+        - [ ] Internal User: Confirm Owned by Me, Shared with Me and All Files each say "No files yet" when they have no files, and "No files match your search" when the header search finds nothing.
+        - [ ] Admin: With Last Modified Date left out of File Explorer's columns, open File Explorer and confirm the first rows are in the order the line under the title says, and that scrolling to the end reaches every file.
+
     ### Boring Changes
     - [ ] Version number assigned to all hard-coded labels
     - [ ] Version ID is assigned to all installation guides.

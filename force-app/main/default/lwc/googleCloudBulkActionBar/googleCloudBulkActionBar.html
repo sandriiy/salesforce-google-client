@@ -1,6 +1,6 @@
 <template>
     <template lwc:if={busy}>
-        <div class="gc-bulk-bar">
+        <div class="gc-bulk-bar" style="padding-top: 0 !important">
             <div class="gc-bulk-bar__progress">
                 <lightning-progress-bar class="gc-bulk-bar__progress-bar" value={progressPercent} size="small"></lightning-progress-bar>
                 <p class="slds-text-body_small slds-text-body--small slds-truncate" title={progressText}>{progressText}</p>
@@ -17,7 +17,7 @@
         </div>
     </template>
     <template lwc:elseif={isVisible}>
-        <div class="gc-bulk-bar">
+        <div class="gc-bulk-bar" style="padding-top: 0 !important">
             <p class="slds-text-body_small slds-text-body--small">
                 {selectionText} • <a href="#" onclick={handleClear}>Clear selection</a>
             </p>

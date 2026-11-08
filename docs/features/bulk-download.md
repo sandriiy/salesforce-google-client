@@ -6,7 +6,7 @@ Bulk download lets you pick several files and download them together as one ZIP 
 |---|---|
 | Notes & Attachments, **View All** page | Yes |
 | Uploader | Yes |
-| File Explorer | In the next release |
+| File Explorer, every view | Yes |
 
 ## Notes & Attachments
 
@@ -49,7 +49,23 @@ While the download runs, the files you selected cannot be opened, replaced or re
 
 ## File Explorer
 
-Bulk download from [File Explorer](file-explorer.md) will be delivered in the next release.
+Every view of [File Explorer](file-explorer.md), **Search** included, lets you pick several files and download them together.
+
+<!-- IMAGE: bulk_download_file_explorer.png — File Explorer's Search view with three files ticked, "3 selected • Clear selection" under the title and Download (3) next to Upload Files -->
+
+### How it works
+
+1. Tick the files you want. The checkbox in the column header ticks every file loaded so far; scroll down first to load more.
+2. Click **Download (N)** next to **Upload Files**. The button appears as soon as one file is ticked and shows how many are selected.
+3. The line under the title says how many files are selected, for example **3 selected**, and **3 of 12 selected** once the whole list is loaded.
+4. Watch the progress bar, which takes the place of that line. It says which file is being fetched and how far the download has got.
+5. The archive is saved by your browser like any other download, named `Files - 3 files.zip`.
+
+**Clear selection** unticks everything, and **Stop** cancels a download that is running. A stopped download saves nothing.
+
+The download does not hold up the list. While it runs you can keep searching, switch views, sort, scroll, tick other files and open a preview. It downloads the files that were ticked when it started, and leaving File Explorer lets it finish and save the archive.
+
+When the list reloads, for example after a new search, files that are no longer listed are unticked.
 
 ## What is in the archive
 

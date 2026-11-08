@@ -60,6 +60,18 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
     };
 
     /**
+     * Where the owner's Id sits in a row grouped by groupedByOwner().
+     */
+    public static final String OWNER_ID_KEY = 'OwnerId';
+    /**
+     * Where the owner's name sits in a row grouped by groupedByOwner(). SOQL names a grouped relationship
+     * field after the field alone, without the relationship.
+     */
+    public static final String OWNER_NAME_KEY = 'Name';
+
+    private static final String OWNER_NAME_PATH = 'Owner.Name';
+
+    /**
      * Starts a file query.
      *
      * @return A fresh selector to narrow and run.
@@ -142,6 +154,84 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
      */
     public GoogleFileSelector byCreatedOnOrAfter(Datetime createdOnOrAfter) {
         whereAre(Filter.with(GoogleFile__c.CreatedDate).greaterOrEqual(createdOnOrAfter));
+        return this;
+    }
+
+    /**
+     * Keeps the files created before a moment. Paired with byCreatedOnOrAfter() it makes a range that
+     * leaves out its end, so a range of whole days ends on the start of the day after the last one.
+     *
+     * @param createdBefore The first creation moment to leave out.
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector byCreatedBefore(Datetime createdBefore) {
+        whereAre(Filter.with(GoogleFile__c.CreatedDate).lessThan(createdBefore));
+        return this;
+    }
+
+    /**
+     * Keeps the files last changed at or after a moment. This is the file's own date, the one File
+     * Explorer sorts by, not the date of its current version.
+     *
+     * @param modifiedOnOrAfter The earliest change to include.
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector byLastModifiedOnOrAfter(Datetime modifiedOnOrAfter) {
+        whereAre(Filter.with(GoogleFile__c.LastModifiedDate).greaterOrEqual(modifiedOnOrAfter));
+        return this;
+    }
+
+    /**
+     * Keeps the files last changed before a moment, leaving that moment out.
+     *
+     * @param modifiedBefore The first change moment to leave out.
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector byLastModifiedBefore(Datetime modifiedBefore) {
+        whereAre(Filter.with(GoogleFile__c.LastModifiedDate).lessThan(modifiedBefore));
+        return this;
+    }
+
+    /**
+     * Keeps the files with at least this many versions.
+     *
+     * @param minVersionCount The fewest versions to include.
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector byVersionCountAtLeast(Integer minVersionCount) {
+        whereAre(Filter.with(GoogleFile__c.NumberOfVersions__c).greaterOrEqual(minVersionCount));
+        return this;
+    }
+
+    /**
+     * Keeps the files with at most this many versions.
+     *
+     * @param maxVersionCount The most versions to include.
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector byVersionCountAtMost(Integer maxVersionCount) {
+        whereAre(Filter.with(GoogleFile__c.NumberOfVersions__c).lessOrEqual(maxVersionCount));
+        return this;
+    }
+
+    /**
+     * Keeps the files linked to at least one record. Any link counts, including one that grants nothing,
+     * which is the same rule as the Is Linked? column.
+     *
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector byLinkedToRecords() {
+        whereAre(Filter.with(GoogleFile__c.NumberOfLinks__c).greaterThan(0));
+        return this;
+    }
+
+    /**
+     * Keeps the files linked to no record at all.
+     *
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector byNotLinkedToRecords() {
+        whereAre(Filter.with(GoogleFile__c.NumberOfLinks__c).equal(0));
         return this;
     }
 
@@ -378,6 +468,48 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
     }
 
     /**
+     * Keeps the files whose current version passes the whole filter. Everything about the version goes
+     * into this one subquery, because SOQL will not OR a semi join and limits how many a query may hold,
+     * so do not combine it with bySearchTerm(); add the term as one more phrase instead. A blank filter
+     * changes nothing, not even to files that have a current version.
+     *
+     * @param versionFilter The phrases, extensions and size the current version must match.
+     * @return This same instance, so the call chains onto toList().
+     */
+    public GoogleFileSelector byLatestVersion(LatestVersionFilter versionFilter) {
+        if (versionFilter == null || versionFilter.isBlank()) return this;
+
+        GSOQL.FilterGroup versionConditions = GSOQL.FilterGroup
+            .add(GSOQL.Filter.with(GoogleFileVersion__c.IsLatestFile__c).isTrue());
+
+        for (String phrase : versionFilter.phrases) {
+            versionConditions.add(matchingPhrase(escapeLikePattern(phrase)));
+        }
+
+        if (!versionFilter.extensions.isEmpty()) {
+            versionConditions.add(matchingExtension(versionFilter.extensions));
+        }
+
+        if (versionFilter.minSizeBytes != null) {
+            versionConditions.add(GSOQL.Filter.with(GoogleFileVersion__c.Size__c).greaterOrEqual(versionFilter.minSizeBytes));
+        }
+
+        if (versionFilter.maxSizeBytes != null) {
+            versionConditions.add(GSOQL.Filter.with(GoogleFileVersion__c.Size__c).lessThan(versionFilter.maxSizeBytes));
+        }
+
+        whereAre(
+            GSOQL.Filter.id().isIn(
+                GSOQL.InnerJoin.of(GoogleFileVersion__c.SObjectType)
+                    .with(GoogleFileVersion__c.GoogleFileId__c)
+                    .whereAre(versionConditions)
+            )
+        );
+
+        return this;
+    }
+
+    /**
      * Narrows to the files a user could plausibly reach before access is resolved properly. Only plain field
      * predicates are used here, because SOQL will not OR a semi join, and a shared file therefore arrives as
      * a bound set of Ids rather than a subquery.
@@ -410,8 +542,50 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
         return this;
     }
 
+    /**
+     * Turns the query into one row per user or queue owning at least one file, with its name, sorted by name.
+     * Read the rows through toAggregatedProxy() with OWNER_ID_KEY and OWNER_NAME_KEY. Each row counts once
+     * against the query row limit, however many files that owner has.
+     *
+     * @return This same instance, so the call chains onto toAggregatedProxy().
+     */
+    public GoogleFileSelector groupedByOwner() {
+        with(GoogleFile__c.OwnerId);
+        with(OWNER_NAME_PATH);
+        count(GoogleFile__c.Id);
+        groupBy(GoogleFile__c.OwnerId);
+        groupBy(OWNER_NAME_PATH);
+        orderBy(OWNER_NAME_PATH);
+        return this;
+    }
+
     private String escapeLikePattern(String term) {
         return term.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_');
+    }
+
+    private GSOQL.FilterGroup matchingPhrase(String escapedPhrase) {
+        return GSOQL.FilterGroup.anyConditionMatching()
+            .add(GSOQL.Filter.with(GoogleFileVersion__c.Name).contains(escapedPhrase))
+            .add(GSOQL.Filter.with(GoogleFileVersion__c.Summary__c).contains(escapedPhrase))
+            .add(GSOQL.Filter.with(GoogleFileVersion__c.AiLabels__c).contains(escapedPhrase));
+    }
+
+    private GSOQL.FilterGroup matchingExtension(Set<String> extensions) {
+        GSOQL.FilterGroup extensionConditions = GSOQL.FilterGroup.anyConditionMatching();
+        Set<String> mimeTypes = new Set<String>();
+
+        for (String extension : extensions) {
+            extensionConditions.add(GSOQL.Filter.with(GoogleFileVersion__c.Name).endsWith('.' + escapeLikePattern(extension)));
+
+            String mimeType = GoogleCloudConstants.FILE_EXTENSION_TO_MIME_TYPE.get(extension);
+            if (String.isNotBlank(mimeType)) mimeTypes.add(mimeType);
+        }
+
+        if (!mimeTypes.isEmpty()) {
+            extensionConditions.add(GSOQL.Filter.with(GoogleFileVersion__c.Type__c).isIn(new List<String>(mimeTypes)));
+        }
+
+        return extensionConditions;
     }
 
     /**
@@ -464,7 +638,81 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
                 .add(primary)
                 .add(GSOQL.FilterGroup.add(GSOQL.Filter.with(sortPath).equal(lastValue)).add(tieBreaker))
         );
-		
+
         return this;
+    }
+
+    /**
+     * What the current version of a file must match for byLatestVersion(). Each with... call chains, and a
+     * filter nothing was added to is blank and narrows nothing.
+     */
+    public class LatestVersionFilter {
+        public List<String> phrases { get; private set; }
+        public Set<String> extensions { get; private set; }
+        public Decimal minSizeBytes { get; private set; }
+        public Decimal maxSizeBytes { get; private set; }
+
+        public LatestVersionFilter() {
+            phrases = new List<String>();
+            extensions = new Set<String>();
+        }
+
+        /**
+         * Adds phrases that must each appear in the name, the summary or the labels, in any case. A percent
+         * sign, an underscore or a backslash matches only itself.
+         *
+         * @param searchPhrases The phrases to add. Blanks are skipped and null adds nothing.
+         * @return This same filter, so the call chains on.
+         */
+        public LatestVersionFilter withPhrases(List<String> searchPhrases) {
+            if (searchPhrases == null) return this;
+
+            for (String phrase : searchPhrases) {
+                if (String.isNotBlank(phrase)) phrases.add(phrase);
+            }
+
+            return this;
+        }
+
+        /**
+         * Adds extensions of which any one must match, by the end of the version name or, for the types
+         * GoogleCloudConstants.FILE_EXTENSION_TO_MIME_TYPE knows, by the stored type, so a file renamed
+         * without its extension is still found.
+         *
+         * @param fileExtensions Extensions without the leading dot. Blanks are skipped and null adds nothing.
+         * @return This same filter, so the call chains on.
+         */
+        public LatestVersionFilter withExtensions(Set<String> fileExtensions) {
+            if (fileExtensions == null) return this;
+
+            for (String extension : fileExtensions) {
+                if (String.isNotBlank(extension)) extensions.add(extension.toLowerCase());
+            }
+
+            return this;
+        }
+
+        /**
+         * Keeps sizes from the lower bound up to just before the upper one, so ranges placed end to end never
+         * count a file twice.
+         *
+         * @param minBytes The smallest size to include, or null to leave it open.
+         * @param maxBytes The size to stop just before, or null to leave it open.
+         * @return This same filter, so the call chains on.
+         */
+        public LatestVersionFilter withSizeBetween(Decimal minBytes, Decimal maxBytes) {
+            minSizeBytes = minBytes;
+            maxSizeBytes = maxBytes;
+            return this;
+        }
+
+        /**
+         * Whether nothing was added to the filter.
+         *
+         * @return True when it has no phrase, no extension and no size bound.
+         */
+        public Boolean isBlank() {
+            return phrases.isEmpty() && extensions.isEmpty() && minSizeBytes == null && maxSizeBytes == null;
+        }
     }
 }

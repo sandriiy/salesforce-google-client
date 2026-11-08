@@ -16,25 +16,51 @@
                             {pageTitle}
                         </h1>
 
-                        <p class="slds-text-body_small slds-m-top_x-small gcdc-file-explorer-meta-line">
-                            {metaLine}
-                        </p>
+                        <div class="slds-m-top_x-small gcdc-file-explorer-meta-line">
+                            <template lwc:if={isBulkBarVisible}>
+                                <c-google-cloud-bulk-action-bar
+                                    selected-count={selection.count}
+                                    total-count={bulkTotalCount}
+                                    busy-label="Downloading"
+                                    busy={isBulkDownloadInProgress}
+                                    is-stopping={isBulkDownloadStopping}
+                                    progress={bulkDownloadProgress}
+                                    hide-actions
+                                    onclearselection={handleSelectionClear}>
+                                </c-google-cloud-bulk-action-bar>
+                            </template>
+                            <template lwc:else>
+                                <p class="slds-text-body_small">{metaLine}</p>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="slds-page-header__col-actions">
                 <div class="slds-page-header__controls gcdc-file-explorer-controls">
-                    <div class="slds-page-header__control gcdc-file-explorer-search">
-                        <lightning-input
-                            type="search"
-                            variant="label-hidden"
-                            placeholder="Search files..."
-                            value={searchTerm}
-                            onchange={handleSearch}
-                            label="Search files">
-                        </lightning-input>
-                    </div>
+                    <template lwc:if={showHeaderSearch}>
+                        <div class="slds-page-header__control gcdc-file-explorer-search">
+                            <lightning-input
+                                type="search"
+                                variant="label-hidden"
+                                placeholder="Search files..."
+                                value={searchTerm}
+                                onchange={handleSearch}
+                                label="Search files">
+                            </lightning-input>
+                        </div>
+                    </template>
+                    <template lwc:if={isBulkDownloadInProgress}>
+                        <div class="slds-page-header__control">
+                            <lightning-button label="Stop" variant="neutral" icon-name="utility:stop" onclick={handleBulkDownloadStop} disabled={isBulkDownloadStopping}></lightning-button>
+                        </div>
+                    </template>
+                    <template lwc:elseif={hasSelectedFiles}>
+                        <div class="slds-page-header__control">
+                            <lightning-button label={bulkDownloadLabel} variant="brand" icon-name="utility:download" onclick={handleBulkDownload}></lightning-button>
+                        </div>
+                    </template>
                     <div class="slds-page-header__control">
                         <lightning-button
                             label="Upload Files"
@@ -79,11 +105,21 @@
                                 name="shared">
                             </lightning-vertical-navigation-item>
                         </template>
+                        <lightning-vertical-navigation-item
+                            label="Search"
+                            name="search">
+                        </lightning-vertical-navigation-item>
                     </lightning-vertical-navigation-section>
                 </lightning-vertical-navigation>
             </aside>
 
             <main class="gcdc-file-explorer-main-area">
+                <template lwc:if={isSearchView}>
+                    <c-google-cloud-file-search-filters
+                        criteria={searchCriteria}
+                        oncriteriachange={handleSearchCriteriaChange}>
+                    </c-google-cloud-file-search-filters>
+                </template>
                 <template lwc:if={hasError}>
                     <div class="slds-notify slds-notify_alert slds-alert_error slds-m-around_medium" role="alert">
                         <span class="slds-assistive-text">Error</span>
@@ -96,7 +132,8 @@
                             key-field="localId"
                             data={visibleRows}
                             columns={columns}
-                            hide-checkbox-column
+                            selected-rows={selectedRowIds}
+                            onrowselection={handleRowSelection}
                             sorted-by={sortedBy}
                             sorted-direction={sortedDirection}
                             enable-infinite-loading={enableInfiniteLoading}
@@ -109,18 +146,22 @@
                             class="gcdc-file-explorer-table"
                         ></c-google-cloud-file-explorer-data-table>
 
-                        <template lwc:if={hasNoSearchResults}>
-                            <p class="slds-text-body_regular slds-text-align_center slds-p-around_medium gcdc-file-explorer-empty">
-                                No files match your search.
-                            </p>
+                        <template lwc:if={showEmptyState}>
+                            <div class="gcdc-file-explorer-empty" role="status">
+                                <lightning-icon class="gcdc-file-explorer-empty-icon" icon-name={emptyState.iconName} size="medium"></lightning-icon>
+                                <h2 class="slds-text-heading_small">{emptyState.title}</h2>
+                                <template lwc:if={emptyState.canClear}>
+                                    <lightning-button class="slds-m-top_x-small" label="Clear all" onclick={handleSearchClear}></lightning-button>
+                                </template>
+                            </div>
                         </template>
+
+                        <lightning-spinner lwc:if={isLoading} alternative-text="Loading files..." size="medium"></lightning-spinner>
                     </div>
                 </template>
             </main>
         </div>
     </div>
-
-    <lightning-spinner lwc:if={isLoading} alternative-text="Loading files..." size="medium"></lightning-spinner>
 
     <c-google-cloud-file-preview
         lwc:ref="filePreviewModal"

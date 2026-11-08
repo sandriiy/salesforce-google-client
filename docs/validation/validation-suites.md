@@ -218,6 +218,8 @@ Use an account with more files than fit on a single page for the list behaviour 
 - [ ] Scroll to the bottom and confirm more rows are appended
 - [ ] Scroll to the end of the list and confirm no row is repeated and none is missing
 - [ ] Confirm the Owner column shows the file owner, including for a file owned by a public group or a queue
+- [ ] Open Search, type a word from a file's name, narrow it with the File type filter, and confirm only matching files you can open are listed
+- [ ] In Owned by Me, tick two files and confirm they download together as one ZIP archive
 - [ ] Confirm the owner is shown as a name rather than an identifier
 - [ ] Search by part of a file name and confirm matches are returned from the whole list, not only from the rows already loaded
 - [ ] Clear the search and confirm the full list returns
@@ -403,7 +405,7 @@ Log in as Admin.
 Log in as Internal User B.
 
 - [ ] Open File Explorer
-- [ ] Confirm a single All Files view is shown instead of the Owned and Shared views
+- [ ] Confirm the All Files and Search views are shown instead of the Owned and Shared views
 - [ ] Confirm files owned by other users appear in the list
 - [ ] Confirm the Access column shows View for files that would otherwise be inaccessible
 - [ ] Confirm search and sorting work across the whole list
@@ -944,6 +946,7 @@ Use the final intended release configuration.
 - [ ] Download as... works for previewable files
 - [ ] Two files ticked on the View All page download together as one ZIP archive
 - [ ] Two files ticked in the Uploader component download together as one ZIP archive
+- [ ] Search in File Explorer finds a file by a word in its name, and two files ticked there download together as one ZIP archive
 - [ ] Sharing works from Preview
 - [ ] Public links work from Preview
 - [ ] Versioning works from Preview
@@ -1056,6 +1059,7 @@ Use an account with more files than fit on a single page.
 - [ ] Sort by Last Modified Date and confirm the order is correct
 - [ ] Select Refresh and confirm the list reloads
 - [ ] Open Preview from File Explorer
+- [ ] Open Search, narrow the list with a word and one filter, tick two of the files found and confirm they download together as one ZIP archive
 
 ### Phase 6: Attach Existing File
 

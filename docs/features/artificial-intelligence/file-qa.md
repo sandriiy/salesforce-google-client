@@ -40,9 +40,13 @@ Questions that try to pull the model away from the document — asking it to ign
 Two administrator settings shape what comes back:
 
 - **Question Prompt** — how the provider is told to answer. The shipped prompt asks for accurate, concise, plain-text answers drawn only from the document, with a sensible attempt to match imperfect wording to the right table, column, or section before giving up.
-- **Question Max Output Tokens** — how long an answer may be. Raising it allows fuller answers at a higher cost per question; lowering it keeps answers terse.
+- **Question Max Output Tokens** — how long an answer may be. Raising it allows fuller answers at a higher cost per question; lowering it keeps answers terse. **No limit** lets the AI answer at any length.
 
 📘 See [AI Intelligence settings](../../config/advanced/ai-intelligence.md) to change either.
+
+## When the AI Service Is Slow or Busy
+
+Google Client waits up to two minutes for an answer. If the AI service takes longer, the panel says the service took too long and asks the user to try again; if the service is busy, it says so. For any other problem the panel says the question could not be answered and suggests contacting an administrator. The technical detail is recorded in the logs, never shown to the user. Questions are not retried on their own, because the person asking is waiting for the answer.
 
 ## Cost and Expectations
 

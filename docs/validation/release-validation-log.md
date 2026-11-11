@@ -64,6 +64,18 @@ This document tracks **test coverage, validation scenarios, and release checks**
         - [ ] Internal User: Confirm Owned by Me, Shared with Me and All Files each say "No files yet" when they have no files, and "No files match your search" when the header search finds nothing.
         - [ ] Admin: With Last Modified Date left out of File Explorer's columns, open File Explorer and confirm the first rows are in the order the line under the title says, and that scrolling to the end reaches every file.
 
+    - [ ] Change 7: AI summaries and labels are tried again when the AI service is slow or busy, and summaries and answers can be given any length.
+
+        - [ ] Admin: In an org upgraded from 2.3.0 with AI on, open Advanced → AI Intelligence and confirm Summary Max Output Tokens is empty with 80 as its hint, No limit is cleared, and nothing reads as an unsaved change.
+        - [ ] Admin: Set Summary Max Output Tokens, save and reload; tick No limit on both token settings, save and reload; then clear both, and confirm each value survives the reload as set.
+        - [ ] Internal User: Upload ten files of different kinds one after another and confirm every one gets its summary, and its label where one fits, with the preview showing it without being opened again.
+        - [ ] Internal User: Upload about 100 files from several places at once (Uploader, File Explorer, a Flow action) and confirm at least 99 of them are summarized within 20 minutes.
+        - [ ] Admin: After that burst, confirm in the logs that every file without a summary has an error saying why, and that attempts that were tried again show as warnings.
+        - [ ] Admin: With folder placement on, upload a file and confirm it reaches its record folder before its summary appears.
+        - [ ] Internal User: Ask a question with No limit on and confirm a full answer arrives.
+        - [ ] Admin: Validate with a model name that does not exist and confirm the message gives Google's reason instead of only "}".
+        - [ ] Admin: Deactivate AI and confirm it still works as in 2.3.0.
+
     ### Boring Changes
     - [ ] Version number assigned to all hard-coded labels
     - [ ] Version ID is assigned to all installation guides.

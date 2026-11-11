@@ -83,6 +83,11 @@
         <field>GoogleClientConfig__mdt.IsOpenInDriveEnabled__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>GoogleClientConfig__mdt.SummaryMaxOutputTokens__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>Google Cloud Client Admin</label>
     <tabSettings>

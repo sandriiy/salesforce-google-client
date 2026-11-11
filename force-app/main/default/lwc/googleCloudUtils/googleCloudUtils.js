@@ -418,15 +418,23 @@ const normalizeError = (input) => {
 		return message;
 	};
 
+	const extractQuotedJsonMessages = (text) =>
+		[...String(text || '').matchAll(/"message"\s*:\s*"((?:\\.|[^"\\])*)"/g)]
+			.map((match) => normalizeWhitespace(match[1]))
+			.filter(Boolean);
+
+	const extractMessagesFromErrorText = (text) => {
+		const quotedJsonMessages = extractQuotedJsonMessages(text);
+		return quotedJsonMessages.length ? quotedJsonMessages : [text];
+	};
+
 	const extractMessagesFromString = (value) => {
 		const text = String(value || '').trim();
 		if (!text) return [];
 
 		// Handles raw serialized payloads/logs like:
 		// "message": "Request had insufficient authentication scopes."
-		const quotedJsonMessages = [...text.matchAll(/"message"\s*:\s*"((?:\\.|[^"\\])*)"/g)]
-			.map((match) => normalizeWhitespace(match[1]))
-			.filter(Boolean);
+		const quotedJsonMessages = extractQuotedJsonMessages(text);
 
 		if (quotedJsonMessages.length) {
 			return quotedJsonMessages;
@@ -442,7 +450,6 @@ const normalizeError = (input) => {
 			return inlineMessages;
 		}
 
-		// Plain string error.
 		return [text];
 	};
 
@@ -460,12 +467,11 @@ const normalizeError = (input) => {
 			messages = messages.concat(collectMessages(next, seen));
 		};
 
-		// JS Error
 		if (value instanceof Error && value.message) {
-			messages.push(value.message);
+			messages = messages.concat(extractMessagesFromErrorText(value.message));
 		}
 
-		if (typeof value.message === 'string') messages.push(value.message);
+		if (typeof value.message === 'string') messages = messages.concat(extractMessagesFromErrorText(value.message));
 
 		if (Array.isArray(value.body)) {
 			value.body.forEach(visit);

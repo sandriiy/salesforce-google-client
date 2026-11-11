@@ -23,7 +23,7 @@
  */
 /**
  * Queues everything that has to happen after new versions are committed: the Workspace preview copy,
- * the summary, the folder placement and the label. All of it needs a Drive callout, which cannot follow
+ * the folder placement, the summary and the label. All of it needs a Drive callout, which cannot follow
  * uncommitted DML, which is why it is chained rather than done inline. Versions are handled in chunks of
  * ten so each chunk gets its own callout budget.
  */
@@ -62,8 +62,9 @@ public with sharing class GoogleFileInsertFinalizeCommand {
     }
 
     /**
-     * Works out what the new versions need and chains the jobs in order, folder placement ahead of the
-     * label, so a slow AI call never holds a file in the wrong folder.
+     * Works out what the new versions need and chains the jobs in order: the Workspace copy, the folder
+     * placement, the summary, then the label. Placement comes before any AI call, so a slow or retried
+     * answer never holds a file in the wrong folder.
      *
      * @param newFileVersions The versions that were just inserted.
      */
@@ -93,14 +94,6 @@ public with sharing class GoogleFileInsertFinalizeCommand {
                 hasJobs = true;
             }
 
-			Set<Id> summaryCandidateVersionIds = analyzeVersions
-				? this.versionContextResolver.collectSummaryCandidateVersionIds(versionChunk)
-				: new Set<Id>();
-			if (!summaryCandidateVersionIds.isEmpty()) {
-				jobsChainer.chain(new GoogleFileVersionSummaryJob(summaryCandidateVersionIds)).deepClone();
-				hasJobs = true;
-			}
-
             if (folderPlacementEnabled) {
                 List<GoogleFileRelocationRequestDTO> relocationRequests = this.versionContextResolver.buildRelocationRequests(versionChunk, linkIdsByFileId, delegatedOwnerIdsByFileId);
                 if (!relocationRequests.isEmpty()) {
@@ -108,6 +101,14 @@ public with sharing class GoogleFileInsertFinalizeCommand {
                     hasJobs = true;
                 }
             }
+
+			Set<Id> summaryCandidateVersionIds = analyzeVersions
+				? this.versionContextResolver.collectSummaryCandidateVersionIds(versionChunk)
+				: new Set<Id>();
+			if (!summaryCandidateVersionIds.isEmpty()) {
+				jobsChainer.chain(new GoogleFileVersionSummaryJob(summaryCandidateVersionIds)).deepClone();
+				hasJobs = true;
+			}
 
 			if (!summaryCandidateVersionIds.isEmpty() && new GoogleFileIntelligenceFactory().isLabelingConfigured()) {
 				jobsChainer.chain(new GoogleFileVersionLabelJob(summaryCandidateVersionIds)).deepClone();

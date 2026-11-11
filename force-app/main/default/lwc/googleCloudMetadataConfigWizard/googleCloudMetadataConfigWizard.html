@@ -343,15 +343,54 @@
 
                                                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                                                         <lightning-input
+                                                            lwc:ref="summaryMaxOutputTokens"
                                                             type="number"
-                                                            value={draft.questionMaxOutputTokens}
-                                                            onchange={handleChangeNumber}
+                                                            value={summaryMaxOutputTokensValue}
+                                                            onchange={handleChangeOutputLimit}
+                                                            data-field="summaryMaxOutputTokens"
+                                                            label="Summary Max Output Tokens"
+                                                            field-level-help="How long a file summary may be, in tokens. Leave it empty for 80, the default. Google Client adds room for the AI's reasoning on top, and a summary is always cut to 255 characters."
+                                                            placeholder={summaryMaxOutputTokensPlaceholder}
+                                                            min="1"
+                                                            step="1"
+                                                            disabled={isSummaryOutputLimitDisabled}
+                                                        ></lightning-input>
+                                                        <lightning-input
+                                                            class="slds-m-top_x-small"
+                                                            type="checkbox"
+                                                            checked={isSummaryOutputUnlimited}
+                                                            onchange={handleNoLimitToggle}
+                                                            data-field="summaryMaxOutputTokens"
+                                                            label="No limit"
+                                                            field-level-help="Let the AI write a summary of any length. It may take longer, and the summary is still cut to 255 characters."
+                                                            disabled={isIntelligenceDisabled}
+                                                        ></lightning-input>
+                                                    </div>
+
+                                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                                        <lightning-input
+                                                            lwc:ref="questionMaxOutputTokens"
+                                                            type="number"
+                                                            value={questionMaxOutputTokensValue}
+                                                            onchange={handleChangeOutputLimit}
                                                             data-field="questionMaxOutputTokens"
                                                             label="Question Max Output Tokens"
                                                             field-level-help="Maximum number of tokens returned for document question responses."
                                                             placeholder="e.g. 1024"
+                                                            min="1"
+                                                            step="1"
+                                                            disabled={isQuestionOutputLimitDisabled}
+                                                            required={isQuestionOutputLimitRequired}
+                                                        ></lightning-input>
+                                                        <lightning-input
+                                                            class="slds-m-top_x-small"
+                                                            type="checkbox"
+                                                            checked={isQuestionOutputUnlimited}
+                                                            onchange={handleNoLimitToggle}
+                                                            data-field="questionMaxOutputTokens"
+                                                            label="No limit"
+                                                            field-level-help="Let the AI answer at any length. Long answers take longer to arrive."
                                                             disabled={isIntelligenceDisabled}
-                                                            required={isIntelligenceEnabled}
                                                         ></lightning-input>
                                                     </div>
                                                 </div>

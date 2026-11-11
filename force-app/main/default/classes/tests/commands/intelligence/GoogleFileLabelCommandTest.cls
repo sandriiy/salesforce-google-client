@@ -50,6 +50,18 @@ private class GoogleFileLabelCommandTest {
 		}
 	}
 
+	private class FailingGenAiClient implements IGenAiClient {
+		private final Exception failure;
+
+		private FailingGenAiClient(Exception failure) {
+			this.failure = failure;
+		}
+
+		public GenAiResponse generate(GenAiRequest request) {
+			throw this.failure;
+		}
+	}
+
 	private static GoogleCloudTestFactory.ConfigBuilder labelingConfig() {
 		return GoogleCloudTestFactory.config()
 			.withPreviewDisabled(true)
@@ -418,5 +430,166 @@ private class GoogleFileLabelCommandTest {
 
 		Assert.isTrue(result.blocked);
 		Assert.areEqual('Google AI labeling configuration is unavailable', result.errorMessage);
+	}
+
+	@IsTest
+	private static void testLabelNegativeTimeoutIsRetryable() {
+		labelingConfig().apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		GoogleFileVersion__c version = createLabelCandidate('LBLRTY1', null);
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Agent Platform', 'gemini-3.8-flash', new FailingGenAiClient(new CalloutException('Read timed out')));
+		Test.stopTest();
+
+		Assert.areNotEqual(true, result.applied);
+		Assert.isTrue(result.retryable, 'A label the AI service did not decide in time is tried again later');
+		Assert.isNull(findLabelRequest(driveMock), 'Nothing is applied in Drive without a decision');
+	}
+
+	@IsTest
+	private static void testLabelNegativeEmptyMaxTokensAnswerIsRetryable() {
+		labelingConfig().withAiLabelingThinkingBudget(0).apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		GoogleFileVersion__c version = createLabelCandidate('LBLRTY2', null);
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('', 'MAX_TOKENS'));
+		Test.stopTest();
+
+		Assert.areNotEqual(true, result.applied);
+		Assert.isTrue(result.retryable, 'A model that spent its room reasoning and wrote nothing is tried again');
+		Assert.isNull(findLabelRequest(driveMock));
+	}
+
+	@IsTest
+	private static void testLabelNegativeDriveRefusalIsNotRetryable() {
+		labelingConfig().apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher().withMethod('POST').endpointContains('GD_LBLRTY3' + MODIFY_LABELS_ENDPOINT_PART)
+		).thenReturnStatus(404, '{"error":{"code":404,"message":"Label not found: LABEL_INVOICE","errors":[{"message":"Label not found: LABEL_INVOICE","domain":"global","reason":"notFound"}]}}');
+		GoogleFileVersion__c version = createLabelCandidate('LBLRTY3', null);
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('Label: Invoice\nConfidence: 92', 'STOP'));
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.isFalse(result.applied);
+		Assert.areNotEqual(true, result.retryable, 'A label Drive refuses to apply keeps today\'s behaviour');
+	}
+
+	@IsTest
+	private static void testLabelNegativeCalloutTimeRunningOutWhileApplyingIsRetryable() {
+		labelingConfig().apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher().withMethod('POST').endpointContains('GD_LBLRTY4' + MODIFY_LABELS_ENDPOINT_PART)
+		).thenThrowCallout('Exceeded maximum time allotted for callout (120000 ms)');
+		GoogleFileVersion__c version = createLabelCandidate('LBLRTY4', null);
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('Label: Invoice\nConfidence: 92', 'STOP'));
+		Test.stopTest();
+
+		Assert.areNotEqual(true, result.applied);
+		Assert.isTrue(result.retryable, 'An answer that came too late to leave time for applying the label is tried again, not lost');
+	}
+
+	@IsTest
+	private static void testLabelPositiveUnsureAnswerIsNotRetryable() {
+		labelingConfig().apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		GoogleFileVersion__c version = createLabelCandidate('LBLRTY5', null);
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('Label: None\nConfidence: 10', 'STOP'));
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areNotEqual(true, result.applied);
+		Assert.areNotEqual(true, result.retryable, 'A file the model is unsure about stays unlabeled, which is the normal outcome');
+		Assert.isNull(findLabelRequest(driveMock));
+	}
+
+	@IsTest
+	private static void testLabelNegativeCutAnswerBelowTheMinimumIsRetryable() {
+		labelingConfig().withAiLabelingThinkingBudget(0).apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		GoogleFileVersion__c version = createLabelCandidate('LBLCUT1', null);
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('Label: Invoice\nConfidence: 10', 'MAX_TOKENS'));
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual('MAX_TOKENS', result.finishReason);
+		Assert.areNotEqual(true, result.applied, 'A confidence cut short at the token limit is not a decision');
+		Assert.isTrue(result.retryable, 'An answer cut off before it led to a label is tried again, like an empty one');
+		Assert.isNull(findLabelRequest(driveMock), 'Nothing is applied in Drive for a cut answer');
+	}
+
+	@IsTest
+	private static void testLabelNegativeCutAnswerNamingNoKnownLabelIsRetryable() {
+		labelingConfig().withAiLabelingThinkingBudget(0).apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		GoogleFileVersion__c version = createLabelCandidate('LBLCUT2', null);
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('Label: Inv', 'MAX_TOKENS'));
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.isNull(result.labelName, 'A name cut short matches no configured label');
+		Assert.areNotEqual(true, result.applied);
+		Assert.isTrue(result.retryable, 'A cut answer that names no known label is tried again');
+		Assert.isNull(findLabelRequest(driveMock));
+	}
+
+	@IsTest
+	private static void testLabelNegativeCutAnswerOfNoneIsRetryable() {
+		labelingConfig().withAiLabelingThinkingBudget(0).apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		GoogleFileVersion__c version = createLabelCandidate('LBLCUT3', null);
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('Label: None\nConfidence: 95', 'MAX_TOKENS'));
+		Test.stopTest();
+
+		Assert.areNotEqual(true, result.applied);
+		Assert.isTrue(result.retryable, 'Any answer that ended at the token limit and led to no label is tried again');
+		Assert.isNull(findLabelRequest(driveMock));
+	}
+
+	@IsTest
+	private static void testLabelPositiveWholeMaxTokensAnswerAtTheMinimumIsApplied() {
+		labelingConfig().withAiLabelingThinkingBudget(0).apply();
+		GoogleDriveHttpMock driveMock = installMocks();
+		GoogleFileVersion__c version = createLabelCandidate('LBLCUT4', null);
+
+		GoogleFileLabelResultDTO result;
+		Test.startTest();
+			result = new GoogleFileLabelCommand().label(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('Label: Invoice\nConfidence: 92', 'MAX_TOKENS'));
+		Test.stopTest();
+
+		Assert.isTrue(result.applied, 'An answer complete enough to name a label at the minimum is applied, whatever ended it');
+		Assert.areEqual('Invoice', result.labelName);
+		Assert.areEqual(92, result.confidence);
+		Assert.areNotEqual(true, result.retryable, 'An applied label is never tried again');
+		Assert.areEqual(2, findLabelRequests(driveMock).size());
+	}
+
+	@IsTest
+	private static void testIsRetriedAfterFailurePositiveLabelsAreRetried() {
+		Assert.isTrue(new GoogleFileLabelCommand().isRetriedAfterFailure(), 'A label job retries a passing failure, so it is logged as a warning');
 	}
 }

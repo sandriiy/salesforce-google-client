@@ -123,6 +123,10 @@
             </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
+                <field>SummaryMaxOutputTokens__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
                 <field>CustomQuestionPrompt__c</field>
             </layoutItems>
         </layoutColumns>

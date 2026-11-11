@@ -76,6 +76,7 @@ const QUERY = gql`
                             CustomSummaryPrompt__c { value }
                             CustomQuestionPrompt__c { value }
                             QuestionMaxOutputTokens__c { value }
+                            SummaryMaxOutputTokens__c { value }
                             AiSafetyMode__c { value }
                             CustomAiPromptSafetyGuardClass__c { value }
                             IsAiLabelingEnabled__c { value }
@@ -98,6 +99,8 @@ const DEPLOY_STATUS_DELAY_MS = 1000;
 const AUTOMATIC_BIG_FILE_SIZE = 0;
 const DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 const DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
+const DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS = 80;
+const UNLIMITED_OUTPUT_TOKENS = 0;
 const DEFAULT_AI_SAFETY_MODE = 'Standard';
 const DEFAULT_AI_LABELING_MIN_CONFIDENCE = 80;
 const DEFAULT_AI_LABELING_THINKING_BUDGET = 1024;
@@ -146,6 +149,7 @@ const CLEARED_INTELLIGENCE_STATE = {
     customSummaryPrompt: '',
     customQuestionPrompt: '',
     questionMaxOutputTokens: null,
+    summaryMaxOutputTokens: null,
     aiSafetyMode: '',
     customAiPromptSafetyGuardClass: '',
     isAiLabelingEnabled: false,
@@ -183,6 +187,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         customSummaryPrompt: DEFAULT_SUMMARY_PROMPT,
         customQuestionPrompt: DEFAULT_QUESTION_PROMPT,
         questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
+        summaryMaxOutputTokens: null,
         aiSafetyMode: DEFAULT_AI_SAFETY_MODE,
         customAiPromptSafetyGuardClass: '',
         isAiLabelingEnabled: false,
@@ -214,6 +219,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     contextSubscription = null;
     isDeactivateAiModalOpen = false;
     transferLimits = DEFAULT_TRANSFER_LIMITS;
+    outputLimitFieldToRefresh = null;
 
     connectedCallback() {
         resolveTransferLimits().then((transferLimits) => {
@@ -230,6 +236,13 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         window.removeEventListener('click', this._windowClickHandler);
         unsubscribe(this.contextSubscription);
         this.contextSubscription = null;
+    }
+
+    renderedCallback() {
+        if (this.outputLimitFieldToRefresh) {
+            this.refreshOutputLimitInput(this.outputLimitFieldToRefresh);
+            this.outputLimitFieldToRefresh = null;
+        }
     }
 
     @wire(graphql, { query: QUERY })
@@ -514,6 +527,27 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.draft = {
             ...this.draft,
             [fieldName]: event.target.checked
+        };
+    }
+
+    handleNoLimitToggle(event) {
+        const fieldName = event.target.dataset.field;
+        this.draft = {
+            ...this.draft,
+            [fieldName]: event.target.checked ? UNLIMITED_OUTPUT_TOKENS : this.resolveLimitWhenNoLimitCleared(fieldName)
+        };
+        this.outputLimitFieldToRefresh = fieldName;
+    }
+
+    handleChangeOutputLimit(event) {
+        const limitValue = this.toNumberOrNull(event.target.value);
+        if (limitValue !== null && limitValue <= UNLIMITED_OUTPUT_TOKENS) {
+            return;
+        }
+
+        this.draft = {
+            ...this.draft,
+            [event.target.dataset.field]: limitValue
         };
     }
 
@@ -849,6 +883,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customSummaryPrompt: '',
             customQuestionPrompt: '',
             questionMaxOutputTokens: DEFAULT_QUESTION_MAX_OUTPUT_TOKENS,
+            summaryMaxOutputTokens: null,
             aiSafetyMode: '',
             customAiPromptSafetyGuardClass: '',
             isAiLabelingEnabled: false,
@@ -885,6 +920,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customSummaryPrompt: extractGraphValue(recordNode?.CustomSummaryPrompt__c) || '',
             customQuestionPrompt: extractGraphValue(recordNode?.CustomQuestionPrompt__c) || '',
             questionMaxOutputTokens: this.toNumberOrNull(extractGraphValue(recordNode?.QuestionMaxOutputTokens__c)),
+            summaryMaxOutputTokens: this.toNumberOrNull(extractGraphValue(recordNode?.SummaryMaxOutputTokens__c)),
             aiSafetyMode: extractGraphValue(recordNode?.AiSafetyMode__c) || '',
             customAiPromptSafetyGuardClass: extractGraphValue(recordNode?.CustomAiPromptSafetyGuardClass__c) || '',
             isAiLabelingEnabled: !!extractGraphValue(recordNode?.IsAiLabelingEnabled__c),
@@ -920,6 +956,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customSummaryPrompt: serverSnapshot.customSummaryPrompt || '',
             customQuestionPrompt: serverSnapshot.customQuestionPrompt || '',
             questionMaxOutputTokens: serverSnapshot.questionMaxOutputTokens,
+            summaryMaxOutputTokens: serverSnapshot.summaryMaxOutputTokens,
             aiSafetyMode: serverSnapshot.aiSafetyMode || '',
             customAiPromptSafetyGuardClass: serverSnapshot.customAiPromptSafetyGuardClass || '',
             isAiLabelingEnabled: !!serverSnapshot.isAiLabelingEnabled,
@@ -969,6 +1006,10 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'CustomSummaryPrompt__c', serverState.customSummaryPrompt, draftState.customSummaryPrompt);
         this.putIfChanged(changed, 'CustomQuestionPrompt__c', serverState.customQuestionPrompt, draftState.customQuestionPrompt);
         this.putIfChanged(changed, 'QuestionMaxOutputTokens__c', serverState.questionMaxOutputTokens, draftState.questionMaxOutputTokens);
+        this.putIfChanged(changed, 'SummaryMaxOutputTokens__c', serverState.summaryMaxOutputTokens, draftState.summaryMaxOutputTokens);
+        if ('SummaryMaxOutputTokens__c' in changed && isEmpty(changed.SummaryMaxOutputTokens__c)) {
+            changed.SummaryMaxOutputTokens__c = DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS;
+        }
         this.putIfChanged(changed, 'AiSafetyMode__c', serverState.aiSafetyMode, draftState.aiSafetyMode);
         this.putIfChanged(changed, 'CustomAiPromptSafetyGuardClass__c', serverState.customAiPromptSafetyGuardClass, draftState.customAiPromptSafetyGuardClass);
         this.putIfChanged(changed, 'IsAiLabelingEnabled__c', !!serverState.isAiLabelingEnabled, !!draftState.isAiLabelingEnabled);
@@ -1003,6 +1044,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             customSummaryPrompt: draftState.customSummaryPrompt || '',
             customQuestionPrompt: draftState.customQuestionPrompt || '',
             questionMaxOutputTokens: draftState.questionMaxOutputTokens,
+            summaryMaxOutputTokens: draftState.summaryMaxOutputTokens,
             aiSafetyMode: draftState.aiSafetyMode || '',
             customAiPromptSafetyGuardClass: draftState.customAiPromptSafetyGuardClass || '',
             isAiLabelingEnabled: !!draftState.isAiLabelingEnabled,
@@ -1073,6 +1115,28 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
         const numberValue = Number(value);
         return Number.isFinite(numberValue) ? numberValue : null;
+    }
+
+    resolveLimitWhenNoLimitCleared(fieldName) {
+        const savedLimit = this.server?.[fieldName];
+        if (savedLimit > UNLIMITED_OUTPUT_TOKENS) {
+            return savedLimit;
+        }
+
+        if (fieldName === 'questionMaxOutputTokens') {
+            return DEFAULT_QUESTION_MAX_OUTPUT_TOKENS;
+        }
+
+        return savedLimit === UNLIMITED_OUTPUT_TOKENS ? DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS : null;
+    }
+
+    refreshOutputLimitInput(fieldName) {
+        const limitInput = this.refs?.[fieldName];
+        if (!limitInput) return;
+
+        const limitValue = this.draft?.[fieldName];
+        limitInput.value = limitValue === UNLIMITED_OUTPUT_TOKENS ? null : limitValue;
+        limitInput.reportValidity();
     }
 
     toConfiguredBigFileSize(value) {
@@ -1237,6 +1301,38 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
     get showProviderRequiredHint() {
         return !this.isIntelligenceProviderSaved && !this.isIntelligenceEnabled;
+    }
+
+    get isQuestionOutputUnlimited() {
+        return this.draft?.questionMaxOutputTokens === UNLIMITED_OUTPUT_TOKENS;
+    }
+
+    get isSummaryOutputUnlimited() {
+        return this.draft?.summaryMaxOutputTokens === UNLIMITED_OUTPUT_TOKENS;
+    }
+
+    get questionMaxOutputTokensValue() {
+        return this.isQuestionOutputUnlimited ? null : this.draft?.questionMaxOutputTokens;
+    }
+
+    get summaryMaxOutputTokensValue() {
+        return this.isSummaryOutputUnlimited ? null : this.draft?.summaryMaxOutputTokens;
+    }
+
+    get isQuestionOutputLimitDisabled() {
+        return this.isIntelligenceDisabled || this.isQuestionOutputUnlimited;
+    }
+
+    get isSummaryOutputLimitDisabled() {
+        return this.isIntelligenceDisabled || this.isSummaryOutputUnlimited;
+    }
+
+    get isQuestionOutputLimitRequired() {
+        return this.isIntelligenceEnabled && !this.isQuestionOutputUnlimited;
+    }
+
+    get summaryMaxOutputTokensPlaceholder() {
+        return this.isSummaryOutputUnlimited ? '' : `${DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS} (default)`;
     }
 
     get isLabelingEnabled() {
@@ -1457,6 +1553,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.customSummaryPrompt || '') !== (draftState.customSummaryPrompt || '') ||
             (serverState.customQuestionPrompt || '') !== (draftState.customQuestionPrompt || '') ||
             (serverState.questionMaxOutputTokens ?? null) !== (draftState.questionMaxOutputTokens ?? null) ||
+            (serverState.summaryMaxOutputTokens ?? null) !== (draftState.summaryMaxOutputTokens ?? null) ||
             (serverState.aiSafetyMode || '') !== (draftState.aiSafetyMode || '') ||
             (serverState.customAiPromptSafetyGuardClass || '') !== (draftState.customAiPromptSafetyGuardClass || '') ||
             (!!serverState.isAiLabelingEnabled !== !!draftState.isAiLabelingEnabled) ||

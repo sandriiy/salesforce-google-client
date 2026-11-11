@@ -23,12 +23,34 @@
  */
 @IsTest
 private class GoogleLocalFileIntelligenceServiceTest {
+	private static final String LABEL_DEFINITIONS = '[{"name":"Invoice","labelId":"LABEL_INVOICE","description":"A bill requesting payment for goods or services"}]';
+
 	private static GoogleClientConfig__mdt buildGeminiConfig() {
 		return new GoogleClientConfig__mdt(
 			IsFileIntelligenceEnabled__c = true,
 			CustomGeminiApiKey__c = 'api-key-1',
 			CustomModelName__c = 'gemini-2.0-flash'
 		);
+	}
+
+	private static GoogleClientConfig__mdt buildLabelingConfig() {
+		GoogleClientConfig__mdt config = buildGeminiConfig();
+		config.IsAiLabelingEnabled__c = true;
+		config.AiLabelDefinitions__c = LABEL_DEFINITIONS;
+		return config;
+	}
+
+	private static GoogleFileVersion__c createAnalyzedVersion(String fileName) {
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName(fileName).withDescription('D').insertRecord();
+		return GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName(fileName + '.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId('GD_' + fileName)
+			.withDocsId('DOCS_' + fileName)
+			.insertRecord();
 	}
 
 	@IsTest
@@ -305,5 +327,102 @@ private class GoogleLocalFileIntelligenceServiceTest {
 
 		Assert.areEqual('This file describes the employee record filed under 123-45-6789.', states[0].summary);
 		Assert.isTrue(states[0].hasSummary);
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesPositiveReportsLabelingOn() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildLabelingConfig();
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTLON');
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(1, states.size());
+		Assert.areEqual(true, states[0].isLabelingEnabled, 'The panel keeps checking for a label only when labeling can actually run');
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesNegativeReportsLabelingOffWithoutDefinitions() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleClientConfig__mdt config = buildGeminiConfig();
+		config.IsAiLabelingEnabled__c = true;
+		GoogleMetadataConfigService.configRecordOverride = config;
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTLOFF1');
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(false, states[0].isLabelingEnabled, 'Labeling switched on with no label to choose from never labels anything, so the panel must not wait for one');
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesNegativeReportsLabelingOffWhileAnalysisIsOff() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleClientConfig__mdt config = buildLabelingConfig();
+		config.IsFileIntelligenceEnabled__c = false;
+		GoogleMetadataConfigService.configRecordOverride = config;
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTLOFF2');
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(false, states[0].isLabelingEnabled);
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesNegativeReportsLabelingOffOnAFreshInstall() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTLOFF3');
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(false, states[0].isLabelingEnabled);
+	}
+
+	@IsTest
+	private static void testAnswerQuestionNegativeTimeoutSaysTheServiceTookTooLong() {
+		GoogleIntelligenceHttpMock intelligenceMock = new GoogleIntelligenceHttpMock().withCalloutException('Read timed out');
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock(new GoogleDriveHttpMock().withDefaultHappyPath(), intelligenceMock));
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig();
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTQTO');
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleLocalFileIntelligenceService().answerQuestion(localFileVersion.Id, 'What does this file cover?');
+		Test.stopTest();
+
+		Assert.areEqual(1, intelligenceMock.getRequestCount(), 'A question is asked once and never retried automatically');
+		Assert.areNotEqual(true, result.success);
+		Assert.areEqual(GoogleFileIntelligenceCommandBase.AI_SERVICE_TIMEOUT_MESSAGE, result.errorMessage);
+	}
+
+	@IsTest
+	private static void testAnswerQuestionPositiveNoLimitSendsNoCap() {
+		GoogleIntelligenceHttpMock intelligenceMock = new GoogleIntelligenceHttpMock();
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock(new GoogleDriveHttpMock().withDefaultHappyPath(), intelligenceMock));
+		GoogleClientConfig__mdt config = buildGeminiConfig();
+		config.QuestionMaxOutputTokens__c = 0;
+		GoogleMetadataConfigService.configRecordOverride = config;
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTQNL');
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleLocalFileIntelligenceService().answerQuestion(localFileVersion.Id, 'What does this file cover?');
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.isNotNull(intelligenceMock.getLastRequestBody());
+		Assert.isFalse(intelligenceMock.getLastRequestBody().contains('maxOutputTokens'), 'No limit reaches Google as a request without an output cap');
 	}
 }

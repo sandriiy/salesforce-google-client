@@ -37,4 +37,6 @@ public class GoogleFileIntelligenceStateDTO {
 	public Boolean isIntelligenceEligible;
 	@AuraEnabled
 	public List<String> labels;
+	@AuraEnabled
+	public Boolean isLabelingEnabled;
 }

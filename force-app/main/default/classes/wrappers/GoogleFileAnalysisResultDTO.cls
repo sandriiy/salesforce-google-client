@@ -41,4 +41,5 @@ public with sharing class GoogleFileAnalysisResultDTO {
     public String finishReason;
     @AuraEnabled
     public String errorMessage;
+    public Boolean retryable;
 }

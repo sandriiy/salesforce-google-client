@@ -25,6 +25,9 @@
 public class GoogleIntelligenceHttpMock implements HttpCalloutMock {
     private Integer statusCode;
     private String responseBody;
+    private String calloutFailureMessage;
+    private Integer requestCount = 0;
+    private String lastRequestBody;
 
     public GoogleIntelligenceHttpMock() {
         this.statusCode = 200;
@@ -57,7 +60,26 @@ public class GoogleIntelligenceHttpMock implements HttpCalloutMock {
         return this;
     }
 
+    public GoogleIntelligenceHttpMock withCalloutException(String message) {
+        this.calloutFailureMessage = message;
+        return this;
+    }
+
+    public Integer getRequestCount() {
+        return requestCount;
+    }
+
+    public String getLastRequestBody() {
+        return lastRequestBody;
+    }
+
     public HTTPResponse respond(HTTPRequest req) {
+        requestCount++;
+        lastRequestBody = req.getBody();
+        if (calloutFailureMessage != null) {
+            throw new CalloutException(calloutFailureMessage);
+        }
+
         HTTPResponse response = new HTTPResponse();
         response.setStatusCode(statusCode);
         response.setHeader('Content-Type', 'application/json');

@@ -626,4 +626,141 @@ private class GoogleMetadataConfigServiceTest {
 		Assert.areEqual('SECOND', folderIds[1]);
 		Assert.areEqual('THIRD', folderIds[2]);
 	}
+
+	private static Integer toWholeNumber(Object savedValue) {
+		return savedValue == null ? null : Decimal.valueOf(String.valueOf(savedValue)).intValue();
+	}
+
+	private static GoogleClientConfig__mdt buildUpgradedAiConfig() {
+		return new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client',
+			IsFileIntelligenceEnabled__c = true,
+			CustomAgentProjectId__c = 'project-1',
+			CustomAgentLocation__c = 'global',
+			CustomModelName__c = 'gemini-3.8-flash',
+			CustomSummaryPrompt__c = GoogleMetadataConfigService.DEFAULT_SUMMARY_PROMPT,
+			QuestionMaxOutputTokens__c = 1024
+		);
+	}
+
+	@IsTest
+	private static void testGetSummaryMaxOutputTokensPositiveBlankMeansDefault() {
+		GoogleMetadataConfigService.configRecordOverride = buildUpgradedAiConfig();
+
+		Assert.areEqual(80, GoogleMetadataConfigService.DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS);
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS, new GoogleMetadataConfigService().getSummaryMaxOutputTokens(), 'An org upgraded with AI already set up has the new field blank and keeps today\'s summary length');
+	}
+
+	@IsTest
+	private static void testGetSummaryMaxOutputTokensPositiveFreshInstallMeansDefault() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS, new GoogleMetadataConfigService().getSummaryMaxOutputTokens());
+	}
+
+	@IsTest
+	private static void testGetSummaryMaxOutputTokensPositiveZeroMeansNoLimit() {
+		GoogleClientConfig__mdt config = buildUpgradedAiConfig();
+		config.SummaryMaxOutputTokens__c = 0;
+		GoogleMetadataConfigService.configRecordOverride = config;
+
+		Assert.areEqual(0, GoogleMetadataConfigService.UNLIMITED_OUTPUT_TOKENS);
+		Assert.areEqual(GoogleMetadataConfigService.UNLIMITED_OUTPUT_TOKENS, new GoogleMetadataConfigService().getSummaryMaxOutputTokens(), 'A saved 0 is No limit and must not fall back to the default');
+	}
+
+	@IsTest
+	private static void testGetSummaryMaxOutputTokensPositiveNegativeMeansDefault() {
+		GoogleClientConfig__mdt config = buildUpgradedAiConfig();
+		config.SummaryMaxOutputTokens__c = -5;
+		GoogleMetadataConfigService.configRecordOverride = config;
+
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS, new GoogleMetadataConfigService().getSummaryMaxOutputTokens());
+	}
+
+	@IsTest
+	private static void testGetSummaryMaxOutputTokensPositiveConfiguredValue() {
+		GoogleClientConfig__mdt config = buildUpgradedAiConfig();
+		config.SummaryMaxOutputTokens__c = 200;
+		GoogleMetadataConfigService.configRecordOverride = config;
+
+		Assert.areEqual(200, new GoogleMetadataConfigService().getSummaryMaxOutputTokens());
+	}
+
+	@IsTest
+	private static void testGetQuestionMaxOutputTokensPositiveZeroMeansNoLimit() {
+		GoogleCloudTestFactory.config().withQuestionMaxOutputTokens(0).apply();
+
+		Assert.areEqual(GoogleMetadataConfigService.UNLIMITED_OUTPUT_TOKENS, new GoogleMetadataConfigService().getQuestionMaxOutputTokens());
+	}
+
+	@IsTest
+	private static void testGetQuestionMaxOutputTokensPositiveNegativeMeansDefault() {
+		GoogleCloudTestFactory.config().withQuestionMaxOutputTokens(-5).apply();
+
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_QUESTION_MAX_OUTPUT_TOKENS, new GoogleMetadataConfigService().getQuestionMaxOutputTokens(), 'Only 0 means No limit; any other value below it means the default');
+	}
+
+	@IsTest
+	private static void testSaveConfigPositiveFillsSummaryLimitWhenAiIsOn() {
+		GoogleMetadataConfigService.configRecordOverride = buildUpgradedAiConfig();
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'cloudrylabs.com' });
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isTrue(savedValues.containsKey('SummaryMaxOutputTokens__c'), 'A save with AI on writes the default into the blank field, as it does for questions');
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS, toWholeNumber(savedValues.get('SummaryMaxOutputTokens__c')));
+	}
+
+	@IsTest
+	private static void testSaveConfigPositiveKeepsZeroLimitsForSummaryAndQuestions() {
+		GoogleMetadataConfigService.configRecordOverride = buildUpgradedAiConfig();
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{
+			'SummaryMaxOutputTokens__c' => 0,
+			'QuestionMaxOutputTokens__c' => 0
+		});
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.areEqual(0, toWholeNumber(savedValues.get('SummaryMaxOutputTokens__c')), 'No limit must survive the save rather than be replaced by the default');
+		Assert.areEqual(0, toWholeNumber(savedValues.get('QuestionMaxOutputTokens__c')));
+	}
+
+	@IsTest
+	private static void testSaveConfigPositiveLeavesSummaryLimitAloneWhileAiIsOff() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client'
+		);
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'cloudrylabs.com' });
+		Test.stopTest();
+
+		Assert.isFalse(deployer.capturedValues().containsKey('SummaryMaxOutputTokens__c'), 'An org without AI must not have AI settings written for it');
+	}
+
+	@IsTest
+	private static void testDeactivateAiConfigPositiveClearsSummaryLimit() {
+		GoogleClientConfig__mdt config = buildUpgradedAiConfig();
+		config.SummaryMaxOutputTokens__c = 0;
+		GoogleMetadataConfigService.configRecordOverride = config;
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).deactivateAiConfig();
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isTrue(GoogleMetadataConfigService.AI_CONFIGURATION_FIELDS.contains('SummaryMaxOutputTokens__c'));
+		Assert.isTrue(savedValues.containsKey('SummaryMaxOutputTokens__c'));
+		Assert.isNull(savedValues.get('SummaryMaxOutputTokens__c'));
+	}
 }

@@ -39,6 +39,14 @@ Change it if your users need a different tone or a different fallback, but keep 
 
 📘 See [File Q&A](../../features/artificial-intelligence/file-qa.md)
 
+### Summary Max Output Tokens
+
+How long a summary may be.
+
+Leave it empty to keep the default of 80, which is what every summary used before this setting existed. Google Client adds room for the AI's reasoning on top of this number, and a summary is always cut to 255 characters, so raising it rarely makes summaries longer. It mostly helps a model that reasons at length before it writes.
+
+Tick **No limit** to let the AI write as much as it needs. Summaries may then take longer to arrive, and they are still cut to 255 characters.
+
 ### Question Max Output Tokens
 
 How long an answer may be.
@@ -46,6 +54,16 @@ How long an answer may be.
 This is the setting that most directly affects what your AI provider bills you, since you pay per answer and answers are the longer half of the exchange.
 
 Raising it allows fuller answers to complex questions. Lowering it keeps answers terse and costs down, at the risk of a useful answer being cut short. If users report answers that stop mid-sentence, this is the setting to raise.
+
+Tick **No limit** to let the AI answer at any length. Long answers take longer to arrive and cost more.
+
+<!-- IMAGE: config_advanced_ai_intelligence_limits.png — the AI Intelligence tab showing Summary Max Output Tokens and Question Max Output Tokens, each with its No limit checkbox -->
+
+### Waiting for the AI service
+
+Google Client waits up to two minutes for each answer, the longest Salesforce allows, before it gives up. There is no setting for it.
+
+When the AI service is slow or busy, summaries and labels are tried again on their own, twice, over the next few minutes. A file that still has no summary after that stays as it is, and the reason is recorded in the logs. A question is never tried again on its own: the person asking sees that the service took too long or is busy and can ask again.
 
 ## AI Labeling
 

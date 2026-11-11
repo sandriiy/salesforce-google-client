@@ -30,11 +30,17 @@ The shipped prompt asks for a very short summary beginning with "This file descr
 
 Keep prompts specific and practical. The best prompts tell the provider what kind of business answer your users expect, without adding unnecessary ceremony.
 
+## When the AI Service Is Slow or Busy
+
+AI services have slow moments, and they get busier when many files arrive at once. When a summary cannot be made because the service took too long or was busy, Google Client tries again on its own, a minute or more later and again a few minutes after that. When many files arrive at once, an attempt can wait a few minutes longer for its turn. Files uploaded together do not wait for each other: the ones that worked are saved straight away, and only the ones that need another attempt are tried again.
+
+While that happens, the preview says the file is still being analyzed for a few minutes, then suggests opening it again a little later. The summary appears as soon as one of the attempts works.
+
 ## What Happens When It Cannot Be Generated
 
-Nothing breaks. If the provider is not configured, the file cannot be converted, or the call fails, the file simply has no summary and every other part of Google Client continues to work. Users see the file exactly as they would with File Intelligence turned off.
+Nothing breaks. If the provider is not configured, the file cannot be converted, or every attempt fails, the file simply has no summary and every other part of Google Client continues to work. Users see the file exactly as they would with File Intelligence turned off.
 
-Failures are recorded through the logging framework and are visible to administrators on the Analytics dashboard.
+Failures are recorded through the logging framework and are visible to administrators on the Analytics dashboard. A file given up on is recorded as an error with the reason; an attempt that will be tried again is recorded as a warning.
 
 ## Privacy
 

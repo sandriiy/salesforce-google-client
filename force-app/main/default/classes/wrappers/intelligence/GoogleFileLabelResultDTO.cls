@@ -35,4 +35,5 @@ public class GoogleFileLabelResultDTO {
 	public Integer confidence;
 	public String finishReason;
 	public String errorMessage;
+	public Boolean retryable;
 }

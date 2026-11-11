@@ -23,6 +23,10 @@
  */
 @IsTest
 private class GoogleGeminiIntelligenceStrategyTest {
+	private static final String GEMINI_RESOURCE_EXHAUSTED_BODY = '{"error":{"code":429,"message":"You exceeded your current quota, please check your plan and billing details.","status":"RESOURCE_EXHAUSTED"}}';
+	private static final String GEMINI_INVALID_KEY_BODY = '{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}';
+	private static final String LABEL_DEFINITIONS = '[{"name":"Invoice","labelId":"LABEL_INVOICE","description":"A bill requesting payment for goods or services"}]';
+
 	private class ApiKeyProviderStub implements IGenAiApiKeyProvider {
 		public GenAiApiKey apiKey() {
 			return new GenAiApiKey('custom-api-key');
@@ -34,6 +38,22 @@ private class GoogleGeminiIntelligenceStrategyTest {
 		config.CustomGeminiApiKey__c = apiKey;
 		config.CustomModelName__c = modelName;
 		return config;
+	}
+
+	private static GoogleFileVersion__c createAnalysisCandidate(String fileName) {
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName(fileName)
+			.insertRecord();
+
+		return GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName(fileName + '.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId('GD_' + fileName)
+			.withDocsId('DOCS_' + fileName)
+			.insertRecord();
 	}
 
 	@IsTest
@@ -208,6 +228,141 @@ private class GoogleGeminiIntelligenceStrategyTest {
 		Assert.isTrue(result.blocked);
 		Assert.areNotEqual(true, result.success);
 		Assert.areEqual(calloutsBefore, calloutsAfter);
+	}
+
+	@IsTest
+	private static void testSummarizePositiveWaitsWhatIsLeftOfTheCalloutTime() {
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+		GoogleFileVersion__c version = createAnalysisCandidate('GEMWAIT1');
+		GoogleCalloutTimeResolver.elapsedMillisOverride = 30000L;
+
+		GoogleGeminiIntelligenceStrategy strategy = new GoogleGeminiIntelligenceStrategy();
+		Test.startTest();
+		strategy.summarize(version.Id);
+		Test.stopTest();
+
+		Assert.areEqual(90000, strategy.genAiConfig.timeoutMs, 'A summary waits whatever callout time its job has left, not 20 seconds');
+	}
+
+	@IsTest
+	private static void testAnswerQuestionPositiveWaitsTheFullAllowance() {
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+		GoogleFileVersion__c version = createAnalysisCandidate('GEMWAIT2');
+		GoogleCalloutTimeResolver.elapsedMillisOverride = 0L;
+
+		GoogleGeminiIntelligenceStrategy strategy = new GoogleGeminiIntelligenceStrategy();
+		Test.startTest();
+		strategy.answerQuestion(version.Id, 'What does this file cover?');
+		Test.stopTest();
+
+		Assert.areEqual(120000, strategy.genAiConfig.timeoutMs, 'A question waits as long as Salesforce allows');
+	}
+
+	@IsTest
+	private static void testLabelPositiveKeepsTimeToApplyTheLabel() {
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
+		GoogleClientConfig__mdt config = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+		config.IsFileIntelligenceEnabled__c = true;
+		config.IsAiLabelingEnabled__c = true;
+		config.AiLabelDefinitions__c = LABEL_DEFINITIONS;
+		GoogleMetadataConfigService.configRecordOverride = config;
+		GoogleFileVersion__c version = createAnalysisCandidate('GEMWAIT3');
+		GoogleCalloutTimeResolver.elapsedMillisOverride = 30000L;
+
+		GoogleGeminiIntelligenceStrategy strategy = new GoogleGeminiIntelligenceStrategy();
+		Test.startTest();
+		strategy.label(version.Id);
+		Test.stopTest();
+
+		Assert.areEqual(80000, strategy.genAiConfig.timeoutMs, 'A label call leaves ten seconds for applying the label in Drive');
+	}
+
+	@IsTest
+	private static void testLabelPositiveWaitNeverDropsBelowOneMillisecond() {
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
+		GoogleClientConfig__mdt config = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+		config.IsFileIntelligenceEnabled__c = true;
+		config.IsAiLabelingEnabled__c = true;
+		config.AiLabelDefinitions__c = LABEL_DEFINITIONS;
+		GoogleMetadataConfigService.configRecordOverride = config;
+		GoogleFileVersion__c version = createAnalysisCandidate('GEMWAIT4');
+		GoogleCalloutTimeResolver.elapsedMillisOverride = 115000L;
+
+		GoogleGeminiIntelligenceStrategy strategy = new GoogleGeminiIntelligenceStrategy();
+		Test.startTest();
+		strategy.label(version.Id);
+		Test.stopTest();
+
+		Assert.areEqual(1, strategy.genAiConfig.timeoutMs, 'A wait of 0 or less is ignored by the AI client, which would then wait its own 20 seconds');
+	}
+
+	@IsTest
+	private static void testValidatePositiveWaitsWhatIsLeftOfTheCalloutTime() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
+		GoogleCalloutTimeResolver.elapsedMillisOverride = 30000L;
+
+		GoogleGeminiIntelligenceStrategy strategy = new GoogleGeminiIntelligenceStrategy();
+		Test.startTest();
+		Boolean isValid = strategy.validate();
+		Test.stopTest();
+
+		Assert.isTrue(isValid);
+		Assert.areEqual(90000, strategy.genAiConfig.timeoutMs);
+	}
+
+	@IsTest
+	private static void testValidateNegativeTimeoutSaysTheServiceTookTooLong() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock().withCalloutException('Read timed out'));
+
+		String failureMessage;
+		Test.startTest();
+		try {
+			new GoogleGeminiIntelligenceStrategy().validate();
+		} catch (GoogleGeminiIntelligenceStrategy.GoogleGeminiConfigurationException ex) {
+			failureMessage = ex.getMessage();
+		}
+		Test.stopTest();
+
+		Assert.areEqual(GoogleFileIntelligenceCommandBase.AI_SERVICE_TIMEOUT_MESSAGE, failureMessage, 'Validate says the service was slow, never "Read timed out"');
+	}
+
+	@IsTest
+	private static void testValidateNegativeBusySaysTheServiceIsBusy() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock().withStatusCode(429).withResponseBody(GEMINI_RESOURCE_EXHAUSTED_BODY));
+
+		String failureMessage;
+		Test.startTest();
+		try {
+			new GoogleGeminiIntelligenceStrategy().validate();
+		} catch (GoogleGeminiIntelligenceStrategy.GoogleGeminiConfigurationException ex) {
+			failureMessage = ex.getMessage();
+		}
+		Test.stopTest();
+
+		Assert.areEqual(GoogleFileIntelligenceCommandBase.AI_SERVICE_BUSY_MESSAGE, failureMessage);
+	}
+
+	@IsTest
+	private static void testValidateNegativeConfigurationErrorKeepsItsDetail() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiConfig('api-key-1', 'gemini-2.0-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock().withStatusCode(400).withResponseBody(GEMINI_INVALID_KEY_BODY));
+
+		String failureMessage;
+		Test.startTest();
+		try {
+			new GoogleGeminiIntelligenceStrategy().validate();
+		} catch (GoogleGeminiIntelligenceStrategy.GoogleGeminiConfigurationException ex) {
+			failureMessage = ex.getMessage();
+		}
+		Test.stopTest();
+
+		Assert.isNotNull(failureMessage);
+		Assert.isTrue(failureMessage.contains('API key not valid'), 'An administrator validating a setup keeps the full detail of a configuration error');
 	}
 }
 

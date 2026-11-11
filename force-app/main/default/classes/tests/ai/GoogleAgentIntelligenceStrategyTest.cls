@@ -23,6 +23,9 @@
  */
 @IsTest
 private class GoogleAgentIntelligenceStrategyTest {
+	private static final String VERTEX_RESOURCE_EXHAUSTED_BODY = '{"error":{"code":429,"message":"Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.","status":"RESOURCE_EXHAUSTED"}}';
+	private static final String VERTEX_PERMISSION_DENIED_BODY = '{"error":{"code":403,"message":"Permission \'aiplatform.endpoints.predict\' denied on resource \'//aiplatform.googleapis.com/projects/project-1/locations/global/publishers/google/models/gemini-3.8-flash\' (or it may not exist).","status":"PERMISSION_DENIED"}}';
+
 	private class AccessTokenProviderStub implements IGenAiAccessTokenProvider {
 		public GenAiAccessToken token() {
 			return new GenAiAccessToken('Bearer', 'custom-access-token');
@@ -197,5 +200,102 @@ private class GoogleAgentIntelligenceStrategyTest {
 		Assert.areEqual('Agent Platform', result.provider);
 		Assert.areEqual('QUESTION', result.operationType);
 		Assert.areEqual('OK', result.text);
+	}
+
+	@IsTest
+	private static void testSummarizePositiveWaitsWhatIsLeftOfTheCalloutTime() {
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock());
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'global', 'gemini-3.8-flash');
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file()
+			.withName('AGTWAIT1')
+			.insertRecord();
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('AGTWAIT1.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDocsId('DOCS_AGTWAIT1')
+			.insertRecord();
+		GoogleCalloutTimeResolver.elapsedMillisOverride = 30000L;
+
+		GoogleAgentIntelligenceStrategy strategy = new GoogleAgentIntelligenceStrategy();
+		Test.startTest();
+		GoogleFileAnalysisResultDTO result = strategy.summarize(version.Id);
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual(90000, strategy.genAiConfig.timeoutMs, 'A summary waits whatever callout time its job has left, not 20 seconds');
+	}
+
+	@IsTest
+	private static void testValidatePositiveWaitsWhatIsLeftOfTheCalloutTime() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'global', 'gemini-3.8-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
+		GoogleCalloutTimeResolver.elapsedMillisOverride = 30000L;
+
+		GoogleAgentIntelligenceStrategy strategy = new GoogleAgentIntelligenceStrategy();
+		Test.startTest();
+		Boolean isValid = strategy.validate();
+		Test.stopTest();
+
+		Assert.isTrue(isValid);
+		Assert.areEqual(90000, strategy.genAiConfig.timeoutMs);
+	}
+
+	@IsTest
+	private static void testValidateNegativeTimeoutSaysTheServiceTookTooLong() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'global', 'gemini-3.8-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock().withCalloutException('Read timed out'));
+
+		String failureMessage;
+		Test.startTest();
+		try {
+			new GoogleAgentIntelligenceStrategy().validate();
+		} catch (GoogleAgentIntelligenceStrategy.GoogleAgentConfigurationException ex) {
+			failureMessage = ex.getMessage();
+		}
+		Test.stopTest();
+
+		Assert.areEqual(GoogleFileIntelligenceCommandBase.AI_SERVICE_TIMEOUT_MESSAGE, failureMessage, 'Validate says the service was slow, never "Read timed out"');
+	}
+
+	@IsTest
+	private static void testValidateNegativeBusySaysTheServiceIsBusy() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'global', 'gemini-3.8-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock().withStatusCode(429).withResponseBody(VERTEX_RESOURCE_EXHAUSTED_BODY));
+
+		String failureMessage;
+		Test.startTest();
+		try {
+			new GoogleAgentIntelligenceStrategy().validate();
+		} catch (GoogleAgentIntelligenceStrategy.GoogleAgentConfigurationException ex) {
+			failureMessage = ex.getMessage();
+		}
+		Test.stopTest();
+
+		Assert.areEqual(GoogleFileIntelligenceCommandBase.AI_SERVICE_BUSY_MESSAGE, failureMessage);
+	}
+
+	@IsTest
+	private static void testValidateNegativeConfigurationErrorKeepsItsDetail() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildAgentConfig('project-1', 'global', 'gemini-3.8-flash');
+		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock().withStatusCode(403).withResponseBody(VERTEX_PERMISSION_DENIED_BODY));
+
+		String failureMessage;
+		Test.startTest();
+		try {
+			new GoogleAgentIntelligenceStrategy().validate();
+		} catch (GoogleAgentIntelligenceStrategy.GoogleAgentConfigurationException ex) {
+			failureMessage = ex.getMessage();
+		}
+		Test.stopTest();
+
+		Assert.isNotNull(failureMessage);
+		Assert.isTrue(failureMessage.contains('aiplatform.endpoints.predict'), 'An administrator validating a setup keeps the full detail of a missing permission');
 	}
 }

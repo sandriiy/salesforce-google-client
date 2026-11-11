@@ -198,15 +198,26 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
             );
             return parent;
         }
+
+        public GoogleDriveHttpMock thenThrowCallout(String message) {
+            parent.addRule(new MockRule(matcher, message));
+            return parent;
+        }
     }
 
     public class MockRule {
         private RequestMatcher matcher;
         private MockResponse response;
+        private String calloutFailureMessage;
 
         public MockRule(RequestMatcher matcher, MockResponse response) {
             this.matcher = matcher != null ? matcher : new RequestMatcher();
             this.response = response != null ? response : new MockResponse().withStatus(200);
+        }
+
+        public MockRule(RequestMatcher matcher, String calloutFailureMessage) {
+            this(matcher, new MockResponse().withStatus(200));
+            this.calloutFailureMessage = calloutFailureMessage;
         }
 
         public Boolean matches(HTTPRequest req) {
@@ -214,6 +225,10 @@ public class GoogleDriveHttpMock implements HttpCalloutMock {
         }
 
         public HTTPResponse buildResponse(HTTPRequest req) {
+            if (calloutFailureMessage != null) {
+                throw new CalloutException(calloutFailureMessage);
+            }
+
             return response.toHttpResponse(req);
         }
     }

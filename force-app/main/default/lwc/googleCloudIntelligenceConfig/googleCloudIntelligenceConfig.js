@@ -33,6 +33,7 @@ const SAVED_INTELLIGENCE_KEYS = [
     'customSummaryPrompt',
     'customQuestionPrompt',
     'questionMaxOutputTokens',
+    'summaryMaxOutputTokens',
     'aiSafetyMode',
     'customAiPromptSafetyGuardClass',
     'customLabelingPrompt',

@@ -29,6 +29,7 @@ const createDefaultFileIntelligenceState = (versionId = undefined) => {
         summary: '',
         hasSummary: false,
         isIntelligenceEligible: false,
+        isLabelingEnabled: false,
         labels: []
     };
 };
@@ -51,6 +52,7 @@ const normalizeFileIntelligenceState = (state, versionId = undefined) => {
         summary: normalizedSummary,
         hasSummary: state?.hasSummary === true || Boolean(normalizedSummary),
         isIntelligenceEligible: state?.isIntelligenceEligible === true,
+        isLabelingEnabled: state?.isLabelingEnabled === true,
         labels: normalizeLabels(state?.labels)
     };
 };

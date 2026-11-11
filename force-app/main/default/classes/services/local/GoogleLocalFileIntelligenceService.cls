@@ -81,12 +81,15 @@ public without sharing class GoogleLocalFileIntelligenceService {
 
 		Map<Id, List<String>> labelNamesByVersionId = new GoogleLocalFileVersionLabelService().retrieveLabelNamesByVersionId(versionIds);
 		GoogleFileVersionContextResolver contextResolver = new GoogleFileVersionContextResolver();
-		Boolean isIntelligenceConfigured = new GoogleFileIntelligenceFactory().isConfigured();
+		GoogleFileIntelligenceFactory intelligenceFactory = new GoogleFileIntelligenceFactory();
+		Boolean isIntelligenceConfigured = intelligenceFactory.isConfigured();
+		Boolean isLabelingConfigured = intelligenceFactory.isLabelingConfigured();
 		IGoogleAiPromptSafetyGuard safetyGuard = new GoogleAiPromptSafetyGuardFactory().resolve();
 		String safetyMode = new GoogleMetadataConfigService().getAiSafetyMode();
 		for (Id versionId : localFileVersionIds) {
 			if (versionId == null) continue;
 			GoogleFileIntelligenceStateDTO intelligenceState = buildIntelligenceState(versionId, versionsById.get(versionId), contextResolver, isIntelligenceConfigured, safetyGuard, safetyMode);
+			intelligenceState.isLabelingEnabled = isLabelingConfigured;
 			if (labelNamesByVersionId.containsKey(versionId)) {
 				intelligenceState.labels = labelNamesByVersionId.get(versionId);
 			}

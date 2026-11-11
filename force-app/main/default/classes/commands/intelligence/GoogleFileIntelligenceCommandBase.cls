@@ -29,6 +29,10 @@
  * guard impossible to skip.
  */
 public abstract with sharing class GoogleFileIntelligenceCommandBase {
+	public static final String AI_SERVICE_TIMEOUT_MESSAGE = 'The AI service took too long to answer. Please try again.';
+	public static final String AI_SERVICE_BUSY_MESSAGE = 'The AI service is busy right now. Please try again in a moment.';
+	public static final String AI_SERVICE_FAILURE_MESSAGE = 'The AI service could not answer this question. Please try again or contact your administrator.';
+
 	private static final String DEFAULT_EXPORT_MIME_TYPE = 'text/plain';
 	private static final String DEFAULT_RESPONSE_MIME_TYPE = 'text/plain';
 	private static final Integer DEFAULT_CANDIDATE_COUNT = 1;
@@ -38,6 +42,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	private final GoogleClientApiProvider googleApiProvider;
 	private final GoogleFileVersionContextResolver versionContextResolver;
 	private final GoogleMetadataConfigService metadataConfigService;
+	private final GoogleTransientFailureResolver failureResolver = new GoogleTransientFailureResolver();
 
 	public GoogleFileIntelligenceCommandBase() {
 		this(new GoogleClientApiProvider(), new GoogleFileVersionContextResolver());
@@ -59,7 +64,8 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	 * @param modelName The model to call.
 	 * @param genAiClient The client the request goes through.
 	 * @param inputText The user input for operations that take one, or null.
-	 * @return What happened, including the text when it worked and why not when it did not.
+	 * @return What happened, including the text when it worked, why not when it did not, and retryable when
+	 * a later attempt is likely to work.
 	 */
 	public GoogleFileAnalysisResultDTO execute(Id localGoogleFileVersionId, String providerName, String modelName, IGenAiClient genAiClient, String inputText) {
 		GoogleFileAnalysisResultDTO result = createBaseResult(providerName);
@@ -104,6 +110,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			String documentText = exportDocumentText(localFileVersion);
 			if (String.isBlank(documentText)) {
 				result.errorMessage = buildExportFailureMessage();
+				result.retryable = true;
 				return result;
 			}
 
@@ -133,6 +140,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			String outputText = finalizeGeneratedText(normalizeGeneratedText(responseText), result.finishReason);
 			if (String.isBlank(outputText)) {
 				result.errorMessage = buildAnalysisFailureMessage(outcomeReason);
+				result.retryable = this.failureResolver.isRetryableOutcome(result.finishReason, String.isNotBlank(responseText));
 				return result;
 			}
 
@@ -140,15 +148,32 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			result.text = outputText;
 			return result;
 		} catch (Exception ex) {
-			result.errorMessage = ex.getMessage();
-			Logger.error('Local Google File Version Id: ' + localGoogleFileVersionId).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			Logger.error('Provider Name: ' + providerName).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			Logger.error('Model Name: ' + modelName).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			Logger.error('Error Message: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			result.retryable = this.failureResolver.isRetryable(ex);
+			result.errorMessage = buildCallFailureMessage(ex);
+			Boolean isRetriedLater = result.retryable == true && isRetriedAfterFailure() == true;
+			logCallFailure(isRetriedLater, 'Local Google File Version Id: ' + localGoogleFileVersionId);
+			logCallFailure(isRetriedLater, 'Provider Name: ' + providerName);
+			logCallFailure(isRetriedLater, 'Model Name: ' + modelName);
+			logCallFailure(isRetriedLater, 'Error Message: ' + ex.getMessage());
 			Logger.saveLog();
 
 			return result;
 		}
+	}
+
+	/**
+	 * The user sentence for a failure that passes on its own: AI_SERVICE_TIMEOUT_MESSAGE when the service
+	 * took too long, AI_SERVICE_BUSY_MESSAGE when it could not take the request now. Anything that shows a
+	 * failure to a person waiting for an answer uses this, so the wording stays the same everywhere.
+	 *
+	 * @param failure What the call threw.
+	 * @return The sentence to show, or null for a failure that does not pass on its own.
+	 */
+	public static String resolveServiceFailureMessage(Exception failure) {
+		String failureKind = new GoogleTransientFailureResolver().describeFailure(failure);
+		if (failureKind == GoogleTransientFailureResolver.TIMEOUT_FAILURE) return AI_SERVICE_TIMEOUT_MESSAGE;
+		if (failureKind == GoogleTransientFailureResolver.BUSY_FAILURE) return AI_SERVICE_BUSY_MESSAGE;
+		return null;
 	}
 
 	/**
@@ -187,9 +212,10 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	public abstract String buildUserPrompt(String normalizedInput, String documentText);
 	/**
 	 * How long the answer may be. Declare only the answer budget, the base class adds the thinking
-	 * allowance on top because Gemini counts thinking against the same limit.
+	 * allowance on top because Gemini counts thinking against the same limit. Return 0 or less for no limit,
+	 * which sends the request without any cap.
 	 *
-	 * @return The maximum tokens for the answer.
+	 * @return The maximum tokens for the answer, or 0 for no limit.
 	 */
 	public abstract Integer getMaxOutputTokens();
 
@@ -357,6 +383,29 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 	}
 
 	/**
+	 * The message for a call that threw, which is what the result's errorMessage carries. The raw failure by
+	 * default, because a summary or a label is never shown to a person and its job logs the real reason. An
+	 * operation whose answer a person waits for overrides it with words they can act on.
+	 *
+	 * @param failure What the call threw.
+	 * @return The message to put on the result.
+	 */
+	public virtual String buildCallFailureMessage(Exception failure) {
+		return failure == null ? null : failure.getMessage();
+	}
+
+	/**
+	 * Whether a failed attempt of this operation is tried again later by a job, which is what makes a
+	 * passing failure a warning in the log rather than an error. True by default; an operation a person is
+	 * waiting for, such as a question, is never retried and returns false, so its failures stay errors.
+	 *
+	 * @return True when a passing failure is retried later.
+	 */
+	public virtual Boolean isRetriedAfterFailure() {
+		return true;
+	}
+
+	/**
 	 * Collapses every run of whitespace into a single space and trims the result.
 	 *
 	 * @param text The text to clean.
@@ -432,10 +481,25 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			.addUserText(buildUserPrompt(normalizedInput, documentText))
 			.withCandidates(getCandidateCount())
 			.withTemperature(getTemperature())
-			.withMaxTokens(getMaxOutputTokens() + getThinkingAllowance())
+			.withMaxTokens(resolveOutputCap())
 			.withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(getThinkingBudget()))
 			.withResponseMimeType(getResponseMimeType())
 			.build();
+	}
+
+	private Integer resolveOutputCap() {
+		Integer answerBudget = getMaxOutputTokens();
+		if (answerBudget == null || answerBudget <= GoogleMetadataConfigService.UNLIMITED_OUTPUT_TOKENS) return null;
+		return answerBudget + getThinkingAllowance();
+	}
+
+	private void logCallFailure(Boolean isRetryable, String message) {
+		if (isRetryable == true) {
+			Logger.warn(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			return;
+		}
+
+		Logger.error(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 	}
 
 	@TestVisible

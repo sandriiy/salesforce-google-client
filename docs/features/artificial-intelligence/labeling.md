@@ -69,7 +69,9 @@ Each labeled file is one more call to your AI provider, in addition to the summa
 
 ## What Happens When It Cannot Label
 
-Nothing breaks. If the provider is not configured, the file cannot be converted, Google Drive refuses the label, or the call fails, the file simply has no label and every other part of Google Client continues to work. Failures are recorded through the logging framework and are visible to administrators on the Analytics dashboard.
+When the AI service is slow or busy, Google Client tries the file again on its own, a minute or more later and again a few minutes after that, just as it does for summaries. A label Google Drive refuses is not tried again, because Drive would refuse it the same way.
+
+Nothing breaks. If the provider is not configured, the file cannot be converted, Google Drive refuses the label, or every attempt fails, the file simply has no label and every other part of Google Client continues to work. Failures are recorded through the logging framework and are visible to administrators on the Analytics dashboard.
 
 ## Privacy
 

@@ -63,6 +63,16 @@ public inherited sharing class GoogleMetadataConfigService {
 	 */
 	public static final Integer DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
 	/**
+	 * How long a summary may be when nothing is configured, counting the answer only. The summary command
+	 * adds its room for reasoning on top, so a blank setting sends exactly what every summary sent before.
+	 */
+	public static final Integer DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS = 80;
+	/**
+	 * The saved output limit that means no limit at all: the request then carries no cap. Only 0 means this;
+	 * a negative value means the field's default.
+	 */
+	public static final Integer UNLIMITED_OUTPUT_TOKENS = 0;
+	/**
 	 * How sure the model must be before a label is applied when nothing is configured.
 	 */
 	public static final Integer DEFAULT_AI_LABELING_MIN_CONFIDENCE = 80;
@@ -86,7 +96,7 @@ public inherited sharing class GoogleMetadataConfigService {
 	 */
 	public static final Set<String> AI_CONFIGURATION_FIELDS = new Set<String>{
 		'CustomGeminiApiKey__c', 'CustomModelName__c', 'CustomAgentProjectId__c', 'CustomAgentLocation__c',
-		'CustomSummaryPrompt__c', 'CustomQuestionPrompt__c', 'QuestionMaxOutputTokens__c',
+		'CustomSummaryPrompt__c', 'CustomQuestionPrompt__c', 'QuestionMaxOutputTokens__c', 'SummaryMaxOutputTokens__c',
 		'AiSafetyMode__c', 'CustomAiPromptSafetyGuardClass__c',
 		'CustomLabelingPrompt__c', 'AiLabelingMinConfidence__c', 'AiLabelingThinkingBudget__c', 'AiLabelDefinitions__c'
 	};
@@ -428,13 +438,24 @@ public inherited sharing class GoogleMetadataConfigService {
 	}
 
 	/**
-	 * How long an answer may be, which is also what drives the provider bill.
+	 * How long an answer may be, which is also what drives the provider bill. A saved 0 means no limit; a
+	 * negative value means the default.
 	 *
-	 * @return The configured limit, or the shipped default.
+	 * @return The configured limit, 0 for no limit, or the shipped default.
 	 */
 	public Integer getQuestionMaxOutputTokens() {
-		Decimal configuredValue = configRecord.QuestionMaxOutputTokens__c;
-		return configuredValue == null ? DEFAULT_QUESTION_MAX_OUTPUT_TOKENS : configuredValue.intValue();
+		return resolveOutputTokens(configRecord.QuestionMaxOutputTokens__c, DEFAULT_QUESTION_MAX_OUTPUT_TOKENS);
+	}
+
+	/**
+	 * How long a summary may be, counting the answer only. A blank field, which is what every org upgraded
+	 * from an earlier version has, means the default; a saved 0 means no limit; a negative value means the
+	 * default.
+	 *
+	 * @return The configured limit, 0 for no limit, or the shipped default.
+	 */
+	public Integer getSummaryMaxOutputTokens() {
+		return resolveOutputTokens(configRecord.SummaryMaxOutputTokens__c, DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS);
 	}
 
 	/**
@@ -588,6 +609,7 @@ public inherited sharing class GoogleMetadataConfigService {
 			applyStringDefaultIfMissing(normalizedValues, 'CustomSummaryPrompt__c', configRecord.CustomSummaryPrompt__c, DEFAULT_SUMMARY_PROMPT);
 			applyStringDefaultIfMissing(normalizedValues, 'CustomQuestionPrompt__c', configRecord.CustomQuestionPrompt__c, DEFAULT_QUESTION_PROMPT);
 			applyNumberDefaultIfMissing(normalizedValues, 'QuestionMaxOutputTokens__c', configRecord.QuestionMaxOutputTokens__c, DEFAULT_QUESTION_MAX_OUTPUT_TOKENS);
+			applyNumberDefaultIfMissing(normalizedValues, 'SummaryMaxOutputTokens__c', configRecord.SummaryMaxOutputTokens__c, DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS);
 			applyStringDefaultIfMissing(normalizedValues, 'AiSafetyMode__c', configRecord.AiSafetyMode__c, DEFAULT_AI_SAFETY_MODE);
 		}
 
@@ -633,6 +655,11 @@ public inherited sharing class GoogleMetadataConfigService {
 		if (String.isBlank(currentValue)) {
 			valuesByFieldName.put(fieldApiName, defaultValue);
 		}
+	}
+
+	private Integer resolveOutputTokens(Decimal configuredValue, Integer defaultValue) {
+		if (configuredValue == null || configuredValue < UNLIMITED_OUTPUT_TOKENS) return defaultValue;
+		return configuredValue.intValue();
 	}
 
 	private Boolean resolveBooleanValue(Map<String, Object> valuesByFieldName, String fieldApiName, Boolean currentValue) {

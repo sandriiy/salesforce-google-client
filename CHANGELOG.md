@@ -9,6 +9,13 @@ All notable changes to this client will be documented in this file.
 - Download several files at once from the Uploader. Every uploaded file in the Uploader has a checkbox. Once at least one file is ticked, a line appears above the list saying how many are selected, with a **Download** button that shows the count. The selected files arrive as one ZIP archive named after the record, a progress bar shows how far the download has got and which file is being fetched, and **Stop** cancels it before anything is saved. While the download runs, the selected files cannot be opened, replaced or removed, and leaving the page or the Flow screen stops it. It works on record pages, on Experience Cloud pages and in Screen Flows, with the same limits as Notes & Attachments: up to 100 files and 512 MB together.
 - Find files in File Explorer with the new **Search** view. Type words from a file's name, its AI summary or its labels, or an exact phrase in double quotes, and narrow the list by file type, size, the day it was created or last changed, the number of versions, its owner, picked by name from the people whose files you can open, and whether it is linked to a record. A custom date range applies once both of its days are chosen. Only files you can open are listed, the results update a moment after you stop typing, and an extension the file type filter does not list can be typed into the search box.
 - Download several files at once from File Explorer, in every view. Tick the files, or the checkbox in the column header for every file loaded so far, and **Download** next to **Upload Files** saves them as one ZIP archive named `Files - N files.zip`. The download runs in the background, so you can keep searching, scrolling and opening files while the progress shows in the header, and **Stop** cancels it before anything is saved. Up to 100 files and 512 MB can be downloaded together.
+- Set how long a file summary may be with **Summary Max Output Tokens** under **Advanced** → **AI Intelligence**, as you already can for answers to questions. Both settings now have a **No limit** option that lets the AI write as much as it needs. Left empty, the summary setting keeps today's length.
+
+### Changed
+
+- The AI service now gets up to two minutes to answer instead of 20 seconds, so a slow but working answer is no longer thrown away.
+- With AI on, uploaded files reach their record folder in Google Drive before they are summarized, so a slow AI answer no longer holds a file in the wrong place.
+- A Question Max Output Tokens of 0 now means no limit. Before, it meant no answer at all.
 
 ### Fixed
 
@@ -19,6 +26,12 @@ All notable changes to this client will be documented in this file.
 - An empty File Explorer view now says so instead of showing a blank list.
 - File Explorer no longer sends your browser details of files you cannot open while it loads more files.
 - When File Explorer's columns do not include Last Modified Date, the list now opens in the order it says it is sorted by, and scrolling no longer leaves files out.
+- A file whose summary or label could not be made because the AI service was slow or busy is now tried again on its own, twice over the next few minutes, instead of staying without one for good. If every attempt fails, the reason is recorded in the logs.
+- When several files are analyzed together, one slow answer no longer costs the others their summaries or labels, and a file deleted while the others were being analyzed no longer stops their summaries from being saved.
+- One file Google Drive could not prepare for preview no longer stops the files uploaded with it from being previewed and analyzed, and Drive being briefly busy no longer leaves a file without a preview for good.
+- A question that takes the AI service too long, or arrives while it is busy, now says so in plain words instead of showing "Read timed out" or the service's own error, and **Validate** does the same.
+- An error that comes from Google, such as **Validate** finding a model name that does not exist, now shows Google's explanation instead of only "}".
+- The AI panel in the preview keeps checking for a little longer after an upload and waits for the label as well as the summary, so both appear without opening the file again.
 
 ## [2.3.0] - 2026-10-23
 

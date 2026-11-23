@@ -2,7 +2,109 @@
 
 This document tracks **test coverage, validation scenarios, and release checks** for each release of **Google Client for Salesforce**. The goal is to ensure that all critical features, integrations, and edge cases are tested when creating a new version.
 
-???+ example "Release v2.3.0"
+???+ example "Release v2.4.0"
+
+    ### Validation Suite Used
+    - [X] Full Validation Suite
+    - [ ] Quick Regression Suite
+    - [X] Targeted Regression Suite
+
+    ### Release Changes
+    - [X] Change 1: The upgrade changes nothing on an already configured org.
+
+        - [X] Existing settings are unchanged, and Summary Max Output Tokens, Folder Names and the copies folder arrive empty or off.
+        - [X] An org that had previews turned off now previews PDFs and images, and nothing else.
+        - [X] Uploads, previews, downloads, sharing and versioning work as before, on record pages and on Experience Cloud.
+
+    - [X] Change 2: Several files can be downloaded at once from the Uploader.
+
+        - [X] Ticking files shows the count and Download (N), and a file still uploading cannot be ticked.
+        - [X] Download saves one ZIP named after the record with every file intact, and clears the selection.
+        - [X] While it runs, the selected files cannot be opened, replaced or removed, and Stop saves nothing.
+        - [X] It works the same on Experience Cloud, and View All still downloads as in 2.3.0.
+        - [X] In a Screen Flow, clicking Next during a download saves nothing.
+
+    - [X] Change 3: The Uploader keeps files that are still uploading, and its messages show at the right time.
+
+        - [X] Removing a file while another one uploads leaves the upload intact, with its name, size and type.
+        - [X] The hover text shows the summary once the preview is closed after the AI panel filled in.
+        - [X] File Uploaded appears as the spinner stops, not seconds before.
+
+    - [X] Change 4: File Explorer has a Search view.
+
+        - [X] Search finds files by words in the name, summary or labels, and by an exact phrase in quotes.
+        - [X] Every filter narrows the list, and its ✕ and Clear all reset it.
+        - [X] Owner lists only people whose files you can open, and a file you cannot open never shows up.
+        - [X] Words and filters are kept for the browser session.
+        - [X] With View All Files, the navigation shows All Files and Search, and Owner lists every owner.
+        - [X] A custom date range applies once both days are chosen, and includes both of them.
+
+    - [X] Change 5: Several files can be downloaded at once from every File Explorer view.
+
+        - [X] Ticking files in any view shows Download (N) next to Upload Files, and the archive is named "Files - N files.zip".
+        - [X] Searching, scrolling and previewing during a download is fine, and the archive holds the files ticked when it started.
+        - [X] Stop saves nothing, and a file that drops out of a search is unticked.
+
+    - [X] Change 6: File Explorer shows the right dates, keeps loading and says when a view is empty.
+
+        - [X] Created Date and Last Modified Date show the dates the list is sorted by.
+        - [X] Searching while more files load does not stop scrolling from loading more.
+        - [X] Without Last Modified Date in the columns, the list opens in the order it says and scrolling reaches every file.
+        - [X] An empty view says "No files yet", and a search with no result says "No files match your search".
+        - [X] The Migrated files card shows the same dates as File Explorer.
+
+    - [X] Change 7: AI copes with a slow or busy service, and summaries and answers can be any length.
+
+        - [X] Ten files uploaded one after another all get their summary, and their label where one fits.
+        - [X] A file reaches its record folder before its summary appears.
+        - [X] With Question Max Output Tokens at 0 a question gets a full answer, and Validate with a wrong model name shows Google's reason.
+        - [X] Deactivate AI works as in 2.3.0.
+        - [X] Both token settings keep a number, a 0 and an empty value after a save and a reload.
+        - [X] Out of about 100 files uploaded at once from several places, at least 99 are summarized within 20 minutes, and the logs explain every one that is not.
+
+    - [X] Change 8: Folders can be named with a formula and follow their records' names.
+
+        - [X] A formula shows an example name and names new folders, even with renaming off.
+        - [X] With renaming on, a renamed record's folder takes the new name on the next upload, and its files, links and sharing stay as they were.
+        - [X] Only your own folder for the record is renamed, a user formula renames your user folder, and a folder renamed by hand in Google Drive is renamed back.
+        - [X] A Contact keeps one folder name whatever the uploader's language, and Experience Cloud uploads name folders the same way.
+        - [X] A formula with a wrong field blocks Save, and one with TODAY() saves only once its "I acknowledge that" box is ticked.
+
+    - [X] Change 9: Google Workspace copies can be turned off with Store files only, or kept in a folder of their own.
+
+        - [X] With Store files only on, no copy is made and only PDFs and images preview, on Experience Cloud too.
+        - [X] With Store files only on, Extract Text still reads a text file and refuses a Word file with a plain reason.
+        - [X] With a copies folder set, copies land there, record folders hold only the originals, and preview, AI and Download As work.
+        - [X] A copies folder the service account cannot reach sends copies beside their originals, with one error in the logs.
+        - [X] A file uploaded while Store files only was on says its preview is unavailable once the setting is off, and offers no Download As.
+        - [X] The copies folder field shows the folder's name, and refuses a Viewer share, a file or an unknown ID with a plain reason.
+
+    - [X] Change 10: The preview fits a narrow window.
+
+        - [X] At about 480 px wide, the buttons and Close stay on screen and the AI panel shows over the document.
+        - [X] A file with several labels keeps a readable name beside the first label and "+N more".
+
+    - [X] Change 11: The logs keep only what went wrong.
+
+        - [X] Uploads and previews that succeed save no log, and a failure saves one log with an error saying why.
+
+    ### Boring Changes
+    - [X] Version number assigned to all hard-coded labels
+    - [X] Version ID is assigned to all installation guides.
+    - [X] All images for documentation are included.
+
+    ### Smoke Checks
+    - [X] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [X] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [X] Admin can open Google Client app and browse configuration tabs without errors
+
+    ### Suite Execution (only for Full or Quick)
+    - [X] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
+
+    ### Notes
+    - N/A
+
+??? example "Release v2.3.0"
 
     ### Validation Suite Used
     - [ ] Full Validation Suite

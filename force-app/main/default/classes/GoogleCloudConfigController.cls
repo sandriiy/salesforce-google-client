@@ -22,6 +22,12 @@
  * SOFTWARE.
  */
 public with sharing class GoogleCloudConfigController {
+	private static final String ADMIN_ACCESS_PERMISSION = 'GoogleClientAdminAccess';
+	private static final String ADMIN_ACCESS_REQUIRED_MESSAGE = 'Only Google Client administrators can change or check these settings';
+
+	@TestVisible
+	private static Boolean adminAccessOverride;
+
 	@AuraEnabled
 	public static String generateConfigId() {
 		GoogleCacheConfigService cache = new GoogleCacheConfigService();
@@ -36,6 +42,8 @@ public with sharing class GoogleCloudConfigController {
 
 	@AuraEnabled
     public static Id saveMetadataConfig(Map<String, Object> fieldApiToValue) {
+		requireAdminAccess();
+
 		GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 		return metadataService.saveConfig(fieldApiToValue);
     }
@@ -48,12 +56,22 @@ public with sharing class GoogleCloudConfigController {
 
 	@AuraEnabled
 	public static String validateLatestMetadataDeploy() {
+		requireAdminAccess();
+
 		GoogleCacheConfigService cacheService = new GoogleCacheConfigService(new GoogleOrgCacheProvider(GoogleCacheConfigService.PARTITION));
 		return cacheService.get(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY);
 	}
 
 	@AuraEnabled
+	public static Long retrieveMetadataConfigSavedTime() {
+		requireAdminAccess();
+
+		return new GoogleMetadataConfigService().getLastSavedTime();
+	}
+
+	@AuraEnabled
     public static String validateDriveMetadataConfig() {
+		requireAdminAccess();
 		ensureMetadataConfigExists();
 
         GoogleClientApiProvider remoteProvider = new GoogleClientApiProvider();
@@ -68,6 +86,7 @@ public with sharing class GoogleCloudConfigController {
 
 	@AuraEnabled
     public static String validateIntelligenceMetadataConfig() {
+		requireAdminAccess();
 		ensureMetadataConfigExists();
 
         GoogleFileIntelligenceFactory aiFactory = new GoogleFileIntelligenceFactory();
@@ -82,6 +101,7 @@ public with sharing class GoogleCloudConfigController {
 
 	@AuraEnabled
 	public static Id deactivateIntelligenceMetadataConfig() {
+		requireAdminAccess();
 		ensureMetadataConfigExists();
 
 		GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
@@ -92,6 +112,13 @@ public with sharing class GoogleCloudConfigController {
 	public static void removeConfig(String configId) {
 		GoogleCacheConfigService cache = new GoogleCacheConfigService();
 		cache.removeConfig(configId);
+	}
+
+	private static void requireAdminAccess() {
+		Boolean hasAdminAccess = adminAccessOverride != null ? adminAccessOverride : FeatureManagement.checkPermission(ADMIN_ACCESS_PERMISSION);
+		if (!hasAdminAccess) {
+			throw new AuraHandledException(ADMIN_ACCESS_REQUIRED_MESSAGE);
+		}
 	}
 
 	private static void ensureMetadataConfigExists() {

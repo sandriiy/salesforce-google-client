@@ -56,7 +56,6 @@ public with sharing class GoogleFileBackgroundUploadJob extends GQueueableJob.Al
 		try {
 			GoogleFileUploadResultDTO result = new GoogleLocalFileTransferService().uploadSalesforceFileNow(this.request);
 			Logger.info('Background Upload Job --> Uploaded, FileId=' + String.valueOf(result.googleFileId) + ', VersionId=' + String.valueOf(result.googleFileVersionId) + ', GoogleDriveFileId=' + String.valueOf(result.googleDriveFileId)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			Logger.saveLog();
 		} catch (Exception ex) {
 			Logger.error('Background Upload Job Failed --> SalesforceFileId=' + String.valueOf(this.request.salesforceFileId) + ', Message=' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();

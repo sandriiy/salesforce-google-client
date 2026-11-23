@@ -1,62 +1,64 @@
 # File Explorer
 
-The **File Explorer** is a Lightning tab that lets users browse Google Drive files from Salesforce in a clean and fast User Interface.
+The **File Explorer** tab lists every Google Client file you can open, in one place. Browse it, search it and open any file in the preview.
 
 ![File Explorer](../assets/images/file_explorer.png)
 
-## How to Open It
+## How to open it
 
-1. In Salesforce, go to **App Launcher**
-2. Search for **File Explorer**
-3. Open the tab
+Open the **App Launcher**, search for **File Explorer** and open the tab. It needs the **Google Cloud Client User** permission set.
 
-To see the tab, the user must have the permission set **Google Cloud Client User**.
+## Views
 
-## What This Tab Contains
+| View | What it lists |
+|---|---|
+| **Owned by Me** | Files you own |
+| **Shared with Me** | Files someone else owns that you can open, whether shared with you directly or through a record |
+| **Search** | Every file you can open, narrowed by words and filters |
 
-The File Explorer has two views:
+With the **Google Client: View All Files** or **Google Client: Edit All Files** permission, the views are **All Files**, which lists every Google File in the org, and **Search**.
 
-- **Owned by Me** — files where you are the Google Drive owner
-- **Shared with Me** — files shared with you (primarily via direct user/group sharing)
+Every view lists only the files you can open, and loads more as you scroll.
 
-## File List Columns
+## Columns
 
-By default, the table shows your accessible files with key details such as:
+By default the list shows **Title**, **Is Linked?**, **Access**, **Created By** and **Last Modified Date**. **Title** always comes first and opens the preview. Your administrator chooses the rest.
 
-- **Title**
-- **Is Linked?** — whether the file is linked (assigned) to a Salesforce record
-- **Access** — your effective access level (View/Edit)
-- **Owner**
-- **Last Modified Date**
+📘 See [Advanced: User Interface](../config/advanced/user-interface.md)
 
-### Configuring Columns
+## Quick search
 
-Administrators can tailor which columns appear, and in what order, from the **Google Client** app → setup wizard → **Advanced → User Interface**.
+In **Owned by Me**, **Shared with Me** and **All Files**, the **Search files...** box in the header narrows the view you are in. It matches the file name, its AI summary and its labels, so a document can be found by what it is about.
 
-- Pick columns from the built-in catalog — **Title**, **Type**, **Size**, **Created By**, **Owner**, **Created Date**, **Last Modified Date**, **Is Linked?**, **Access**, **Summary** (the AI-generated file summary), and **Labels** (the Google Drive labels applied by AI) — and drag to reorder them.
-- **Title** is always displayed first and cannot be removed, because it is the link users click to preview a file.
-- A maximum of **7** columns can be displayed.
+## Search
 
-Need a field that isn't in the catalog? Enter any **Google File Version** field API name (for example, `Summary__c`) in the **Add a custom field** box. Custom entries are **not** validated when you save — enter the exact API name. If the field does not exist or cannot be read, its column simply appears empty instead of causing an error.
+The **Search** view looks across every file you can open. With nothing entered it lists all of them, and the list updates a moment after you stop typing or change a filter.
 
-📘 See [Advanced: User Interface](../config/advanced/user-interface.md) for the full column list and what can be sorted.
+![Search view with words typed and a filter in use](../assets/images/file_explorer_search.png)
 
-## Searching Files
+### Key phrases
 
-Use the **Search** box in the File Explorer header to filter the current view. The search matches on the **file name** and, when present, the file's **Summary** and its **Labels** — so you can find a document by what it contains, or by the label the AI applied to it, even if you do not remember its exact name. Files without a summary or labels continue to match by name.
+Type words from a file's name, its AI summary or its labels. Every word must appear, in any order and any case. Put words in double quotes, such as `"contract renewal"`, to match them only together. Up to 10 words or phrases count.
 
-Beyond the File Explorer, Google Files can also be found through Salesforce **global search**. Opening a file from a global search result takes you straight to its **File Details** page. Global search follows Salesforce's standard sharing (files you own or that are directly shared with you), while the File Explorer also shows files you can reach through record-based access.
+### Filters
 
-## Loading Large File Lists
+Each filter below the box opens a short list of choices. A file must match every filter in use, **✕** removes one filter and **Clear all** removes everything.
 
-The file list loads **progressively**: an initial set of rows is shown right away, and more rows are appended automatically as you scroll toward the bottom of the table. This keeps the tab responsive when you have access to a large number of files. Searching, filtering, and sorting always apply across **all** of your files.
+| Filter | Choices |
+|---|---|
+| **File type** | PDF, Word documents, Spreadsheets, Presentations, Images, Text, Video, Audio, Archives. Several can be chosen at once. |
+| **Size** | Smaller than 1 MB, 1 MB to 10 MB, 10 MB to 100 MB, Larger than 100 MB |
+| **Created** | Today, Last 7 days, Last 30 days, This year, Last year, or a custom range of days |
+| **Last modified** | The same choices as **Created** |
+| **Versions** | Only one, 2 or more, 5 or more, 10 or more |
+| **Owner** | Me, or anyone who owns files you can open. This is the file's owner, not the person who uploaded it. |
+| **Linked** | Yes for files linked to at least one record, No for files linked to none |
 
-Administrators with the **Google Client: View All Files** or **Google Client: Edit All Files** permission browse **all** Google Files here, in a single **All Files** view instead of the Owned and Shared buckets. Everyone else sees only the files they can actually reach.
+- A custom date range includes its first and last day, and applies once both are chosen.
+- A new version, edited file details or a new link to a record count as a change for **Last modified**.
+- **Owner** lists up to 200 names. With a very large number of files, someone whose files have not changed in a long time may be missing.
+- A type the **File type** filter does not list can be found by its extension in the box, such as `.dwg`.
 
-Either way the list is paged, and search and sorting run across all of your files rather than only the rows already loaded — so the tab behaves the same in an org with fifty files and an org with fifty thousand.
-
-## Uploading Files from File Explorer
-
-You can upload files using **Upload Files**. However, any file uploaded from this tab will be **not linked to any Salesforce record** (**Is Linked? = No**).
+![File type filter in use](../assets/images/file_explorer_search_filters.png)
 
 <br>

@@ -225,4 +225,51 @@ private class GoogleFileUpdateCommandTest {
 		Assert.isNull(result.localGoogleFileToUpdate);
 		Assert.isNull(result.localGoogleFileVersionToUpdate);
 	}
+
+	@IsTest
+	private static void testBuildPositiveRenameKeepsDotsThatAreNotAnExtension() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c file = GoogleCloudTestFactory.file()
+			.withName('Release 2.4.0 Plan')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(file.Id)
+			.withName('Release 2.4.0 Plan.pdf')
+			.withDriveId('GD_UP_9')
+			.insertRecord();
+
+		Test.startTest();
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
+			.changeFileNameTo('Release 2.4.0 Final Plan')
+			.build();
+		Test.stopTest();
+
+		Assert.isNotNull(result.localGoogleFileToUpdate, 'A name with dots in it must still be renamed');
+		Assert.areEqual('Release 2.4.0 Final Plan', result.localGoogleFileToUpdate.Name, 'Text after a dot is not an extension when it holds spaces');
+	}
+
+	@IsTest
+	private static void testBuildPositiveRenameKeepsANumberAfterTheLastDot() {
+		GoogleCloudTestFactory.initMocks();
+
+		GoogleFile__c file = GoogleCloudTestFactory.file()
+			.withName('Budget.pdf')
+			.insertRecord();
+
+		GoogleFileVersion__c version = GoogleCloudTestFactory.version()
+			.forFile(file.Id)
+			.withName('Budget.pdf')
+			.withDriveId('GD_UP_10')
+			.insertRecord();
+
+		Test.startTest();
+		GoogleFileUpdateCommand.GoogleFileUpdateResult result = new GoogleFileUpdateCommand(GoogleCloudTestFactory.unitOfWork(), file, version)
+			.changeFileNameTo('Budget v1.2')
+			.build();
+		Test.stopTest();
+
+		Assert.areEqual('Budget v1.2.pdf', result.localGoogleFileToUpdate.Name, 'A version number is part of the name, and the original extension is kept');
+	}
 }

@@ -86,6 +86,15 @@ public with sharing class GoogleFileQuestionCommand extends GoogleFileIntelligen
 		return null;
 	}
 
+	public override Boolean isRetriedAfterFailure() {
+		return false;
+	}
+
+	public override String buildCallFailureMessage(Exception failure) {
+		String serviceFailureMessage = GoogleFileIntelligenceCommandBase.resolveServiceFailureMessage(failure);
+		return serviceFailureMessage != null ? serviceFailureMessage : GoogleFileIntelligenceCommandBase.AI_SERVICE_FAILURE_MESSAGE;
+	}
+
 	public override void applyIneligibleResult(GoogleFileAnalysisResultDTO result) {
 		result.blocked = true;
 		result.errorMessage = 'This file is not available for AI questions';

@@ -1,8 +1,8 @@
 import LightningModal from 'lightning/modal';
 import { api } from 'lwc';
 
-import { DEFAULT_FAILED_DOWNLOAD_MESSAGE, normalizeError, showToast } from 'c/googleCloudUtils';
-import { downloadAs } from 'c/googleCloudDownloadUtils';
+import { normalizeError, showToast } from 'c/googleCloudUtils';
+import { downloadAs, resolveDownloadFailureMessage } from 'c/googleCloudDownloadUtils';
 
 import retrieveDownloadAsOptions from '@salesforce/apex/GoogleCloudFilesController.retrieveDownloadAsOptions';
 
@@ -48,7 +48,7 @@ export default class GoogleCloudFileDownloadAsModal extends LightningModal {
 			showToast(
 				this,
 				'Unable to download File Version',
-				DEFAULT_FAILED_DOWNLOAD_MESSAGE,
+				resolveDownloadFailureMessage(error),
 				'error'
 			);
 		} finally {

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SummaryMaxOutputTokens__c</fullName>
+    <description>Maximum number of tokens a file summary may use. Blank means 80, the default. 0 means no limit. Google Client adds room for the AI's reasoning on top, and a summary is always cut to 255 characters.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Maximum number of tokens a file summary may use. Leave blank for 80, the default, or use 0 for no limit. Summaries are always cut to 255 characters.</inlineHelpText>
+    <label>Summary Max Output Tokens</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

@@ -27,7 +27,6 @@
  * field rather than letting a long answer fail the save.
  */
 public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntelligenceCommandBase {
-	private static final Integer MAX_OUTPUT_TOKENS = 80;
 	private static final Integer THINKING_ALLOWANCE_TOKENS = 2048;
 	private static final String OPERATION_TYPE = 'SUMMARY';
 	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
@@ -69,7 +68,7 @@ public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntellige
 	}
 
 	public override Integer getMaxOutputTokens() {
-		return MAX_OUTPUT_TOKENS;
+		return metadataService.getSummaryMaxOutputTokens();
 	}
 
 	public override Integer getThinkingAllowance() {
@@ -82,7 +81,7 @@ public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntellige
 	}
 
 	public override String finalizeGeneratedText(String generatedText, String finishReason) {
-		return fitSummaryText(generatedText);
+		return fitSummaryText(dropPeriodAfterSentenceEnd(generatedText));
 	}
 
 	public override String buildAnalysisFailureMessage(String outcomeReason) {
@@ -95,6 +94,14 @@ public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntellige
 		return localFileVersion != null
 			&& localFileVersion.isSet('Summary__c')
 			&& String.isNotBlank((String) localFileVersion.get('Summary__c'));
+	}
+
+	private String dropPeriodAfterSentenceEnd(String summaryText) {
+		if (String.isBlank(summaryText)) return summaryText;
+
+		return summaryText.endsWith('?.') || summaryText.endsWith('!.')
+			? summaryText.removeEnd('.')
+			: summaryText;
 	}
 
 	private String fitSummaryText(String summaryText) {

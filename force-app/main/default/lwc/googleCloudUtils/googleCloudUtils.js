@@ -1,4 +1,5 @@
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { getFieldValue } from 'lightning/uiRecordApi';
 import {
 	DEFAULT_FILE_INTELLIGENCE_SUMMARY_UNAVAILABLE_MESSAGE,
 	createDefaultFileIntelligenceState,
@@ -417,15 +418,23 @@ const normalizeError = (input) => {
 		return message;
 	};
 
+	const extractQuotedJsonMessages = (text) =>
+		[...String(text || '').matchAll(/"message"\s*:\s*"((?:\\.|[^"\\])*)"/g)]
+			.map((match) => normalizeWhitespace(match[1]))
+			.filter(Boolean);
+
+	const extractMessagesFromErrorText = (text) => {
+		const quotedJsonMessages = extractQuotedJsonMessages(text);
+		return quotedJsonMessages.length ? quotedJsonMessages : [text];
+	};
+
 	const extractMessagesFromString = (value) => {
 		const text = String(value || '').trim();
 		if (!text) return [];
 
 		// Handles raw serialized payloads/logs like:
 		// "message": "Request had insufficient authentication scopes."
-		const quotedJsonMessages = [...text.matchAll(/"message"\s*:\s*"((?:\\.|[^"\\])*)"/g)]
-			.map((match) => normalizeWhitespace(match[1]))
-			.filter(Boolean);
+		const quotedJsonMessages = extractQuotedJsonMessages(text);
 
 		if (quotedJsonMessages.length) {
 			return quotedJsonMessages;
@@ -441,7 +450,6 @@ const normalizeError = (input) => {
 			return inlineMessages;
 		}
 
-		// Plain string error.
 		return [text];
 	};
 
@@ -459,12 +467,11 @@ const normalizeError = (input) => {
 			messages = messages.concat(collectMessages(next, seen));
 		};
 
-		// JS Error
 		if (value instanceof Error && value.message) {
-			messages.push(value.message);
+			messages = messages.concat(extractMessagesFromErrorText(value.message));
 		}
 
-		if (typeof value.message === 'string') messages.push(value.message);
+		if (typeof value.message === 'string') messages = messages.concat(extractMessagesFromErrorText(value.message));
 
 		if (Array.isArray(value.body)) {
 			value.body.forEach(visit);
@@ -599,4 +606,30 @@ const createBulkSelection = (selectedIds = []) => {
     });
 };
 
-export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, resolveTransferLimits, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString, createBulkSelection };
+const resolveRecordNameFields = (objectInfo) => {
+    const nameFields = objectInfo?.nameFields || [];
+    const fieldsByApiName = objectInfo?.fields || {};
+
+    for (const nameField of nameFields) {
+        const fieldInfo = fieldsByApiName[nameField];
+
+        if (fieldInfo?.compound) return [nameField];
+        if (fieldInfo?.compoundFieldName) return [fieldInfo.compoundFieldName];
+    }
+
+    return nameFields;
+};
+
+const resolveRecordNameValue = (record, qualifiedFieldNames) => {
+    for (const fieldName of qualifiedFieldNames || []) {
+        const fieldValue = getFieldValue(record, fieldName);
+
+        if (!isEmpty(fieldValue)) {
+            return fieldValue;
+        }
+    }
+
+    return null;
+};
+
+export { showToast, isEmpty, isPermissionMissing, normalizeError, normalizeAllowedTypes, generateId, resolveTransferLimits, formatFileSize, formatExistingLocalFiles, createDefaultFileIntelligenceState, applyFileIntelligenceStates, getLocalOffsetDateTime, formatDateAsDayMonthYear, formatDateAsDDMMYYYY_HHMM, createNewFilePlaceholder, getFileIcon, getFileType, extractFileExtension, truncateFileName, findIconForRecordType, findRoleForAccessType, extractGraphValue, asString, createBulkSelection, resolveRecordNameFields, resolveRecordNameValue };

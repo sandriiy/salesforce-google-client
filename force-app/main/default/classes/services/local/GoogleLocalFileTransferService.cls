@@ -591,6 +591,10 @@ public without sharing class GoogleLocalFileTransferService {
 			}
 		}
 
+		for (Schema.PicklistEntry entry : GoogleFileLink__c.Source__c.getDescribe().getPicklistValues()) {
+			if (entry.isActive() && !supportedSources.contains(entry.getValue())) supportedSources.add(entry.getValue());
+		}
+
 		if (!supportedSources.contains(GoogleCloudConstants.FILE_SOURCE_MIGRATION)) {
 			supportedSources.add(GoogleCloudConstants.FILE_SOURCE_MIGRATION);
 		}

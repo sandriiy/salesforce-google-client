@@ -4,15 +4,15 @@
 
 Takes a file that already lives in Salesforce, such as one added through the standard **File Upload** screen component or attached to a record, and moves it into Google Drive as a Google Client file.
 
-The result behaves exactly like a file uploaded through the Google Client components. It is placed in the configured folder structure, a preview and a summary are prepared, and it shows up on the record.
+The result behaves exactly like a file uploaded through the Google Client components. It is placed in the configured folder structure, gets its preview and, with AI Analytics on, its summary, and shows up on the record.
 
-## When To Use It
+## When to use it
 
 - Send files a customer submitted through a screen flow or a form straight into Google Drive.
-- Move files that were attached to a record before Google Client was installed.
+- Move files that were attached to a record before Google Client was installed. For many files at once, the [Migration tab](../migrate-salesforce-files.md) does this without a flow.
 - Keep Salesforce storage free by uploading a file and removing the Salesforce copy in the same step.
 
-## How To Add It To A Flow
+## How to add it to a flow
 
 1. Open **Flow Builder** in Salesforce Setup.
 2. Create a flow, or open an existing one.
@@ -32,7 +32,7 @@ The result behaves exactly like a file uploaded through the Google Client compon
 | **Record ID** | No | The record the file is attached to in Salesforce. Leave blank to keep the file unattached. |
 | **File Name** | No | A different name for the file. The original extension is kept. |
 | **Shown In** | No | Where the file appears on the record: `Notes & Attachments` (default), `Uploader` or `File Explorer`. Match it to the component your users look at. |
-| **Remove Salesforce Copy** | No | Off by default. Turn on to delete the Salesforce file once it is safely in Google Drive, which is how a flow keeps Salesforce storage free. |
+| **Remove Salesforce Copy** | No | Off by default. Turn it on to delete the Salesforce file once it is safely in Google Drive, which is how a flow keeps Salesforce storage free. |
 
 ## Outputs
 
@@ -45,25 +45,20 @@ The result behaves exactly like a file uploaded through the Google Client compon
 | **File Name**, **File Size (bytes)** | What was uploaded |
 | **Uploads in Background** | True when the file is large and finishes uploading after the flow, in which case the IDs above are empty |
 
-## Small And Large Files
+## Small and large files
 
 Files up to the **Maximum Preview File Size** setting are uploaded before the action finishes, and the outputs carry the new IDs right away.
 
-Larger files are handed to a background upload that completes shortly after the flow, with **Uploads in Background** set to true and the IDs empty. Either way the file appears on the record once it is in Google Drive.
+Larger files finish uploading in the background shortly after the flow, with **Uploads in Background** set to true and the IDs empty. Either way the file appears on the record once it is in Google Drive.
 
-If the rest of your flow needs the IDs, check **Uploads in Background** first and take a different path when it is true.
+**Uploads in Background** tells the rest of the flow whether the IDs are there.
 
-Files are moved through Salesforce, which limits how large a single file can be. A few megabytes works well. Anything much larger belongs in the Google Client components, which send it from the browser instead.
+A file sent this way passes through Salesforce, which limits how large it can be. The Google Client components send large files from the browser instead.
 
 ![Upload File results in a flow screen](../../assets/images/flow_action_upload_file_result.png)
 
-## Where The File Lands
+## Where the file lands
 
-The upload follows the same [folder structure](../../config/folder-structure.md) as every other upload, so a file attached to a record ends up in that record's folder. Placement finishes moments after the upload, which is why **Google Drive Folder ID** can name the default upload folder rather than the record folder.
-
-!!! note
-    Needs Google Drive [configured](../../setup/configure-drive.md). In a record triggered flow, place the action on an **asynchronous path**, and connect a **Fault** path to catch `{!$Flow.FaultMessage}`.
-
-📘 See [Uploader in Screen Flows](uploader-screen-flows.md) to collect files from a person instead.
+The upload follows the same [folder structure](../../config/folder-structure.md) as every other upload, so a file attached to a record ends up in that record's folder. The file reaches that folder moments after the upload, which is why **Google Drive Folder ID** can name the default upload folder rather than the record folder.
 
 <br>

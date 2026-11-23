@@ -27,6 +27,7 @@ public class GoogleCloudTestFactory {
 	private static Integer fakeIdCounter = 0;
 
 	private static final String SHARE_KEY_PREFIX = '02c';
+	private static final String RUNNING_CHAIN_STATE = '{"isChainedContext":true,"jobs":[]}';
 
 	public static Id fakeId(SObjectType sot) {
 		return fakeId(sot.getDescribe().getKeyPrefix());
@@ -141,6 +142,12 @@ public class GoogleCloudTestFactory {
 
 	public static IGoogleUnitOfWork unitOfWork() {
 		return new GoogleCloudUnitOfWork(GoogleCloudConstants.DEFAULT_WRITE_ORDER);
+	}
+
+	public static GQueueableChain runningChain() {
+		GQueueableChain chain = (GQueueableChain) JSON.deserialize(RUNNING_CHAIN_STATE, GQueueableChain.class);
+		GQueueableManager.get().setChain(chain);
+		return chain;
 	}
 
 	public static ConfigBuilder config() {

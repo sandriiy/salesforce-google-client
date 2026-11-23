@@ -23,6 +23,16 @@
  */
 @IsTest
 private class GoogleFileStoreInFolderCommandTest {
+	private static final String ROOT_FOLDER_ID = 'ROOT_FOLDER_01';
+	private static final String DESTINATION_FOLDER_ID = 'DEST_FOLDER_01';
+	private static final String COPIES_FOLDER_ID = 'COPIES_FOLDER_01';
+	private static final String ORIGINAL_DRIVE_ID = 'GD_ORIGINAL_01';
+	private static final String COPY_DRIVE_ID = 'GWS_COPY_01';
+	private static final String RECORD_NAME = 'Acme Brochure';
+	private static final String TODAYS_RECORD_FOLDER_NAME = 'GoogleFile__c : Acme Brochure';
+	private static final String DRIVE_SERVER_ERROR_BODY = '{"error":{"code":500,"message":"Internal Error","errors":[{"domain":"global","reason":"internalError","message":"Internal Error"}]}}';
+	private static final String DRIVE_NOT_FOUND_BODY = '{"error":{"code":404,"message":"File not found.","errors":[{"domain":"global","reason":"notFound","message":"File not found."}]}}';
+
 	private static GoogleClientConfig__mdt buildFolderConfig(String uploadFolderId, String folderStructure) {
 		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
 		config.DefaultGoogleUploadFolderId__c = uploadFolderId;
@@ -590,5 +600,227 @@ private class GoogleFileStoreInFolderCommandTest {
 		}
 		Assert.isTrue(searchedInFallbackDrive, 'Expected the subfolder search to run inside the fallback root discovered via Drive lookup');
 		Assert.isTrue(createdFolderInFallbackDrive, 'Expected the subfolder creation POST to reference the fallback root');
+	}
+
+	private static void applyPlacementConfig(Boolean isRenameEnabled, String copiesFolderId) {
+		GoogleClientConfig__mdt config = buildFolderConfig(ROOT_FOLDER_ID, '{Record}');
+		config.IsFolderRenameEnabled__c = isRenameEnabled;
+		config.WorkspaceCopyFolderId__c = copiesFolderId;
+		GoogleMetadataConfigService.configRecordOverride = config;
+	}
+
+	private static GoogleDriveHttpMock buildPlacementMock() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.queryContains('appProperties')
+		).thenReturnStatus(200, '{"files":[{"id":"' + DESTINATION_FOLDER_ID + '","name":"GoogleFile__c : Old Name"}]}');
+		return driveMock;
+	}
+
+	private static void answerDrive(GoogleDriveHttpMock driveMock, String method, String driveId, Integer statusCode, String body) {
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod(method)
+				.endpointContains('/files/' + driveId)
+		).thenReturnStatus(statusCode, body);
+	}
+
+	private static void answerMoves(GoogleDriveHttpMock driveMock) {
+		answerDrive(driveMock, 'PATCH', DESTINATION_FOLDER_ID, 200, '{"id":"' + DESTINATION_FOLDER_ID + '"}');
+		answerDrive(driveMock, 'PATCH', ORIGINAL_DRIVE_ID, 200, '{"id":"' + ORIGINAL_DRIVE_ID + '"}');
+		answerDrive(driveMock, 'PATCH', COPY_DRIVE_ID, 200, '{"id":"' + COPY_DRIVE_ID + '"}');
+	}
+
+	private static void answerCopyParent(GoogleDriveHttpMock driveMock, String parentFolderId) {
+		answerDrive(driveMock, 'GET', COPY_DRIVE_ID, 200, '{"id":"' + COPY_DRIVE_ID + '","parents":["' + parentFolderId + '"]}');
+	}
+
+	private static GoogleFileRelocationRequestDTO insertPlacementFixture() {
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFile__c record = GoogleCloudTestFactory.file().withName(RECORD_NAME).insertRecord();
+		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName('Placed Report').insertRecord();
+
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.forFile(parentFile.Id)
+			.withName('Placed Report.docx')
+			.withType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			.withSize(1024)
+			.withDriveId(ORIGINAL_DRIVE_ID)
+			.withDocsId(COPY_DRIVE_ID)
+			.withFolderId(ROOT_FOLDER_ID)
+			.insertRecord();
+
+		GoogleFileLink__c link = GoogleCloudTestFactory.link()
+			.forFile(parentFile.Id)
+			.withLinkedRecord(record.Id)
+			.withLinkedType('GoogleFile__c')
+			.insertRecord();
+
+		return new GoogleFileRelocationRequestDTO(UserInfo.getUserId(), parentFile.Id, localFileVersion.Id, link.Id);
+	}
+
+	private static Boolean placeAndCommit(GoogleFileRelocationRequestDTO request) {
+		IGoogleUnitOfWork uow = buildUow();
+		Boolean isSettled = new GoogleFileStoreInFolderCommand(uow).placeFile(request);
+		uow.commitWork(true);
+		return isSettled;
+	}
+
+	private static String placedFolderId(Id versionId) {
+		return [SELECT GoogleDriveFolderId__c FROM GoogleFileVersion__c WHERE Id = :versionId LIMIT 1].GoogleDriveFolderId__c;
+	}
+
+	private static List<GoogleDriveHttpMock.CapturedRequest> requestsTo(GoogleDriveHttpMock driveMock, String method, String driveId) {
+		List<GoogleDriveHttpMock.CapturedRequest> matchingRequests = new List<GoogleDriveHttpMock.CapturedRequest>();
+		String drivePath = ('/files/' + driveId).toLowerCase();
+		for (GoogleDriveHttpMock.CapturedRequest capturedRequest : driveMock.getCapturedRequests()) {
+			String endpoint = capturedRequest.endpoint == null ? '' : capturedRequest.endpoint.toLowerCase();
+			if (capturedRequest.method == method && endpoint.contains(drivePath)) matchingRequests.add(capturedRequest);
+		}
+
+		return matchingRequests;
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveRenamesTheRecordFolderWhenRenamingIsOn() {
+		GoogleDriveHttpMock driveMock = buildPlacementMock();
+		answerMoves(driveMock);
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyPlacementConfig(true, null);
+		GoogleFileRelocationRequestDTO request = insertPlacementFixture();
+
+		Test.startTest();
+		Boolean isSettled = placeAndCommit(request);
+		Test.stopTest();
+
+		Assert.isTrue(isSettled);
+		Assert.areEqual(DESTINATION_FOLDER_ID, placedFolderId(request.localGoogleFileVersionId));
+		List<GoogleDriveHttpMock.CapturedRequest> renames = requestsTo(driveMock, 'PATCH', DESTINATION_FOLDER_ID);
+		Assert.areEqual(1, renames.size(), 'A file arriving on a record renames the folder it reaches');
+		Assert.isTrue(renames[0].body != null && renames[0].body.contains(TODAYS_RECORD_FOLDER_NAME));
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveFailedRenameStillPlacesTheFile() {
+		GoogleDriveHttpMock driveMock = buildPlacementMock();
+		answerDrive(driveMock, 'PATCH', DESTINATION_FOLDER_ID, 500, DRIVE_SERVER_ERROR_BODY);
+		answerMoves(driveMock);
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyPlacementConfig(true, null);
+		GoogleFileRelocationRequestDTO request = insertPlacementFixture();
+
+		Exception placementFailure;
+		Boolean isSettled;
+		Test.startTest();
+		try {
+			isSettled = placeAndCommit(request);
+		} catch (Exception ex) {
+			placementFailure = ex;
+		}
+		Test.stopTest();
+
+		Assert.isNull(placementFailure, 'A rename never fails a placement');
+		Assert.isTrue(isSettled);
+		Assert.areEqual(DESTINATION_FOLDER_ID, placedFolderId(request.localGoogleFileVersionId), 'The file is placed as it would be without renaming');
+		Assert.areEqual(1, requestsTo(driveMock, 'PATCH', ORIGINAL_DRIVE_ID).size());
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveLeavesACopyThatLivesInTheCopiesFolder() {
+		GoogleDriveHttpMock driveMock = buildPlacementMock();
+		answerCopyParent(driveMock, COPIES_FOLDER_ID);
+		answerMoves(driveMock);
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyPlacementConfig(false, COPIES_FOLDER_ID);
+		GoogleFileRelocationRequestDTO request = insertPlacementFixture();
+
+		Test.startTest();
+		placeAndCommit(request);
+		Test.stopTest();
+
+		Assert.areEqual(DESTINATION_FOLDER_ID, placedFolderId(request.localGoogleFileVersionId));
+		Assert.areEqual(1, requestsTo(driveMock, 'PATCH', ORIGINAL_DRIVE_ID).size(), 'The original moves into its record folder');
+		Assert.areEqual(0, requestsTo(driveMock, 'PATCH', COPY_DRIVE_ID).size(), 'A copy in the copies folder stays there, so record folders hold only originals');
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveMovesACopyStillBesideItsOriginal() {
+		GoogleDriveHttpMock driveMock = buildPlacementMock();
+		answerCopyParent(driveMock, ROOT_FOLDER_ID);
+		answerMoves(driveMock);
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyPlacementConfig(false, COPIES_FOLDER_ID);
+		GoogleFileRelocationRequestDTO request = insertPlacementFixture();
+
+		Test.startTest();
+		placeAndCommit(request);
+		Test.stopTest();
+
+		Assert.areEqual(1, requestsTo(driveMock, 'PATCH', COPY_DRIVE_ID).size(), 'A copy made before the folder was set, or beside the original by the fallback, still moves with it');
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveWithoutACopiesFolderMovesTheCopyWithoutReadingIt() {
+		GoogleDriveHttpMock driveMock = buildPlacementMock();
+		answerMoves(driveMock);
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyPlacementConfig(false, null);
+		GoogleFileRelocationRequestDTO request = insertPlacementFixture();
+
+		Test.startTest();
+		placeAndCommit(request);
+		Test.stopTest();
+
+		Assert.areEqual(1, requestsTo(driveMock, 'PATCH', COPY_DRIVE_ID).size(), 'Without a copies folder the copy moves with the original, as before');
+		Assert.areEqual(0, requestsTo(driveMock, 'GET', COPY_DRIVE_ID).size(), 'Without a copies folder placement costs no extra call');
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveUnreadableCopyIsLeftAndTheFileIsStillPlaced() {
+		GoogleDriveHttpMock driveMock = buildPlacementMock();
+		answerDrive(driveMock, 'GET', COPY_DRIVE_ID, 404, DRIVE_NOT_FOUND_BODY);
+		answerMoves(driveMock);
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyPlacementConfig(false, COPIES_FOLDER_ID);
+		GoogleFileRelocationRequestDTO request = insertPlacementFixture();
+
+		Exception placementFailure;
+		Test.startTest();
+		try {
+			placeAndCommit(request);
+		} catch (Exception ex) {
+			placementFailure = ex;
+		}
+		Test.stopTest();
+
+		Assert.isNull(placementFailure);
+		Assert.areEqual(DESTINATION_FOLDER_ID, placedFolderId(request.localGoogleFileVersionId));
+		Assert.areEqual(0, requestsTo(driveMock, 'PATCH', COPY_DRIVE_ID).size(), 'A copy whose folder cannot be read counts as not beside the original');
+	}
+
+	@IsTest
+	private static void testPlaceFilePositiveFailedCopyMoveKeepsTheOriginalsPlacement() {
+		GoogleDriveHttpMock driveMock = buildPlacementMock();
+		answerDrive(driveMock, 'PATCH', COPY_DRIVE_ID, 500, DRIVE_SERVER_ERROR_BODY);
+		answerMoves(driveMock);
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyPlacementConfig(false, null);
+		GoogleFileRelocationRequestDTO request = insertPlacementFixture();
+
+		Exception placementFailure;
+		Boolean isSettled;
+		Test.startTest();
+		try {
+			isSettled = placeAndCommit(request);
+		} catch (Exception ex) {
+			placementFailure = ex;
+		}
+		Test.stopTest();
+
+		Assert.isNull(placementFailure, 'Moving the copy is best effort');
+		Assert.isTrue(isSettled);
+		Assert.areEqual(DESTINATION_FOLDER_ID, placedFolderId(request.localGoogleFileVersionId), 'The original\'s placement stands when its copy cannot follow');
 	}
 }

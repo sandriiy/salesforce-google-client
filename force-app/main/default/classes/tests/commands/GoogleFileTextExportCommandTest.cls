@@ -109,4 +109,32 @@ private class GoogleFileTextExportCommandTest {
 		}
 		Assert.isTrue(exportedAsText, 'The preview copy must be exported in the format the caller asked for');
 	}
+
+	@IsTest
+	private static void testExportWorkspaceCopyPositiveReadsASpreadsheetCopyAsCsvText() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(driveMock);
+
+		GoogleFileVersion__c localFileVersion = GoogleCloudTestFactory.version()
+			.withType(GoogleCloudConstants.MIME_TYPE_CSV)
+			.withDriveId('GD_SHEET')
+			.withDocsId('SHEET_1')
+			.build();
+
+		Test.startTest();
+		new GoogleFileTextExportCommand(new GoogleClientApiProvider()).exportWorkspaceCopy(localFileVersion, GoogleCloudConstants.MIME_TYPE_TEXT);
+		Test.stopTest();
+
+		Boolean exportedAsCsv = false;
+		Boolean exportedAsPlainText = false;
+		for (GoogleDriveHttpMock.CapturedRequest captured : driveMock.getCapturedRequests()) {
+			if (captured.endpoint == null || !captured.endpoint.contains('SHEET_1')) continue;
+
+			String endpoint = captured.endpoint.toLowerCase();
+			exportedAsCsv = exportedAsCsv || endpoint.contains('mimetype=text%2fcsv');
+			exportedAsPlainText = exportedAsPlainText || endpoint.contains('mimetype=text%2fplain');
+		}
+		Assert.isTrue(exportedAsCsv, 'Google Sheets cannot export plain text, so a spreadsheet copy is read as CSV');
+		Assert.isFalse(exportedAsPlainText, 'Asking a spreadsheet copy for plain text fails with a 400 from Drive');
+	}
 }

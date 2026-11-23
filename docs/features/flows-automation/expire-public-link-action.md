@@ -2,17 +2,17 @@
 
 **Type:** Action, listed under the **Google Client** category in Flow Builder.
 
-Withdraws the public link of a file version. The link stops working for anyone holding it, and the file goes back to being reachable only through Salesforce.
+Withdraws the public link of a file version. The link stops working for anyone holding it, and the file is again reachable only through Salesforce.
 
-Google Client ships a record triggered flow that already uses this action to withdraw links on their expiry date, so in most orgs nothing has to be built.
+Google Client ships a record triggered flow that already uses this action to withdraw links on their expiry date, so in most orgs there is nothing to build.
 
-## When To Use It
+## When to use it
 
 - Withdraw a link early, before the date it was set to expire.
 - Withdraw every link on a record when a case closes or a deal is lost.
 - Withdraw links on a schedule that follows your own rules rather than the expiry date.
 
-## How To Add It To A Flow
+## How to add it to a flow
 
 1. Open **Flow Builder** in Salesforce Setup.
 2. Create a flow, or open an existing one.
@@ -26,12 +26,5 @@ Google Client ships a record triggered flow that already uses this action to wit
 | Input | Required | Description |
 |---|---|---|
 | **localFileRecordId** | Yes | The Google File Version whose public link is withdrawn. This is the version Id, not the file Id. |
-
-The action returns nothing. A version that has no public link is left alone.
-
-!!! warning
-    Withdrawing a link cannot be undone, and a new link gets a different address, so anything holding the old one has to be updated. Place it on an **asynchronous path** in a record triggered flow.
-
-📘 See [Public Links](../public-links.md) for how links are created and how expiry dates work.
 
 <br>

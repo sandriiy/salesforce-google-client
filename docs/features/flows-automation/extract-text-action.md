@@ -4,13 +4,13 @@
 
 Reads the content of a Google Client file as plain text, so the rest of the flow can work with what the file actually says.
 
-## When To Use It
+## When to use it
 
 - Feed a document into a prompt template so a model can answer questions about it.
 - Check whether a file contains specific wording before the flow continues.
 - Copy part of a document onto a record field.
 
-## How To Add It To A Flow
+## How to add it to a flow
 
 1. Open **Flow Builder** in Salesforce Setup.
 2. Create a flow, or open an existing one.
@@ -39,25 +39,22 @@ Reads the content of a Google Client file as plain text, so the rest of the flow
 | **Was Cut Short** | True when the text was cut at Maximum Characters |
 | **Google File Version ID**, **File Name** | The version that was read |
 
-## Which Files Can Be Read
+## Which files can be read
 
-Text comes from the preview copy Google Client prepares for documents, spreadsheets, PDFs and images, so it is available for every file type that can be previewed.
+Text comes from the Google Workspace copy that Google Client prepares for documents, spreadsheets, PDFs and images, so every file type that can be previewed can also be read.
 
 Plain text files such as `.txt`, `.csv` and `.md` are read straight from the upload and are ready the moment the file arrives.
 
+While **Store files only** is turned on under **Advanced** → **File Management**, only plain text files can be read. Every other file, including one that already has a Google Workspace copy, fails with "Text is not available for this file while file previews are turned off.", which a **Fault** path can catch.
+
 ![Extracted text in a flow screen](../../assets/images/flow_action_extract_text_result.png)
 
-## When Text Is Not Ready Yet
+## When text is not ready yet
 
-For a file uploaded moments earlier the preview copy may still be preparing. The action reports that text is not available yet, which is deliberately different from reporting that the file is empty.
+For a file uploaded moments earlier, the Google Workspace copy may still be in preparation. The action then reports that the text is not available yet, not that the file is empty. A file uploaded longer ago that has no copy reports that its text is not available.
 
-In a flow that uploads a file and then reads it, put the two in separate runs, or wait for the preview to be ready before reading. A record-triggered flow on an **asynchronous path** usually gives Google enough time on its own.
+A flow that uploads a file and reads it straight away usually gets this answer, while a record triggered flow on an **asynchronous path** usually finds the copy ready.
 
-Use **Maximum Characters** when the text feeds a prompt. It keeps the flow clear of the limits on how much text one element can hold, and **Was Cut Short** tells you whether anything was left behind.
-
-!!! note
-    Needs Google Drive [configured](../../setup/configure-drive.md). In a record triggered flow, place the action on an **asynchronous path**, and connect a **Fault** path to catch `{!$Flow.FaultMessage}`.
-
-📘 See [Download File from Google Drive](download-file-action.md) to save the file in Salesforce instead.
+**Maximum Characters** keeps a long text within what one flow element can hold, and **Was Cut Short** says whether anything was left out.
 
 <br>

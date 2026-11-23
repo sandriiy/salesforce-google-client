@@ -39,6 +39,8 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
     private GoogleFileQuestionCommand questionCommand = new GoogleFileQuestionCommand();
 	private GoogleFileLabelCommand labelCommand = new GoogleFileLabelCommand();
 	private IGenAiClient genAiClient;
+	@TestVisible
+	private GenAiGoogleAgentPlatformConfig genAiConfig;
 
     public GoogleAgentIntelligenceStrategy() {
         this(new GoogleMetadataConfigService(), new DefaultGoogleGenAiAccessTokenProvider());
@@ -57,21 +59,23 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
     private GoogleAgentIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiAccessTokenProvider tokenProvider) {
         this.metadataService = metadataService;
         this.tokenProvider = tokenProvider;
-		this.genAiClient = new GenAiClientFactory().google(
-            new GenAiGoogleAgentPlatformConfig(
-                metadataService.getGoogleAgentProjectId(),
-                metadataService.getGoogleAgentLocation(),
-                tokenProvider
-            )
-        );
+		this.genAiConfig = new GenAiGoogleAgentPlatformConfig(
+			metadataService.getGoogleAgentProjectId(),
+			metadataService.getGoogleAgentLocation(),
+			tokenProvider
+		);
+		this.genAiClient = new GenAiClientFactory().google(this.genAiConfig);
     }
 
 	/**
-	 * Sends a tiny request to check the project, location, model and token really work.
+	 * Sends a tiny request to check the project, location, model and token really work. A slow or busy
+	 * service is reported in plain words; any other failure keeps its full detail, which is what an
+	 * administrator needs to fix the setup.
 	 *
 	 * @return True when Agent Platform answered.
 	 */
 	public Boolean validate() {
+		new GoogleCalloutTimeResolver().startClock();
         validateAgentConfiguration(true);
 
         try {
@@ -81,11 +85,13 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 				.withMaxTokens(VALIDATION_OUTPUT_TOKENS)
                 .withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(VALIDATION_THINKING_BUDGET))
 				.build();
-			
+
+			applyRequestTimeout(0);
             GenAiResponse response = genAiClient.generate(validationRequest);
             return response != null && response.hasCandidates();
         } catch (Exception ex) {
-			throw new GoogleAgentConfigurationException(ex.getMessage());
+			String serviceFailureMessage = GoogleFileIntelligenceCommandBase.resolveServiceFailureMessage(ex);
+			throw new GoogleAgentConfigurationException(serviceFailureMessage != null ? serviceFailureMessage : ex.getMessage());
         }
 	}
 
@@ -106,6 +112,7 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
             return buildBlockedResult(ex.getMessage(), 'SUMMARY');
         }
 
+		applyRequestTimeout(0);
         return this.summarizeCommand.summarize(
 			localGoogleFileVersionId, 
 			'Agent Platform', 
@@ -132,6 +139,7 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
             return buildBlockedResult(ex.getMessage(), 'QUESTION');
         }
 
+		applyRequestTimeout(0);
         return this.questionCommand.answerQuestion(localGoogleFileVersionId, question, 'Agent Platform', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
@@ -152,7 +160,12 @@ public with sharing class GoogleAgentIntelligenceStrategy implements IGoogleFile
 			return buildBlockedLabelResult(ex.getMessage());
 		}
 
+		applyRequestTimeout(GoogleFileLabelCommand.LABEL_APPLY_RESERVE_MILLIS);
 		return this.labelCommand.label(localGoogleFileVersionId, 'Agent Platform', this.metadataService.getGoogleAiModel(), this.genAiClient);
+	}
+
+	private void applyRequestTimeout(Integer reservedMillis) {
+		this.genAiConfig.withTimeout(new GoogleCalloutTimeResolver().resolveRequestTimeoutMillis(reservedMillis));
 	}
 
     private void validateAgentConfiguration(Boolean resolveAccessToken) {

@@ -28,9 +28,12 @@
  * the Workspace copy only as a courtesy, since the original is the one that counts.
  */
 public with sharing class GoogleFileLabelCommand extends GoogleFileIntelligenceCommandBase {
+	public static final Integer LABEL_APPLY_RESERVE_MILLIS = 10000;
+
 	private static final String OPERATION_TYPE = GoogleAiPromptContext.OPERATION_LABEL;
 	private static final String NO_LABEL_ANSWER = 'None';
 	private static final Integer DECISION_OUTPUT_TOKENS = 64;
+	private static final String CUT_OFF_FINISH_REASON = 'MAX_TOKENS';
 	private static final Integer MAX_CONFIDENCE_PERCENT = 100;
 	private static final String MODIFIED_LABELS_FIELDS = 'modifiedLabels';
 	private static final Pattern DECISION_PATTERN = Pattern.compile('(?i)label\\s*:\\s*(.+?)\\s*confidence\\s*:\\s*(\\d{1,3})');
@@ -41,11 +44,15 @@ public with sharing class GoogleFileLabelCommand extends GoogleFileIntelligenceC
 	private GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 	private List<GoogleAiLabelDefinitionDTO> labelDefinitions = new List<GoogleAiLabelDefinitionDTO>();
 	private GoogleFileVersion__c targetFileVersion;
+	private Exception labelApplyFailure;
 
 	/**
 	 * Decides on a label for one version and applies it when the confidence reaches the configured minimum.
 	 * A file the model is unsure about comes back with applied false and no error, which is the normal way
-	 * for a file to stay unlabeled.
+	 * for a file to stay unlabeled. retryable is set when the model call failed for a passing reason, when
+	 * the answer was cut off at the token limit before it led to a label, since a cut decision is never
+	 * trustworthy, or when the transaction ran out of callout time before Drive could apply the label,
+	 * never when Drive refused it.
 	 *
 	 * @param localGoogleFileVersionId The version to label.
 	 * @param providerName The provider name to report back.
@@ -68,6 +75,7 @@ public with sharing class GoogleFileLabelCommand extends GoogleFileIntelligenceC
 		result.blocked = analysis.blocked;
 		result.finishReason = analysis.finishReason;
 		result.errorMessage = analysis.errorMessage;
+		result.retryable = analysis.retryable;
 		if (analysis.success != true || String.isBlank(analysis.text)) {
 			return result;
 		}
@@ -78,6 +86,7 @@ public with sharing class GoogleFileLabelCommand extends GoogleFileIntelligenceC
 		result.labelName = decision.definition == null ? null : decision.definition.name;
 		result.labelId = decision.definition == null ? null : decision.definition.labelId;
 		if (decision.definition == null || decision.confidence < metadataService.getAiLabelingMinConfidence()) {
+			result.retryable = analysis.finishReason == CUT_OFF_FINISH_REASON;
 			return result;
 		}
 
@@ -186,6 +195,7 @@ public with sharing class GoogleFileLabelCommand extends GoogleFileIntelligenceC
 		String originalFailure = modifyLabels(remoteGoogleDrive, originalFileId, definition, localGoogleFileVersionId);
 		if (originalFailure != null) {
 			result.errorMessage = originalFailure;
+			result.retryable = new GoogleTransientFailureResolver().isCalloutTimeExhausted(this.labelApplyFailure);
 			return false;
 		}
 
@@ -206,6 +216,7 @@ public with sharing class GoogleFileLabelCommand extends GoogleFileIntelligenceC
 
 			return null;
 		} catch (Exception ex) {
+			this.labelApplyFailure = ex;
 			Logger.error('Google Drive label could not be applied --> VersionId=' + localGoogleFileVersionId + ', FileId=' + remoteFileId + ', Label=' + definition.name + ', Message=' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();
 			return ex.getMessage();

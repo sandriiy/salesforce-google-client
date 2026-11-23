@@ -101,7 +101,9 @@ public with sharing class GoogleFileMigrationJob extends GQueueableJob.AllowsCal
 			scheduleNextStep(new GoogleFileMigrationJob(this.request, step.cursor, step.nextPosition, this.stepNumber + 1));
 		}
 
-		Logger.saveLog();
+		if (step.failedCount > 0) {
+			Logger.saveLog();
+		}
 	}
 
 	private void scheduleNextStep(GoogleFileMigrationJob nextStep) {

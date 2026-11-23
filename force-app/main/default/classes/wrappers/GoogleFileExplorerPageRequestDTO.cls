@@ -23,8 +23,8 @@
  */
 /**
  * What File Explorer asks for when it loads a page, and the cursor it comes back with. The cursor is the
- * sort value and Id of the last row, encoded, so the next page continues exactly where this one stopped
- * even when files are added while somebody scrolls.
+ * Id of the last row, encoded, and the next page reads that row's sort value on the server, so it
+ * continues exactly where this one stopped and never tells the browser anything about a file it skipped.
  */
 public with sharing class GoogleFileExplorerPageRequestDTO {
 	@AuraEnabled public String sortField;
@@ -113,9 +113,7 @@ public with sharing class GoogleFileExplorerPageRequestDTO {
 	}
 
 	/**
-	 * The sort value the cursor stopped at, back in its own type.
-	 *
-	 * @return The value, or null for the first page or an unreadable cursor.
+	 * Deprecated. Use sortValueOf(GoogleFile__c) instead.
 	 */
 	public Object decodedCursorValue() {
 		CursorState state = parseCursor();
@@ -133,21 +131,29 @@ public with sharing class GoogleFileExplorerPageRequestDTO {
 	}
 
 	/**
-	 * Builds the cursor for the next page out of the last row of this one.
+	 * Builds the cursor for the next page out of the last row of this one. It carries the row's Id and
+	 * nothing else about the file, because the last row scanned can be one the user cannot open.
 	 *
 	 * @param lastRow The last file returned.
 	 * @return The cursor to hand back to the component.
 	 */
 	public String encodeCursorFrom(GoogleFile__c lastRow) {
-		String path = sortPath();
-		String type = fieldType(path);
-
 		CursorState state = new CursorState();
-		state.type = type;
-		state.value = encodeValue(type, extractSortValue(lastRow, path));
+		state.type = fieldType(sortPath());
 		state.recordId = lastRow.Id;
 
 		return EncodingUtil.base64Encode(Blob.valueOf(JSON.serialize(state)));
+	}
+
+	/**
+	 * The value this request sorts by on a row, which is where the next page continues from. Read it from
+	 * the cursor row on the server rather than from anything the browser sent back.
+	 *
+	 * @param row A file queried with its name, dates, link count, owner name and creator name.
+	 * @return The sort value, or null when the row has none.
+	 */
+	public Object sortValueOf(GoogleFile__c row) {
+		return extractSortValue(row, sortPath());
 	}
 
 	private CursorState parseCursor() {
@@ -177,12 +183,6 @@ public with sharing class GoogleFileExplorerPageRequestDTO {
 		return null;
 	}
 
-	private String encodeValue(String type, Object value) {
-		if (value == null) return null;
-		if (type == 'datetime') return ((Datetime) value).formatGmt('yyyy-MM-dd\'T\'HH:mm:ss.SSS\'Z\'');
-		return String.valueOf(value);
-	}
-
 	private Object decodeValue(String type, String value) {
 		if (String.isBlank(value)) return null;
 		if (type == 'datetime') return (Datetime) JSON.deserialize('"' + value + '"', Datetime.class);
@@ -191,7 +191,8 @@ public with sharing class GoogleFileExplorerPageRequestDTO {
 	}
 
 	/**
-	 * What a cursor holds: the sort value, its type so it can be read back, and the Id that breaks ties.
+	 * What a cursor holds: the Id of the row to continue after and the type of the sort column. value is
+	 * left empty by encodeCursorFrom() and is only ever filled in cursors written before 2.4.0.
 	 */
 	public class CursorState {
 		public String type;

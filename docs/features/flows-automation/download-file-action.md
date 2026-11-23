@@ -6,13 +6,13 @@ Brings a Google Client file back into Salesforce as an ordinary Salesforce file,
 
 Give it a Google File to download the latest version, or a specific Google File Version to download exactly that one.
 
-## When To Use It
+## When to use it
 
 - Attach a document to an email the flow sends, since Salesforce can only send files it holds.
 - Hand a file to another system or process that reads Salesforce files.
 - Produce a PDF of a Google document and save it on the record.
 
-## How To Add It To A Flow
+## How to add it to a flow
 
 1. Open **Flow Builder** in Salesforce Setup.
 2. Create a flow, or open an existing one.
@@ -41,22 +41,17 @@ Give it a Google File to download the latest version, or a specific Google File 
 | **Content Document ID** | The new Salesforce file |
 | **File Name**, **File Size (bytes)** | What was saved |
 
-## Converting While Downloading
+## Converting while downloading
 
-**Convert To** works for documents and spreadsheets that have a preview copy. Use the file extension of the format you want:
+**Convert To** works for documents and spreadsheets that have a Google Workspace copy. Use the file extension of the format you want:
 
 | Original | Formats you can ask for |
 |---|---|
 | Documents | `docx`, `pdf`, `odt`, `txt`, `rtf`, `epub`, `md`, `zip` |
 | Spreadsheets | `xlsx`, `ods`, `pdf`, `csv`, `tsv`, `zip` |
 
-Asking for a format the file cannot produce faults with a message saying the format is unavailable, so a flow never saves something unexpected.
+Asking for a format the file cannot produce faults with a message saying the format is unavailable. While **Store files only** is turned on, conversion is not available and only the original file can be downloaded.
 
-A downloaded file passes through Salesforce, so download a few at a time rather than a large batch in one element.
-
-!!! note
-    Needs Google Drive [configured](../../setup/configure-drive.md). In a record triggered flow, place the action on an **asynchronous path**, and connect a **Fault** path to catch `{!$Flow.FaultMessage}`.
-
-📘 See [Extract File Content as Text from Google Drive](extract-text-action.md) to read a file without saving a copy.
+Every downloaded file passes through Salesforce, and a batch larger than one element can hold is refused.
 
 <br>

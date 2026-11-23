@@ -1,50 +1,52 @@
-# Public Link Creation
+# Public Links
 
-Public links allow users with **Collaboration Access** to share files with people who do **not** have Salesforce access.
-
-This is useful for:
+Public links let users with **Collaborator** access share a file with people who have **no** Salesforce access, such as:
 
 - Contractors
 - External partners
 - Vendors
-- Email-based collaboration
+- Anyone you work with by email
 
-## How It Works
+## How it works
 
-Public links:
+A public link:
 
-- Are created from Salesforce
-- Can include an expiration date
-- Require **no** Salesforce login to access
-- Open in a **Google Drive view** in a separate tab
+- Is created from Salesforce
+- Can carry an expiry date
+- Needs **no** Salesforce login to open
+- Opens the file in a **Google Drive view** in a separate tab
 
 ![Public Link Window](../assets/images/client_public_link_window.png)
 
-## Organization-Domain Restriction (Optional)
+## Limiting links to your domain (optional)
 
-For enterprise usage, you can restrict public links to your **organization’s domain** (for example, `cloudrylabs.com`). When enabled, the link remains shareable, but **only users signed in under that domain** can open it.
+You can keep public links inside your **organization's domain**, for example `astertrail.com`. The link can still be passed around, but **only people signed in under that domain** can open it.
 
-This setting is configured in the **Google Client** application and is stored in **Custom Metadata**.
+An administrator sets the domain under **Advanced** → **File Management**. Once it is set, every new link is limited to the domain unless the person creating it ticks the checkbox in the Public Link window to make that one link open for anyone.
 
 ![Org Domain Setting](../assets/images/client_public_link_org_domain.png)
 
-## Creating a Public Link
+📘 See [File Management](../config/advanced/file-management.md)
 
-1. Open a file
-2. File opens in the **Preview Window**
-3. Click the **Public Link** button (third button on toolbar)
-4. Set an expiration date (recommended)
-5. Create the link
+## Creating a public link
 
-After creation, you will receive a URL that can be copied and shared immediately.
+1. Open a file.
+2. The file opens in the **preview window**.
+3. Click the **Public Link** button, the third button on the toolbar.
+4. Set an expiry date, if the link should stop working on its own.
+5. Create the link.
 
-## Access Behavior
+You get a link you can copy and share straight away.
 
-- Recipients view the file through Google Drive
-- Access can be revoked at any time
-- Expired links delete automatically
-- If **Organization-Domain Restriction** is enabled, recipients outside your domain will be blocked
+## Access
 
-This feature gives you the flexibility of external sharing **without increasing Salesforce license count**.
+- Recipients view the file through Google Drive.
+- A link can be withdrawn at any time.
+- A link is withdrawn automatically on its expiry date.
+- When links are limited to your domain, recipients outside it cannot open them.
+
+External sharing this way needs **no extra Salesforce licenses**.
+
+📘 See [Public Link Expiration](flows-automation/expire-public-link-action.md) to withdraw links from a flow.
 
 <br>

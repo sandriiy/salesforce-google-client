@@ -1,158 +1,142 @@
 # Security & Access Model
 
-This page explains, in simple terms, how **file access and security** work in the Google Client for Salesforce.
+How Google Client decides who can see a file and what they can do with it.
 
-The goal of this model is to ensure that:
+The model is built so that:
 
-- People only see the Files they are allowed to see  
-- Access is consistent across Salesforce and Experience Cloud  
-- File rules are clear and predictable 
+- People see only the files they are allowed to see
+- Access works the same way in Lightning and on Experience Cloud sites
+- The rules are clear and predictable
 
-All of this is enforced by a **dedicated security layer** inside the Google Client, not by Salesforce’s standard file sharing model. This gives the solution full control over how Files are exposed while still respecting your existing record access and Google Workspace policies.
+All of this is enforced by a **dedicated security layer** inside Google Client, not by Salesforce's standard file sharing. A file can be linked to records of any object, which Salesforce sharing cannot follow, so Google Client decides access itself while still respecting your record access and your Google Workspace policies.
 
-## High-Level Principles
+## The two questions
 
-When a user tries to work with Files (preview, share, create a public link, upload a new version, etc.), the system runs an access check that answers two questions:
+Whenever someone works with a file, by opening it, sharing it, creating a public link, uploading a new version or anything else, Google Client answers two questions:
 
-1. **Should this user see this File at all?**  
-2. **If yes, do they have View access or Edit access?**
+1. **Should this user see the file at all?**
+2. **If so, do they have View access or Edit access?**
 
-The result is:
-
-- Files the user **should not see** are simply **filtered out**
-- Files the user **can see** are marked with a **User Access Level** (View or Edit)
-
-This happens automatically in the background and is applied consistently, no matter where the File appears in Salesforce.
+Files the user should not see are **left out entirely**. Files they can see carry their **access level**, View or Edit. The check runs on the server for every list and every action, wherever the file appears.
 
 ## Ownership
 
-Every File has an **owner**.
+Every file has an **owner**.
 
-- The owner always has **Edit** access to the File.
-- This includes all versions of the File.
+- The owner always has **Edit** access to the file, including all of its versions.
+- Ownership is the strongest kind of access and cannot be taken away from the owner.
 
-Ownership is the strongest kind of access and cannot be taken away from the owner.
+## Direct sharing with people and groups
 
-## Direct Sharing with People and Groups
-
-A File can be **explicitly shared** with:
+A file can be **shared directly** with:
 
 - Individual users
-- Groups
-- Queues (for work distribution scenarios)
+- Public groups
+- Queues
 
-For each of these, two access levels are possible:
+Each share gives one of two access levels:
 
-- **Viewer** – can open, preview, and download the File  
-- **Collaborator** – full access, including editing and uploading new versions  
+- **Viewer**: can open, preview and download the file
+- **Collaborator**: full access, including changes and new versions
 
-If a user is part of any group or queue that has access, that File is treated as shared with them.
+A user who belongs to a group or queue the file is shared with is treated as sharing in that access.
 
-The system always looks for the **highest** access level a person has (for example, if they are a Viewer via one share and a Collaborator via another, they are treated as a Collaborator).
+When a person has several shares, the **highest** level wins. A Viewer through one share and a Collaborator through another is a Collaborator.
 
-## Files Assigned to Records
+## Files linked to records
 
-Files can be **assigned to records** (for example, a File attached to an Account, Case, Opportunity, etc.). When this happens, the system creates a **File Link** that connects the File to that record.
+A file can be **linked to records**, such as an Account, a Case or an Opportunity. Each link is a **Google File Link** record that connects the file to one record, and a single file can be linked to many records without the file being duplicated.
 
-A single File can be linked to multiple Salesforce records. This allows teams to reuse one Google Drive file across related business records without duplicating the file.
+Each link has a **Share Type** that decides what access, if any, the record can give:
 
-Each File Link includes a **Share Type** that defines what access (if any) this record relationship can grant:
+| Share Type | Stored value | What it grants |
+|---|---|---|
+| **Viewer** | `Viewer` | View access to anyone who can see the record |
+| **Collaborator** | `Collaborator` | Edit access to anyone who can see the record |
+| **Set by Record** | `InferredFromRecord` | Access that follows the user's access to the record |
+| **None** | `None` | **No access** through the record. The file stays linked to show where it belongs, but only the owner and the people it is shared with can reach it. |
 
-- **Viewer** – grants View access (if the record is visible to the user)  
-- **Collaborator** – grants Edit access (if the record is visible to the user)  
-- **InferredFromRecord** – grants access based on the user’s access to the linked Salesforce record  
-- **None** – grants **no access** through the record relationship; the File remains linked for traceability, but access is limited strictly to the owner and people the owner explicitly shared the File with  
+The sharing window offers **None**, **Viewer** and **Set by Record**. **Collaborator** links come from automation and from migrated files.
 
-When Share Type is **InferredFromRecord**, the File can **inherit access** from the record it is assigned to:
+With **Set by Record**, the file follows the record:
 
-- If a user has **edit rights** on the record → they may get **Edit** access to the File  
-- If a user has **read-only rights** on the record → they may get **View** access to the File  
-- If a user cannot see the record → they will not see the File through that relationship  
+- A user with **edit** access to the record gets **Edit** access to the file
+- A user with **read** access to the record gets **View** access to the file
+- A user who cannot see the record gets nothing through that link
 
-This “inherit from record” behavior is especially useful when:
+## Files linked to several records
 
-- Many users work on the same record  
-- Access is already carefully managed at the record level  
-- You want File access to stay aligned with how people work in Salesforce today  
+When a file is linked to more than one record, Google Client considers every linked record the current user can actually reach.
 
-## Multi-Record Access Resolution
+For example:
 
-When a File is linked to more than one record, Google Client evaluates all valid linked records the current user can use as an access path.
-
-Example:
-
-- A File is linked to Record A and Record B
+- A file is linked to Record A and Record B
 - User 1 can read Record A
-- User 2 can read only unrelated Record C
+- User 2 can read only an unrelated Record C
 
-User 1 may receive access through Record A, depending on the File Link Share Type. User 2 does not receive access through Record C because Record C is not linked to the File.
+User 1 may get access through Record A, depending on that link's Share Type. User 2 gets nothing through Record C, because Record C is not linked to the file.
 
-This prevents accidental exposure when files are reused across records. Reuse expands legitimate business context; it does not make a file globally visible.
+Reusing a file across records extends it to legitimate business context. It never makes the file visible to everyone.
 
-## Internal vs External Users
+## Internal and external users
 
-The access model treats **internal users** (employees, standard Salesforce users) and **external users** (Experience Cloud, customer or partner users) differently where it makes sense.
+The model treats **internal users** (employees on standard Salesforce licenses) and **external users** (Experience Cloud customers and partners) differently where it matters:
 
-Examples:
+- A file link can make the file visible to **all users**, or to **internal users only**
+- External users see only the files that are made available to them through sharing or a record
 
-- Some Files or links can be marked as visible to **all users**
-- Some Files or links can be restricted to **internal users only**
-- External users only see Files that are explicitly made available to them through sharing or record-based access
+So you can share files safely with customers and partners on an Experience Cloud site, keep internal documents for employees only, and use one file model for both.
 
-This allows you to:
+## Combining all access paths
 
-- Safely expose Files to customer and partner users in Experience Cloud  
-- Keep internal-only documents restricted to employees  
-- Use a consistent file model for both audiences  
+For every file, Google Client looks at:
 
-## Combining All Access Paths
+- Who owns it
+- Whether it is shared directly with the user, or with their groups and queues
+- Every record it is linked to, and what each link's **Share Type** allows
+- Whether it is visible to internal users only or to all users
 
-For any given File, the security layer looks at:
+The result is one access level:
 
-- Who owns the File  
-- Whether it has been shared directly with the user (or their groups/queues)  
-- Whether it is assigned to one or more records via File Links, and what each link’s **Share Type** allows  
-- Whether the File is allowed for internal users only or for all users  
+- **Edit**: the user can fully work with the file, including new versions
+- **View**: the user can see and download the file, but not change it
+- **No access**: the file is not returned at all
 
-From this, it calculates a final **User Access Level**:
+When several rules apply, the **highest** access level wins.
 
-- **Edit** – user can fully work with the File (including new versions)  
-- **View** – user can see and download the File, but not modify it  
-- **No Access** – the File is not returned at all  
+## Administrators: View All and Edit All
 
-If multiple rules apply, the system always chooses the **highest** access level the user qualifies for.
+Google Client ships two **custom permissions** that give access to every Google File. Nobody has them until an administrator adds them to a permission set or a profile.
 
-## Administrators: View-All and Edit-All Permissions
+The one exception is the **System Administrator** profile. Installing Google Client for admins only, as the [installation guide](install-overview.md) does, gives that profile both permissions, so every System Administrator can open and change every internal file.
 
-Google Client ships two **custom permissions** that grant elevated access to every Google File. They are **not assigned by default** — an administrator adds them to a permission set or profile for the users who need them.
+- **Google Client: View All Files** (`GoogleClientViewAllAccess`) gives the user **at least View** on every file.
+- **Google Client: Edit All Files** (`GoogleClientEditAllAccess`) gives the user **Edit** on every file.
 
-- **Google Client: View All Files** (`GoogleClientViewAllAccess`) — the user gets **at least View** on every File.
-- **Google Client: Edit All Files** (`GoogleClientEditAllAccess`) — the user gets **Edit** on every File.
+They set a **minimum, not an override**: they only ever raise access, never lower it. An owner keeps **Edit**, and a collaborator keeps the level they were given. Users without either permission are judged by the rules above. The permissions decide which files a person may reach, but they do not replace the **Google Cloud Client User** permission set, which a person still needs to open a file at all.
 
-This is a **floor, not an override**: it only ever *raises* access, never lowers it. A File owner still keeps **Edit**, and a collaborator keeps whatever level they were granted; the permission simply guarantees a minimum for every other File. Users **without** either permission are evaluated exactly as before. The permissions decide which Files a person may reach; they do not replace the **Google Cloud Client User** permission set, which a person still needs to open a File at all.
+For safety, they apply to **internal users only**. An external user who holds one of them still follows the internal and external visibility rules and never sees files meant for internal users only.
 
-For safety, the floor applies to **internal users only**. An external (Experience Cloud) user who somehow holds one of these permissions still honors the internal-vs-external visibility rules and never sees internal-only Files.
-
-## Access to Google Drive Itself
+## Access in Google Drive itself
 
 Everything above governs what a person can reach **inside Salesforce**. One feature also gives a person access **in Google Drive**: [Open in Google Drive](features/open-in-drive.md).
 
 It is off until an administrator turns it on. When it is on, the rules are deliberately narrow:
 
-- Only the **owner** of a File can use it, and only if they are an **internal** user. Collaborators, people the File was shared with, administrators holding View-All or Edit-All, and Experience Cloud users never see the option.
-- The access granted is **view only**. The person can read, print, download, and keep their own copy.
+- Only the **owner** of a file can use it, and only an **internal** user. Collaborators, people the file is shared with, administrators holding View All or Edit All, and Experience Cloud users never see the option.
+- The access granted is **view only**. The person can read, print, download and keep their own copy.
 - The access covers **that one file**. It gives nothing on the folder, and nothing on any other file in it.
-- Where Google Drive supports timed access, it **ends after a week** on its own, and opening the file again extends it. Where it doesn't, the access stays until it is removed in Google Drive.
-- **Every grant is recorded** in the logs, so administrators can review who was given access to what, and when.
+- Where Google Drive supports timed access, it **ends after a week** on its own, and opening the file again extends it. Where it does not, the access stays until it is removed in Google Drive.
+- **Google Workspace records every grant** as a sharing change in its Drive audit log, so administrators can review who was given access to what, and when.
 
-Because access is granted in Google Drive rather than in Salesforce, it does not disappear the moment a Salesforce share changes. If a File changes owner, the previous owner keeps their view access in Drive until it expires.
+Because this access lives in Google Drive rather than in Salesforce, it does not disappear the moment something changes in Salesforce. If a file changes owner, the previous owner keeps their view access in Google Drive until it expires.
 
-## Finding Files with Global Search
+## Finding files with global search
 
-Google Files can be found through Salesforce **global search**, the same search box you use to find any other record.
+Google Files can be found through Salesforce **global search**, the same search box you use for any other record.
 
-Because global search follows Salesforce’s standard sharing, results include the Files you **own** or that have been **directly shared** with you. Files you can reach only through **record-based access** (a File Link on a record you can see) may not appear in global search, but they remain available through the **File Explorer** and the record components.
+Global search follows Salesforce's standard sharing, so it finds the files you **own** or that are **shared directly** with you. Files you can reach only through a record may not appear there, but they are always available in **File Explorer** and the record components.
 
-When you open a File from a search result, the security layer described above runs again before anything is shown. Search never bypasses these checks: if you are not allowed to see a File, opening it simply shows a “no access” message.
+When you open a file from a search result, the security layer runs again before anything is shown. Search never bypasses these checks: if you are not allowed to see a file, opening it shows a "no access" message.
 
 <br>

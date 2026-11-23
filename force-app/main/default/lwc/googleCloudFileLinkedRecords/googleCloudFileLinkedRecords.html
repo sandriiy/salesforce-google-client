@@ -1,5 +1,5 @@
 <template>
-    <c-google-cloud-base-card title="Linked Records" icon-name="utility:link" badge-text={badgeText}>
+    <c-google-cloud-base-card plain-title title="Linked Records" icon-name="utility:link" badge-text={badgeText}>
 		<div class="linked-records__body">
             <template lwc:if={isLoading}>
                 <div class="linked-records__state linked-records__state--loading">
@@ -31,7 +31,6 @@
             </template>
             <template lwc:else>
                 <div class="linked-records__state">
-                    <lightning-icon icon-name="utility:link" size="small" alternative-text="No linked records"></lightning-icon>
                     <p>This file is not linked to any records you have access to.</p>
                 </div>
             </template>

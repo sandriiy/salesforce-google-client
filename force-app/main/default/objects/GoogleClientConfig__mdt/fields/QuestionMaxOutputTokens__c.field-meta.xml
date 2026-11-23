@@ -2,10 +2,10 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>QuestionMaxOutputTokens__c</fullName>
     <defaultValue>1024</defaultValue>
-    <description>Maximum number of output tokens returned for AI document question responses.</description>
+    <description>Maximum number of output tokens returned for AI document question responses. 0 means no limit.</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>Maximum number of output tokens returned for AI document question responses.</inlineHelpText>
+    <inlineHelpText>Maximum number of output tokens returned for AI document question responses. 0 means no limit.</inlineHelpText>
     <label>Question Max Output Tokens</label>
     <precision>18</precision>
     <required>false</required>

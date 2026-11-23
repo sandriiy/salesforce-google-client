@@ -1,68 +1,69 @@
 # Sharing
 
-File sharing enables collaboration within your Salesforce organization without using Salesforce Files as storage.
+Sharing lets people work together on a file inside your Salesforce organization, without Salesforce Files as the storage.
 
-In Google Client, sharing is controlled through **two separate access paths**:
+In Google Client, a file reaches people through **two separate paths**:
 
-1. **Direct Sharing** (share with a user / group / queue)  
-2. **Record Link Access** (assign the file to a Salesforce record and define what that link grants)
+1. **Direct sharing**: share the file with a user, a group or a queue.
+2. **Record link access**: link the file to a Salesforce record and decide what that link grants.
 
-The security layer combines both paths and applies the **highest** access level the user qualifies for.
+Google Client combines both paths and applies the **highest** access level the user qualifies for.
 
-In 2.0.0, a file can be linked to more than one Salesforce record. Each valid record link can participate in access calculation, which makes file reuse practical without losing security control.
+In 2.0.0, a file can be linked to more than one Salesforce record. Each valid record link can give access, which makes file reuse practical without losing control of who sees what.
 
-## How to Open Sharing
+## How to open sharing
 
 1. Open a file in Salesforce.
-2. The file opens in the **Preview Window**.
-3. Click the **Share** button (second button on the toolbar).
+2. The file opens in the **preview window**.
+3. Click the **Share** button, the second button on the toolbar.
 
 ![Sharing Window](../assets/images/client_sharing_window.png)
 
-## 1) Direct Sharing (People & Groups)
+## 1. Direct sharing with people and groups
 
-Users with **Collaboration Access** can share files directly with:
+Users with **Collaborator** access can share a file directly with:
 
-- Internal Users
-- Public Groups
-- Queues (work distribution scenarios)
-- Customer Community Users (where applicable)
+- Internal users
+- Public groups
+- Queues
+- Experience Cloud users, where the site allows it
 
-**Note:** For collaborators, some sharing actions may be restricted and require the file owner to make the change, please keep this in mind.
+Some sharing changes are reserved for the file's owner.
 
-### Access Levels (Direct Sharing)
+### Access levels for direct sharing
 
-- **Viewer** — read-only: view or download  
-- **Collaborator** — full access: view, modify, upload new versions  
+- **Viewer**: can view and download the file.
+- **Collaborator**: full access, including changes and new versions.
 
-## 2) Record Link Access (Files Assigned to Records)
+## 2. Record link access
 
-A file can be **assigned to a Salesforce record** (Account, Case, Opportunity, etc.).  
-This creates a **File Link**, and each link has a **Share Type** that defines what access the record relationship can grant.
+A file can be **linked to a Salesforce record**, such as an Account, a Case or an Opportunity. Each link has a **Share Type** that decides what access the record can give.
 
-The same file can have multiple File Links. This means one Google Drive file can appear on several Salesforce records without uploading duplicate copies.
+The same file can be linked to several records, so one Google Drive file can appear on several records without duplicate uploads.
 
-### Share Type (Record Link)
+### Share Type
 
-| Share Type         | Behavior                                                                 |
-|-------------------|--------------------------------------------------------------------------|
-| **None**          | Grants **no access** through the record link (link is kept for traceability) |
-| **Viewer**        | Grants **View** access (if the user can see the record)                  |
-| **Set by Record** | Access is derived from record permissions (Edit → full, Read → read-only) |
+| Share Type | What it grants |
+|---|---|
+| **None** | **No access** through the record. The link is kept only to show where the file belongs. |
+| **Viewer** | **View** access to anyone who can see the record |
+| **Set by Record** | Access that follows the user's access to the record: Edit on the record gives Edit, Read gives View |
 
 ![Sharing Window with Record Links and Share Type](../assets/images/share_modal_window.png)
 
-## How Access Is Calculated
+## How access is decided
 
-For any file, the system evaluates:
+For every file, Google Client looks at:
 
-- Ownership
-- Direct shares (user / group / queue)
-- All valid record links and their Share Type
-- Internal vs external user rules
+- Who owns it
+- Direct shares with users, groups and queues
+- Every valid record link and its Share Type
+- Whether the user is internal or external
 
-If multiple rules apply, the Google Client security layer chooses the **highest** access level.
+When several of these apply, the **highest** access level wins.
 
-Record links do not expose a file through unrelated records. A user must have a valid access path through ownership, direct sharing, public link rules, or one of the linked records.
+Record links never expose a file through unrelated records. A user needs a valid path to the file through ownership, direct sharing or one of the records it is linked to.
+
+📘 See [Security & Access Model](../security.md) for the full rules.
 
 <br>

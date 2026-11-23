@@ -1,25 +1,27 @@
 # Audit & Logging
 
-Google Client gives administrators visibility into what is happening with files, both inside Salesforce and on the Google side.
+Google Client gives administrators visibility into what goes wrong with files inside Salesforce, and Google Workspace keeps its own record of what happens in Google Drive.
 
-## Salesforce Logging
+## Salesforce logs
 
-All significant actions taken through Google Client are captured using [**Nebula Logger**](https://github.com/jongpie/NebulaLogger){ target="_blank" rel="noopener noreferrer" }. This includes uploads, shares, access attempts, version changes, and any errors that occur.
+Google Client records failures through [**Nebula Logger**](https://github.com/jongpie/NebulaLogger){ target="_blank" rel="noopener noreferrer" }, tagged `Google Client for Salesforce` so its entries stand out in a shared org. The logs are stored inside Salesforce and need no third-party tooling.
 
-Logs are stored inside Salesforce and visible to administrators without any third-party tooling.
+The logs keep only what went wrong. When an upload, a background step or an AI request fails, the log is saved with every line of that run, so you see everything that led up to the failure. A run that succeeds saves nothing, and an attempt that Google Client will try again later is not saved as a failure.
 
-## Analytics Tab
+A few events are saved even though nothing failed, because administrators need to see them:
 
-The **Google Client** application includes a dedicated **Analytics** tab. It surfaces a built-in Salesforce dashboard that gives administrators a quick view of activity, errors, and usage patterns based on the captured log data — all without leaving the app.
+- The AI safety check blocking a question or an answer, or hiding a stored summary
+- A migration being started or stopped
+- The outcome of a direct browser upload
+
+## Analytics tab
+
+The **Google Client** app has an **Analytics** tab with a built-in Salesforce dashboard. It gives administrators a quick view of errors and activity based on the logs, without leaving the app.
 
 ![Analytics Tab](../assets/images/analytics_tab.png)
 
-## Google Workspace Audit Visibility
+## Google Workspace audit
 
-On the Google side, all file activity is tracked through standard Google Workspace tooling. Administrators can use the **Google Admin Console** and **Drive Audit Logs** to review file access events, sharing changes, and security alerts.
-
-## Why This Matters
-
-Between the Salesforce logs, the Analytics dashboard, and the Google-side audit trail, administrators have a complete picture of how files are accessed and managed. This supports compliance requirements, helps detect unexpected access, and provides a clear trace for any regulated operation.
+On the Google side, file activity is tracked by Google Workspace itself. The **Drive audit log** in the **Google Admin console** shows who opened files, sharing changes and security alerts.
 
 <br>

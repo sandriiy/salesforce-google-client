@@ -77,6 +77,19 @@ public with sharing class GoogleCloudFilesController {
 		);
 	}
 
+	@AuraEnabled
+	public static GoogleFileExplorerResultDTO searchFileExplorerFiles(String keyPhrases, String fileExtensions, Long minSizeBytes, Long maxSizeBytes, String createdFrom, String createdTo, String modifiedFrom, String modifiedTo, Integer minVersions, Integer maxVersions, String ownership, String linkState, String sortField, String sortDirection, String cursor, Integer pageSize) {
+		GoogleLocalFileService recordService = new GoogleLocalFileService();
+		return recordService.searchGoogleFilesPage(
+			GoogleFileExplorerSearchRequestDTO.of(keyPhrases, fileExtensions, minSizeBytes, maxSizeBytes, createdFrom, createdTo, modifiedFrom, modifiedTo, minVersions, maxVersions, ownership, linkState, sortField, sortDirection, cursor, pageSize)
+		);
+	}
+
+	@AuraEnabled
+	public static List<GoogleFileOwnerDTO> retrieveFileExplorerOwners() {
+		return new GoogleLocalFileService().retrieveFileExplorerOwners();
+	}
+
 	@AuraEnabled(cacheable=true)
 	public static List<GoogleFileColumnDTO> retrieveFileExplorerColumns() {
 		return new GoogleFileExplorerColumnResolver().resolveColumns();

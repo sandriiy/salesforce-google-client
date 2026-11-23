@@ -23,6 +23,11 @@
  */
 @IsTest
 private class GoogleFileCloudShortcutJobTest {
+	private static final String DESTINATION_FOLDER_ID = 'DEST_FOLDER_01';
+	private static final String RECORD_NAME = 'Acme Brochure';
+	private static final String TODAYS_RECORD_FOLDER_NAME = 'GoogleFile__c : Acme Brochure';
+	private static final String DRIVE_SERVER_ERROR_BODY = '{"error":{"code":500,"message":"Internal Error","errors":[{"domain":"global","reason":"internalError","message":"Internal Error"}]}}';
+
 	private static GoogleClientConfig__mdt buildFolderConfig(String uploadFolderId, String folderStructure) {
 		GoogleClientConfig__mdt config = new GoogleClientConfig__mdt();
 		config.DefaultGoogleUploadFolderId__c = uploadFolderId;
@@ -211,5 +216,134 @@ private class GoogleFileCloudShortcutJobTest {
 		Test.stopTest();
 
 		Assert.areEqual(0, driveMock.getCapturedRequests().size());
+	}
+
+	private static void applyRenameConfig(String patternsJson) {
+		GoogleClientConfig__mdt config = buildFolderConfig('ROOT_FOLDER_01', '{Record}');
+		config.IsFolderRenameEnabled__c = true;
+		config.RecordFolderNamePatterns__c = patternsJson;
+		GoogleMetadataConfigService.configRecordOverride = config;
+	}
+
+	private static GoogleDriveHttpMock buildRenameMock(Integer renameStatus, String renameBody) {
+		GoogleDriveHttpMock driveMock = buildExistingFolderMock(DESTINATION_FOLDER_ID);
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('PATCH')
+				.endpointContains('/files/' + DESTINATION_FOLDER_ID)
+		).thenReturnStatus(renameStatus, renameBody);
+		return driveMock;
+	}
+
+	private static GoogleFileCloudShortcutJob buildAttachJob() {
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFile__c record = GoogleCloudTestFactory.file().withName(RECORD_NAME).insertRecord();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('Attached File').insertRecord();
+
+		GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName('Attached File.pdf')
+			.withDriveId('GD_ATTACHED_TARGET')
+			.isLatest(true)
+			.insertRecord();
+
+		GoogleFileLink__c link = GoogleCloudTestFactory.link()
+			.forFile(localFile.Id)
+			.withLinkedRecord(record.Id)
+			.withLinkedType('GoogleFile__c')
+			.insertRecord();
+
+		return new GoogleFileCloudShortcutJob(UserInfo.getUserId(), localFile.Id, link.Id);
+	}
+
+	private static List<GoogleDriveHttpMock.CapturedRequest> renamesOf(GoogleDriveHttpMock driveMock) {
+		List<GoogleDriveHttpMock.CapturedRequest> renames = new List<GoogleDriveHttpMock.CapturedRequest>();
+		for (GoogleDriveHttpMock.CapturedRequest capturedRequest : driveMock.getCapturedRequests()) {
+			String endpoint = capturedRequest.endpoint == null ? '' : capturedRequest.endpoint.toLowerCase();
+			if (capturedRequest.method == 'PATCH' && endpoint.contains(('/files/' + DESTINATION_FOLDER_ID).toLowerCase())) renames.add(capturedRequest);
+		}
+
+		return renames;
+	}
+
+	private static Boolean hasShortcutRequest(GoogleDriveHttpMock driveMock) {
+		for (GoogleDriveHttpMock.CapturedRequest capturedRequest : driveMock.getCapturedRequests()) {
+			String endpoint = capturedRequest.endpoint == null ? '' : capturedRequest.endpoint.toLowerCase();
+			String body = capturedRequest.body == null ? '' : capturedRequest.body;
+			if (capturedRequest.method == 'POST' && endpoint.contains('uploadtype=multipart') && body.contains('GD_ATTACHED_TARGET')) return true;
+		}
+
+		return false;
+	}
+
+	@IsTest
+	private static void testWorkPositiveRenamesTheRecordFolderOnAttachExisting() {
+		GoogleDriveHttpMock driveMock = buildRenameMock(200, '{"id":"' + DESTINATION_FOLDER_ID + '"}');
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyRenameConfig(null);
+		GoogleFileCloudShortcutJob attachJob = buildAttachJob();
+
+		Test.startTest();
+		attachJob.work();
+		Test.stopTest();
+
+		List<GoogleDriveHttpMock.CapturedRequest> renames = renamesOf(driveMock);
+		Assert.areEqual(1, renames.size(), 'Attaching an existing file to a record renames the folder it reaches');
+		Assert.isTrue(renames[0].body != null && renames[0].body.contains(TODAYS_RECORD_FOLDER_NAME));
+		Assert.isTrue(hasShortcutRequest(driveMock));
+	}
+
+	@IsTest
+	private static void testWorkPositiveFailedRenameStillCreatesTheShortcut() {
+		GoogleDriveHttpMock driveMock = buildRenameMock(500, DRIVE_SERVER_ERROR_BODY);
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyRenameConfig(null);
+		GoogleFileCloudShortcutJob attachJob = buildAttachJob();
+
+		Exception jobFailure;
+		Test.startTest();
+		try {
+			attachJob.work();
+		} catch (Exception ex) {
+			jobFailure = ex;
+		}
+		Test.stopTest();
+
+		Assert.isNull(jobFailure, 'A rename never fails the shortcut');
+		Assert.isTrue(hasShortcutRequest(driveMock), 'The shortcut lands in the folder as it would without renaming');
+	}
+
+	@IsTest
+	private static void testWorkPositiveSavesTheLogAfterARecordedError() {
+		GoogleDriveHttpMock driveMock = buildRenameMock(200, '{"id":"' + DESTINATION_FOLDER_ID + '"}');
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyRenameConfig(JSON.serialize(new List<Map<String, String>>{
+			new Map<String, String>{ 'objectApiName' => 'GoogleFile__c', 'pattern' => 'Name & Nope__c' }
+		}));
+		GoogleFileCloudShortcutJob attachJob = buildAttachJob();
+
+		Test.startTest();
+		attachJob.work();
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(hasShortcutRequest(driveMock));
+		Assert.areEqual(0, renamesOf(driveMock).size());
+		Assert.areEqual(0, unsavedLogEntries, 'A run that recorded an error saves its log at its end');
+	}
+
+	@IsTest
+	private static void testWorkPositiveSavesNothingAfterACleanRun() {
+		GoogleDriveHttpMock driveMock = buildRenameMock(200, '{"id":"' + DESTINATION_FOLDER_ID + '"}');
+		GoogleCloudTestFactory.initMocks(driveMock);
+		applyRenameConfig(null);
+		GoogleFileCloudShortcutJob attachJob = buildAttachJob();
+
+		Test.startTest();
+		attachJob.work();
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'A run without an error saves nothing');
 	}
 }

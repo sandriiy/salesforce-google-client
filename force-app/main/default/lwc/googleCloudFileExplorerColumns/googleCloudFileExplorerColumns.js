@@ -215,7 +215,8 @@ const buildExplorerRows = (rawFiles, resolvedColumns) => {
             createdById,
             fileOwner,
             fileOwnerId,
-            lastModifiedDisplay: formatDateAsDDMMYYYY_HHMM(file.lastModifiedDate)
+            createdDateDisplay: formatDateAsDDMMYYYY_HHMM(rawRecord?.CreatedDate || file.createdDate),
+            lastModifiedDisplay: formatDateAsDDMMYYYY_HHMM(rawRecord?.LastModifiedDate || file.lastModifiedDate)
         };
     });
 };

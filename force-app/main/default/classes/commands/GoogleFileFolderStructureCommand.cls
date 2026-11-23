@@ -29,6 +29,9 @@
  * folder that was just created. When another transaction is already creating the same folder
  * the resolution defers instead of making a duplicate, so check isResolutionDeferred() before
  * reading a null as "no folder". Every Drive call goes through GoogleClientApiProvider.
+ * A caller that places files can ask, through followCurrentNames(), for every folder it reaches to
+ * be renamed to its current name when renaming is switched on; a rename never fails, delays or
+ * redirects the resolution, and only a name GoogleDriveFolderNameResolver is certain of is used.
  */
 public without sharing class GoogleFileFolderStructureCommand {
 	public class GoogleFileFolderStructureCommandException extends Exception {}
@@ -38,21 +41,50 @@ public without sharing class GoogleFileFolderStructureCommand {
 	private static final String TARGET_TYPE_USER = 'User';
 	private static final String TARGET_TYPE_RECORD = 'Record';
 	private static final Integer SEARCH_MAX_RESULT = 25;
+	private static final String ERROR_LEVEL = 'ERROR';
+
+	@TestVisible
+	private static List<String> loggedFailures = new List<String>();
 
 	private final GoogleDrive remoteGoogleDrive;
 	private final GoogleMetadataConfigService metadataService;
-	private final GoogleLocalFileLinkEnrichmentService linkEnrichmentService;
+	private final GoogleDriveFolderNameResolver folderNameResolver;
 	private final GoogleCacheDriveFolderService folderCache;
 	private final Map<String, String> resolvedFolderIdsByKey = new Map<String, String>();
 
 	private Boolean isResolutionDeferred = false;
 	private Boolean ignoresPendingClaims = false;
+	private Boolean followsCurrentNames = false;
+	private Boolean hasRecordedErrors = false;
 
 	public GoogleFileFolderStructureCommand() {
 		this.remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
 		this.metadataService = new GoogleMetadataConfigService();
-		this.linkEnrichmentService = new GoogleLocalFileLinkEnrichmentService();
+		this.folderNameResolver = new GoogleDriveFolderNameResolver();
 		this.folderCache = new GoogleCacheDriveFolderService();
+	}
+
+	/**
+	 * Makes the command rename every folder it reaches to the name it would be given now, when renaming is
+	 * switched on. Only the jobs that place files use this; the upload's folder prefetch and the Create Folder
+	 * action never rename, so they never wait for Drive. A folder this instance created already carries its
+	 * name, and each folder is read and renamed at most once per instance.
+	 *
+	 * @return This same instance, so the call chains onto ensureFolder().
+	 */
+	public GoogleFileFolderStructureCommand followCurrentNames() {
+		this.followsCurrentNames = true;
+		return this;
+	}
+
+	/**
+	 * Says whether a rename failed or a folder name pattern could not be used, so the job knows to save the
+	 * log although the folder itself was resolved.
+	 *
+	 * @return True when an error line was written.
+	 */
+	public Boolean hasRecordedErrors() {
+		return this.hasRecordedErrors == true || this.folderNameResolver.hasRecordedErrors();
 	}
 
 	/**
@@ -170,42 +202,60 @@ public without sharing class GoogleFileFolderStructureCommand {
 
 	private String buildFolderName(String folderTargetType, Id uniqueIdValue) {
 		return folderTargetType == TARGET_TYPE_USER
-			? buildUserFolderName(uniqueIdValue)
-			: buildRecordFolderName(uniqueIdValue);
+			? this.folderNameResolver.buildNewUserFolderName(uniqueIdValue)
+			: this.folderNameResolver.buildNewRecordFolderName(uniqueIdValue);
 	}
 
-	private String buildUserFolderName(Id userId) {
-		User initiatingUser = loadUser(userId);
-		if (initiatingUser == null) return 'Unknown User';
-
-		String fullName = String.join(new List<String>{
-			String.isBlank(initiatingUser.FirstName) ? null : initiatingUser.FirstName,
-			String.isBlank(initiatingUser.LastName) ? null : initiatingUser.LastName
-		}, ' ').trim();
-
-		return 'User : ' + fullName;
+	private String resolveExpectedFolderName(String folderTargetType, Id uniqueIdValue) {
+		return folderTargetType == TARGET_TYPE_USER
+			? this.folderNameResolver.resolveExpectedUserFolderName(uniqueIdValue)
+			: this.folderNameResolver.resolveExpectedRecordFolderName(uniqueIdValue);
 	}
 
-	private User loadUser(Id userId) {
-		if (userId == null) return null;
+	private void followCurrentName(String folderTargetType, Id uniqueIdValue, String folderId, FoundFolder knownFolder) {
+		if (this.followsCurrentNames != true || !this.metadataService.isFolderRenameEnabled()) return;
 
-		List<User> users = (List<User>) GoogleUserSelector.query()
-			.withNameFields()
-			.byUserId(userId)
-			.limitTo(1)
-			.toList();
+		String expectedName = resolveExpectedFolderName(folderTargetType, uniqueIdValue);
+		if (String.isBlank(expectedName)) return;
 
-		return users.isEmpty() ? null : users[0];
+		try {
+			String currentName = knownFolder == null ? readFolderName(folderId) : knownFolder.name;
+			if (this.folderNameResolver.isSameFolderName(currentName, expectedName)) return;
+
+			remoteGoogleDrive.files().modify().metadata(folderId)
+				.setFileName(expectedName)
+				.setSupportsAllDrives(true)
+				.execute();
+
+			Logger.info(
+				'Folder Renamed --> FolderId=' + String.valueOf(folderId) +
+				', UniqueId=' + String.valueOf(uniqueIdValue) +
+				', From=' + String.valueOf(currentName) +
+				', To=' + expectedName
+			).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		} catch (Exception ex) {
+			recordError(
+				'Folder Rename Failed --> FolderId=' + String.valueOf(folderId) +
+				', UniqueId=' + String.valueOf(uniqueIdValue) +
+				', Message=' + ex.getMessage()
+			);
+		}
 	}
 
-	private String buildRecordFolderName(Id relatedRecordId) {
-		if (relatedRecordId == null) return null;
+	private String readFolderName(String folderId) {
+		GoogleFileEntity folder = remoteGoogleDrive.files().retrieve().download(folderId)
+			.setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.METADATA)
+			.setSearchOnAllDrives(true)
+			.setFields('id, name')
+			.execute();
 
-		Schema.SObjectType objectType = relatedRecordId.getSObjectType();
-		String objectApiName = objectType.getDescribe().getName();
-		String recordName = linkEnrichmentService.resolveLinkedRecordName(relatedRecordId);
+		return folder == null ? null : folder.name;
+	}
 
-		return objectApiName + ' : ' + (String.isBlank(recordName) ? 'Unknown Record' : recordName);
+	private void recordError(String message) {
+		Logger.error(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		loggedFailures.add(ERROR_LEVEL + ' ' + message);
+		this.hasRecordedErrors = true;
 	}
 
 	private String resolveDestinationFolderId(String folderStructure, String rootFolderId, Id userId, Id recordId, Boolean createIfMissing) {
@@ -249,6 +299,7 @@ public without sharing class GoogleFileFolderStructureCommand {
 
 		String cachedFolderId = this.folderCache.getFolderId(folderKey);
 		if (String.isNotBlank(cachedFolderId)) {
+			followCurrentName(folderTargetType, uniqueIdValue, cachedFolderId, null);
 			return rememberFolder(folderKey, cachedFolderId);
 		}
 
@@ -264,10 +315,11 @@ public without sharing class GoogleFileFolderStructureCommand {
 			return null;
 		}
 
-		String existingFolderId = findFolderIdByUniqueId(parentFolderId, uniqueIdValue);
-		if (String.isNotBlank(existingFolderId)) {
-			this.folderCache.putFolderId(folderKey, existingFolderId);
-			return rememberFolder(folderKey, existingFolderId);
+		FoundFolder existingFolder = findFolderByUniqueId(parentFolderId, uniqueIdValue);
+		if (existingFolder != null) {
+			this.folderCache.putFolderId(folderKey, existingFolder.id);
+			followCurrentName(folderTargetType, uniqueIdValue, existingFolder.id, existingFolder);
+			return rememberFolder(folderKey, existingFolder.id);
 		}
 
 		if (createIfMissing != true) return null;
@@ -296,7 +348,7 @@ public without sharing class GoogleFileFolderStructureCommand {
 		return folderId;
 	}
 
-	private String findFolderIdByUniqueId(String parentFolderId, Id uniqueIdValue) {
+	private FoundFolder findFolderByUniqueId(String parentFolderId, Id uniqueIdValue) {
 		String escapedParentId = escapeQueryValue(parentFolderId);
 		String escapedUniqueId = escapeQueryValue(uniqueIdValue);
 
@@ -314,20 +366,20 @@ public without sharing class GoogleFileFolderStructureCommand {
 
 		if (searchResult == null || searchResult.files == null) return null;
 
-		return selectAdoptableFolderId(searchResult.files);
+		return selectAdoptableFolder(searchResult.files);
 	}
 
-	private String selectAdoptableFolderId(List<GoogleFileEntity> matchingFolders) {
-		String adoptedFolderId = null;
+	private FoundFolder selectAdoptableFolder(List<GoogleFileEntity> matchingFolders) {
+		GoogleFileEntity adoptedFolder = null;
 
 		for (GoogleFileEntity matchingFolder : matchingFolders) {
 			if (matchingFolder == null || String.isBlank(matchingFolder.id)) continue;
-			if (adoptedFolderId == null || matchingFolder.id.compareTo(adoptedFolderId) < 0) {
-				adoptedFolderId = matchingFolder.id;
+			if (adoptedFolder == null || matchingFolder.id.compareTo(adoptedFolder.id) < 0) {
+				adoptedFolder = matchingFolder;
 			}
 		}
 
-		return adoptedFolderId;
+		return adoptedFolder == null ? null : new FoundFolder(adoptedFolder.id, adoptedFolder.name);
 	}
 
 	private String createFolder(String parentFolderId, String folderName, Id uniqueIdValue) {
@@ -363,4 +415,13 @@ public without sharing class GoogleFileFolderStructureCommand {
 		return value.replace('\\', '\\\\').replace('\'', '\\\'');
 	}
 
+	private class FoundFolder {
+		public final String id;
+		public final String name;
+
+		public FoundFolder(String id, String name) {
+			this.id = id;
+			this.name = name;
+		}
+	}
 }

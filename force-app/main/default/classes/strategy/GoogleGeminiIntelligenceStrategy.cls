@@ -40,6 +40,8 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 	private GoogleFileQuestionCommand questionCommand = new GoogleFileQuestionCommand();
 	private GoogleFileLabelCommand labelCommand = new GoogleFileLabelCommand();
 	private IGenAiClient genAiClient;
+	@TestVisible
+	private GenAiGoogleDeveloperConfig genAiConfig;
 
 	public GoogleGeminiIntelligenceStrategy() {
         this(new GoogleMetadataConfigService(), new DefaultGoogleGenAiApiKeyProvider());
@@ -59,11 +61,14 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 	private GoogleGeminiIntelligenceStrategy(GoogleMetadataConfigService metadataService, IGenAiApiKeyProvider apiKeyProvider) {
         this.metadataService = metadataService;
         this.apiKeyProvider = apiKeyProvider;
-		this.genAiClient = new GenAiClientFactory().google(new GenAiGoogleDeveloperConfig(apiKeyProvider));
+		this.genAiConfig = new GenAiGoogleDeveloperConfig(apiKeyProvider);
+		this.genAiClient = new GenAiClientFactory().google(this.genAiConfig);
     }
 
 	/**
-	 * Sends a tiny request to check the key and model really work.
+	 * Sends a tiny request to check the key and model really work. A slow or busy service is reported in
+	 * plain words; any other failure keeps its full detail, which is what an administrator needs to fix the
+	 * setup.
 	 *
 	 * @return True when Gemini answered.
 	 */
@@ -77,11 +82,13 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 				.withMaxTokens(VALIDATION_OUTPUT_TOKENS)
 				.withProviderOptions(new GenAiGoogleOptions().withThinkingBudget(VALIDATION_THINKING_BUDGET))
 				.build();
-				
+
+			applyRequestTimeout(0);
             GenAiResponse response = genAiClient.generate(validationRequest);
             return response != null && response.hasCandidates();
         } catch (Exception ex) {
-			throw new GoogleGeminiConfigurationException(ex.getMessage());
+			String serviceFailureMessage = GoogleFileIntelligenceCommandBase.resolveServiceFailureMessage(ex);
+			throw new GoogleGeminiConfigurationException(serviceFailureMessage != null ? serviceFailureMessage : ex.getMessage());
         }
 	}
 
@@ -102,6 +109,7 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 			return buildBlockedResult(ex.getMessage(), 'SUMMARY');
 		}
 
+		applyRequestTimeout(0);
 		return this.summarizeCommand.summarize(localGoogleFileVersionId, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
@@ -123,6 +131,7 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 			return buildBlockedResult(ex.getMessage(), 'QUESTION');
 		}
 
+		applyRequestTimeout(0);
 		return this.questionCommand.answerQuestion(localGoogleFileVersionId, question, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
 	}
 
@@ -143,7 +152,12 @@ public with sharing class GoogleGeminiIntelligenceStrategy implements IGoogleFil
 			return buildBlockedLabelResult(ex.getMessage());
 		}
 
+		applyRequestTimeout(GoogleFileLabelCommand.LABEL_APPLY_RESERVE_MILLIS);
 		return this.labelCommand.label(localGoogleFileVersionId, 'Gemini', this.metadataService.getGoogleAiModel(), this.genAiClient);
+	}
+
+	private void applyRequestTimeout(Integer reservedMillis) {
+		this.genAiConfig.withTimeout(new GoogleCalloutTimeResolver().resolveRequestTimeoutMillis(reservedMillis));
 	}
 
     private void validateGeminiConfiguration() {

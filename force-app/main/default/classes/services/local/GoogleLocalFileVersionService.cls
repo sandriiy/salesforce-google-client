@@ -33,6 +33,15 @@ public without sharing class GoogleLocalFileVersionService {
 	 */
 	public enum AccessLevel { View, Edit }
 
+	private static final Integer RECENT_COPY_WINDOW_MINUTES = 20;
+	private static final String DOWNLOAD_FORMAT_UNAVAILABLE_MESSAGE = 'The selected download format is unavailable for this file';
+	private static final String PREVIEW_UNAVAILABLE_MESSAGE = 'Preview Unavailable. Please download it to open';
+	private static final String PREVIEW_PREPARING_MESSAGE = 'Preview is being prepared. Please try again shortly or download the file';
+	private static final String PREVIEW_WITHOUT_COPY_MESSAGE = 'Preview unavailable for this file. Please download it to open';
+	private static final String TEXT_PREVIEWS_OFF_MESSAGE = 'Text is not available for this file while file previews are turned off.';
+	private static final String TEXT_PREPARING_MESSAGE = 'Text is not available for this file yet. Its preview copy may still be preparing, so please try again shortly';
+	private static final String TEXT_UNAVAILABLE_MESSAGE = 'Text is not available for this file.';
+
 	private final GoogleMetadataConfigService googleConfig;
 	private final GoogleClientApiProvider remoteFileService;
 
@@ -42,8 +51,10 @@ public without sharing class GoogleLocalFileVersionService {
 	}
 
 	/**
-	 * Says how a version should be previewed, or throws with the reason it cannot be. A document is judged
-	 * by the size of its Workspace copy rather than the upload, since that copy is usually far smaller.
+	 * Says how a version should be previewed, or throws with the reason it cannot be. PDFs and images are
+	 * shown as they are, so they preview even while previews are turned off. A document is judged by the
+	 * size of its Workspace copy rather than the upload, since that copy is usually far smaller, and a recent
+	 * upload whose copy is not ready or not measured yet is reported as being prepared.
 	 *
 	 * @param localFileVersionId The version being opened.
 	 * @return DIRECT for something the browser renders itself, CONVERT for the Workspace copy.
@@ -64,13 +75,18 @@ public without sharing class GoogleLocalFileVersionService {
 	}
 
 	/**
-	 * Downloads the version as a PDF, which is the shape to use from Apex.
+	 * Downloads the version as a PDF, which is the shape to use from Apex. A PDF is its own content; anything
+	 * else is converted from its Workspace copy, which is refused while previews are turned off.
 	 *
 	 * @param localFileVersionId The version to download.
 	 * @return The PDF content.
 	 */
 	public Blob downloadFileBodyAsPdf(Id localFileVersionId) {
 		GoogleFileVersion__c localFileVersion = queryLocalFileVersion(localFileVersionId);
+		if (localFileVersion != null && localFileVersion.Type__c != GoogleCloudConstants.MIME_TYPE_PDF && this.googleConfig.isPreviewDisabled()) {
+			throw new GoogleFileVersionException(DOWNLOAD_FORMAT_UNAVAILABLE_MESSAGE);
+		}
+
 		Logger.info('File Download As PDF --> VersionId=' + String.valueOf(localFileVersionId) + ', GoogleDriveFileId=' + String.valueOf(localFileVersion == null ? null : localFileVersion.GoogleDriveFileId__c)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		try {
 			GoogleFileEntity fileResult = exportOrDownloadAsPdf(localFileVersion);
@@ -118,13 +134,17 @@ public without sharing class GoogleLocalFileVersionService {
 
 	/**
 	 * Downloads a version you already loaded in another format, which saves a query when several files are
-	 * being converted in one go.
+	 * being converted in one go. Refused while previews are turned off, older copies included.
 	 *
 	 * @param localFileVersion The version loaded with its confidential fields.
 	 * @param exportMimeType A MIME type from the Download As options.
 	 * @return The converted content.
 	 */
 	public Blob downloadFileBodyAs(GoogleFileVersion__c localFileVersion, String exportMimeType) {
+		if (this.googleConfig.isPreviewDisabled()) {
+			throw new GoogleFileVersionException(DOWNLOAD_FORMAT_UNAVAILABLE_MESSAGE);
+		}
+
 		Logger.info('File Download As --> VersionId=' + String.valueOf(localFileVersion == null ? null : localFileVersion.Id) + ', ExportMimeType=' + exportMimeType + ', GoogleDocsFileId=' + String.valueOf(localFileVersion == null ? null : localFileVersion.GoogleDocsFileId__c)
 		).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
@@ -197,7 +217,7 @@ public without sharing class GoogleLocalFileVersionService {
 			}
 		}
 
-		throw new GoogleFileVersionException('The selected download format is unavailable for this file');
+		throw new GoogleFileVersionException(DOWNLOAD_FORMAT_UNAVAILABLE_MESSAGE);
 	}
 
 	/**
@@ -212,9 +232,11 @@ public without sharing class GoogleLocalFileVersionService {
 	}
 
 	/**
-	 * Reads several files as plain text, looking all the versions up in one query first. A file whose
-	 * Workspace copy is still being prepared is refused with a message saying so rather than returning
-	 * nothing, since the two are easy to confuse.
+	 * Reads several files as plain text, looking all the versions up in one query first. A file that cannot
+	 * be read is refused with a message saying why rather than returning nothing, since a blank file and one
+	 * whose Workspace copy is still being prepared are easy to confuse. While previews are turned off only
+	 * plain text uploads are read, from the upload itself; every other file is refused, older copies
+	 * included.
 	 *
 	 * @param requests One request per file or version.
 	 * @return One result per request, in the same order.
@@ -233,11 +255,14 @@ public without sharing class GoogleLocalFileVersionService {
 
 		Map<Id, GoogleFileVersion__c> versionsByRequestedId = resolveRequestedVersions(versionIds, fileIds);
 		GoogleFileTextExportCommand exportCommand = new GoogleFileTextExportCommand(this.remoteFileService);
+		Boolean isPreviewDisabled = this.googleConfig.isPreviewDisabled();
 
 		for (GoogleFileTextExtractRequestDTO request : requests) {
 			GoogleFileVersion__c localFileVersion = requireRequestedVersion(versionsByRequestedId, request == null ? null : request.googleFileVersionId, request == null ? null : request.googleFileId);
-			if (!exportCommand.supportsTextExtraction(localFileVersion)) {
-				throw new GoogleFileVersionException('Text is not available for this file. The preview copy may still be preparing, or the file type is not supported');
+			if (isPreviewDisabled) {
+				localFileVersion = requireUploadReadableAsText(localFileVersion);
+			} else if (!exportCommand.supportsTextExtraction(localFileVersion)) {
+				throw new GoogleFileVersionException(isCopyStillExpected(localFileVersion) ? TEXT_PREPARING_MESSAGE : TEXT_UNAVAILABLE_MESSAGE);
 			}
 
 			Logger.info('File Text Extract --> VersionId=' + String.valueOf(localFileVersion.Id) + ', GoogleDocsFileId=' + String.valueOf(localFileVersion.GoogleDocsFileId__c)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
@@ -352,37 +377,49 @@ public without sharing class GoogleLocalFileVersionService {
 	}
 
 	private GoogleFilePreviewAction assertPreviewEligible(GoogleFileVersion__c localFileVersion) {
-		if (this.googleConfig.isPreviewDisabled() || localFileVersion == null) {
-			throw new GoogleFileVersionException('Preview Unavailable. Please download it to open');
+		if (localFileVersion == null) {
+			throw new GoogleFileVersionException(PREVIEW_UNAVAILABLE_MESSAGE);
 		}
 
 		if (GoogleCloudConstants.DIRECT_PREVIEW_MIME_TYPES.contains(localFileVersion.Type__c)) {
 			return GoogleFilePreviewAction.DIRECT;
 		}
 
-		if (new GoogleFileVersionContextResolver().resolveWorkspaceCopySizeInBytes(localFileVersion) > this.googleConfig.getBigFileSizeInBytes()) {
-			throw new GoogleFileVersionException('Oops! This file is too large to preview. Please download it to open');
-		} else if (isVersionPreviewDocInProgress(localFileVersion)) {
-			throw new GoogleFileVersionException('Preview is being prepared. Please try again shortly or download the file');
+		if (this.googleConfig.isPreviewDisabled()) {
+			throw new GoogleFileVersionException(PREVIEW_UNAVAILABLE_MESSAGE);
 		} else if (isVersionPreviewDocUnavailable(localFileVersion)) {
 			throw new GoogleFileVersionException('Preview unavailable for the selected file type. Please download the file to open');
+		} else if (isCopyStillExpected(localFileVersion)) {
+			throw new GoogleFileVersionException(PREVIEW_PREPARING_MESSAGE);
+		} else if (String.isBlank(localFileVersion.GoogleDocsFileId__c)) {
+			throw new GoogleFileVersionException(PREVIEW_WITHOUT_COPY_MESSAGE);
+		} else if (new GoogleFileVersionContextResolver().resolveWorkspaceCopySizeInBytes(localFileVersion) > this.googleConfig.getBigFileSizeInBytes()) {
+			throw new GoogleFileVersionException('Oops! This file is too large to preview. Please download it to open');
 		}
 
 		return GoogleFilePreviewAction.CONVERT;
 	}
 
-	private Boolean isVersionPreviewDocInProgress(GoogleFileVersion__c fileVersion) {
-		return (
-			fileVersion.IsPreviewableFile__c &&
-			String.isBlank(fileVersion.GoogleDocsFileId__c) &&
-			fileVersion.Type__c != GoogleCloudConstants.MIME_TYPE_PDF
-		);
+	private Boolean isCopyStillExpected(GoogleFileVersion__c fileVersion) {
+		Boolean isCopyNotReady = String.isBlank(fileVersion.GoogleDocsFileId__c) || fileVersion.GoogleDocsFileSize__c == null;
+		return GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.containsKey(fileVersion.Type__c)
+			&& isCopyNotReady
+			&& fileVersion.CreatedDate != null
+			&& fileVersion.CreatedDate > Datetime.now().addMinutes(-RECENT_COPY_WINDOW_MINUTES);
+	}
+
+	private GoogleFileVersion__c requireUploadReadableAsText(GoogleFileVersion__c localFileVersion) {
+		if (!GoogleCloudConstants.PLAIN_TEXT_MIME_TYPES.contains(localFileVersion.Type__c) || String.isBlank(localFileVersion.GoogleDriveFileId__c)) {
+			throw new GoogleFileVersionException(TEXT_PREVIEWS_OFF_MESSAGE);
+		}
+
+		GoogleFileVersion__c uploadOnlyVersion = localFileVersion.clone(true, false, true, false);
+		uploadOnlyVersion.GoogleDocsFileId__c = null;
+		return uploadOnlyVersion;
 	}
 
 	private Boolean isVersionPreviewDocUnavailable(GoogleFileVersion__c fileVersion) {
-		return (
-			!fileVersion.IsPreviewableFile__c
-		);
+		return !fileVersion.IsPreviewableFile__c || !GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.containsKey(fileVersion.Type__c);
 	}
 
 	private List<GoogleFileDownloadAsOptionDTO> buildDownloadAsOptions(GoogleFileVersion__c localFileVersion) {
@@ -441,13 +478,13 @@ public without sharing class GoogleLocalFileVersionService {
 
 	private String assertSupportedDownloadAsMimeType(GoogleFileVersion__c localFileVersion, String exportMimeType) {
 		if (String.isBlank(exportMimeType)) {
-			throw new GoogleFileVersionException('The selected download format is unavailable for this file');
+			throw new GoogleFileVersionException(DOWNLOAD_FORMAT_UNAVAILABLE_MESSAGE);
 		}
 
 		String workspaceType = resolveGoogleWorkspaceType(localFileVersion);
 		List<GoogleFileDownloadAsOptionDTO> downloadAsTypes = GoogleCloudConstants.GOOGLE_WORKSPACE_DOWNLOAD_AS_TYPES.get(workspaceType);
 		if (downloadAsTypes == null || downloadAsTypes.isEmpty()) {
-			throw new GoogleFileVersionException('The selected download format is unavailable for this file');
+			throw new GoogleFileVersionException(DOWNLOAD_FORMAT_UNAVAILABLE_MESSAGE);
 		}
 
 		for (GoogleFileDownloadAsOptionDTO option : downloadAsTypes) {
@@ -456,7 +493,7 @@ public without sharing class GoogleLocalFileVersionService {
 			}
 		}
 
-		throw new GoogleFileVersionException('The selected download format is unavailable for this file');
+		throw new GoogleFileVersionException(DOWNLOAD_FORMAT_UNAVAILABLE_MESSAGE);
 	}
 
 	private GoogleFileEntity exportGoogleWorkspaceFile(GoogleFileVersion__c localFileVersion, String exportMimeType) {

@@ -122,6 +122,24 @@ private class GoogleLocalFileVersionLabelServiceTest {
 	}
 
 	@IsTest
+	private static void testSyncLabelNamesPositiveDroppedNameSavesNoLog() {
+		GoogleFileVersion__c version = createVersion('LBLSVC8');
+
+		List<GoogleFileVersionLabel__c> versionLabels = new List<GoogleFileVersionLabel__c>();
+		for (Integer index = 0; index < 4; index++) {
+			versionLabels.add(GoogleCloudTestFactory.versionLabel().forVersion(version.Id).withName(String.valueOf(index).leftPad(LABEL_NAME_LENGTH, 'x')).build());
+		}
+
+		Test.startTest();
+		insert versionLabels;
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(loadLabelNames(version.Id).length() <= 255);
+		Assert.isTrue(unsavedLogEntries > 0, 'A label name left out of the searchable list is routine, so nothing is saved for it');
+	}
+
+	@IsTest
 	private static void testRetrieveLabelsForFilePositive() {
 		GoogleFileVersion__c version = createVersion('LBLSVC3');
 		GoogleFileVersionLabel__c versionLabel = addLabel(version.Id, 'Invoice');

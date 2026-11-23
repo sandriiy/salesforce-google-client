@@ -54,3 +54,4 @@ site/
 **/venv/
 CLAUDE.md
 OPEN-QUESTIONS.md
+.claude/

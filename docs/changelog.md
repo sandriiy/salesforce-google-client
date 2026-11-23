@@ -2,6 +2,33 @@
 
 All notable changes to this client are documented here. Each entry describes what changed for administrators and end users of an installed package version.
 
+## [2.4.0] - 2026-11-23
+
+### Added
+
+- Download several files at once from the Uploader and from every File Explorer view, as one ZIP archive, the way Notes & Attachments already does.
+- Find files with the new **Search** view in File Explorer, by words from a file's name, summary or labels, and by filters for type, size, dates, versions, owner and linked records.
+- Name record and user folders in Google Drive with a Salesforce formula per object, and keep folder names in step when records are renamed.
+- Keep the Google Workspace copies used for previews, AI and Download As in a folder of their own, so record folders hold only the files people uploaded.
+- Check whether the running user may open or change a file with the new **Check Access to a Google File** Flow action.
+- Limit how long summaries may be with **Summary Max Output Tokens**. A 0 in either token setting means no limit.
+
+### Changed
+
+- AI copes with a slow or busy service: it gets up to two minutes to answer, and a summary or label that fails is tried again on its own.
+- Files reach their record folder before they are summarized, so a slow answer no longer holds a file in the wrong place.
+- The File Preview setting is now **Store files only**. PDFs and images still preview, and everything that needs a Google Workspace copy is off for every file.
+- Google Client logs only what went wrong.
+
+### Fixed
+
+- CSV and Excel files now get summaries, labels and answers, and the Extract Text action reads them.
+- A file still uploading in the Uploader is no longer lost from the list or saved as "Untitled".
+- File Explorer no longer stops loading or leaves files out while you scroll and search, and it fits smaller screens.
+- A question that takes too long, or reaches a busy AI service, now says so in plain words.
+- Deleting a file removes all its copies from Google Drive, even when one of them is already gone.
+- Closed three access gaps: someone without access to a file could open its details, a user without Google Client administrator access could check the settings, and the Upload File to Google Drive action could be run outside a flow.
+
 ## [2.3.0] - 2026-10-23
 
 ### Added

@@ -90,6 +90,18 @@ public inherited sharing class GoogleFileLinkSelector extends GSOQL implements G
 		return this;
 	}
 
+	/**
+	 * Keeps the links pointing at records of one object, which is how a record of that object that has a
+	 * Google Client file is found.
+	 *
+	 * @param objectApiName The object's API name, as the link stores it.
+	 * @return This same instance, so the call chains onto toList().
+	 */
+	public GoogleFileLinkSelector byLinkedObjectType(String objectApiName) {
+		whereAre(Filter.with(GoogleFileLink__c.LinkedObjectType__c).equal(objectApiName));
+		return this;
+	}
+
     /**
      * Selects just enough to work out which component a file belongs on.
      *

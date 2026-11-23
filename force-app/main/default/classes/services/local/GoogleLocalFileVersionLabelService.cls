@@ -179,8 +179,7 @@ public without sharing class GoogleLocalFileVersionLabelService {
 
 			String candidate = joined.length() == 0 ? labelName : joined + LABEL_NAME_SEPARATOR + labelName;
 			if (candidate.length() > MAX_LABEL_NAMES_LENGTH) {
-				Logger.warn('Google File Version label names exceed the field length; later labels are left out of the searchable list --> Dropped=' + labelName).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-				Logger.saveLog();
+				Logger.info('Google File Version label names exceed the field length; later labels are left out of the searchable list --> Dropped=' + labelName).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 				break;
 			}
 			joined = candidate;

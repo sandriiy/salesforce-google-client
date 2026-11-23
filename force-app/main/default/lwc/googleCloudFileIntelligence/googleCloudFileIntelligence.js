@@ -16,7 +16,7 @@ const MAX_QUESTION_CHARACTERS = 255;
 const DEFAULT_FILE_INTELLIGENCE_QUESTION_ERROR_MESSAGE = 'We could not answer that question. Try again in a moment.';
 const PARTIAL_RESPONSE_NOTE = 'Response may be incomplete.';
 const QUESTION_DISABLED_MESSAGE = 'Questions about this file are turned off. Contact your administrator for more information.';
-const INTELLIGENCE_RECHECK_DELAYS_MS = [20000, 60000, 30000];
+const INTELLIGENCE_RECHECK_DELAYS_MS = [20000, 60000, 30000, 70000];
 
 export default class GoogleCloudFileIntelligence extends LightningElement {
     @api recentlyUploaded = false;
@@ -210,10 +210,13 @@ export default class GoogleCloudFileIntelligence extends LightningElement {
                 return;
             }
 
-            const wasAwaitingAnalysis = this.isAwaitingAnalysis;
+            const hadSummary = this.intelligenceState?.hasSummary === true;
+            const hadLabels = this.labelNames.length > 0;
             this.intelligenceState = normalizeFileIntelligenceState(intelligenceState, versionId);
             this.isOpen = resolveFileIntelligencePanelOpen(this.intelligenceState, this.userOpenPreference);
-            if (isRecheck && wasAwaitingAnalysis && this.hasAnalysis) {
+            const hasNewSummary = !hadSummary && this.intelligenceState.hasSummary === true;
+            const hasNewLabels = !hadLabels && this.labelNames.length > 0;
+            if (isRecheck && (hasNewSummary || hasNewLabels)) {
                 this.isAnalysisUpdated = true;
             }
 
@@ -385,8 +388,12 @@ export default class GoogleCloudFileIntelligence extends LightningElement {
         return this.intelligenceState?.hasSummary === true || this.labelNames.length > 0;
     }
 
+    get isAwaitingLabel() {
+        return this.intelligenceState?.isLabelingEnabled === true && this.labelNames.length === 0;
+    }
+
     get isAwaitingAnalysis() {
-        return this.recentlyUploaded === true && !this.hasAnalysis;
+        return this.recentlyUploaded === true && (this.intelligenceState?.hasSummary !== true || this.isAwaitingLabel);
     }
 
     get labelNames() {

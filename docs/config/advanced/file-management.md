@@ -1,71 +1,59 @@
 # Advanced: File Management
 
-How files are previewed, transferred, and cleaned up, plus the domain that public links are restricted to.
+How files are stored, uploaded and previewed, plus the domain public links are limited to.
 
 Open the **Google Client** app → **Advanced** → **File Management**.
 
 ![File Management tab](../../assets/images/config_advanced_file_management.png)
 
-## File Preview
+## Store files only {#file-preview}
 
-Turns off the in-Salesforce preview window across every Google Client component.
+Google Client keeps a Google Workspace copy of most files (Word, Excel, CSV, PDF and images) in Google Drive. Previews of documents and spreadsheets, Download As, AI and reading a file's text all work from that copy.
 
-Files can still be uploaded, downloaded, shared, versioned, and linked to records. Only the preview experience is removed, and the preview action stops appearing rather than opening an empty window.
+**Store files only** stops making those copies. With it on:
 
-Leave this off unless your organization has a policy against rendering document content inside Salesforce. Turning it on also removes the place where AI summaries and file Q&A are shown, so those features become unreachable even when File Intelligence is enabled.
+- PDFs and images still preview.
+- Uploading, downloading, sharing, versioning and linking work as before.
+- Previews of documents and spreadsheets, Download As, and AI summaries, questions and labels are unavailable for every file. Summaries and labels already stored stay visible.
+- Only plain text files can be read as text.
 
-📘 See [Preview](../../features/preview.md)
+Copies that already exist stay in Google Drive, and files uploaded while it is on stay without one.
+
+![Store files only](../../assets/images/config_store_files_only.png)
+
+To keep the copies in a folder of their own instead, see [Google Workspace Folder](../workspace-copies-folder.md).
 
 ## Direct Browser Upload
 
-Sends large file content from the browser straight to Google Drive instead of routing every chunk through Salesforce, which makes large uploads noticeably faster.
+Sends large files from the browser straight to Google Drive, which makes large uploads noticeably faster. It is **off by default**, and once it is saved, **Test connection** checks the whole path without leaving a file in Google Drive.
 
-It is **off by default**. Until you turn it on, uploads behave exactly as they always have. Once it is saved, a **Test connection** button appears that verifies the whole path without leaving a file in Google Drive.
-
-📘 See [Direct Browser Upload](../direct-browser-upload.md) for what changes, what does not, and what happens when an upload cannot be sent directly.
+📘 See [Direct Browser Upload](../direct-browser-upload.md)
 
 ## Open in Google Drive
 
-Lets file owners open a file directly in Google Drive.
+Lets the owner of a file open it in Google Drive, with view access to that one file. Only internal users who own the file see the option. It is **off by default**.
 
-It is **off by default**. Until you turn it on, the option does not appear anywhere and files stay reachable only from Salesforce.
-
-When it is on, only the **owner** of a file sees the option, and only if they are an internal user. Opening a file gives that person **view access to that one file**. Where your Google Drive supports timed access it lasts a week, extended each time they open the file again; where it doesn't, it stays until removed in Google Drive. They can read, print, download, and save their own copy.
+![Open in Google Drive turned on](../../assets/images/config_open_in_drive.png)
 
 📘 See [Open in Google Drive](../../features/open-in-drive.md)
 
 ## Maximum Preview File Size
 
-The size, in bytes, above which a file is treated as large. It limits document and spreadsheet previews, Download As, and files uploaded from Flows in the same run; larger Flow uploads finish in the background.
+The size, in bytes, above which a file counts as large. It limits previews of documents and spreadsheets, Download As, and what the **Upload File to Google Drive** flow action uploads straight away; larger files from that action finish uploading in the background. PDFs and images preview whatever the value.
 
-Leave it **blank** to let Google Client use the largest size your Salesforce release supports: 2 MB up to Summer '26 and 3.5 MB from Winter '27. The help text next to the field shows the size that applies to your organization. Organizations that saved their settings in an earlier version have `2097152` (2 MB) stored here; clear the field and save to switch to the automatic size. A cleared field is stored as `0`, which means the same as blank.
-
-PDFs and images are previewed regardless of this value.
-
-For document and spreadsheet files the limit is compared against the Google Workspace preview version Google Client prepares, which is usually far smaller than the uploaded file, so a large upload can still be previewable. Files uploaded before 2.2.0 are compared by their uploaded size.
-
-Raising it above the automatic size is rarely useful. Salesforce limits how much data one operation can hold, and this setting does not change those limits — a value set too high produces errors rather than larger previews.
+Blank, or `0`, means the largest size your Salesforce release supports, which the help text next to the field shows. An org that saved its settings in an earlier version has `2097152` (2 MB) stored here, and clearing the field switches it to the automatic size. A value above the automatic size gives errors rather than larger previews.
 
 ## Max Delete Chain Size
 
-How many background jobs Google Client may queue when removing a file's content from Google Drive.
-
-The default is **3**. Blank or 0 means the default is used.
-
-A file with many versions needs more than one background job to remove every copy from Drive, because each job can only reach Google a limited number of times. Raising this lets very large files finish cleaning up sooner; lowering it reduces the number of queued jobs Google Client adds to your org.
+How many items in Google Drive one background job removes after a file is deleted, from 1 to 50. The default is **3**. A file with many versions leaves several items behind, and a higher value removes them in fewer jobs.
 
 ## Organizational Domain
 
-Controls the default reach of a public link.
+The Google Workspace domain public links are limited to, entered on its own, such as `example.com`.
 
-When a domain is configured, the Public Link window shows a checkbox that decides who the link works for:
+With a domain set, the Public Link window shows a checkbox. Unchecked, which is the default, the link opens only for people signed in to that domain. Checked, it opens for anyone who has it. With the field blank, every public link opens for anyone.
 
-- **Unchecked (default)** — the link only opens for people signed in to that Google Workspace domain
-- **Checked** — the link is global and opens for anyone who has it
-
-When the field is blank, no checkbox appears and every public link is global. Set this if your organization expects shared documents to stay inside the company unless someone deliberately decides otherwise.
-
-Enter the domain on its own, without a protocol or a path — for example `example.com`.
+![Maximum Preview File Size, Max Delete Chain Size and Organizational Domain](../../assets/images/config_file_management_limits.png)
 
 ![Public link domain restriction](../../assets/images/client_public_link_org_domain.png)
 

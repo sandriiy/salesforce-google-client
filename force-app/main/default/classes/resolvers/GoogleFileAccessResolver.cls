@@ -50,6 +50,7 @@ public without sharing class GoogleFileAccessResolver {
 	private static final Integer DEFAULT_PAGE_SIZE = 50;
 	private static final Integer MAX_PAGE_SIZE = 200;
 	private static final String DEFAULT_SORT_PATH = 'LastModifiedDate';
+	private static final Integer OWNER_SCAN_SIZE = 2000;
 
 	@TestVisible
 	private static AccessLevel privilegedFloorOverride;
@@ -236,12 +237,17 @@ public without sharing class GoogleFileAccessResolver {
 		GoogleFileSelector selector = GoogleFileSelector.query()
 			.withAllFields()
 			.withCreatedByName()
-			.withLatestVersionSubquery(criteria.additionalVersionFields)
-			.bySearchTerm(criteria.searchTerm);
+			.withLatestVersionSubquery(criteria.additionalVersionFields);
+
+		applyLatestVersionCriteria(selector, criteria);
+		applyFileCriteria(selector, criteria);
 
 		if (String.isNotBlank(criteria.source)) {
 			selector.bySource(criteria.source);
 		}
+
+		applyOwnershipScope(selector, criteria.ownerFilter, targetUserId);
+		if (criteria.ownerId != null) selector.byOwner(criteria.ownerId);
 
 		if (privilegedFloor() == null) {
 			applyOwnershipScope(selector, criteria.ownerScope, targetUserId);
@@ -255,6 +261,36 @@ public without sharing class GoogleFileAccessResolver {
 		}
 
 		return selector;
+	}
+
+	private void applyLatestVersionCriteria(GoogleFileSelector selector, FilePageCriteria criteria) {
+		GoogleFileSelector.LatestVersionFilter versionFilter = new GoogleFileSelector.LatestVersionFilter()
+			.withPhrases(criteria.searchPhrases)
+			.withExtensions(criteria.fileExtensions)
+			.withSizeBetween(criteria.minSizeBytes, criteria.maxSizeBytes);
+
+		if (versionFilter.isBlank()) {
+			selector.bySearchTerm(criteria.searchTerm);
+			return;
+		}
+
+		if (String.isNotBlank(criteria.searchTerm)) {
+			versionFilter.withPhrases(new List<String>{ criteria.searchTerm });
+		}
+
+		selector.byLatestVersion(versionFilter);
+	}
+
+	private void applyFileCriteria(GoogleFileSelector selector, FilePageCriteria criteria) {
+		if (criteria.createdFrom != null) selector.byCreatedOnOrAfter(criteria.createdFrom);
+		if (criteria.createdBefore != null) selector.byCreatedBefore(criteria.createdBefore);
+		if (criteria.modifiedFrom != null) selector.byLastModifiedOnOrAfter(criteria.modifiedFrom);
+		if (criteria.modifiedBefore != null) selector.byLastModifiedBefore(criteria.modifiedBefore);
+		if (criteria.minVersionCount != null) selector.byVersionCountAtLeast(criteria.minVersionCount);
+		if (criteria.maxVersionCount != null) selector.byVersionCountAtMost(criteria.maxVersionCount);
+
+		if (criteria.linkedToRecord == true) selector.byLinkedToRecords();
+		else if (criteria.linkedToRecord == false) selector.byNotLinkedToRecords();
 	}
 
 	private void applyOwnershipScope(GoogleFileSelector selector, OwnershipScope scope, Id targetUserId) {
@@ -279,6 +315,67 @@ public without sharing class GoogleFileAccessResolver {
 	}
 
 	/**
+	 * The owners of the files the running user can open, one per user or queue and sorted by name, so a list
+	 * of owners never names someone whose files that user cannot open. An internal user holding View All or
+	 * Edit All can open every file and gets every owner. Anyone else gets the owners of the files they can
+	 * open among the 2,000 they can reach that changed most recently, so an owner whose files are all older
+	 * can be missing.
+	 *
+	 * @param maxOwners The most owners to return.
+	 * @return Each owner's Id and name.
+	 */
+	public List<FileOwner> resolveAccessibleFileOwners(Integer maxOwners) {
+		if (maxOwners == null || maxOwners <= 0) return new List<FileOwner>();
+
+		Id runningUserId = UserInfo.getUserId();
+		Boolean opensEveryFile = privilegedFloor() != null && isInternalUserType(loadTargetUser(runningUserId).UserType);
+		List<FileOwner> owners = opensEveryFile ? loadEveryFileOwner(maxOwners) : collectFileOwners(resolveRecentAccessibleFiles(runningUserId));
+
+		owners.sort();
+		while (owners.size() > maxOwners) {
+			owners.remove(owners.size() - 1);
+		}
+
+		return owners;
+	}
+
+	private List<FileOwner> loadEveryFileOwner(Integer maxOwners) {
+		List<FileOwner> owners = new List<FileOwner>();
+
+		for (GSOQL.AggregateResultProxy ownerRow : GoogleFileSelector.query()
+			.groupedByOwner()
+			.limitTo(maxOwners)
+			.toAggregatedProxy()
+		) {
+			owners.add(new FileOwner((Id) ownerRow.get(GoogleFileSelector.OWNER_ID_KEY), (String) ownerRow.get(GoogleFileSelector.OWNER_NAME_KEY)));
+		}
+
+		return owners;
+	}
+
+	private List<GoogleFile__c> resolveRecentAccessibleFiles(Id targetUserId) {
+		List<GoogleFile__c> candidates = (List<GoogleFile__c>) GoogleFileSelector.query()
+			.withSpecificFields(new List<String>{ 'Id', 'OwnerId', 'Owner.Name' })
+			.byAccessibleCandidates(targetUserId, resolveSharedFileIds(targetUserId))
+			.orderByFieldThenId(DEFAULT_SORT_PATH, 'DESC')
+			.limitTo(OWNER_SCAN_SIZE)
+			.toList();
+
+		return resolveAccessibleFiles(candidates, targetUserId);
+	}
+
+	private List<FileOwner> collectFileOwners(List<GoogleFile__c> accessibleFiles) {
+		Map<Id, FileOwner> ownersById = new Map<Id, FileOwner>();
+
+		for (GoogleFile__c accessibleFile : accessibleFiles) {
+			if (accessibleFile.OwnerId == null || ownersById.containsKey(accessibleFile.OwnerId)) continue;
+			ownersById.put(accessibleFile.OwnerId, new FileOwner(accessibleFile.OwnerId, accessibleFile.Owner?.Name));
+		}
+
+		return ownersById.values();
+	}
+
+	/**
 	 * What one page asks for. This is the resolver's own input on purpose, so paging never has to know
 	 * which screen is calling.
 	 */
@@ -288,30 +385,30 @@ public without sharing class GoogleFileAccessResolver {
 		public String sortDirection = 'DESC';
 		public String searchTerm;
 		public Object cursorValue;
-		public Id cursorId;
-		public OwnershipScope ownerScope = OwnershipScope.AnyOwner;
-		/**
-		 * Keeps only the files first uploaded from one source, a value of the Source picklist. Null means
-		 * every source.
-		 */
 		public String source;
-		public List<String> additionalVersionFields = new List<String>();
+		public Decimal minSizeBytes;
+		public Decimal maxSizeBytes;
+		public Datetime createdFrom;
+		public Datetime createdBefore;
+		public Datetime modifiedFrom;
+		public Datetime modifiedBefore;
+		public Integer minVersionCount;
+		public Integer maxVersionCount;
+		public Boolean linkedToRecord;
+		public Id cursorId;
 
-		/**
-		 * The page size that will really be used, falling back to the default and capped at the maximum.
-		 *
-		 * @return A usable page size.
-		 */
+		public OwnershipScope ownerScope = OwnershipScope.AnyOwner;
+		public List<String> additionalVersionFields = new List<String>();
+		public OwnershipScope ownerFilter = OwnershipScope.AnyOwner;
+		public Id ownerId;
+		public List<String> searchPhrases = new List<String>();
+		public Set<String> fileExtensions = new Set<String>();
+
 		public Integer effectivePageSize() {
 			if (pageSize == null || pageSize <= 0) return DEFAULT_PAGE_SIZE;
 			return Math.min(pageSize, MAX_PAGE_SIZE);
 		}
 
-		/**
-		 * The field the page is sorted by, falling back to the last modified date.
-		 *
-		 * @return A usable sort path.
-		 */
 		public String effectiveSortPath() {
 			return String.isBlank(sortPath) ? DEFAULT_SORT_PATH : sortPath;
 		}
@@ -325,6 +422,36 @@ public without sharing class GoogleFileAccessResolver {
 		public List<GoogleFile__c> records = new List<GoogleFile__c>();
 		public GoogleFile__c cursorRow;
 		public Boolean hasMore = false;
+	}
+
+	/**
+	 * A user or queue that owns files. Owners sort by name, ignoring case.
+	 */
+	public class FileOwner implements Comparable {
+		public Id ownerId;
+		public String name;
+
+		/**
+		 * Builds an owner from its Id and the name Salesforce shows for it.
+		 *
+		 * @param ownerId The user or queue.
+		 * @param name Its name.
+		 */
+		public FileOwner(Id ownerId, String name) {
+			this.ownerId = ownerId;
+			this.name = name;
+		}
+
+		/**
+		 * Orders owners by name, ignoring case, with a missing name first.
+		 *
+		 * @param other Another FileOwner.
+		 * @return Below zero, zero or above zero, as Comparable expects.
+		 */
+		public Integer compareTo(Object other) {
+			String otherName = ((FileOwner) other).name;
+			return (name == null ? '' : name.toLowerCase()).compareTo(otherName == null ? '' : otherName.toLowerCase());
+		}
 	}
 
 	/**

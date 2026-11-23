@@ -167,6 +167,10 @@ export default class GoogleCloudFileExplorer extends NavigationMixin(LightningEl
         return this.serverRows;
     }
 
+    get tableGenerations() {
+        return [this.listGeneration];
+    }
+
     get enableInfiniteLoading() {
         return this.hasMoreServer;
     }

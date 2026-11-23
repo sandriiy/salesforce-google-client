@@ -15,6 +15,7 @@ const CHUNK_ALIGNMENT = 256 * 1024;
 const DIRECT_CHUNK_SIZE = 16 * 1024 * 1024; // 16 MB, a multiple of the 256 KB Google requires for every non-final chunk
 const DIRECT_CHUNK_TIMEOUT_MS = 180000;
 const MAX_DIRECT_CHUNK_ATTEMPTS = 5;
+const MAX_FINALIZE_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 1000;
 const RETRYABLE_DIRECT_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const RESUMABLE_INCOMPLETE_STATUS = 308;
@@ -217,13 +218,7 @@ async function uploadDirectToGoogle(fileId, file, options) {
     let result;
     try {
         const finalChunk = await readFileChunk(file.slice(browserByteLimit, totalBytes));
-        result = await finalizeDirectUpload({
-            fileName: file.name,
-            sessionUri: session.sessionUri,
-            finalChunkToUpload: finalChunk,
-            startByte: browserByteLimit,
-            totalBytes: totalBytes
-        });
+        result = await finalizeWithRetries(file.name, session.sessionUri, finalChunk, browserByteLimit, totalBytes, diagnostics);
     } catch (error) {
         diagnostics.push(`finalize failed: ${describeError(error)}`);
         throw buildDirectUploadFailure(fileId, file, options, OUTCOME_FAILED, diagnostics.join(' | '));
@@ -257,6 +252,27 @@ async function sendChunkWithRetries(sessionUri, file, start, end, totalBytes, di
     }
 
     return lastResponse;
+}
+
+async function finalizeWithRetries(fileName, sessionUri, finalChunk, startByte, totalBytes, diagnostics) {
+    const request = {
+        fileName: fileName,
+        sessionUri: sessionUri,
+        finalChunkToUpload: finalChunk,
+        startByte: startByte,
+        totalBytes: totalBytes
+    };
+
+    for (let attempt = 1; attempt < MAX_FINALIZE_ATTEMPTS; attempt++) {
+        try {
+            return await finalizeDirectUpload(request);
+        } catch (error) {
+            diagnostics.push(`finalize attempt ${attempt} failed: ${describeError(error)}`);
+            await waitBeforeRetry(attempt);
+        }
+    }
+
+    return finalizeDirectUpload(request);
 }
 
 function isRetryableChunkResponse(response, start) {

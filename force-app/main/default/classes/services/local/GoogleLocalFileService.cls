@@ -539,4 +539,59 @@ public without sharing class GoogleLocalFileService {
         return requireFileAccess(versions.get(0).GoogleFileId__c, requiresEdit);
     }
 
+    /**
+     * Tells the running user's access to files or versions without refusing, for automation that decides
+     * what to show and allow. A version is judged by its file, and an Id that matches no file or version,
+     * or belongs to another object, reads as no access.
+     *
+     * @param fileOrVersionIds GoogleFile__c or GoogleFileVersion__c Ids, in any mix.
+     * @return The level per requested Id: "View" or "Edit". An Id without access is missing from the map.
+     */
+    public Map<Id, String> resolveAccessLevels(List<Id> fileOrVersionIds) {
+        Map<Id, String> accessLevelByRequestedId = new Map<Id, String>();
+        if (fileOrVersionIds == null || fileOrVersionIds.isEmpty()) return accessLevelByRequestedId;
+
+        Map<Id, Id> fileIdByRequestedId = new Map<Id, Id>();
+        Set<Id> versionIds = new Set<Id>();
+        for (Id requestedId : fileOrVersionIds) {
+            if (requestedId == null) continue;
+
+            if (requestedId.getSobjectType() == GoogleFile__c.SObjectType) {
+                fileIdByRequestedId.put(requestedId, requestedId);
+            } else if (requestedId.getSobjectType() == GoogleFileVersion__c.SObjectType) {
+                versionIds.add(requestedId);
+            }
+        }
+
+        if (!versionIds.isEmpty()) {
+            for (GoogleFileVersion__c version : (List<GoogleFileVersion__c>) GoogleFileVersionSelector.query()
+                .withBaseFields()
+                .byIds(versionIds)
+                .toList()) {
+                fileIdByRequestedId.put(version.Id, version.GoogleFileId__c);
+            }
+        }
+
+        if (fileIdByRequestedId.isEmpty()) return accessLevelByRequestedId;
+
+        List<GoogleFile__c> filesToCheck = new List<GoogleFile__c>();
+        for (Id fileId : new Set<Id>(fileIdByRequestedId.values())) {
+            filesToCheck.add(new GoogleFile__c(Id = fileId));
+        }
+
+        Map<Id, String> accessLevelByFileId = new Map<Id, String>();
+        for (GoogleFile__c accessibleFile : stripInaccessibleRecords().forFiles(filesToCheck).forUser(UserInfo.getUserId()).strip()) {
+            accessLevelByFileId.put(accessibleFile.Id, accessibleFile.UserAccessLevel__c);
+        }
+
+        for (Id requestedId : fileIdByRequestedId.keySet()) {
+            String accessLevel = accessLevelByFileId.get(fileIdByRequestedId.get(requestedId));
+            if (accessLevel != null) {
+                accessLevelByRequestedId.put(requestedId, accessLevel);
+            }
+        }
+
+        return accessLevelByRequestedId;
+    }
+
 }

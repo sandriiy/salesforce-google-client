@@ -128,23 +128,26 @@
                 </template>
                 <template lwc:else>
                     <div class="gcdc-file-explorer-table-wrap">
-                        <c-google-cloud-file-explorer-data-table
-                            key-field="localId"
-                            data={visibleRows}
-                            columns={columns}
-                            selected-rows={selectedRowIds}
-                            onrowselection={handleRowSelection}
-                            sorted-by={sortedBy}
-                            sorted-direction={sortedDirection}
-                            enable-infinite-loading={enableInfiniteLoading}
-                            load-more-offset="200"
-                            is-loading={isLoadingMore}
-                            onloadmore={handleLoadMore}
-                            onsort={handleSort}
-                            ontitleclick={handleTitleClick}
-                            onuserclick={handleUserClick}
-                            class="gcdc-file-explorer-table"
-                        ></c-google-cloud-file-explorer-data-table>
+                        <template for:each={tableGenerations} for:item="tableGeneration">
+                            <c-google-cloud-file-explorer-data-table
+                                key={tableGeneration}
+                                key-field="localId"
+                                data={visibleRows}
+                                columns={columns}
+                                selected-rows={selectedRowIds}
+                                onrowselection={handleRowSelection}
+                                sorted-by={sortedBy}
+                                sorted-direction={sortedDirection}
+                                enable-infinite-loading={enableInfiniteLoading}
+                                load-more-offset="200"
+                                is-loading={isLoadingMore}
+                                onloadmore={handleLoadMore}
+                                onsort={handleSort}
+                                ontitleclick={handleTitleClick}
+                                onuserclick={handleUserClick}
+                                class="gcdc-file-explorer-table"
+                            ></c-google-cloud-file-explorer-data-table>
+                        </template>
 
                         <template lwc:if={showEmptyState}>
                             <div class="gcdc-file-explorer-empty" role="status">

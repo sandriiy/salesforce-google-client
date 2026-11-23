@@ -65,6 +65,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@track recordIdentifierValue;
 	@track files = [];
 
+	objectApiName;
 	searchTerm = '';
 	sortedByLabel = 'Last Modified';
 	sortedBy = 'date';
@@ -78,10 +79,17 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	@wire(CurrentPageReference)
 	currentPageReference;
 
-	@wire(getObjectInfo, { objectApiName: '$sobjectApiName' })
+	@wire(getRecord, { recordId: '$recordId', layoutTypes: ['Compact'] })
+	wiredRecordObject({ data }) {
+		if (data?.apiName && data.apiName !== this.objectApiName) {
+			this.objectApiName = data.apiName;
+		}
+	}
+
+	@wire(getObjectInfo, { objectApiName: '$objectApiName' })
 	wiredObjectInfo({ data, error }) {
 		if (data) {
-			this.recordIdentifierNames = resolveRecordNameFields(data).map((nameField) => `${this.sobjectApiName}.${nameField}`);
+			this.recordIdentifierNames = resolveRecordNameFields(data).map((nameField) => `${this.objectApiName}.${nameField}`);
 			this.recordIdentifierValue = null;
 		} else if (error) {
 			this.recordIdentifierNames = [];
@@ -208,6 +216,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	}
 
 	handleFilePreview(event) {
+		event.preventDefault();
 		const previewComponent = this.refs.filePreviewModal;
 		const parentContainer = event.currentTarget.closest('tr[data-id]');
 		const parentContainerId = parentContainer?.getAttribute('data-id');
@@ -215,6 +224,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	}
 
 	handleUserPreview(event) {
+		event.preventDefault();
 		const recordId = event.currentTarget.dataset.id;
 		this[NavigationMixin.Navigate]({
 			type: 'standard__recordPage',
@@ -226,10 +236,11 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	}
 
 	handleListViewOpen(event) {
+		event.preventDefault();
 		this[NavigationMixin.Navigate]({
 			type: 'standard__objectPage',
 			attributes: {
-				objectApiName: this.sobjectApiName,
+				objectApiName: this.objectApiName,
 				actionName: 'list'
 			},
 			state: {
@@ -239,6 +250,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 	}
 
 	handleRecordOpen(event) {
+		event.preventDefault();
 		this[NavigationMixin.Navigate]({
 			type: 'standard__recordPage',
 			attributes: {
@@ -374,6 +386,7 @@ export default class GoogleCloudRelatedAttachments extends NavigationMixin(Light
 
 			this.recordId = payload.recordId;
 			this.sobjectApiName = payload.sobjectApiName;
+			this.objectApiName = payload.sobjectApiName;
 			this.source = payload.source;
 			this.title = payload.title;
 			this.isMultiple = payload.isMultiple;

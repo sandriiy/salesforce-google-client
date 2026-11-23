@@ -102,6 +102,35 @@ private class GoogleFileMigrationJobTest {
 	}
 
 	@IsTest
+	private static void testWorkPositiveCleanStepSavesNoLog() {
+		initMigrationMocks();
+		mockCandidates(2, 1024L);
+
+		Test.startTest();
+		new GoogleFileMigrationJob(buildRequest(), null, 0, GoogleFileMigrationJob.FIRST_STEP_NUMBER).work();
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.areEqual(2, [SELECT COUNT() FROM GoogleFile__c]);
+		Assert.isTrue(unsavedLogEntries > 0, 'A step that copied every file saves nothing');
+	}
+
+	@IsTest
+	private static void testWorkPositiveDeferredFilesSaveNoLog() {
+		initMigrationMocks();
+		mockCandidates(2, 1024L);
+		GoogleLocalFileTransferService.uploadTimeBudgetMillisOverride = 0L;
+
+		Test.startTest();
+		new GoogleFileMigrationJob(buildRequest(), null, 0, GoogleFileMigrationJob.FIRST_STEP_NUMBER).work();
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.areEqual(1, [SELECT COUNT() FROM GoogleFile__c], 'Once the upload time is spent the rest wait for the next step');
+		Assert.isTrue(unsavedLogEntries > 0, 'Files left for the next step are routine, so nothing is saved for them');
+	}
+
+	@IsTest
 	private static void testWorkNegativeFailureIsLoggedAndRethrown() {
 		initMigrationMocks();
 		mockCandidates(3, EMPTY_FILE_SIZE);

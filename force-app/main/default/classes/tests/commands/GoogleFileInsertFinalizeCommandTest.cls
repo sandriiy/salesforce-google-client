@@ -155,4 +155,32 @@ private class GoogleFileInsertFinalizeCommandTest {
 		GoogleFileVersionSummaryJob firstSummaryJob = (GoogleFileVersionSummaryJob) runningChain.getJobs()[2];
 		Assert.areEqual(1, firstSummaryJob.attempt, 'An upload starts its analysis at the first attempt');
 	}
+
+	@IsTest
+	private static void testExecutePositiveQueuesNoAnalysisWhilePreviewsAreOff() {
+		applyAnalysisConfig('{User}');
+		GoogleMetadataConfigService.configRecordOverride.IsFilePreviewDisabled__c = true;
+		List<GoogleFileVersion__c> versions = createNewVersions('FINOFF', 2);
+		GQueueableChain runningChain = GoogleCloudTestFactory.runningChain();
+
+		Test.startTest();
+		new GoogleFileInsertFinalizeCommand().execute(versions);
+		Test.stopTest();
+
+		Assert.areEqual(new List<String>{ FOLDER }, describeChain(runningChain), 'With files stored only no copy will exist, so no summary or label is queued, and the file still reaches its folder');
+	}
+
+	@IsTest
+	private static void testExecutePositiveQueuesNothingWhilePreviewsAreOffWithoutAStructure() {
+		applyAnalysisConfig(null);
+		GoogleMetadataConfigService.configRecordOverride.IsFilePreviewDisabled__c = true;
+		List<GoogleFileVersion__c> versions = createNewVersions('FINOFN', 1);
+		GQueueableChain runningChain = GoogleCloudTestFactory.runningChain();
+
+		Test.startTest();
+		new GoogleFileInsertFinalizeCommand().execute(versions);
+		Test.stopTest();
+
+		Assert.isTrue(describeChain(runningChain).isEmpty());
+	}
 }

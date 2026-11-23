@@ -2,36 +2,32 @@
 
 All notable changes to this client are documented here. Each entry describes what changed for administrators and end users of an installed package version.
 
-## [2.4.0] - TBA
+## [2.4.0] - 2026-11-23
 
 ### Added
 
-- Download several files at once from the Uploader. Every uploaded file in the Uploader has a checkbox. Once at least one file is ticked, a line appears above the list saying how many are selected, with a **Download** button that shows the count. The selected files arrive as one ZIP archive named after the record, a progress bar shows how far the download has got and which file is being fetched, and **Stop** cancels it before anything is saved. While the download runs, the selected files cannot be opened, replaced or removed, and leaving the page or the Flow screen stops it. It works on record pages, on Experience Cloud pages and in Screen Flows, with the same limits as Notes & Attachments: up to 100 files and 512 MB together.
-- Find files in File Explorer with the new **Search** view. Type words from a file's name, its AI summary or its labels, or an exact phrase in double quotes, and narrow the list by file type, size, the day it was created or last changed, the number of versions, its owner, picked by name from the people whose files you can open, and whether it is linked to a record. A custom date range applies once both of its days are chosen. Only files you can open are listed, the results update a moment after you stop typing, and an extension the file type filter does not list can be typed into the search box.
-- Download several files at once from File Explorer, in every view. Tick the files, or the checkbox in the column header for every file loaded so far, and **Download** next to **Upload Files** saves them as one ZIP archive named `Files - N files.zip`. The download runs in the background, so you can keep searching, scrolling and opening files while the progress shows in the header, and **Stop** cancels it before anything is saved. Up to 100 files and 512 MB can be downloaded together.
-- Set how long a file summary may be with **Summary Max Output Tokens** under **Advanced** → **AI Intelligence**, as you already can for answers to questions. Both settings now have a **No limit** option that lets the AI write as much as it needs. Left empty, the summary setting keeps today's length.
+- Download several files at once from the Uploader and from every File Explorer view, as one ZIP archive, the way Notes & Attachments already does.
+- Find files with the new **Search** view in File Explorer, by words from a file's name, summary or labels, and by filters for type, size, dates, versions, owner and linked records.
+- Name record and user folders in Google Drive with a Salesforce formula per object, and keep folder names in step when records are renamed.
+- Keep the Google Workspace copies used for previews, AI and Download As in a folder of their own, so record folders hold only the files people uploaded.
+- Check whether the running user may open or change a file with the new **Check Access to a Google File** Flow action.
+- Limit how long summaries may be with **Summary Max Output Tokens**. A 0 in either token setting means no limit.
 
 ### Changed
 
-- The AI service now gets up to two minutes to answer instead of 20 seconds, so a slow but working answer is no longer thrown away.
-- With AI on, uploaded files reach their record folder in Google Drive before they are summarized, so a slow AI answer no longer holds a file in the wrong place.
-- A Question Max Output Tokens of 0 now means no limit. Before, it meant no answer at all.
+- AI copes with a slow or busy service: it gets up to two minutes to answer, and a summary or label that fails is tried again on its own.
+- Files reach their record folder before they are summarized, so a slow answer no longer holds a file in the wrong place.
+- The File Preview setting is now **Store files only**. PDFs and images still preview, and everything that needs a Google Workspace copy is off for every file.
+- Google Client logs only what went wrong.
 
 ### Fixed
 
-- A file still uploading in the Uploader is no longer lost from the list, or saved as "Untitled" with no type or size, when another file is removed or attached while it uploads, or when a file's details are changed in the preview.
-- In the Uploader, a file's hover text shows its new summary as soon as the preview is closed after the AI panel filled in, as it already did in Notes & Attachments.
-- File Explorer's Created Date and Last Modified Date columns now show the dates the list is sorted by.
-- File Explorer no longer stops loading more files when you search while scrolling, and an error no longer stays on screen after the next search or refresh.
-- An empty File Explorer view now says so instead of showing a blank list.
-- File Explorer no longer sends your browser details of files you cannot open while it loads more files.
-- When File Explorer's columns do not include Last Modified Date, the list now opens in the order it says it is sorted by, and scrolling no longer leaves files out.
-- A file whose summary or label could not be made because the AI service was slow or busy is now tried again on its own, twice over the next few minutes, instead of staying without one for good. If every attempt fails, the reason is recorded in the logs.
-- When several files are analyzed together, one slow answer no longer costs the others their summaries or labels, and a file deleted while the others were being analyzed no longer stops their summaries from being saved.
-- One file Google Drive could not prepare for preview no longer stops the files uploaded with it from being previewed and analyzed, and Drive being briefly busy no longer leaves a file without a preview for good.
-- A question that takes the AI service too long, or arrives while it is busy, now says so in plain words instead of showing "Read timed out" or the service's own error, and **Validate** does the same.
-- An error that comes from Google, such as **Validate** finding a model name that does not exist, now shows Google's explanation instead of only "}".
-- The AI panel in the preview keeps checking for a little longer after an upload and waits for the label as well as the summary, so both appear without opening the file again.
+- CSV and Excel files now get summaries, labels and answers, and the Extract Text action reads them.
+- A file still uploading in the Uploader is no longer lost from the list or saved as "Untitled".
+- File Explorer no longer stops loading or leaves files out while you scroll and search, and it fits smaller screens.
+- A question that takes too long, or reaches a busy AI service, now says so in plain words.
+- Deleting a file removes all its copies from Google Drive, even when one of them is already gone.
+- Closed three access gaps: someone without access to a file could open its details, a user without Google Client administrator access could check the settings, and the Upload File to Google Drive action could be run outside a flow.
 
 ## [2.3.0] - 2026-10-23
 

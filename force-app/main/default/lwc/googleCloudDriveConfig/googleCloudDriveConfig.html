@@ -118,7 +118,7 @@
                                     <div class="upload-folder-header">
                                         <div class="upload-folder-title">
                                             Upload Folder Locations (IDs)
-                                            <lightning-helptext content="Configure up to 10 Google Drive folder IDs in priority order. The first one is used by default. If it becomes full, uploads automatically fall over to the next one."></lightning-helptext>
+                                            <lightning-helptext class="title-help" content="Configure up to 10 Google Drive folder IDs in priority order. The first one is used by default. If it becomes full, uploads automatically fall over to the next one."></lightning-helptext>
                                         </div>
                                         <div class="upload-folder-count">{uploadFolderCountLabel}</div>
                                     </div>
@@ -198,10 +198,28 @@
                                             disabled={addUploadFolderDisabled}
                                         ></lightning-button>
                                     </div>
+                                </div>
 
-                                    <div class="info-panel slds-m-top_small">
-                                        <div class="info-title">Fallback behavior</div>
-                                        <div class="info-text">Google Drive folders (especially shared drives) enforce hard limits on how many files they can hold. Once the primary folder cannot accept more uploads, the system automatically tries the next folder ID in the list, in order, until an upload succeeds. This lets you extend storage across multiple folders (or shared drives) without downtime.</div>
+                                <div class="upload-folder-card slds-m-top_medium">
+                                    <div class="upload-folder-header">
+                                        <div class="upload-folder-title">
+                                            Folder for Google Workspace Copies (ID)
+                                            <lightning-helptext class="title-help" content="The ID of a Google Drive folder that keeps the copies Google Client makes for previews, AI and Download As, so record folders hold only the files people uploaded. Share it with the service account as Content manager, and no more widely than your upload folders. Leave it blank to keep each copy beside its original."></lightning-helptext>
+                                        </div>
+                                    </div>
+
+                                    <div class="slds-m-top_small">
+                                        <lightning-input
+                                            type="text"
+                                            max-length="255"
+                                            value={draft.workspaceCopyFolderId}
+                                            onchange={handleWorkspaceCopyFolderChange}
+                                            variant="label-hidden"
+                                            label="Folder for Google Workspace Copies (ID)"
+                                            placeholder="Beside the original files"
+                                            disabled={isStoreFilesOnly}
+                                        ></lightning-input>
+                                        <div lwc:if={workspaceCopyFolderMessage} class={workspaceCopyFolderMessageClass}>{workspaceCopyFolderMessage}</div>
                                     </div>
                                 </div>
 
@@ -219,7 +237,7 @@
                                     <div class="folder-structure-header">
                                         <div class="folder-structure-title">
                                             Folder Structure
-                                            <lightning-helptext content="Build a subfolder structure under the primary upload folder. Enable User and/or Record, then reorder using drag-and-drop or the arrow controls. Leave both options disabled to upload files directly into the primary folder."></lightning-helptext>
+                                            <lightning-helptext class="title-help" content="Build a subfolder structure under the primary upload folder. Enable User and/or Record, then reorder using drag-and-drop or the arrow controls. Leave both options disabled to upload files directly into the primary folder."></lightning-helptext>
                                         </div>
                                         <div class="folder-structure-preview">
                                             <span class="preview-label">Preview:</span>
@@ -303,6 +321,37 @@
                                         </div>
                                     </template>
                                 </div>
+
+                                <template lwc:if={hasFolderStructure}>
+                                    <div class="folder-structure-card slds-m-top_medium">
+                                        <div class="folder-names-header">
+                                            <div class="folder-names-title">
+                                                <span class="folder-structure-title">Folder Names</span>
+                                                <lightning-helptext class="title-help" content="Switch on to rename a record's or user's folder to its current name, or the name its formula gives, the next time a file is added to it. Formulas name new folders either way, and objects without one keep their usual name, for example Account : Acme."></lightning-helptext>
+                                            </div>
+                                            <div class="folder-names-toggle">
+                                                <lightning-input
+                                                    type="toggle"
+                                                    variant="label-hidden"
+                                                    checked={isFolderRenameEnabled}
+                                                    onchange={handleFolderRenameToggle}
+                                                    label="Rename folders when names change"
+                                                    message-toggle-active=""
+                                                    message-toggle-inactive=""
+                                                    disabled={busy}
+                                                ></lightning-input>
+                                            </div>
+                                        </div>
+
+                                        <c-google-cloud-folder-name-editor
+                                            lwc:ref="folderNameEditor"
+                                            value={draft.recordFolderNamePatterns}
+                                            disabled={busy}
+                                            onpatternschange={handleFolderNamePatternsChange}
+                                            onvaliditychange={handleFolderNamePatternsValidityChange}
+                                        ></c-google-cloud-folder-name-editor>
+                                    </div>
+                                </template>
 
                                 <div class="slds-grid slds-grid_align-end slds-m-top_medium">
                                     <lightning-button variant="neutral" label="Back" onclick={goToLocationsStep} disabled={busy}></lightning-button>

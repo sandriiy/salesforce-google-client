@@ -81,7 +81,7 @@ public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntellige
 	}
 
 	public override String finalizeGeneratedText(String generatedText, String finishReason) {
-		return fitSummaryText(generatedText);
+		return fitSummaryText(dropPeriodAfterSentenceEnd(generatedText));
 	}
 
 	public override String buildAnalysisFailureMessage(String outcomeReason) {
@@ -94,6 +94,14 @@ public with sharing class GoogleFileSummarizeCommand extends GoogleFileIntellige
 		return localFileVersion != null
 			&& localFileVersion.isSet('Summary__c')
 			&& String.isNotBlank((String) localFileVersion.get('Summary__c'));
+	}
+
+	private String dropPeriodAfterSentenceEnd(String summaryText) {
+		if (String.isBlank(summaryText)) return summaryText;
+
+		return summaryText.endsWith('?.') || summaryText.endsWith('!.')
+			? summaryText.removeEnd('.')
+			: summaryText;
 	}
 
 	private String fitSummaryText(String summaryText) {

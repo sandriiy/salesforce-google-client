@@ -29,6 +29,8 @@
 public inherited sharing class GoogleFileLinkedRecordSelector {
     @TestVisible
     private static final String MOCK_ID = 'GoogleFileLinkedRecordSelector';
+    @TestVisible
+    private static final String SELECTABLE_CHECK_MOCK_ID = 'GoogleFileLinkedRecordSelector.selectable';
 
     /**
      * Reads records of any mix of objects in as few queries as there are objects.
@@ -88,6 +90,29 @@ public inherited sharing class GoogleFileLinkedRecordSelector {
     public static SObject selectById(Id recordId, List<String> fieldApiNames) {
         if (recordId == null) return null;
         return selectByIds(new Set<Id>{ recordId }, fieldApiNames).get(recordId);
+    }
+
+    /**
+     * Asks Salesforce whether these fields can be selected from an object, reading no record. A formula
+     * accepts paths a query refuses, such as a field more than five relationships away, so this is how to
+     * find out before relying on selectById. It throws Salesforce's query exception when they cannot.
+     *
+     * @param objectType The object to select from.
+     * @param fieldApiNames The fields to select on top of the Id.
+     */
+    public static void assertSelectable(Schema.SObjectType objectType, List<String> fieldApiNames) {
+        List<String> fieldsToSelect = new List<String>{ 'Id' };
+        if (fieldApiNames != null && !fieldApiNames.isEmpty()) {
+            fieldsToSelect.addAll(fieldApiNames);
+        }
+
+        GSOQL.of(objectType.getDescribe().getName())
+            .with(fieldsToSelect)
+            .setLimit(0)
+            .systemMode()
+            .withoutSharing()
+            .mockId(SELECTABLE_CHECK_MOCK_ID)
+            .toList();
     }
 
     /**

@@ -6,8 +6,8 @@
                     <div class="slds-media slds-media_center slds-no-space slds-grow">
                         <div class="slds-media__body slds-align-middle">
                             <lightning-breadcrumbs>
-                                <lightning-breadcrumb label={sobjectApiName} href="javascript:void(0)" onclick={handleListViewOpen}></lightning-breadcrumb>
-                                <lightning-breadcrumb label={sobjectNameValue} href="javascript:void(0)" onclick={handleRecordOpen}></lightning-breadcrumb>
+                                <lightning-breadcrumb label={objectApiName} href="#" onclick={handleListViewOpen}></lightning-breadcrumb>
+                                <lightning-breadcrumb label={sobjectNameValue} href="#" onclick={handleRecordOpen}></lightning-breadcrumb>
                             </lightning-breadcrumbs>
                             <h1 class="slds-page-header__title listViewTitle slds-truncate" title={title}>
                                 {title}
@@ -115,7 +115,7 @@
                                                 <th scope="row">
                                                     <div class="file-title-cell" title={file.hoverSummaryText}>
                                                         <div class="slds-truncate file-title-cell__link-wrap" title={file.hoverSummaryText}>
-                                                            <a href="javascript:void(0)" onclick={handleFilePreview} title={file.hoverSummaryText}>
+                                                            <a href="#" onclick={handleFilePreview} title={file.hoverSummaryText}>
                                                                 <lightning-icon
                                                                 icon-name={file.icon}
                                                                 size="x-small"
@@ -129,7 +129,7 @@
                                                 </th>
                                                 <td>
                                                     <div class="slds-truncate" title={file.createdBy.name}>
-                                                        <a href="javascript:void(0)" data-id={file.createdBy.id} onclick={handleUserPreview}>
+                                                        <a href="#" data-id={file.createdBy.id} onclick={handleUserPreview}>
                                                             {file.createdBy.name}
                                                         </a>
                                                     </div>

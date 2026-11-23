@@ -49,7 +49,7 @@ public with sharing class GoogleFileCloudShortcutJob extends GQueueableJob.Allow
 	}
 
 	/**
-	 * Creates the shortcut in the record folder.
+	 * Creates the shortcut in the record folder, and saves the log only when something recorded an error.
 	 */
 	public override void work() {
 		if (skipExecution) return;
@@ -60,11 +60,15 @@ public with sharing class GoogleFileCloudShortcutJob extends GQueueableJob.Allow
 				', LinkId=' + String.valueOf(linkLocalGoogleFileId)
 			).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 
-			new GoogleFileShortcutPlacementCommand()
+			GoogleFileShortcutPlacementCommand shortcutCommand = new GoogleFileShortcutPlacementCommand()
 				.initiatedBy(initiatorUserId)
 				.forFile(localGoogleFileId)
-				.forLink(linkLocalGoogleFileId)
-				.execute();
+				.forLink(linkLocalGoogleFileId);
+			shortcutCommand.execute();
+
+			if (shortcutCommand.hasRecordedErrors()) {
+				Logger.saveLog();
+			}
 		} catch (Exception ex) {
 			Logger.error('Shortcut Placement Job Failed --> ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			Logger.saveLog();

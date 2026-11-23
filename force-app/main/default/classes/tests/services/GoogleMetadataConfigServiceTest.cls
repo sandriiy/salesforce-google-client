@@ -23,6 +23,9 @@
  */
 @IsTest
 private class GoogleMetadataConfigServiceTest {
+	private static final Id DEPLOY_JOB_ID = '0Af000000000003';
+	private static final String PENDING_DEPLOY_STATUS = 'pending';
+
 	private class SuccessDeployer implements IGoogleMetadataDeployer {
 		public Id enqueue(Metadata.DeployContainer container) {
 			return '0Af000000000001AAA';
@@ -60,12 +63,91 @@ private class GoogleMetadataConfigServiceTest {
 		}
 	}
 
+	private class DeployContextStub extends Metadata.DeployCallbackContext {
+		private final Id deployJobId;
+
+		private DeployContextStub(Id deployJobId) {
+			this.deployJobId = deployJobId;
+		}
+
+		public override Id getCallbackJobId() {
+			return this.deployJobId;
+		}
+	}
+
+	private class DeployCallbackOutcome {
+		private Boolean isCacheAvailable;
+		private Integer unsavedLogEntriesBefore;
+		private Integer unsavedLogEntriesAfter;
+		private String deployStatus;
+		private Exception failure;
+	}
+
+	private static GoogleCacheConfigService deployStatusCache() {
+		return new GoogleCacheConfigService(new GoogleOrgCacheProvider(GoogleCacheConfigService.PARTITION));
+	}
+
+	private static Metadata.DeployResult deployResult(Metadata.DeployStatus status, String errorMessage, List<Metadata.DeployMessage> componentFailures) {
+		Metadata.DeployResult result = new Metadata.DeployResult();
+		result.status = status;
+		result.errorMessage = errorMessage;
+		if (componentFailures != null) {
+			result.details = new Metadata.DeployDetails();
+			result.details.componentFailures = componentFailures;
+		}
+
+		return result;
+	}
+
+	private static Metadata.DeployMessage componentFailure(String fullName, String problem) {
+		Metadata.DeployMessage failure = new Metadata.DeployMessage();
+		failure.fullName = fullName;
+		failure.problem = problem;
+		return failure;
+	}
+
+	private static DeployCallbackOutcome handleDeployResult(Metadata.DeployResult result) {
+		DeployCallbackOutcome outcome = new DeployCallbackOutcome();
+		GoogleCacheConfigService cache = deployStatusCache();
+		String statusBefore = cache.get(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY);
+		cache.put(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY, PENDING_DEPLOY_STATUS);
+		outcome.isCacheAvailable = cache.get(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY) == PENDING_DEPLOY_STATUS;
+		Logger.info('Deploy callback test, an entry nobody saved yet').addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+		outcome.unsavedLogEntriesBefore = Logger.getBufferSize();
+
+		Metadata.DeployCallback callback = new GoogleMetadataConfigService.DefaultMetadataCallback();
+		try {
+			callback.handleResult(result, new DeployContextStub(DEPLOY_JOB_ID));
+		} catch (Exception ex) {
+			outcome.failure = ex;
+		}
+
+		outcome.unsavedLogEntriesAfter = Logger.getBufferSize();
+		outcome.deployStatus = cache.get(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY);
+		if (statusBefore == null) {
+			cache.remove(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY);
+		} else {
+			cache.put(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY, statusBefore);
+		}
+
+		return outcome;
+	}
+
 	private static GoogleClientConfig__mdt buildConfig(Boolean isPreviewDisabled) {
 		return new GoogleClientConfig__mdt(
 			DeveloperName = 'GoogleClient',
 			MasterLabel = 'Google Client',
 			IsFilePreviewDisabled__c = isPreviewDisabled
 		);
+	}
+
+	private static GoogleClientConfig__mdt buildSavedConfig(Datetime savedTime) {
+		return (GoogleClientConfig__mdt) JSON.deserialize(JSON.serialize(new Map<String, Object>{
+			'attributes' => new Map<String, Object>{ 'type' => 'GoogleClientConfig__mdt' },
+			'DeveloperName' => 'GoogleClient',
+			'MasterLabel' => 'Google Client',
+			'SystemModstamp' => savedTime
+		}), GoogleClientConfig__mdt.class);
 	}
 
 	@IsTest
@@ -313,6 +395,43 @@ private class GoogleMetadataConfigServiceTest {
 	}
 
 	@IsTest
+	private static void testGetLastSavedTimePositiveMovesWithEverySave() {
+		GoogleMetadataConfigService.configRecordOverride = buildSavedConfig(Datetime.newInstanceGmt(2026, 11, 23, 5, 10, 36));
+		Long savedTimeBeforeSave = new GoogleMetadataConfigService().getLastSavedTime();
+
+		Datetime nextSave = Datetime.newInstanceGmt(2026, 11, 23, 5, 11, 28);
+		GoogleMetadataConfigService.configRecordOverride = buildSavedConfig(nextSave);
+		Long savedTimeAfterSave = new GoogleMetadataConfigService().getLastSavedTime();
+
+		Assert.areEqual(nextSave.getTime(), savedTimeAfterSave, 'The saved time is the moment the record was last saved');
+		Assert.areNotEqual(savedTimeBeforeSave, savedTimeAfterSave, 'A save that landed must show as a different saved time');
+	}
+
+	@IsTest
+	private static void testGetLastSavedTimeNegativeNothingSaved() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+		Long savedTimeOnFreshInstall = new GoogleMetadataConfigService().getLastSavedTime();
+
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(false);
+		Long savedTimeWithoutOne = new GoogleMetadataConfigService().getLastSavedTime();
+
+		Assert.isNull(savedTimeOnFreshInstall, 'A fresh install has never been saved');
+		Assert.isNull(savedTimeWithoutOne, 'A record that carries no saved time reads as never saved');
+	}
+
+	@IsTest
+	private static void testGetLastSavedTimePositiveReadsTheRecordItQueried() {
+		GoogleMetadataConfigService.configRecordOverride = null;
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
+
+		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
+		Long savedTime = svc.getLastSavedTime();
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
+
+		Assert.areEqual(svc.hasConfigRecord(), savedTime != null, 'A saved record always carries the time it was saved, and an org without one has none');
+	}
+
+	@IsTest
 	private static void testFreshInstallEmptyConfigUsesDefaults() {
 		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
 		GoogleMetadataConfigService svc = new GoogleMetadataConfigService();
@@ -373,6 +492,30 @@ private class GoogleMetadataConfigServiceTest {
 		Assert.areEqual(5242880L, svc.getBigFileSizeInBytes());
 		Assert.areEqual(7, svc.getDeleteChainSize());
 		Assert.areEqual(2048, svc.getQuestionMaxOutputTokens());
+	}
+
+	@IsTest
+	private static void testGetDeleteChainSizePositiveZeroOrNegativeFallsBackToTheDefault() {
+		GoogleCloudTestFactory.config().withDeleteChainSize(0).apply();
+		Integer zeroChainSize = new GoogleMetadataConfigService().getDeleteChainSize();
+
+		GoogleCloudTestFactory.config().withDeleteChainSize(-4).apply();
+		Integer negativeChainSize = new GoogleMetadataConfigService().getDeleteChainSize();
+
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_MAX_DELETE_CHAIN_SIZE, zeroChainSize, 'A delete job that trashes nothing would chain itself forever');
+		Assert.areEqual(GoogleMetadataConfigService.DEFAULT_MAX_DELETE_CHAIN_SIZE, negativeChainSize);
+	}
+
+	@IsTest
+	private static void testGetDeleteChainSizePositiveAboveTheMaximumCountsAsTheMaximum() {
+		GoogleCloudTestFactory.config().withDeleteChainSize(GoogleMetadataConfigService.MAX_DELETE_CHAIN_SIZE + 1).apply();
+		Integer overMaximum = new GoogleMetadataConfigService().getDeleteChainSize();
+
+		GoogleCloudTestFactory.config().withDeleteChainSize(GoogleMetadataConfigService.MAX_DELETE_CHAIN_SIZE).apply();
+		Integer atMaximum = new GoogleMetadataConfigService().getDeleteChainSize();
+
+		Assert.areEqual(GoogleMetadataConfigService.MAX_DELETE_CHAIN_SIZE, overMaximum, 'A job past the maximum would run out of callouts');
+		Assert.areEqual(GoogleMetadataConfigService.MAX_DELETE_CHAIN_SIZE, atMaximum);
 	}
 
 	@IsTest
@@ -544,7 +687,7 @@ private class GoogleMetadataConfigServiceTest {
 		CapturingDeployer deployer = new CapturingDeployer();
 
 		Test.startTest();
-		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'cloudrylabs.com' });
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'astertrail.com' });
 		Test.stopTest();
 
 		Map<String, Object> savedValues = deployer.capturedValues();
@@ -707,7 +850,7 @@ private class GoogleMetadataConfigServiceTest {
 		CapturingDeployer deployer = new CapturingDeployer();
 
 		Test.startTest();
-		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'cloudrylabs.com' });
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'astertrail.com' });
 		Test.stopTest();
 
 		Map<String, Object> savedValues = deployer.capturedValues();
@@ -741,7 +884,7 @@ private class GoogleMetadataConfigServiceTest {
 		CapturingDeployer deployer = new CapturingDeployer();
 
 		Test.startTest();
-		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'cloudrylabs.com' });
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'astertrail.com' });
 		Test.stopTest();
 
 		Assert.isFalse(deployer.capturedValues().containsKey('SummaryMaxOutputTokens__c'), 'An org without AI must not have AI settings written for it');
@@ -762,5 +905,248 @@ private class GoogleMetadataConfigServiceTest {
 		Assert.isTrue(GoogleMetadataConfigService.AI_CONFIGURATION_FIELDS.contains('SummaryMaxOutputTokens__c'));
 		Assert.isTrue(savedValues.containsKey('SummaryMaxOutputTokens__c'));
 		Assert.isNull(savedValues.get('SummaryMaxOutputTokens__c'));
+	}
+
+	private static String patternRowsJson(List<List<String>> objectAndPatternPairs) {
+		List<Map<String, String>> rows = new List<Map<String, String>>();
+		for (List<String> pair : objectAndPatternPairs) {
+			rows.add(new Map<String, String>{ 'objectApiName' => pair[0], 'pattern' => pair[1] });
+		}
+
+		return JSON.serialize(rows);
+	}
+
+	@IsTest
+	private static void testIsFolderRenameEnabledNegativeBlankIsOff() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+
+		Assert.isFalse(new GoogleMetadataConfigService().isFolderRenameEnabled(), 'An upgraded org renames nothing until an administrator switches renaming on');
+	}
+
+	@IsTest
+	private static void testIsFolderRenameEnabledPositiveReadsTheSwitch() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(IsFolderRenameEnabled__c = true);
+
+		Assert.isTrue(new GoogleMetadataConfigService().isFolderRenameEnabled());
+	}
+
+	@IsTest
+	private static void testGetRecordFolderNamePatternsPositiveBlankIsEmpty() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+
+		List<GoogleRecordFolderNamePatternDTO> patterns = new GoogleMetadataConfigService().getRecordFolderNamePatterns();
+
+		Assert.isTrue(patterns == null || patterns.isEmpty(), 'Blank means today\'s names for every object');
+	}
+
+	@IsTest
+	private static void testGetRecordFolderNamePatternsPositiveReadsCompleteRows() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(RecordFolderNamePatterns__c = patternRowsJson(new List<List<String>>{
+			new List<String>{ 'GoogleFile__c', 'Name & " - " & TEXT(Source__c)' },
+			new List<String>{ 'User', 'LastName & ", " & FirstName' }
+		}));
+
+		List<GoogleRecordFolderNamePatternDTO> patterns = new GoogleMetadataConfigService().getRecordFolderNamePatterns();
+
+		Assert.areEqual(2, patterns.size());
+		Assert.areEqual('GoogleFile__c', patterns[0].objectApiName);
+		Assert.areEqual('Name & " - " & TEXT(Source__c)', patterns[0].pattern, 'A formula keeps its quotes through the stored JSON');
+		Assert.areEqual('User', patterns[1].objectApiName);
+	}
+
+	@IsTest
+	private static void testGetRecordFolderNamePatternsNegativeDropsIncompleteDuplicateAndUnknownRows() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(RecordFolderNamePatterns__c = patternRowsJson(new List<List<String>>{
+			new List<String>{ 'GoogleFile__c', 'Name' },
+			new List<String>{ '', 'Name' },
+			new List<String>{ 'GoogleFileVersion__c', '  ' },
+			new List<String>{ 'googlefile__c', 'Name & " again"' },
+			new List<String>{ 'NoSuchObject__c', 'Name' },
+			new List<String>{ 'User', 'LastName' }
+		}));
+
+		List<GoogleRecordFolderNamePatternDTO> patterns = new GoogleMetadataConfigService().getRecordFolderNamePatterns();
+
+		Assert.areEqual(2, patterns.size(), 'Incomplete, duplicate and unknown rows are dropped rather than stopping uploads');
+		Assert.areEqual('GoogleFile__c', patterns[0].objectApiName);
+		Assert.areEqual('Name', patterns[0].pattern, 'The first row for an object wins');
+		Assert.areEqual('User', patterns[1].objectApiName);
+	}
+
+	@IsTest
+	private static void testGetRecordFolderNamePatternsNegativeUnreadableTextIsIgnored() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(RecordFolderNamePatterns__c = 'not json at all');
+
+		Exception readFailure;
+		List<GoogleRecordFolderNamePatternDTO> patterns;
+		try {
+			patterns = new GoogleMetadataConfigService().getRecordFolderNamePatterns();
+		} catch (Exception ex) {
+			readFailure = ex;
+		}
+
+		Assert.isNull(readFailure, 'A bad save never stops uploads');
+		Assert.isTrue(patterns == null || patterns.isEmpty());
+	}
+
+	@IsTest
+	private static void testGetRecordFolderNamePatternsPositiveStopsAtFifty() {
+		List<String> objectApiNames = new List<String>();
+		for (Schema.SObjectType objectType : Schema.getGlobalDescribe().values()) {
+			objectApiNames.add(objectType.getDescribe().getName());
+			if (objectApiNames.size() > 50) break;
+		}
+		List<List<String>> pairs = new List<List<String>>();
+		for (String objectApiName : objectApiNames) {
+			pairs.add(new List<String>{ objectApiName, 'Name' });
+		}
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(RecordFolderNamePatterns__c = patternRowsJson(pairs));
+
+		List<GoogleRecordFolderNamePatternDTO> patterns = new GoogleMetadataConfigService().getRecordFolderNamePatterns();
+
+		Assert.areEqual(51, objectApiNames.size());
+		Assert.areEqual(50, patterns.size(), 'Up to fifty objects can have a pattern');
+		Assert.areEqual(objectApiNames[0], patterns[0].objectApiName, 'Rows keep their saved order');
+	}
+
+	@IsTest
+	private static void testGetRecordFolderNamePatternsPositiveReadsLongTextInFull() {
+		GoogleMetadataConfigService.configRecordOverride = null;
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
+		String longPattern = 'Name & "' + 'x'.repeat(300) + '"';
+		GSOQL.mock(GoogleClientConfigSelector.MOCK_ID).thenReturn(new List<GoogleClientConfig__mdt>{
+			new GoogleClientConfig__mdt(DeveloperName = 'GoogleClient', RecordFolderNamePatterns__c = patternRowsJson(new List<List<String>>{
+				new List<String>{ 'GoogleFile__c', longPattern },
+				new List<String>{ 'User', 'LastName' }
+			}))
+		});
+
+		List<GoogleRecordFolderNamePatternDTO> patterns = new GoogleMetadataConfigService().getRecordFolderNamePatterns();
+		GoogleMetadataConfigService.resolvedConfigRecord = null;
+
+		Assert.areEqual(2, patterns.size(), 'Patterns past 255 characters are read whole, never cut by the metadata cache');
+		Assert.areEqual(longPattern, patterns[0].pattern);
+	}
+
+	@IsTest
+	private static void testGetWorkspaceCopyFolderIdPositiveTrimsAndBlankIsNull() {
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(WorkspaceCopyFolderId__c = '  COPIES_FOLDER_01  ');
+		Assert.areEqual('COPIES_FOLDER_01', new GoogleMetadataConfigService().getWorkspaceCopyFolderId());
+
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(WorkspaceCopyFolderId__c = '   ');
+		Assert.isNull(new GoogleMetadataConfigService().getWorkspaceCopyFolderId(), 'Blank means copies beside the originals');
+
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+		Assert.isNull(new GoogleMetadataConfigService().getWorkspaceCopyFolderId());
+	}
+
+	@IsTest
+	private static void testSaveConfigPositiveFillsTheRenameSwitchWhenMissing() {
+		GoogleClientConfig__mdt storedConfig = new GoogleClientConfig__mdt(
+			DeveloperName = 'GoogleClient',
+			MasterLabel = 'Google Client'
+		);
+		GoogleMetadataConfigService.configRecordOverride = storedConfig;
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).saveConfig(new Map<String, Object>{ 'OrganizationalDomain__c' => 'astertrail.com' });
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Object switchAfterSave = savedValues.containsKey('IsFolderRenameEnabled__c') ? savedValues.get('IsFolderRenameEnabled__c') : storedConfig.IsFolderRenameEnabled__c;
+		Assert.areEqual(false, switchAfterSave, 'A missing switch is saved as off, like the other switches');
+		Assert.areEqual(false, GoogleClientConfig__mdt.IsFolderRenameEnabled__c.getDescribe().getDefaultValue(), 'An org that never saved the switch reads it as off');
+	}
+
+	@IsTest
+	private static void testDeactivateAiConfigPositiveLeavesFolderSettingsAlone() {
+		GoogleClientConfig__mdt config = buildUpgradedAiConfig();
+		config.IsFolderRenameEnabled__c = true;
+		config.RecordFolderNamePatterns__c = patternRowsJson(new List<List<String>>{ new List<String>{ 'GoogleFile__c', 'Name' } });
+		config.WorkspaceCopyFolderId__c = 'COPIES_FOLDER_01';
+		GoogleMetadataConfigService.configRecordOverride = config;
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).deactivateAiConfig();
+		Test.stopTest();
+
+		Map<String, Object> savedValues = deployer.capturedValues();
+		Assert.isFalse(savedValues.containsKey('IsFolderRenameEnabled__c'), 'Deactivating AI touches no folder setting');
+		Assert.isFalse(savedValues.containsKey('RecordFolderNamePatterns__c'));
+		Assert.isFalse(savedValues.containsKey('WorkspaceCopyFolderId__c'));
+	}
+
+	@IsTest
+	private static void testDeactivateAiConfigPositiveSavesNoLogOnSuccess() {
+		GoogleMetadataConfigService.configRecordOverride = buildUpgradedAiConfig();
+		CapturingDeployer deployer = new CapturingDeployer();
+
+		Test.startTest();
+		new GoogleMetadataConfigService(deployer).deactivateAiConfig();
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'A deactivation that worked is not saved to the log');
+	}
+
+	@IsTest
+	private static void testDeployCallbackPositiveSuccessMarksTheSaveDoneAndSavesNoLog() {
+		Test.startTest();
+		DeployCallbackOutcome outcome = handleDeployResult(deployResult(Metadata.DeployStatus.Succeeded, null, null));
+		Test.stopTest();
+
+		Assert.isNull(outcome.failure, 'The deploy callback never throws');
+		if (outcome.isCacheAvailable) {
+			Assert.areEqual('success', outcome.deployStatus, 'The setup page reads a finished save from the deploy key');
+		} else {
+			Assert.isNull(outcome.deployStatus, 'Without platform cache nothing is stored');
+		}
+		Assert.areEqual(outcome.unsavedLogEntriesBefore, outcome.unsavedLogEntriesAfter, 'A save that worked writes nothing to the log and saves nothing');
+	}
+
+	@IsTest
+	private static void testDeployCallbackNegativeFailureMarksTheSaveFailedAndSavesTheLog() {
+		Metadata.DeployResult result = deployResult(
+			Metadata.DeployStatus.Failed,
+			'Deployment failed',
+			new List<Metadata.DeployMessage>{
+				componentFailure('GoogleClientConfig__mdt.GoogleClient', 'invalid number: '),
+				componentFailure('GoogleClientConfig__mdt.GoogleClient', 'Value too long for field: CustomSummaryPrompt__c')
+			}
+		);
+
+		Test.startTest();
+		DeployCallbackOutcome outcome = handleDeployResult(result);
+		Test.stopTest();
+
+		Assert.isNull(outcome.failure, 'The deploy callback never throws, whatever the deploy answered');
+		if (outcome.isCacheAvailable) {
+			Assert.areEqual('fail', outcome.deployStatus, 'The setup page reads a failed save from the deploy key');
+		} else {
+			Assert.isNull(outcome.deployStatus, 'Without platform cache nothing is stored');
+		}
+		Assert.isTrue(outcome.unsavedLogEntriesBefore > 0);
+		Assert.areEqual(0, outcome.unsavedLogEntriesAfter, 'A failed save is saved to the log, so its reason can be read later');
+	}
+
+	@IsTest
+	private static void testDeployCallbackNegativeFailureWithoutAReasonStillSavesTheLog() {
+		Test.startTest();
+		DeployCallbackOutcome withoutDetails = handleDeployResult(deployResult(Metadata.DeployStatus.Failed, null, null));
+		DeployCallbackOutcome withEmptyDetails = handleDeployResult(deployResult(Metadata.DeployStatus.Failed, ' ', new List<Metadata.DeployMessage>()));
+		Test.stopTest();
+
+		for (DeployCallbackOutcome outcome : new List<DeployCallbackOutcome>{ withoutDetails, withEmptyDetails }) {
+			Assert.isNull(outcome.failure, 'A deploy that gives no reason never makes the callback throw');
+			if (outcome.isCacheAvailable) {
+				Assert.areEqual('fail', outcome.deployStatus, 'A failed deploy reads as a failed save whatever it said');
+			} else {
+				Assert.isNull(outcome.deployStatus, 'Without platform cache nothing is stored');
+			}
+			Assert.isTrue(outcome.unsavedLogEntriesBefore > 0);
+			Assert.areEqual(0, outcome.unsavedLogEntriesAfter, 'A failed save is saved to the log even when the deploy gave no reason');
+		}
 	}
 }

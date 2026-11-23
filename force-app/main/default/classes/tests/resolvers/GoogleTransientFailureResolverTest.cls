@@ -120,7 +120,7 @@ private class GoogleTransientFailureResolverTest {
 
 	@IsTest
 	private static void testIsRetryablePositiveDriveRateLimits() {
-		Assert.isTrue(isRetryable(new GoogleCloudException(DRIVE_USER_RATE_LIMIT_BODY)), 'Drive answers 403 userRateLimitExceeded under a burst, as it did on 2026-11-09');
+		Assert.isTrue(isRetryable(new GoogleCloudException(DRIVE_USER_RATE_LIMIT_BODY)), 'Drive answers 403 userRateLimitExceeded under a burst');
 		Assert.isTrue(isRetryable(new GoogleCloudException(DRIVE_RATE_LIMIT_BODY)));
 		Assert.isTrue(isRetryable(new GoogleCloudException(DRIVE_FORBIDDEN_RATE_LIMIT_BODY)));
 	}

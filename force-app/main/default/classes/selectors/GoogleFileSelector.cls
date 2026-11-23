@@ -70,6 +70,7 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
     public static final String OWNER_NAME_KEY = 'Name';
 
     private static final String OWNER_NAME_PATH = 'Owner.Name';
+    private static final String FILE_NAME_FROM_VERSION_PATH = 'GoogleFileId__r.Name';
 
     /**
      * Starts a file query.
@@ -437,8 +438,8 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
     }
 
     /**
-     * Keeps the files whose current version matches the search, by name, summary or label. The term is
-     * escaped, because a user typing a percent sign should not match everything.
+     * Keeps the files that match the search by their own name or by their current version's name, summary
+     * or label. The term is escaped, because a user typing a percent sign should not match everything.
      *
      * @param term What the user typed. Blank changes nothing.
      * @return This same instance, so the call chains onto toList().
@@ -457,6 +458,7 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
                             .add(
                                 GSOQL.FilterGroup.anyConditionMatching()
                                     .add(GSOQL.Filter.with(GoogleFileVersion__c.Name).contains(escapedTerm))
+                                    .add(GSOQL.Filter.with(FILE_NAME_FROM_VERSION_PATH).contains(escapedTerm))
                                     .add(GSOQL.Filter.with(GoogleFileVersion__c.Summary__c).contains(escapedTerm))
                                     .add(GSOQL.Filter.with(GoogleFileVersion__c.AiLabels__c).contains(escapedTerm))
                             )
@@ -566,6 +568,7 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
     private GSOQL.FilterGroup matchingPhrase(String escapedPhrase) {
         return GSOQL.FilterGroup.anyConditionMatching()
             .add(GSOQL.Filter.with(GoogleFileVersion__c.Name).contains(escapedPhrase))
+            .add(GSOQL.Filter.with(FILE_NAME_FROM_VERSION_PATH).contains(escapedPhrase))
             .add(GSOQL.Filter.with(GoogleFileVersion__c.Summary__c).contains(escapedPhrase))
             .add(GSOQL.Filter.with(GoogleFileVersion__c.AiLabels__c).contains(escapedPhrase));
     }
@@ -658,8 +661,8 @@ public inherited sharing class GoogleFileSelector extends GSOQL implements GSOQL
         }
 
         /**
-         * Adds phrases that must each appear in the name, the summary or the labels, in any case. A percent
-         * sign, an underscore or a backslash matches only itself.
+         * Adds phrases that must each appear in the file's own name, or in the current version's name,
+         * summary or labels, in any case. A percent sign, an underscore or a backslash matches only itself.
          *
          * @param searchPhrases The phrases to add. Blanks are skipped and null adds nothing.
          * @return This same filter, so the call chains on.

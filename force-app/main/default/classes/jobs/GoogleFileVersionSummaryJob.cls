@@ -34,7 +34,7 @@ public without sharing class GoogleFileVersionSummaryJob extends GQueueableJob.A
 
 	private static final Integer FIRST_ATTEMPT = 1;
 	private static final Integer FOLLOW_UP_PRIORITY = 1;
-	private static final String WARN_LEVEL = 'WARN';
+	private static final String INFO_LEVEL = 'INFO';
 	private static final String ERROR_LEVEL = 'ERROR';
 
 	@TestVisible
@@ -179,7 +179,7 @@ public without sharing class GoogleFileVersionSummaryJob extends GQueueableJob.A
 
 			if (String.isBlank(localFileVersion.GoogleDocsFileId__c)) {
 				if (!isPreviewDisabled && GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.containsKey(localFileVersion.Type__c)) {
-					recordFailure(WARN_LEVEL, 'File Summary Not Possible --> VersionId=' + String.valueOf(localFileVersion.Id) + ', Reason=The Google Workspace copy is missing');
+					recordFailure(INFO_LEVEL, 'File Summary Not Possible --> VersionId=' + String.valueOf(localFileVersion.Id) + ', Reason=The Google Workspace copy is missing');
 				}
 				continue;
 			}
@@ -244,7 +244,7 @@ public without sharing class GoogleFileVersionSummaryJob extends GQueueableJob.A
 		Integer nextAttempt = currentAttempt + 1;
 		Integer delayMinutes = failureResolver.resolveRetryDelayMinutes(nextAttempt);
 		for (Id versionId : retryReasonsByVersionId.keySet()) {
-			recordFailure(WARN_LEVEL, 'File Summary Retry Scheduled --> VersionId=' + String.valueOf(versionId) + ', NextAttempt=' + nextAttempt + ', InMinutes=' + delayMinutes + ', ' + retryReasonsByVersionId.get(versionId));
+			recordFailure(INFO_LEVEL, 'File Summary Retry Scheduled --> VersionId=' + String.valueOf(versionId) + ', NextAttempt=' + nextAttempt + ', InMinutes=' + delayMinutes + ', ' + retryReasonsByVersionId.get(versionId));
 		}
 
 		GAsync.queueable()
@@ -258,18 +258,17 @@ public without sharing class GoogleFileVersionSummaryJob extends GQueueableJob.A
 		if (resolveAttempt() == FIRST_ATTEMPT) return;
 
 		Logger.info('File Summary Retry Stopped --> AI analysis is no longer available for: ' + String.join(this.versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-		Logger.saveLog();
 	}
 
 	private void recordFailure(String level, String message) {
 		if (level == ERROR_LEVEL) {
 			Logger.error(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		} else {
-			Logger.warn(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.info(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		}
 
 		loggedFailures.add(level + ' ' + message);
-		hasUnsavedFailures = true;
+		if (level == ERROR_LEVEL) hasUnsavedFailures = true;
 	}
 
 	private void saveRecordedFailures() {

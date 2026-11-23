@@ -991,6 +991,90 @@ private class GoogleLocalFileServiceTest {
 		Test.stopTest();
 	}
 
+	@IsTest
+	private static void testRetrieveGoogleFileHeaderDetailsPositiveFormatsDatesAndLookupLabelsForTheViewer() {
+		GoogleCloudTestFactory.initMocks();
+		Id headerFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		Datetime createdMoment = Datetime.newInstanceGmt(2026, 11, 15, 21, 32, 16);
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
+			(GoogleFile__c) JSON.deserialize(JSON.serialize(new Map<String, Object>{
+				'attributes' => new Map<String, Object>{ 'type' => 'GoogleFile__c' },
+				'Id' => headerFileId,
+				'Name' => 'Header File',
+				'OwnerId' => UserInfo.getUserId(),
+				'CreatedDate' => createdMoment
+			}), GoogleFile__c.class)
+		});
+
+		Test.startTest();
+		GoogleFileHeaderInfoDTO headerInfo = new GoogleLocalFileService().retrieveGoogleFileHeaderDetails().forFile(headerFileId).execute();
+		Test.stopTest();
+
+		Map<String, GoogleFileHeaderInfoDTO.CompactFieldDTO> fieldByApiName = new Map<String, GoogleFileHeaderInfoDTO.CompactFieldDTO>();
+		for (GoogleFileHeaderInfoDTO.CompactFieldDTO compactField : headerInfo.compactFields) {
+			fieldByApiName.put(compactField.apiName, compactField);
+		}
+
+		Assert.isTrue(fieldByApiName.containsKey('CreatedDate'), 'The shipped Header field set shows the created date');
+		Assert.areEqual(createdMoment.format(), fieldByApiName.get('CreatedDate').displayValue, 'A date and time is written in the locale and time zone of the person viewing it, not as GMT');
+		Assert.isTrue(fieldByApiName.containsKey('OwnerId'), 'The shipped Header field set shows the owner');
+		Assert.isFalse(fieldByApiName.get('OwnerId').label.endsWith(' ID'), 'A lookup is labelled as the record page labels it, without the trailing ID');
+	}
+
+	@IsTest
+	private static void testResolveAccessLevelsPositiveJudgesFilesAndVersionsTogether() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName('Owned').insertRecord();
+		GoogleFileVersion__c localVersion = GoogleCloudTestFactory.version().forFile(localFile.Id).insertRecord();
+
+		Test.startTest();
+		Map<Id, String> accessLevelById = new GoogleLocalFileService().resolveAccessLevels(new List<Id>{ localFile.Id, localVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual('Edit', accessLevelById.get(localFile.Id), 'The owner can change the file');
+		Assert.areEqual('Edit', accessLevelById.get(localVersion.Id), 'A version is judged by the file it belongs to');
+	}
+
+	@IsTest
+	private static void testResolveAccessLevelsPositiveViewerLinkGivesViewOnly() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.denyAllRecordAccess();
+		Id readableRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(readableRecordId, true, false);
+		Id viewableFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
+			new GoogleFile__c(Id = viewableFileId, OwnerId = GoogleCloudTestFactory.otherUserId())
+		});
+		GoogleCloudTestFactory.mockLinks(new List<GoogleFileLink__c>{
+			GoogleCloudTestFactory.link().forFile(viewableFileId).withLinkedRecord(readableRecordId).withShareType('Viewer').build()
+		});
+
+		Test.startTest();
+		Map<Id, String> accessLevelById = new GoogleLocalFileService().resolveAccessLevels(new List<Id>{ viewableFileId });
+		Test.stopTest();
+
+		Assert.areEqual('View', accessLevelById.get(viewableFileId), 'A Viewer link to a readable record opens the file for reading only');
+	}
+
+	@IsTest
+	private static void testResolveAccessLevelsNegativeLeavesOutEveryIdWithoutAccess() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.denyAllRecordAccess();
+		Id unreachableFileId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		Id unknownVersionId = GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType);
+		Id foreignRecordId = GoogleCloudTestFactory.fakeId(GoogleFileLink__c.SObjectType);
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
+			new GoogleFile__c(Id = unreachableFileId, OwnerId = GoogleCloudTestFactory.otherUserId())
+		});
+
+		Test.startTest();
+		Map<Id, String> accessLevelById = new GoogleLocalFileService().resolveAccessLevels(new List<Id>{ unreachableFileId, unknownVersionId, foreignRecordId, null });
+		Test.stopTest();
+
+		Assert.isTrue(accessLevelById.isEmpty(), 'A file without an access path, a version that does not exist and an Id of another object all read as no access');
+	}
+
 	private static GoogleFile__c insertSearchFile(String fileName, String versionName) {
 		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName(fileName).insertRecord();
 		GoogleCloudTestFactory.version().forFile(localFile.Id).withName(versionName).isLatest(true).insertRecord();
@@ -1932,6 +2016,29 @@ private class GoogleLocalFileServiceTest {
 			Assert.areEqual('Unable to retrieve file owners. Please try again or contact your system administrator', ex.getMessage());
 		}
 		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testEnsureGoogleDriveFolderStructurePositiveNeverRenames() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('GET')
+				.endpointContains('/files/CACHED_FOLDER_01')
+		).thenReturnStatus(200, '{"id":"CACHED_FOLDER_01","name":"GoogleFile__c : Old Name"}');
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleClientConfig__mdt config = GoogleCloudTestFactory.config().withUploadFolderId('ROOT_FOLDER_01').withFolderStructure('{Record}').build();
+		config.IsFolderRenameEnabled__c = true;
+		GoogleMetadataConfigService.configRecordOverride = config;
+		GoogleFile__c record = GoogleCloudTestFactory.file().withName('Acme Brochure').insertRecord();
+		GoogleCacheDriveFolderService folderCache = new GoogleCacheDriveFolderService();
+		folderCache.putFolderId(folderCache.buildFolderKey('ROOT_FOLDER_01', record.Id), 'CACHED_FOLDER_01');
+
+		Test.startTest();
+		new GoogleLocalFileService().ensureGoogleDriveFolderStructure(record.Id);
+		Test.stopTest();
+
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'The folder prefetch never renames, so an upload never waits longer for it');
 	}
 
 	private class SearchInput {

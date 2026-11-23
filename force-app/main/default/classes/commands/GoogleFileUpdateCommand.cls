@@ -36,6 +36,7 @@ public without sharing class GoogleFileUpdateCommand {
     }
 
     private static final Integer MAX_FILE_NAME_LENGTH = 80;
+    private static final Pattern EXTENSION_PATTERN = Pattern.compile('\\.(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{1,10}$');
 
     private final IGoogleUnitOfWork uowRef;
     private final GoogleFile__c localGoogleFileRecord;
@@ -158,9 +159,9 @@ public without sharing class GoogleFileUpdateCommand {
                     normalizedBaseName.length() - originalExtension.length()
                 );
             } else {
-                Integer lastDotIndex = normalizedBaseName.lastIndexOf('.');
-                if (lastDotIndex >= 0) {
-                    normalizedBaseName = normalizedBaseName.substring(0, lastDotIndex);
+                String typedExtension = extractExtension(normalizedBaseName);
+                if (!String.isBlank(typedExtension)) {
+                    normalizedBaseName = normalizedBaseName.substring(0, normalizedBaseName.length() - typedExtension.length());
                 }
             }
         }
@@ -193,12 +194,12 @@ public without sharing class GoogleFileUpdateCommand {
             return '';
         }
 
-        Integer lastDotIndex = fileNameValue.lastIndexOf('.');
-        if (lastDotIndex <= 0 || lastDotIndex >= fileNameValue.length() - 1) {
+        Matcher extensionMatcher = EXTENSION_PATTERN.matcher(fileNameValue);
+        if (!extensionMatcher.find() || extensionMatcher.start() == 0) {
             return '';
         }
 
-        return fileNameValue.substring(lastDotIndex);
+        return extensionMatcher.group();
     }
 
     private String normalizeDescription(String value) {

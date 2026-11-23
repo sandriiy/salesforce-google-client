@@ -416,7 +416,7 @@ public without sharing class GoogleLocalFileMigrationService {
 
 			result.failedCount++;
 			failureMessages.add(upload.errorMessage);
-			Logger.warn('Migration File Not Copied --> ContentDocumentId=' + String.valueOf(candidate.latestVersion.ContentDocumentId) + ', Reason=' + upload.errorMessage).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Migration File Not Copied --> ContentDocumentId=' + String.valueOf(candidate.latestVersion.ContentDocumentId) + ', Reason=' + upload.errorMessage).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		}
 
 		result.nextPosition = stopRowIndex == null ? position + window.rows.size() : position + stopRowIndex;
@@ -468,7 +468,7 @@ public without sharing class GoogleLocalFileMigrationService {
 		try {
 			window.rows = fetchCandidates(window.cursor, position, remainingWindowSize(window.cursor, position));
 		} catch (Exception ex) {
-			Logger.warn('Migration Candidate Cursor Reopened --> Position=' + position + ', Message=' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.info('Migration Candidate Cursor Reopened --> Position=' + position + ', Message=' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			window.cursor = openCandidateCursor(condition);
 			window.rows = fetchCandidates(window.cursor, position, remainingWindowSize(window.cursor, position));
 		}
@@ -658,7 +658,7 @@ public without sharing class GoogleLocalFileMigrationService {
 		try {
 			System.abortJob(jobId);
 		} catch (Exception ex) {
-			Logger.warn('Stop Migration --> Could not cancel ' + String.valueOf(jobId) + ': ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.error('Stop Migration --> Could not cancel ' + String.valueOf(jobId) + ': ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		}
 	}
 

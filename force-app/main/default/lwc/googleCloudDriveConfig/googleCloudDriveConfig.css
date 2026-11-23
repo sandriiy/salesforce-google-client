@@ -106,9 +106,15 @@
 
 .folder-structure-title {
     display: inline-flex;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
     font-weight: 600;
+}
+
+.title-help {
+    position: relative;
+    top: -2px;
+    --slds-c-icon-color-foreground-default: #181818;
 }
 
 .folder-structure-preview {
@@ -219,7 +225,7 @@
 
 .upload-folder-title {
     display: inline-flex;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
     font-weight: 600;
 }
@@ -227,6 +233,15 @@
 .upload-folder-count {
     font-size: 12.5px;
     opacity: 0.85;
+}
+
+.copies-folder-message {
+    margin-top: 4px;
+    font-size: 12.5px;
+}
+
+.copies-folder-message:not(.slds-text-color_error) {
+    color: #181818;
 }
 
 .upload-folder-grid {
@@ -296,3 +311,23 @@
     margin-top: -5px;
 }
 
+.folder-names-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.folder-names-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.folder-names-toggle {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+}

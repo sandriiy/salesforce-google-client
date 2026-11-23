@@ -1,76 +1,77 @@
 # Preview
 
-The preview window is the main workspace for Google Client files inside Salesforce. Users open it from record components, File Explorer, View All pages, and Experience Cloud where the user has access.
+The preview window is where people work with a Google Client file inside Salesforce. It opens from the record components, File Explorer, the View All page and Experience Cloud sites, wherever the user has access to the file.
 
 ![Preview Window](../assets/images/client_preview_window.png)
 
-## What It Supports
+## What it shows
 
-Google Client supports a broad Salesforce-native preview experience while the actual files remain in Google Drive.
+The file stays in Google Drive, and the preview shows it inside Salesforce:
 
-Supported preview behavior includes:
-
-- PDF preview, including large PDF files
-- Direct image preview, including large image files
-- CSV and spreadsheet preview
-- Document preview for supported document types
-- Non-previewable file handling with a clear download option
-- Version-aware preview, so the expected active version is used
-- Optional AI summary and Q&A panel when File Intelligence is configured
+- PDFs and images, including large ones
+- Documents, spreadsheets and CSV files
+- The version you opened, with older versions on the file details page
+- The AI summary and questions panel, when AI Analytics is on
 
 ![Large Image Preview](../assets/images/large_image_preview.png)
 
-## File Size Behavior
+## Which files can be previewed
 
-PDF and supported image files can be previewed directly. Other previewable document and spreadsheet files depend on Google Client preparing a Google Workspace preview version, and on that preview version fitting within the configured **Maximum Preview File Size**.
+PDFs and images are shown as they are, except SVG and TIFF images. Documents and spreadsheets are shown through a Google Workspace copy that Google Client makes in Google Drive after the upload, so right after an upload a document may say **Preview is being prepared** for a minute or two.
 
-Since 2.2.0 the limit is measured against the prepared preview version rather than the uploaded file. The preview version is usually far smaller, so a document that is too large to download in one go can still be previewed. Files uploaded before 2.2.0 keep using the size of the uploaded file.
+A document is previewed up to the **Maximum Preview File Size** setting. The copy is usually far smaller than the uploaded file, so even a large document often previews.
 
-If a file cannot be previewed, the preview window still opens and gives users the available actions, including download.
+A file that cannot be previewed still opens in the preview window, with **Download** and everything else you can do with it.
 
 ![Preview Unavailable](../assets/images/client_preview_unavailable.png)
 
-## Download and Download As
+## Store files only
 
-Users can always download the original file when they have access.
+When an administrator turns on **Store files only**, Google Client stops making Google Workspace copies. PDFs and images still preview, while documents and spreadsheets open on the "Preview unavailable" screen with **Download**, and Download As and questions to the AI are not offered.
 
-For supported previewable files, the preview menu also shows **Download As**. This lets users export the prepared Google Workspace preview into another format without opening Google Drive.
+📘 See [Advanced: File Management](../config/advanced/file-management.md)
 
-Supported export options depend on the generated preview type:
+## Available actions
 
-- Document-style previews can export to Microsoft Word, PDF, OpenDocument, plain text, rich text, zipped HTML, EPUB, and Markdown.
-- Spreadsheet-style previews can export to Microsoft Excel, OpenDocument Spreadsheet, PDF, zipped HTML, CSV, and TSV.
+Depending on your access, the preview window offers:
 
-If Download As is not supported for the selected file, the action is hidden.
-
-![Download Options](../assets/images/client_preview_download_options.png)
-
-To download several files of a record at once, use the **View All** page of Notes & Attachments.
-
-📘 See [Bulk Download](bulk-download.md)
-
-## Available Actions
-
-Depending on the user’s access level, the preview window can provide:
-
-- Download
-- Download As
+- Download, and [Download As](download-as.md) for documents and spreadsheets
 - Share
 - Public Link
 - View File Details
 - Edit File Details
 - Upload New Version
 - Delete
-- AI summary and file Q&A, when configured and available
+- Open in Google Drive, for the file's owner when an administrator has turned it on
 
-Viewer users get read-oriented actions. Collaborator and owner users can access edit-oriented actions where allowed.
+Viewers get the actions that read the file. Collaborators and owners also get the actions that change it.
 
-## AI Panel
+### Edit File Details
 
-When File Intelligence is enabled and the file is eligible, the preview window can show a side panel with the stored document summary and a question-answering experience.
+Changes the file name, the description and the name of the version you have open.
 
-This keeps document understanding inside Salesforce. Users do not need to download the file or open a separate AI tool just to understand what a document contains.
+![Edit File Details](../assets/images/client_edit_file_details.png)
+
+### Upload New Version
+
+Adds a new version of the file, which becomes the current one. Earlier versions stay on the file details page.
+
+![Upload New Version](../assets/images/client_upload_new_version.png)
+
+📘 See [Versioning](versioning.md)
+
+### Delete
+
+Removes the file with all its versions, and its links to every record and post it is attached to.
+
+![Delete a file](../assets/images/client_delete_file.png)
+
+## AI panel
+
+When AI Analytics is on and the file can be analyzed, a side panel shows the file's summary and labels, with a box for asking questions about it.
 
 ![AI summary and Q&A panel](../assets/images/client_preview_summary_and_question.png)
+
+📘 See [AI & Intelligence](artificial-intelligence/overview.md)
 
 <br>

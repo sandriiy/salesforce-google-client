@@ -1,83 +1,49 @@
 # Bulk Download
 
-Bulk download lets you pick several files and download them together as one ZIP archive, instead of opening and downloading each file on its own.
+Pick several files and download them together as one ZIP archive. It works on the **View All** page of Notes & Attachments, in the Uploader and in every view of File Explorer, on record pages, Experience Cloud sites and Screen Flows alike.
 
-| Where | Available |
-|---|---|
-| Notes & Attachments, **View All** page | Yes |
-| Uploader | Yes |
-| File Explorer, every view | Yes |
+## How it works
+
+1. Tick the files you want.
+2. Select **Download (N)**, which appears as soon as one file is ticked.
+3. A progress bar shows which file is being fetched. **Stop** cancels the download, and nothing is saved.
+4. Your browser saves the archive, named after the record, such as `Acme Corporation - 3 files.zip`, or `Files - 3 files.zip` where there is no record name to use.
+
+**Clear selection** unticks everything.
 
 ## Notes & Attachments
 
-The **View All** page of Notes & Attachments lets you pick several files of a record and download them together.
+On a record, open Notes & Attachments and click **View All**. The checkbox in the column header ticks every file shown, searching keeps your selection, and **Download (N)** sits next to **Upload Files**.
 
 ![Files selected on the View All page](../assets/images/bulk_download_selection.png)
 
-### How it works
-
-1. On a record, open the Notes & Attachments component and click **View All**.
-2. Tick the files you want. The checkbox in the column header selects every file shown, and the search box narrows the list while your selection is kept.
-3. Click **Download (N)** next to **Upload Files**. The button appears as soon as one file is ticked and shows how many are selected.
-4. Watch the progress bar. It says which file is being fetched and how far the download has got.
-5. The archive is saved by your browser like any other download, named after the record, for example `Acme Corporation - 3 files.zip`.
-
-**Clear selection** unticks everything, and **Stop** cancels a download that is running. A stopped download saves nothing.
-
 ![Bulk download in progress](../assets/images/bulk_download_progress.png)
-
-The View All page of an Experience Cloud site offers the same checkboxes and the same **Download** button.
 
 ## Uploader
 
-The Uploader lets you pick several of the files listed in it and download them together. This works on record pages, on Experience Cloud pages and in Screen Flows.
+Each uploaded file has a checkbox in front of its icon, and **Download (N)** appears above the list. While the download runs, the selected files cannot be opened, replaced or removed, and leaving the page or moving to the next screen of a Flow stops it.
 
-<!-- IMAGE: bulk_download_uploader_selection.png — the Uploader on a record page with two files ticked, "2 of 5 selected • Clear selection" and the Download (2) button above the list -->
+![Files selected in the Uploader](../assets/images/bulk_download_uploader_selection.png)
 
-### How it works
-
-1. Tick the files you want, one by one. Each uploaded file has a checkbox in front of its icon. A file that is still uploading gets its checkbox once the upload finishes.
-2. Click **Download (N)** above the list. The button appears as soon as one file is ticked and shows how many are selected.
-3. Watch the progress bar, which takes the place of the selection line. It says which file is being fetched and how far the download has got.
-4. The archive is saved by your browser like any other download, named after the record, for example `Acme Corporation - 3 files.zip`. When the record's name cannot be shown to you, the archive is called `Files - 3 files.zip`.
-
-**Clear selection** unticks everything, and **Stop** cancels a download that is running. A stopped download saves nothing.
-
-<!-- IMAGE: bulk_download_uploader_progress.png — the Uploader while a download runs, with the progress bar, "Downloading 1 of 2 · <file name>" and the Stop button -->
-
-While the download runs, the files you selected cannot be opened, replaced or removed. The other files can. Leaving the page, or moving to the next screen of a Flow, stops the download, and nothing is saved.
+![Bulk download in progress in the Uploader](../assets/images/bulk_download_uploader_progress.png)
 
 ## File Explorer
 
-Every view of [File Explorer](file-explorer.md), **Search** included, lets you pick several files and download them together.
+The checkbox in the column header ticks every file loaded so far, **Download (N)** sits next to **Upload Files**, and the archive is named `Files - N files.zip`.
 
-<!-- IMAGE: bulk_download_file_explorer.png — File Explorer's Search view with three files ticked, "3 selected • Clear selection" under the title and Download (3) next to Upload Files -->
+![Files selected in File Explorer](../assets/images/bulk_download_file_explorer.png)
 
-### How it works
+![Every loaded file ticked from the column header](../assets/images/bulk_download_file_explorer_select_all.png)
 
-1. Tick the files you want. The checkbox in the column header ticks every file loaded so far; scroll down first to load more.
-2. Click **Download (N)** next to **Upload Files**. The button appears as soon as one file is ticked and shows how many are selected.
-3. The line under the title says how many files are selected, for example **3 selected**, and **3 of 12 selected** once the whole list is loaded.
-4. Watch the progress bar, which takes the place of that line. It says which file is being fetched and how far the download has got.
-5. The archive is saved by your browser like any other download, named `Files - 3 files.zip`.
+The download runs in the background, so you can keep searching, switching views and opening files. It takes the files ticked when it started, and files a new search no longer lists are unticked.
 
-**Clear selection** unticks everything, and **Stop** cancels a download that is running. A stopped download saves nothing.
+![Bulk download in progress in File Explorer](../assets/images/bulk_download_file_explorer_progress.png)
 
-The download does not hold up the list. While it runs you can keep searching, switch views, sort, scroll, tick other files and open a preview. It downloads the files that were ticked when it started, and leaving File Explorer lets it finish and save the archive.
+## What to expect
 
-When the list reloads, for example after a new search, files that are no longer listed are unticked.
-
-## What is in the archive
-
-- Each file is included under its own name, with its current version. Two files with the same name are numbered, for example `Report.pdf` and `Report (2).pdf`.
-- Files are stored as they are, without compression, so the archive is about as large as the files themselves.
-- The archive opens with the tools built into Windows and macOS and with common archive programs.
-
-## Things worth knowing
-
-- **You download what you can open.** Only files you have access to are offered, and every file is checked again when it is fetched, so a bulk download never includes a file you could not open on your own.
-- **A file that cannot be fetched is left out.** The others are still saved, the message after the download names the file that is missing, and it stays selected so you can try it again.
-- **Up to 100 files and 512 MB at a time.** A larger selection is refused with a message asking you to select fewer files, and nothing is downloaded.
-- **Large files take longer.** A file bigger than what one request can carry is fetched in pieces, and the progress bar moves with them.
+- Each file is included under its own name with its current version, and two files with the same name are numbered, such as `Report (2).pdf`.
+- Only files you can open are offered, and each one is checked again when it is fetched.
+- A file that cannot be fetched is left out of the archive, named in the message afterwards and left selected.
+- Up to 100 files and 512 MB go in one archive.
 
 <br>

@@ -30,7 +30,7 @@
     </classAccesses>
     <classAccesses>
         <apexClass>GoogleFileUploadAction</apexClass>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
     </classAccesses>
     <customMetadataTypeAccesses>
         <enabled>true</enabled>

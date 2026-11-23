@@ -1,56 +1,51 @@
-# Set Up Service Account
+# Configure Service Account & APIs
 
-The integration runs through a **Service Account**: a special non-human identity you create in Google Cloud that acts on behalf of your Salesforce org. It's the mechanism that allows Salesforce to authenticate with Google APIs securely, without user credentials or OAuth flows.
+Google Client connects to Google through a **service account**: an identity you create in Google Cloud that acts on behalf of your Salesforce org. It lets Salesforce sign in to Google securely, without anyone's personal credentials.
 
-This page walks through setting up that Service Account, assigning the right permissions, and enabling the APIs you need.
+Create the service account, give it the roles it needs, enable the APIs and download its key.
 
 ## Step 1: Create or select a Google Cloud project
 
-1. Open the [**Google Cloud Console**](https://console.cloud.google.com/){ target="_blank" rel="noopener noreferrer" }
+1. Open the [**Google Cloud Console**](https://console.cloud.google.com/){ target="_blank" rel="noopener noreferrer" }.
 2. Create a new project or select an existing one.
 
 For reference: [https://developers.google.com/workspace/guides/create-project](https://developers.google.com/workspace/guides/create-project){ target="_blank" rel="noopener noreferrer" }
 
-## Step 2: Create a Service Account
+## Step 2: Create a service account
 
-1. Go to [**IAM & Admin → Service Accounts**](https://console.cloud.google.com/iam-admin/serviceaccounts){ target="_blank" rel="noopener noreferrer" }
-2. Create a new Service Account
-3. Proceed to Step 3 before saving; you can assign roles during creation or after.
+1. Go to [**IAM & Admin → Service Accounts**](https://console.cloud.google.com/iam-admin/serviceaccounts){ target="_blank" rel="noopener noreferrer" }.
+2. Create a new service account.
+3. Assign its roles during creation or afterwards, as described in Step 3.
 
-## Step 3: Assign IAM Roles
+## Step 3: Assign IAM roles
 
-Role assignment depends on which integrations you are enabling. Google Drive access is managed via Drive sharing (not IAM), so no roles are needed for Drive alone. AI integrations require at least one role.
+The roles depend on which integrations you enable. Google Drive access is granted by sharing Drive folders with the service account, not through IAM, so Drive alone needs no role. Each AI integration needs one.
 
-| Integration | IAM Role Required |
+| Integration | IAM role required |
 |---|---|
-| Google Workspace (Drive) | None (access is managed via Drive folder sharing) |
+| Google Workspace (Drive) | None (access comes from sharing the Drive folders) |
 | Gemini API for Developers | `Vertex AI User` (`roles/aiplatform.user`) |
 | Agent Platform | `Vertex AI User` (`roles/aiplatform.user`) |
 
-To assign a role: **IAM & Admin → IAM → Find your Service Account → Edit → Add Role**
-
-!!! note
-    If you are only setting up Google Drive at this stage, you can skip role assignment entirely. You can always return here and add the role later when configuring AI.
+To assign a role: **IAM & Admin → IAM → find your service account → Edit → Add Role**
 
 ## Step 4: Enable APIs
 
-Enable the APIs that correspond to the integrations you plan to use. Navigate to **APIs & Services → Library** to search and enable each one.
+Enable the APIs for the integrations you plan to use. Search for each one under **APIs & Services → Library** and enable it.
 
-| Integration | API to Enable |
+| Integration | API to enable |
 |---|---|
 | Google Workspace (Drive) | [Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com){ target="_blank" rel="noopener noreferrer" } |
 | Gemini API for Developers | [Gemini API](https://ai.google.dev/gemini-api/docs/api-key){ target="_blank" rel="noopener noreferrer" } |
 | Agent Platform | [Agent Platform API / Vertex AI API](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start){ target="_blank" rel="noopener noreferrer" } |
 
-Navigate to **APIs & Services → Library** to search and enable each one.
+## Step 5: Generate a service account key
 
-## Step 5: Generate a Service Account key
+1. Open the new service account.
+2. Go to the **Keys** tab.
+3. Create a new key, either **JSON**, Google's default, or **P12**, which takes fewer steps to convert.
+4. Download the file and store it securely.
 
-1. Open the newly created Service Account
-2. Navigate to the **Keys** tab
-3. Create a new **JSON** key (recommended; requires more setup steps) or a **P12** key (simpler; fewer setup steps)
-4. Download and securely store the file
-
-Once you have the key file, proceed to [Configure Certificate](configure-certificate.md) to generate the JKS keystore and upload it to Salesforce.
+With the key file in hand, continue to [Configure Certificate](configure-certificate.md) to turn it into a JKS keystore and upload it to Salesforce.
 
 <br>

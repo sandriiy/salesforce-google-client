@@ -8,6 +8,9 @@ const DEFAULT_THREADS = 4;
 const ABORT_ERROR_NAME = 'GoogleCloudDownloadAbortError';
 const BYTE_YIELD_INTERVAL = 65536;
 const CRC_YIELD_INTERVAL = 1048576;
+const CRC_TABLE_COUNT = 8;
+const CRC_BYTES_PER_STEP = 8;
+const IS_LITTLE_ENDIAN = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
 const BASE64_STRING_CHUNK_SIZE = 0x8000;
 const WORKER_YIELD_INTERVAL = 8;
 const OCTET_STREAM_MIME_TYPE = 'application/octet-stream';
@@ -250,6 +253,18 @@ export async function downloadInChunks(localGoogleFileVersionId, options = {}) {
         assembledBuffer = null;
     }
 }
+
+/**
+ * Says why a single download failed. A refusal the server explains, such as no longer having
+ * access to the file, is shown in its own words, and anything else gets the general message.
+ *
+ * @param {Error} error - what download(), downloadAs() or downloadInChunks() threw
+ */
+export const resolveDownloadFailureMessage = (error) => {
+    const serverMessage = error?.serverMessage || error?.body?.message;
+
+    return typeof serverMessage === 'string' && serverMessage.trim() ? serverMessage.trim() : DEFAULT_FAILED_DOWNLOAD_MESSAGE;
+};
 
 /**
  * Says why a set of files cannot be downloaded together, or null when it can.
@@ -549,35 +564,67 @@ const buildZipArchive = async (entries, control) => {
     return new Blob([...localParts, ...centralParts, endRecord.buffer], { type: ZIP_MIME_TYPE });
 };
 
-let crcTable;
+let crcTables;
 
-const resolveCrcTable = () => {
-    if (!crcTable) {
-        crcTable = new Uint32Array(256);
+const resolveCrcTables = () => {
+    if (!crcTables) {
+        const baseTable = new Uint32Array(256);
 
         for (let n = 0; n < 256; n++) {
             let c = n;
             for (let k = 0; k < 8; k++) {
                 c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
             }
-            crcTable[n] = c >>> 0;
+            baseTable[n] = c >>> 0;
+        }
+
+        crcTables = [baseTable];
+        for (let k = 1; k < CRC_TABLE_COUNT; k++) {
+            const previous = crcTables[k - 1];
+            const table = new Uint32Array(256);
+            for (let n = 0; n < 256; n++) {
+                table[n] = (previous[n] >>> 8) ^ baseTable[previous[n] & 0xFF];
+            }
+            crcTables.push(table);
         }
     }
 
-    return crcTable;
+    return crcTables;
+};
+
+const updateCrc = (initialCrc, bytes, tables) => {
+    const [t0, t1, t2, t3, t4, t5, t6, t7] = tables;
+    const stepCount = IS_LITTLE_ENDIAN && bytes.byteOffset % 4 === 0 ? Math.floor(bytes.length / CRC_BYTES_PER_STEP) : 0;
+    let crc = initialCrc;
+
+    if (stepCount > 0) {
+        const words = new Uint32Array(bytes.buffer, bytes.byteOffset, stepCount * 2);
+        for (let w = 0; w < words.length; w += 2) {
+            const low = crc ^ words[w];
+            const high = words[w + 1];
+            crc = t7[low & 0xFF] ^ t6[(low >>> 8) & 0xFF] ^ t5[(low >>> 16) & 0xFF] ^ t4[low >>> 24]
+                ^ t3[high & 0xFF] ^ t2[(high >>> 8) & 0xFF] ^ t1[(high >>> 16) & 0xFF] ^ t0[high >>> 24];
+        }
+    }
+
+    for (let i = stepCount * CRC_BYTES_PER_STEP; i < bytes.length; i++) {
+        crc = t0[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    }
+
+    return crc;
 };
 
 const crc32 = async (bytes, control) => {
-    const table = resolveCrcTable();
+    const tables = resolveCrcTables();
     let crc = 0xFFFFFFFF;
 
-    for (let i = 0; i < bytes.length; i++) {
-        crc = table[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
-
-        if (i > 0 && i % CRC_YIELD_INTERVAL === 0) {
+    for (let start = 0; start < bytes.length; start += CRC_YIELD_INTERVAL) {
+        if (start > 0) {
             throwIfAborted(control);
             await yieldToMainThread();
         }
+
+        crc = updateCrc(crc, bytes.subarray(start, Math.min(start + CRC_YIELD_INTERVAL, bytes.length)), tables);
     }
 
     return (crc ^ 0xFFFFFFFF) >>> 0;
@@ -651,12 +698,15 @@ const base64ToUint8Array = async (base64, control) => {
 
     const bytes = new Uint8Array(binary.length);
 
-    for (let i = 0; i < binary.length; i++) {
-        throwIfAborted(control);
-        bytes[i] = binary.charCodeAt(i) & 0xff;
-
-        if (i > 0 && i % BYTE_YIELD_INTERVAL === 0) {
+    for (let start = 0; start < binary.length; start += BYTE_YIELD_INTERVAL) {
+        if (start > 0) {
             await yieldToMainThread();
+        }
+
+        throwIfAborted(control);
+        const end = Math.min(start + BYTE_YIELD_INTERVAL, binary.length);
+        for (let i = start; i < end; i++) {
+            bytes[i] = binary.charCodeAt(i) & 0xff;
         }
     }
 
@@ -702,7 +752,7 @@ const createDownloadObjectUrl = (blob) => {
     try {
         return URL.createObjectURL(blob);
     } catch (error) {
-        if (!isUnsupportedMimeTypeError(error) || blob?.type === OCTET_STREAM_MIME_TYPE) {
+        if (!isRefusedBlobTypeError(error) || blob?.type === OCTET_STREAM_MIME_TYPE) {
             throw error;
         }
 
@@ -721,14 +771,19 @@ const normalizeApexError = (e) => {
             e.body?.exceptionType ||
             e.message ||
             JSON.stringify(e);
-        return new Error(message);
+        const error = new Error(message);
+        if (typeof e.body?.message === 'string') {
+            error.serverMessage = e.body.message;
+        }
+
+        return error;
     }
 
     return new Error(String(e));
 };
 
-const isUnsupportedMimeTypeError = (error) => {
-    return /unsupported mime type/i.test(error?.message || '');
+const isRefusedBlobTypeError = (error) => {
+    return /unsupported mime type|unsecure/i.test(error?.message || '');
 };
 
 const resolveSafeMimeType = (mimeType) => {

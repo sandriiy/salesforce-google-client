@@ -86,4 +86,23 @@ private class GoogleFileBackgroundUploadJobTest {
 
 		Assert.areEqual(0, [SELECT COUNT() FROM GoogleFile__c]);
 	}
+
+	@IsTest
+	private static void testWorkPositiveSuccessfulUploadSavesNoLog() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig();
+		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudFolderJob.skipExecution = true;
+
+		ContentVersion sourceFile = GoogleCloudTestFactory.salesforceFile().withTitle('Large').withExtension('txt').withContent('this content is above the tiny threshold').mock();
+
+		GoogleFileUploadRequestDTO request = new GoogleFileUploadRequestDTO();
+		request.salesforceFileId = sourceFile.Id;
+
+		Test.startTest();
+		new GoogleFileBackgroundUploadJob(request).work();
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'An upload that worked is not saved to the log');
+	}
 }

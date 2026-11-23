@@ -15,9 +15,15 @@
 
 .label-editor-title {
     display: inline-flex;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
     font-weight: 600;
+}
+
+.title-help {
+    position: relative;
+    top: -2px;
+    --slds-c-icon-color-foreground-default: #181818;
 }
 
 .label-editor-count {

@@ -1,39 +1,21 @@
 ﻿# Configure Certificate
 
-This page walks through converting the Service Account key you downloaded into a JKS keystore and uploading it to Salesforce. Once uploaded, the Google Client app will reference it by name to sign requests to Google APIs, with no credentials stored or exposed.
+Turn the service account key you downloaded into a JKS keystore and upload it to Salesforce. The Google Client app refers to the certificate by name to sign its requests to Google, so no credentials are stored or exposed.
 
 !!! note
-    Before this step, make sure you have already created your Service Account and downloaded the key file. If not, start here: [Set Up Service Account](setup-service-account.md)
+    Create the service account and download its key first. If you have not done that yet, start with [Configure Service Account & APIs](setup-service-account.md).
 
 ## Required tools
 
-Install the following tools locally (used only for certificate creation):
+Install these tools on your computer. They are needed only to create the certificate.
 
-<ul>
-  <li>
-    <a href="https://slproweb.com/products/Win32OpenSSL.html" target="_blank">
-      OpenSSL
-    </a>
-    – used to generate and convert certificates
-  </li>
-  <li>
-    <a href="https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html" target="_blank">
-      Java JDK 11 or 17
-    </a>
-    – required for <code>keytool</code>
-  </li>
-  <li>
-    <a href="https://jqlang.org/download/" target="_blank">
-      jq
-    </a>
-    – used to extract values from the Service Account JSON key
-  </li>
-</ul>
-<br>
+- [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html){ target="_blank" rel="noopener noreferrer" } generates and converts the certificate.
+- [Java JDK 11 or 17](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html){ target="_blank" rel="noopener noreferrer" } provides `keytool`.
+- [jq](https://jqlang.org/download/){ target="_blank" rel="noopener noreferrer" } reads values out of the JSON key.
 
-## Step 1: Prepare certificate artifacts
+## Step 1: Prepare the certificate
 
-The end goal is a **JKS keystore** file, which is the format Salesforce requires to store the private key securely. The commands you run depend on which key file type you downloaded when [setting up your Service Account](setup-service-account.md) (JSON or P12). Follow the path that matches your file.
+The goal is a **JKS keystore** file, which is the format Salesforce needs to store the private key securely. The commands depend on the type of key you downloaded when you [created the service account](setup-service-account.md). Follow the path that matches your file.
 
 ---
 
@@ -41,14 +23,14 @@ The end goal is a **JKS keystore** file, which is the format Salesforce requires
 
 **1. Extract the private key**
 
-Pulls the `private_key` field out of the JSON file and saves it as a PEM file:
+Takes the `private_key` field out of the JSON file and saves it as a PEM file:
 
 ```bash
 jq -r ".private_key" service_account.json | Set-Content -Path service_account_key.pem -Encoding utf8
 ```
 
 ??? note "Manual alternative"
-    Open the JSON file, copy the value of `private_key`, and save it as `service_account_key.pem`. The file must follow this exact format: each line of base64 content must be exactly 64 characters long:
+    Open the JSON file, copy the value of `private_key` and save it as `service_account_key.pem`. The file must follow this exact format, with every line of base64 content exactly 64 characters long:
 
     ```
     -----BEGIN PRIVATE KEY-----
@@ -60,23 +42,23 @@ jq -r ".private_key" service_account.json | Set-Content -Path service_account_ke
 
 **2. Generate a Certificate Signing Request (CSR)**
 
-Creates a CSR that OpenSSL will use to issue a self-signed certificate:
+Creates a CSR that OpenSSL uses to issue a self-signed certificate:
 
 ```bash
 openssl req -new -key service_account_key.pem -out service_account.csr
 ```
 
-OpenSSL will prompt you for a few details:
+OpenSSL asks for a few details:
 
-- Country Name (2-letter code): e.g., `US`
-- State or Province Name: e.g., `California`
-- Locality Name: e.g., `San Francisco`
-- Organization Name: e.g., `Your Company`
-- Common Name: your Service Account email, e.g., `test-110@vital-lyceum-426217-h7.iam.gserviceaccount.com`
-- Email Address: same as Common Name
+- Country Name (2-letter code): for example `US`
+- State or Province Name: for example `California`
+- Locality Name: for example `San Francisco`
+- Organization Name: for example `Your Company`
+- Common Name: your service account email, for example `test-110@vital-lyceum-426217-h7.iam.gserviceaccount.com`
+- Email Address: the same as Common Name
 - Challenge password: at least 6 characters
 
-All other fields are optional, just press Enter to skip.
+Every other field is optional. Press Enter to skip it.
 
 **3. Issue a self-signed certificate**
 
@@ -86,9 +68,9 @@ Signs the CSR with your private key and produces a certificate valid for 365 day
 openssl x509 -req -days 365 -in service_account.csr -signkey service_account_key.pem -out service_account_cert.crt
 ```
 
-**4. Package into a PKCS12 keystore**
+**4. Package it into a PKCS12 keystore**
 
-Bundles the certificate and private key into a `.p12` file. You will be prompted to set an export password, keep it safe as you will need it in the next step:
+Bundles the certificate and the private key into a `.p12` file. You are asked to set an export password. Keep it safe, because the next step needs it:
 
 ```bash
 openssl pkcs12 -export -in service_account_cert.crt -inkey service_account_key.pem -out service_account.p12 -name "ServiceAccountName"
@@ -96,7 +78,7 @@ openssl pkcs12 -export -in service_account_cert.crt -inkey service_account_key.p
 
 **5. Convert to JKS**
 
-Converts the PKCS12 keystore into a JKS file, which is the format Salesforce requires:
+Converts the PKCS12 keystore into a JKS file, the format Salesforce needs:
 
 ```bash
 keytool -importkeystore -srckeystore service_account.p12 -srcstoretype PKCS12 -destkeystore service_account.jks -deststoretype JKS
@@ -106,30 +88,29 @@ keytool -importkeystore -srckeystore service_account.p12 -srcstoretype PKCS12 -d
 
 ### If you have a P12 key
 
-Your key is already in PKCS12 format, so you can skip straight to the final conversion.
+Your key is already in PKCS12 format, so you can go straight to the final conversion.
 
 **Convert to JKS**
 
-Converts your existing `.p12` file into a JKS keystore, which is the format Salesforce requires:
+Converts your `.p12` file into a JKS keystore, the format Salesforce needs:
 
 ```bash
 keytool -importkeystore -srckeystore service_account.p12 -srcstoretype PKCS12 -destkeystore service_account.jks -deststoretype JKS
 ```
 
-## Step 2: Upload certificate to Salesforce
+## Step 2: Upload the certificate to Salesforce
 
 In Salesforce Setup:
 
-1. Navigate to **Certificate and Key Management**
-2. Select **Import from Keystore**
-3. Upload the generated **JKS file**
-4. Provide the key password
-5. Save
+1. Go to **Certificate and Key Management**.
+2. Select **Import from Keystore**.
+3. Upload the **JKS file** you generated.
+4. Enter the keystore password.
+5. Save.
 
-<br>
-Once the certificate is uploaded to Salesforce, proceed to [Configure Google Workspace](configure-drive.md).
+Once the certificate is in Salesforce, continue to [Configure Google Workspace](configure-drive.md).
 
-## Reference & deep-dive guides
+## Further reading
 
 - [**Quick Setup Guide (Service Account + Certificate)**](https://github.com/sandriiy/salesforce-google-drive-library/wiki/Quick-Setup-Guide){ target="_blank" rel="noopener noreferrer" }
 - [**Google Service Accounts overview**](https://cloud.google.com/iam/docs/service-accounts){ target="_blank" rel="noopener noreferrer" }

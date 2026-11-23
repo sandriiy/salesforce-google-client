@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RecordFolderNamePatterns__c</fullName>
+    <description>How record and user folders in Google Drive are named, per object, managed from the Google Client app in the Google Drive setup's folder structure step. Each entry names an object and a formula that returns text, built from that record's fields. A row for User names the people's folders. Leave blank to keep the usual names.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Managed from the Google Client app in the Google Drive setup's folder structure step. Leave blank to keep the usual folder names.</inlineHelpText>
+    <label>Record Folder Name Patterns</label>
+    <length>32768</length>
+    <required>false</required>
+    <type>LongTextArea</type>
+    <unique>false</unique>
+    <visibleLines>10</visibleLines>
+</CustomField>

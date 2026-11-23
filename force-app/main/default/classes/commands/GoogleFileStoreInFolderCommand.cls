@@ -23,8 +23,10 @@
  */
 /**
  * Moves an uploaded file from the upload folder into the folder its record or user owns, and takes the
- * Workspace preview copy with it. Files are always uploaded to the configured upload folder first and
- * moved afterwards, because the destination folder can only be resolved once the record is known.
+ * Workspace preview copy with it unless the copy lives in the copies folder. Files are always uploaded to
+ * the configured upload folder first and moved afterwards, because the destination folder can only be
+ * resolved once the record is known. The folders it reaches follow their current names when renaming is
+ * switched on. Moving the copy is best effort: the original's placement stands whatever happens to it.
  */
 public without sharing class GoogleFileStoreInFolderCommand {
 	public class GoogleFileStoreInFolderCommandException extends Exception {}
@@ -33,6 +35,7 @@ public without sharing class GoogleFileStoreInFolderCommand {
     private GoogleMetadataConfigService metadataService;
     private GoogleFileFolderStructureCommand folderStructureCommand;
     private final IGoogleUnitOfWork uowRef;
+    private Boolean hasRecordedErrors = false;
 
     /**
      * Builds the command around the unit of work the new folder Id is registered on.
@@ -42,8 +45,18 @@ public without sharing class GoogleFileStoreInFolderCommand {
     public GoogleFileStoreInFolderCommand(IGoogleUnitOfWork uowRef) {
         this.remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
         this.metadataService = new GoogleMetadataConfigService();
-        this.folderStructureCommand = new GoogleFileFolderStructureCommand();
+        this.folderStructureCommand = new GoogleFileFolderStructureCommand().followCurrentNames();
         this.uowRef = uowRef;
+    }
+
+    /**
+     * Says whether a placement recorded an error without failing, such as a folder that could not be
+     * renamed or a copy that could not be moved, so the job knows to save the log.
+     *
+     * @return True when an error line was written.
+     */
+    public Boolean hasRecordedErrors() {
+        return this.hasRecordedErrors == true || this.folderStructureCommand.hasRecordedErrors();
     }
 
     /**
@@ -136,7 +149,7 @@ public without sharing class GoogleFileStoreInFolderCommand {
         if (String.isBlank(resultingGoogleDriveFileId)) return true;
 
         if (!String.isBlank(remoteFileIds.googleWorkspaceFileId)) {
-            moveRemoteFile(remoteFileIds.googleWorkspaceFileId, foldersToDetach, destinationFolderId);
+            moveWorkspaceCopy(remoteFileIds.googleWorkspaceFileId, effectiveRootFolderId, destinationFolderId);
         }
 
         registerLatestVersionFolderUpdate(
@@ -146,6 +159,43 @@ public without sharing class GoogleFileStoreInFolderCommand {
         );
 
         return true;
+    }
+
+    private void moveWorkspaceCopy(String workspaceCopyId, String originalFolderId, String destinationFolderId) {
+        try {
+            if (String.isNotBlank(this.metadataService.getWorkspaceCopyFolderId()) && !isBesideOriginal(workspaceCopyId, originalFolderId)) {
+                return;
+            }
+
+            moveRemoteFile(workspaceCopyId, new List<String>{ originalFolderId }, destinationFolderId);
+        } catch (Exception ex) {
+            this.hasRecordedErrors = true;
+            Logger.error(
+                'Folder Placement Job --> Google Workspace copy not moved' +
+                ', CopyFileId=' + String.valueOf(workspaceCopyId) +
+                ', DestinationFolderId=' + String.valueOf(destinationFolderId) +
+                ', Error=' + ex.getMessage()
+            ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+        }
+    }
+
+    private Boolean isBesideOriginal(String workspaceCopyId, String originalFolderId) {
+        try {
+            GoogleFileEntity workspaceCopy = this.remoteGoogleDrive.files().retrieve().download(workspaceCopyId)
+                .setFileDownloadType(GoogleDownloadFileBuilder.DownloadType.METADATA)
+                .setSearchOnAllDrives(true)
+                .setFields('id, parents')
+                .execute();
+
+            return workspaceCopy != null && workspaceCopy.parents != null && workspaceCopy.parents.contains(originalFolderId);
+        } catch (Exception ex) {
+            Logger.info(
+                'Folder Placement Job --> Google Workspace copy left in place, its folder could not be read' +
+                ', CopyFileId=' + String.valueOf(workspaceCopyId) +
+                ', Error=' + ex.getMessage()
+            ).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+            return false;
+        }
     }
 
     private String moveRemoteFile(String remoteFileId, List<String> uploadParentFolderIds, String destinationFolderId) {

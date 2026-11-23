@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsFolderRenameEnabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Controls whether record and user folders in Google Drive follow the current names of their records and users. When enabled, a folder whose record was renamed, or whose folder name pattern changed, takes its new name the next time a file is added to it. Leave this off to keep every folder name as it is.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Renames a record's or user's folder in Google Drive to its current name the next time a file is added to it. Leave this off to keep every folder name as it is.</inlineHelpText>
+    <label>Is Folder Rename Enabled?</label>
+    <type>Checkbox</type>
+</CustomField>

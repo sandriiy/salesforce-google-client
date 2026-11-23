@@ -15,17 +15,32 @@
                     </div>
                     <div class="slds-media__body">
                         <h2 class="slds-card__header-title">
-                            <a class="slds-card__header-link" href="javascript:void(0)" onclick={handleHeaderClick}>
-                                <span class="slds-truncate slds-m-right_xx-small" title={title}>
-                                    {title}
-                                </span>
-
-                                <template lwc:if={badgeText}>
-                                    <span class="slds-shrink-none slds-m-right_xx-small">
-                                        {badgeText}
+                            <template lwc:if={plainTitle}>
+                                <span class="base-card-title">
+                                    <span class="slds-truncate slds-m-right_xx-small" title={title}>
+                                        {title}
                                     </span>
-                                </template>
-                            </a>
+
+                                    <template lwc:if={badgeText}>
+                                        <span class="slds-shrink-none slds-m-right_xx-small">
+                                            {badgeText}
+                                        </span>
+                                    </template>
+                                </span>
+                            </template>
+                            <template lwc:else>
+                                <a class="slds-card__header-link" href="#" onclick={handleHeaderClick}>
+                                    <span class="slds-truncate slds-m-right_xx-small" title={title}>
+                                        {title}
+                                    </span>
+
+                                    <template lwc:if={badgeText}>
+                                        <span class="slds-shrink-none slds-m-right_xx-small">
+                                            {badgeText}
+                                        </span>
+                                    </template>
+                                </a>
+                            </template>
                         </h2>
 
                         <template lwc:if={subtitle}>

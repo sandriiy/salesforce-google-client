@@ -59,6 +59,11 @@ public inherited sharing class GoogleMetadataConfigService {
 	 */
 	public static final Integer DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 	/**
+	 * The most files one delete job trashes in Drive. Each one is a callout, and a job must stay well inside
+	 * the transaction's 100 callouts and 120 seconds, so a larger saved value counts as this one.
+	 */
+	public static final Integer MAX_DELETE_CHAIN_SIZE = 50;
+	/**
 	 * How long an answer to a question may be when nothing is configured.
 	 */
 	public static final Integer DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
@@ -86,6 +91,10 @@ public inherited sharing class GoogleMetadataConfigService {
 	 * How many labels an administrator may define. Anything past this is ignored rather than sent.
 	 */
 	public static final Integer MAX_AI_LABEL_DEFINITIONS = 20;
+	/**
+	 * How many objects may have a folder name pattern. Rows past this are ignored rather than read.
+	 */
+	public static final Integer MAX_RECORD_FOLDER_NAME_PATTERNS = 50;
 	/**
 	 * The switches that turn AI on. Deactivation sets every one of them to false.
 	 */
@@ -162,7 +171,6 @@ public inherited sharing class GoogleMetadataConfigService {
 		for (String fieldApiName : AI_FEATURE_FLAG_FIELDS) clearedValues.put(fieldApiName, false);
 
 		Logger.info('Deactivate AI Configuration --> Cleared=' + String.join(new List<String>(clearedValues.keySet()), ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-		Logger.saveLog();
 
 		return saveConfig(clearedValues);
 	}
@@ -184,6 +192,18 @@ public inherited sharing class GoogleMetadataConfigService {
 	 */
 	public Boolean hasConfigRecord() {
 		return String.isNotBlank(configRecord == null ? null : configRecord.DeveloperName);
+	}
+
+	/**
+	 * When the configuration was last saved. A save is asynchronous, so a caller that started one can
+	 * tell it has landed once this has moved from the value it read beforehand.
+	 *
+	 * @return The moment of the last save in milliseconds, or null when nothing was ever saved.
+	 */
+	public Long getLastSavedTime() {
+		if (!hasConfigRecord() || configRecord.SystemModstamp == null) return null;
+
+		return configRecord.SystemModstamp.getTime();
 	}
 
 	/**
@@ -223,6 +243,65 @@ public inherited sharing class GoogleMetadataConfigService {
 	}
 
 	/**
+	 * Whether record and user folders follow the current names of their records and users. A folder is only
+	 * ever renamed when a file reaches it, never in bulk.
+	 *
+	 * @return True when renaming is switched on.
+	 */
+	public Boolean isFolderRenameEnabled() {
+		return configRecord.IsFolderRenameEnabled__c == true;
+	}
+
+	/**
+	 * The folder that keeps the Google Workspace copies, apart from the record folders.
+	 *
+	 * @return The folder Id, or null to keep each copy beside its original.
+	 */
+	public String getWorkspaceCopyFolderId() {
+		String configuredValue = configRecord.WorkspaceCopyFolderId__c;
+		return String.isBlank(configuredValue) ? null : configuredValue.trim();
+	}
+
+	/**
+	 * How folders are named, per object. Reading is deliberately forgiving: an incomplete row, a second row for
+	 * the same object, an object that does not exist or an unreadable payload is dropped rather than raised, so
+	 * a bad save can never stop files from reaching their folders. Whether a formula compiles is decided only
+	 * when a folder is named.
+	 *
+	 * @return The usable rows in their saved order, the first per object, capped at the maximum.
+	 */
+	public List<GoogleRecordFolderNamePatternDTO> getRecordFolderNamePatterns() {
+		List<GoogleRecordFolderNamePatternDTO> patterns = new List<GoogleRecordFolderNamePatternDTO>();
+		String raw = configRecord.RecordFolderNamePatterns__c;
+		if (String.isBlank(raw)) return patterns;
+
+		List<GoogleRecordFolderNamePatternDTO> configuredPatterns;
+		try {
+			configuredPatterns = (List<GoogleRecordFolderNamePatternDTO>) JSON.deserialize(raw, List<GoogleRecordFolderNamePatternDTO>.class);
+		} catch (Exception ex) {
+			Logger.error('Record folder name patterns could not be read: ' + ex.getMessage()).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.saveLog();
+			return patterns;
+		}
+
+		Map<String, Schema.SObjectType> objectTypesByName = Schema.getGlobalDescribe();
+		Set<String> seenObjectNames = new Set<String>();
+		for (GoogleRecordFolderNamePatternDTO configuredPattern : configuredPatterns) {
+			if (configuredPattern == null || !configuredPattern.isComplete()) continue;
+
+			String objectKey = configuredPattern.objectApiName.trim().toLowerCase();
+			if (!objectTypesByName.containsKey(objectKey) || seenObjectNames.contains(objectKey)) continue;
+			seenObjectNames.add(objectKey);
+
+			configuredPattern.objectApiName = configuredPattern.objectApiName.trim();
+			patterns.add(configuredPattern);
+			if (patterns.size() >= MAX_RECORD_FOLDER_NAME_PATTERNS) break;
+		}
+
+		return patterns;
+	}
+
+	/**
 	 * The size above which a file counts as large. A setting of 0 means the same as a blank one, because a
 	 * saved number field cannot be emptied again.
 	 *
@@ -235,13 +314,16 @@ public inherited sharing class GoogleMetadataConfigService {
     }
 
 	/**
-	 * How many files one delete job trashes in Drive before chaining another.
+	 * How many files one delete job trashes in Drive before chaining another. A value below 1 counts as
+	 * blank, because a job that trashes nothing would chain itself forever, and a value above
+	 * MAX_DELETE_CHAIN_SIZE counts as that maximum, because a job past it runs out of callouts.
 	 *
-	 * @return The configured size, or the shipped default.
+	 * @return The configured size, the shipped default, or the maximum.
 	 */
 	public Integer getDeleteChainSize() {
 		Decimal configuredValue = configRecord.MaxDeleteChainSize__c;
-		return configuredValue == null ? DEFAULT_MAX_DELETE_CHAIN_SIZE : configuredValue.intValue();
+		Boolean isUsable = configuredValue != null && configuredValue >= 1;
+		return isUsable ? Math.min(configuredValue.intValue(), MAX_DELETE_CHAIN_SIZE) : DEFAULT_MAX_DELETE_CHAIN_SIZE;
     }
 
     /**
@@ -602,6 +684,7 @@ public inherited sharing class GoogleMetadataConfigService {
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsFilePreviewDisabled__c', configRecord.IsFilePreviewDisabled__c, false);
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsDirectBrowserUploadEnabled__c', configRecord.IsDirectBrowserUploadEnabled__c, false);
 		applyBooleanDefaultIfMissing(normalizedValues, 'IsOpenInDriveEnabled__c', configRecord.IsOpenInDriveEnabled__c, false);
+		applyBooleanDefaultIfMissing(normalizedValues, 'IsFolderRenameEnabled__c', configRecord.IsFolderRenameEnabled__c, false);
 		applyNumberDefaultIfMissing(normalizedValues, 'MaxDeleteChainSize__c', configRecord.MaxDeleteChainSize__c, DEFAULT_MAX_DELETE_CHAIN_SIZE);
 
 		Boolean isIntelligenceEnabled = resolveBooleanValue(normalizedValues, 'IsFileIntelligenceEnabled__c', configRecord.IsFileIntelligenceEnabled__c);
@@ -712,6 +795,7 @@ public inherited sharing class GoogleMetadataConfigService {
 		}
 	}
 	
+	@TestVisible
 	private class DefaultMetadataCallback implements Metadata.DeployCallback {
 		public void handleResult(Metadata.DeployResult result, Metadata.DeployCallbackContext context) {
 			Id jobId = context.getCallbackJobId();
@@ -720,7 +804,22 @@ public inherited sharing class GoogleMetadataConfigService {
 				GoogleMetadataConfigService.cacheService.put(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY, 'success');
 			} else {
 				GoogleMetadataConfigService.cacheService.put(GoogleMetadataConfigService.DEFAULT_METADATA_DEPLOY_KEY, 'fail');
+				Logger.error('Save Configuration, Deploy ' + String.valueOf(jobId) + ' ended ' + String.valueOf(result.status) + ': ' + describeFailure(result)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+				Logger.saveLog();
 			}
+		}
+
+		private String describeFailure(Metadata.DeployResult result) {
+			List<String> problems = new List<String>();
+			if (String.isNotBlank(result.errorMessage)) problems.add(result.errorMessage);
+
+			if (result.details != null && result.details.componentFailures != null) {
+				for (Metadata.DeployMessage failure : result.details.componentFailures) {
+					problems.add(failure.fullName + ': ' + failure.problem);
+				}
+			}
+
+			return problems.isEmpty() ? 'no reason given' : String.join(problems, '; ');
 		}
 	}
 }

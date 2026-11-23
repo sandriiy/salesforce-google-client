@@ -24,9 +24,13 @@
 /**
  * What the preview panel needs from the AI layer: the stored summary, the labels, whether questions can
  * be asked at all, and the answers themselves. A stored summary is run past the safety guard again
- * before it is shown, because the rules may have tightened since it was written.
+ * before it is shown, because the rules may have tightened since it was written. While previews are
+ * turned off no file can be asked about, older copies included; stored summaries and labels are still
+ * returned.
  */
 public without sharing class GoogleLocalFileIntelligenceService {
+	private static final String QUESTIONS_PREVIEWS_OFF_MESSAGE = 'Questions are not available while file previews are turned off.';
+
 	/**
 	 * Reads the AI state of one version.
 	 *
@@ -82,8 +86,9 @@ public without sharing class GoogleLocalFileIntelligenceService {
 		Map<Id, List<String>> labelNamesByVersionId = new GoogleLocalFileVersionLabelService().retrieveLabelNamesByVersionId(versionIds);
 		GoogleFileVersionContextResolver contextResolver = new GoogleFileVersionContextResolver();
 		GoogleFileIntelligenceFactory intelligenceFactory = new GoogleFileIntelligenceFactory();
-		Boolean isIntelligenceConfigured = intelligenceFactory.isConfigured();
-		Boolean isLabelingConfigured = intelligenceFactory.isLabelingConfigured();
+		Boolean isPreviewDisabled = new GoogleMetadataConfigService().isPreviewDisabled();
+		Boolean isIntelligenceConfigured = intelligenceFactory.isConfigured() && !isPreviewDisabled;
+		Boolean isLabelingConfigured = intelligenceFactory.isLabelingConfigured() && !isPreviewDisabled;
 		IGoogleAiPromptSafetyGuard safetyGuard = new GoogleAiPromptSafetyGuardFactory().resolve();
 		String safetyMode = new GoogleMetadataConfigService().getAiSafetyMode();
 		for (Id versionId : localFileVersionIds) {
@@ -100,8 +105,8 @@ public without sharing class GoogleLocalFileIntelligenceService {
 	}
 
 	/**
-	 * Answers a question about one file. With analysis turned off it comes back blocked with the reason
-	 * rather than throwing, so the panel can say why.
+	 * Answers a question about one file. With analysis turned off, or while previews are turned off, it
+	 * comes back blocked with the reason rather than throwing, so the panel can say why.
 	 *
 	 * @param localFileVersionId The version being asked about.
 	 * @param question What the user asked.
@@ -110,6 +115,10 @@ public without sharing class GoogleLocalFileIntelligenceService {
 	public GoogleFileAnalysisResultDTO answerQuestion(Id localFileVersionId, String question) {
 		if (localFileVersionId == null) {
 			return null;
+		}
+
+		if (new GoogleMetadataConfigService().isPreviewDisabled()) {
+			return buildBlockedQuestionResult(QUESTIONS_PREVIEWS_OFF_MESSAGE);
 		}
 
 		try {

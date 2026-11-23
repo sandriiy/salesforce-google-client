@@ -115,7 +115,6 @@ public without sharing class GoogleLocalDriveAccessService {
 		}
 
 		Logger.info('Open In Drive Grant --> FileId=' + String.valueOf(localFileRecordId) + ', VersionId=' + String.valueOf(targetVersion.Id) + ', GoogleDriveFileId=' + targetVersion.GoogleDriveFileId__c + ', Grantee=' + actingUser.Email + ', PermissionId=' + grantResult.permissionId + ', Expires=' + String.valueOf(grantResult.accessEndsOn) + ', WasAlreadyShared=' + String.valueOf(grantResult.wasAlreadyShared)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-		Logger.saveLog();
 
 		return new GoogleDriveAccessDTO(grantResult.viewLink, grantResult.accessEndsOn, grantResult.wasAlreadyShared);
 	}

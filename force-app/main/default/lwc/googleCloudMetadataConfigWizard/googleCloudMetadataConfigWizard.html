@@ -106,8 +106,8 @@
                                     <div class={fileManagementPanelClass} data-tab="fileManagement">
                                         <div class="tab-toggle-header">
                                             <div class="tab-toggle-copy">
-                                                <div class="tab-toggle-title">File Preview</div>
-                                                <div class="tab-toggle-subtitle">Skip generating preview documents and hide any previews that already exist.</div>
+                                                <div class="tab-toggle-title">Store files only</div>
+                                                <div class="tab-toggle-subtitle">Google Client stops making the Google Workspace copies that document and spreadsheet previews, AI and Download As need, for every file. PDFs and images still preview.</div>
                                             </div>
                                             <div class="tab-toggle-control">
                                                 <lightning-input
@@ -116,7 +116,7 @@
                                                     checked={draft.isFilePreviewDisabled}
                                                     onchange={handleToggle}
                                                     data-field="isFilePreviewDisabled"
-                                                    label="Disable File Preview"
+                                                    label="Store files only"
                                                     message-toggle-active=""
                                                     message-toggle-inactive="">
                                                 </lightning-input>
@@ -193,7 +193,9 @@
                                                     onchange={handleChangeNumber}
                                                     data-field="maxDeleteChainSize"
                                                     label="Max Delete Chain Size"
-                                                    field-level-help="How many files are deleted per queueable job before chaining another job."
+                                                    min="1"
+                                                    max="50"
+                                                    field-level-help="How many files are removed from Google Drive in one step before the next step starts."
                                                     placeholder="e.g. 50"
                                                     required>
                                                 </lightning-input>
@@ -207,8 +209,8 @@
                                                     onchange={handleChangeText}
                                                     data-field="organizationalDomain"
                                                     label="Organizational Domain"
-                                                    field-level-help="Specify your organization’s domain (for example, “cloudrylabs.com”). If set, all public links and shares created for outside Salesforce will be restricted to this domain, unless the user specifies otherwise."
-                                                    placeholder="e.g. cloudrylabs.com">
+                                                    field-level-help="Specify your organization’s domain (for example, “astertrail.com”). If set, all public links and shares created for outside Salesforce will be restricted to this domain, unless the user specifies otherwise."
+                                                    placeholder="e.g. astertrail.com">
                                                 </lightning-input>
                                             </div>
                                         </div>
@@ -343,54 +345,32 @@
 
                                                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                                                         <lightning-input
-                                                            lwc:ref="summaryMaxOutputTokens"
                                                             type="number"
-                                                            value={summaryMaxOutputTokensValue}
-                                                            onchange={handleChangeOutputLimit}
+                                                            value={draft.summaryMaxOutputTokens}
+                                                            onchange={handleChangeNumber}
                                                             data-field="summaryMaxOutputTokens"
                                                             label="Summary Max Output Tokens"
-                                                            field-level-help="How long a file summary may be, in tokens. Leave it empty for 80, the default. Google Client adds room for the AI's reasoning on top, and a summary is always cut to 255 characters."
+                                                            field-level-help="How long a file summary may be, in tokens. Leave it empty for 80, the default, or enter 0 for no limit, which may take longer. Google Client adds room for the AI's reasoning on top, and a summary is always cut to 255 characters."
                                                             placeholder={summaryMaxOutputTokensPlaceholder}
-                                                            min="1"
+                                                            min="0"
                                                             step="1"
-                                                            disabled={isSummaryOutputLimitDisabled}
-                                                        ></lightning-input>
-                                                        <lightning-input
-                                                            class="slds-m-top_x-small"
-                                                            type="checkbox"
-                                                            checked={isSummaryOutputUnlimited}
-                                                            onchange={handleNoLimitToggle}
-                                                            data-field="summaryMaxOutputTokens"
-                                                            label="No limit"
-                                                            field-level-help="Let the AI write a summary of any length. It may take longer, and the summary is still cut to 255 characters."
                                                             disabled={isIntelligenceDisabled}
                                                         ></lightning-input>
                                                     </div>
 
                                                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
                                                         <lightning-input
-                                                            lwc:ref="questionMaxOutputTokens"
                                                             type="number"
-                                                            value={questionMaxOutputTokensValue}
-                                                            onchange={handleChangeOutputLimit}
+                                                            value={draft.questionMaxOutputTokens}
+                                                            onchange={handleChangeNumber}
                                                             data-field="questionMaxOutputTokens"
                                                             label="Question Max Output Tokens"
-                                                            field-level-help="Maximum number of tokens returned for document question responses."
+                                                            field-level-help="Maximum number of tokens returned for document question responses. Enter 0 for no limit; long answers take longer to arrive."
                                                             placeholder="e.g. 1024"
-                                                            min="1"
+                                                            min="0"
                                                             step="1"
-                                                            disabled={isQuestionOutputLimitDisabled}
-                                                            required={isQuestionOutputLimitRequired}
-                                                        ></lightning-input>
-                                                        <lightning-input
-                                                            class="slds-m-top_x-small"
-                                                            type="checkbox"
-                                                            checked={isQuestionOutputUnlimited}
-                                                            onchange={handleNoLimitToggle}
-                                                            data-field="questionMaxOutputTokens"
-                                                            label="No limit"
-                                                            field-level-help="Let the AI answer at any length. Long answers take longer to arrive."
                                                             disabled={isIntelligenceDisabled}
+                                                            required={isIntelligenceEnabled}
                                                         ></lightning-input>
                                                     </div>
                                                 </div>
@@ -580,7 +560,9 @@
                 <div class="config-notice-eyebrow">Heads up</div>
                 <div class="config-notice-title">{visibleNotice.title}</div>
                 <div class="config-notice-text">{visibleNotice.text}</div>
-                <button type="button" class="config-notice-action" onclick={handleNoticeAction}>{visibleNotice.actionLabel} →</button>
+                <template lwc:if={visibleNotice.actionLabel}>
+                    <button type="button" class="config-notice-action" onclick={handleNoticeAction}>{visibleNotice.actionLabel} →</button>
+                </template>
             </div>
             <div class="config-notice-close">
                 <lightning-button-icon icon-name="utility:close" variant="bare" size="small" alternative-text="Dismiss" title="Dismiss" onclick={handleNoticeDismiss}></lightning-button-icon>

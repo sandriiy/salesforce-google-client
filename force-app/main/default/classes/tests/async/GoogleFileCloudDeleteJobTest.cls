@@ -132,4 +132,27 @@ private class GoogleFileCloudDeleteJobTest {
 		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'Nothing to delete means Google Drive is never called');
 		Assert.areEqual(0, chainedJobs);
 	}
+
+	@IsTest
+	private static void testExecutePositiveOneRefusedFileDoesNotStopTheOthers() {
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		driveMock.whenRequestMatches(
+			new GoogleDriveHttpMock.RequestMatcher()
+				.withMethod('POST')
+				.endpointContains('/files/GD_GONE')
+		).thenReturnStatus(404, '{"error":{"code":404,"message":"File not found: GD_GONE.","errors":[{"reason":"notFound"}]}}');
+		GoogleCloudTestFactory.initMocks(driveMock);
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt(MaxDeleteChainSize__c = 3);
+
+		List<String> googleDriveIds = new List<String>{ 'GD_GONE', 'GD_2', 'GD_3', 'GD_4' };
+
+		Test.startTest();
+		new GoogleFileCloudDeleteJob(googleDriveIds).execute(null);
+		Integer chainedJobs = Limits.getQueueableJobs();
+		Test.stopTest();
+
+		List<String> trashedDriveIds = collectTrashedDriveIds(driveMock);
+		Assert.isTrue(trashedDriveIds.contains('GD_2') && trashedDriveIds.contains('GD_3'), 'A file Drive refuses must not leave the rest of the batch in Google Drive');
+		Assert.areEqual(1, chainedJobs, 'The remainder is still handed to the next job after a refusal');
+	}
 }

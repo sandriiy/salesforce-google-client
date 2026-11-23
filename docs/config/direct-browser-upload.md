@@ -1,56 +1,34 @@
 # Direct Browser Upload
 
-Large files normally travel to Google Drive in two hops: the browser sends each chunk to Salesforce, and Apex forwards it to Google. Direct Browser Upload removes the middle hop. Apex still opens and confirms the upload, but the file content goes straight from the browser to Google Drive.
+Direct Browser Upload sends the content of large files from the browser straight to Google Drive, instead of passing every piece through Salesforce first. Large uploads become noticeably faster.
 
-This setting is **off by default**. Until an administrator turns it on, uploads behave exactly as they always have.
+Salesforce still opens and completes every upload, so the file's record, its folder and its access are set exactly as before. Only the path the content takes changes, and small files keep using the standard upload.
 
-## Why It Is Faster
-
-On the standard path every byte crosses the network twice, and the browser must Base64-encode each chunk first, which inflates it by about a third. Chunks are also kept small enough for one Salesforce request to carry.
-
-Sending the bytes directly removes the Base64 inflation, removes the second hop entirely, and allows much larger chunks. A 100 MB upload moves roughly 233 MB across the network on the standard path versus 100 MB directly, and uses 2 Apex transactions instead of dozens.
-
-## What Does Not Change
-
-Direct Browser Upload only changes how file content reaches Google Drive. Everything else is identical:
-
-- The security model, and who can see or edit the file
-- Folder structure, including per-user and per-record folders
-- The Salesforce records created for the file, its version, and its record links
-- Versioning, preview generation, and AI summaries
-- Small files, which continue to use the standard upload
+It is **off by default**.
 
 ## Prerequisite: CSP Trusted Site
 
-For the browser to talk to Google directly, Salesforce must allow it. Google Client ships a CSP Trusted Site named **GoogleDriveDirectUpload** that permits browser connections to `https://www.googleapis.com`.
+Google Client ships a CSP Trusted Site named **GoogleDriveDirectUpload** that lets the browser connect to `https://www.googleapis.com`, and to nothing else. No upload uses it until the setting is turned on, and a package upgrade restores it if it was changed or deactivated.
 
-It relaxes only the `connect-src` directive for that one address, and no upload uses it until the setting below is turned on. The record is part of the package, so a package upgrade restores it if it is changed or deactivated.
+## Enabling it
 
-## Enabling It
+1. Open the **Google Client** app.
+2. Go to **Advanced** → **File Management**.
+3. Turn on **Direct Browser Upload** and save.
+4. Select **Test connection**.
 
-1. Open the **Google Client** app
-2. Go to **Advanced → File Management**
-3. Turn on **Direct Browser Upload**
-4. Save
-5. Select **Test connection**
+The test starts a real upload, sends a small piece of content and cancels it, so no file is created in Google Drive. A successful test means the service account, the upload folder and the browser connection all work together. When the test says the browser could not reach Google, the **GoogleDriveDirectUpload** CSP Trusted Site is missing or inactive in Setup.
 
-The test opens a real upload session, sends a small chunk, and cancels the session, so no file is created in Google Drive. A successful test confirms the service account, the upload folder, and the browser connection all work together.
+![Direct Browser Upload turned on, with Test connection](../assets/images/config_direct_upload_test.png)
 
-If the test reports that the browser could not reach Google, check that the **GoogleDriveDirectUpload** CSP Trusted Site exists and is active in Setup.
+## When an upload cannot be sent directly
 
-## When an Upload Cannot Be Sent Directly
+Nothing is lost if a direct upload does not complete. Brief network errors are retried automatically, and if the upload still cannot finish, the user is offered a retry through the standard upload, on the file card in the **Uploader** and at the bottom of the upload window in **Attachments** and **File Explorer**.
 
-Nothing is lost if a direct upload does not complete. Transient network errors are retried automatically, and if the upload still cannot finish, the user is offered a retry that uses the standard upload path:
-
-- In the **Uploader**, the retry appears on the file card itself
-- In the **Attachments** and **File Explorer** upload window, the retry appears at the bottom of the window
-
-Once the user accepts a retry, the rest of that browser session uses the standard path automatically, so a misconfigured org does not prompt on every file.
-
-Failed and recovered uploads are recorded through the logging framework with the `Google Client for Salesforce` tag, so administrators can see them on the Analytics dashboard.
+Once the user accepts a retry, the rest of that browser session uses the standard upload. Every direct upload that failed or was recovered is recorded in the logs and shows on the Analytics dashboard.
 
 ## Experience Cloud
 
-Direct Browser Upload works on Experience Cloud sites. The shipped CSP Trusted Site applies to all contexts, so no additional configuration is required.
+Direct Browser Upload works on Experience Cloud sites with no extra configuration.
 
 <br>

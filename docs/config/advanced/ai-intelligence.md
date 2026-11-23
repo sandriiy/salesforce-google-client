@@ -1,116 +1,59 @@
 # Advanced: AI Intelligence
 
-Turn AI Analytics on, control how the AI provider is asked to respond, and let Google Client label files automatically.
+Turn AI Analytics on, shape how the AI provider is asked to respond, and let Google Client label files automatically.
 
-Open the **Google Client** app → **Advanced** → **AI Intelligence**. The tab has two sections: **AI Analytics** for summaries and questions, and **AI Labeling** for automatic labels.
+Open the **Google Client** app → **Advanced** → **AI Intelligence**. The tab has two sections, **AI Analytics** for summaries and questions and **AI Labeling** for automatic labels. Both need a connected provider.
 
-!!! note
-    These settings only take effect once a provider is connected and validated. Start with [Configure AI & Intelligence](../../setup/configure-intelligence.md) if you have not done that yet.
+📘 See [Configure AI & Intelligence](../../setup/configure-intelligence.md)
 
 ![AI Intelligence tab](../../assets/images/config_advanced_ai_intelligence.png)
 
 ## AI Analytics
 
-The master switch for summaries, file Q&A, and labeling.
+The main switch for summaries, file Q&A and labeling. It can be turned on once Gemini or Agent Platform is saved, and turning it on checks the provider first. While it is off, nothing is sent to any AI provider and the AI controls are hidden, while existing summaries and labels are kept.
 
-It can only be turned on once Gemini or Agent Platform is connected. When you flip the switch, Google Client checks the provider right away and tells you if it is not ready, so a saved configuration never points at a provider that does not answer. Until a provider is saved, the switch stays off and a notice in the corner of the page explains where to set one up.
+| Setting | What it does |
+|---|---|
+| **Summary Prompt** | How the provider is asked to describe a file. The shipped prompt asks for a very short summary that starts with "This file describes", drawn only from the document. |
+| **Question Prompt** | How the provider is asked to answer a question about a file. The shipped prompt asks for short, plain-text answers drawn only from the document, and sets the reply used when the answer is not in it. |
+| **Summary Max Output Tokens** | How long a summary may be. Empty means 80, and `0` means no limit. A summary is always cut to 255 characters. |
+| **Question Max Output Tokens** | How long an answer may be, which is most of what the provider bills for a question. `0` means no limit. |
 
-When it is off, Google Drive file operations continue to work normally and the AI controls are simply not shown. Nothing is sent to any AI provider. Turning it back on makes the feature available again. Existing summaries and labels are not lost while it is off.
+![Summary and Question Max Output Tokens](../../assets/images/config_advanced_ai_intelligence_limits.png)
 
-The settings below are disabled until this is on, and required once it is.
+Google Client waits up to two minutes for each answer. A summary or label that fails because the service is slow or busy is tried again twice over the next few minutes. A question is not: the person asking is told and can ask again.
 
-### Summary Prompt
-
-How the provider is asked to describe a file.
-
-The shipped prompt asks for a very short summary starting with "This file describes", built only from the document text, focused on the main subject and the most important names, dates, and numbers.
-
-Replace it when your teams need something else. A sales org might want commercial terms surfaced first; a support org might want the product and the reported issue. Be specific about the kind of business answer you expect, and resist adding ceremony. Longer prompts do not produce better summaries.
-
-📘 See [Document Summaries](../../features/artificial-intelligence/summaries.md)
-
-### Question Prompt
-
-How the provider is asked to answer a user's question about a file.
-
-The shipped prompt asks for accurate, concise, plain-text answers drawn only from the document, and tells the model to make a sensible attempt at matching imperfect wording to the right table, column, or section before giving up. It also fixes the wording used when an answer genuinely is not in the file.
-
-Change it if your users need a different tone or a different fallback, but keep the instruction to answer only from the document. Removing that is what turns a document assistant into a chatbot that guesses.
-
-📘 See [File Q&A](../../features/artificial-intelligence/file-qa.md)
-
-### Summary Max Output Tokens
-
-How long a summary may be.
-
-Leave it empty to keep the default of 80, which is what every summary used before this setting existed. Google Client adds room for the AI's reasoning on top of this number, and a summary is always cut to 255 characters, so raising it rarely makes summaries longer. It mostly helps a model that reasons at length before it writes.
-
-Tick **No limit** to let the AI write as much as it needs. Summaries may then take longer to arrive, and they are still cut to 255 characters.
-
-### Question Max Output Tokens
-
-How long an answer may be.
-
-This is the setting that most directly affects what your AI provider bills you, since you pay per answer and answers are the longer half of the exchange.
-
-Raising it allows fuller answers to complex questions. Lowering it keeps answers terse and costs down, at the risk of a useful answer being cut short. If users report answers that stop mid-sentence, this is the setting to raise.
-
-Tick **No limit** to let the AI answer at any length. Long answers take longer to arrive and cost more.
-
-<!-- IMAGE: config_advanced_ai_intelligence_limits.png — the AI Intelligence tab showing Summary Max Output Tokens and Question Max Output Tokens, each with its No limit checkbox -->
-
-### Waiting for the AI service
-
-Google Client waits up to two minutes for each answer, the longest Salesforce allows, before it gives up. There is no setting for it.
-
-When the AI service is slow or busy, summaries and labels are tried again on their own, twice, over the next few minutes. A file that still has no summary after that stays as it is, and the reason is recorded in the logs. A question is never tried again on its own: the person asking sees that the service took too long or is busy and can ask again.
+📘 See [Document Summaries](../../features/artificial-intelligence/summaries.md) and [File Q&A](../../features/artificial-intelligence/file-qa.md)
 
 ## AI Labeling
 
-Assigns one of your Google Drive labels to each new file based on what it contains. Off by default, and available only while AI Analytics is on.
+Gives each new file one of your Google Drive labels based on what it contains. It is off by default, and available only while AI Analytics is on.
 
-📘 See [File Labeling](../../features/artificial-intelligence/labeling.md) for how it behaves, where labels appear, and how to write good descriptions.
-
-### Labeling Prompt
-
-How the provider is asked to choose between your labels.
-
-The shipped prompt tells the model to compare the document against every label description, to pick a label only when the document clearly matches it, and to answer *None* when nothing fits, several fit equally, or it is unsure. Your label descriptions are added to it automatically.
-
-Most organizations never need to change it. Edit it if you want the model to weigh certain evidence more heavily, for example to favor the document title over its body, but keep the instruction to answer *None* when unsure. That instruction is what keeps uncertain files unlabeled.
-
-### Minimum Confidence (%)
-
-How sure the AI must be before a label is applied, from 0 to 100.
-
-The AI reports a confidence with every answer, and the label is applied only when that number reaches this setting. The default is 80. Raise it if labels are being applied to files where they do not belong; lower it if too many files are left unlabeled.
-
-### Thinking Budget (tokens)
-
-How much room the AI gets to reason before choosing a label.
-
-0, the default, turns reasoning off and is the fastest and cheapest option. A value such as 1024 lets the model think through ambiguous documents before answering, at the cost of a slower and more expensive call per file. Only models that support thinking use this value.
+| Setting | What it does |
+|---|---|
+| **Labeling Prompt** | How the provider is asked to choose a label. The shipped prompt picks a label only on a clear match and answers *None* otherwise. Your label descriptions are added to it automatically. |
+| **Minimum Confidence (%)** | How sure the AI must be, from 0 to 100, before a label is applied. The default is 80. |
+| **Thinking Budget (tokens)** | How much room the AI gets to reason before it chooses. The default is 1024, and `0` turns reasoning off where the model allows it. |
 
 ### Labels
 
-The list of labels the AI may choose from. Up to 20 can be defined, and each needs:
+Up to 20 labels can be defined, each with:
 
 | Field | What to enter |
 |---|---|
-| **Name** | How the label should be called in Salesforce, for example *Invoice* |
+| **Name** | What the label is called in Salesforce, for example *Invoice* |
 | **Google Drive Label ID** | The ID of the published label, shown in the Google Admin console |
 | **When to apply this label** | A plain-language description of the documents the label is for |
 
-A label is saved only when its name, ID, and description are filled in. Duplicate names are ignored.
+A label is saved only with all three filled in, and a duplicate name is ignored. Labels are applied without field values. A wrong label ID is not caught on save: Google Drive refuses the label, the file stays unlabeled and the refusal is recorded in the logs.
 
-Labels are applied without values. Filling in label fields such as a description, a date, or a choice from a list is planned for a future release.
+![AI Labeling with one label defined](../../assets/images/config_ai_labeling.png)
 
-!!! note
-    Label IDs are not checked against Google Drive when you save. If an ID is wrong, Google Drive refuses the label, the file stays unlabeled, and the refusal is recorded in the logs.
+📘 See [File Labeling](../../features/artificial-intelligence/labeling.md)
 
 ## Safety
 
-Prompt inspection is configured on its own tab, because it applies to every prompt regardless of what you write above.
+Prompt inspection has a tab of its own, since it applies to every prompt.
 
 📘 See [Safety & Customization](safety-customization.md)
 

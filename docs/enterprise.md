@@ -1,55 +1,18 @@
 # Enterprise Managed Package
 
-The Enterprise managed package is the path for organizations that want Google Client for Salesforce as a complete, managed file platform with stronger release control, enterprise support, and security-review readiness.
+Google Client for Salesforce is open source: your files live in Google Drive and people work with them from Salesforce. When an organization needs more than that, the managed package, **Slatefile**, is the one to use.
 
-It is designed for teams that need more than a file connector. The Enterprise package will grow into a full file management system that understands the organization and adds managed-package capabilities that are not be available in the open-source version.
+## What Slatefile brings
 
-## Why Enterprise
+- **Other storages.** Google Cloud Storage, AWS and others, not only Google Drive.
+- **Stability, security and support.** A managed package we stand behind, with a team to turn to when something goes wrong.
+- **Help with the configuration.** Our team sets it up together with you.
+- **Free storage for nonprofits.** We help nonprofit organizations obtain the Google quota to keep their files in Google Drive for free, and use it from Salesforce.
 
-Enterprise customers usually need three things before adopting a file platform at scale:
+All of this will be available in the managed package.
 
-- **Clear operational ownership** - a managed package with a stronger support path and release discipline
-- **Stronger validation** - deeper regression coverage, controlled package delivery, and enterprise-focused testing
-- **Security reassurance** - penetration testing and Salesforce security review alignment before production rollout
+## Contact
 
-The goal is simple: give business teams a complete file experience inside Salesforce while giving technical architects a package model they can evaluate, plan, and govern with confidence.
-
-## Current Status
-
-The Enterprise managed package is currently in **Beta**.
-
-You can install it, evaluate it, and plan around it, but it is not recommended for production use until it goes through the Salesforce security review process.
-
-!!! warning "Beta package"
-    Use this package for sandbox evaluation and enterprise planning. Do not use it for production workloads until the managed package completes the security review process.
-
-## Known Beta Limitations
-
-The current Beta package has a few limitations that are being addressed as the package matures.
-
-- Platform Cache is not currently available in the managed package. Because of this, the **View All** action in the Attachments component may behave incorrectly in some orgs.
-- Some Enterprise-only features are still being finalized and will be delivered through future managed package releases.
-- Production readiness depends on the completion of the security review and the related validation process.
-
-## Delivery Plan
-
-A complete managed package is planned for delivery by the end of the year.
-
-The Enterprise package will continue to evolve in parallel with the open-source codebase. It will include managed-package-only capabilities where they make sense, stronger validation expectations, and a package structure designed for organizations that need a long-term Salesforce file management platform.
-
-## Install the Beta Package
-
-Use the links below to install the current Enterprise managed package.
-
-<div class="page-actions" markdown>
-[Install Beta in Sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000W3nZIAS){ .md-button .md-button--primary target="_blank" rel="noopener noreferrer" }
-[Install Beta in Production](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tQy000000W3nZIAS){ .md-button target="_blank" rel="noopener noreferrer" }
-</div>
-
-### CLI Installation
-
-```bash
-sf package install --wait 20 --security-type AdminsOnly --package 04tQy000000W3nZIAS
-```
+For additional information, write to [support@astertrail.com](mailto:support@astertrail.com).
 
 <br>

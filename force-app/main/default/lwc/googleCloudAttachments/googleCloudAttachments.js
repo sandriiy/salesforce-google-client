@@ -148,6 +148,7 @@ export default class GoogleCloudAttachments extends NavigationMixin(LightningEle
 	}
 
 	handleFilePreviewOpen(event) {
+		event.preventDefault();
 		let previewComponent = this.refs.filePreviewModal;
 		let parentContainer = event.target.closest('div[data-id]');
 		let parentContainerId = parentContainer.getAttribute('data-id');
@@ -162,6 +163,7 @@ export default class GoogleCloudAttachments extends NavigationMixin(LightningEle
 	}
 
 	async openSeparateTab(event) {
+		event.preventDefault();
 		const payload = {
 			title: this.title,
 			recordId: this.recordId,

@@ -155,7 +155,9 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 			logCallFailure(isRetriedLater, 'Provider Name: ' + providerName);
 			logCallFailure(isRetriedLater, 'Model Name: ' + modelName);
 			logCallFailure(isRetriedLater, 'Error Message: ' + ex.getMessage());
-			Logger.saveLog();
+			if (isRetriedLater != true) {
+				Logger.saveLog();
+			}
 
 			return result;
 		}
@@ -495,7 +497,7 @@ public abstract with sharing class GoogleFileIntelligenceCommandBase {
 
 	private void logCallFailure(Boolean isRetryable, String message) {
 		if (isRetryable == true) {
-			Logger.warn(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.info(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 			return;
 		}
 

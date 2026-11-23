@@ -26,13 +26,15 @@
  * labeling all read. It runs as a job because the clone is a Drive callout and a callout cannot follow
  * uncommitted DML in the same transaction. Each file is copied on its own, so one copy Drive could not
  * make never costs the others theirs, and a copy that failed for a passing reason is tried again a few
- * minutes later, up to three attempts in all.
+ * minutes later, up to three attempts in all. With a copies folder configured each copy is made there;
+ * when that folder cannot take it (gone, trashed, not a folder, read only or full) the copy is made beside
+ * its original at once, so a folder problem never costs a file its preview.
  */
 public without sharing class GoogleFileVersionPreviewJob extends GQueueableJob.AllowsCallouts {
 	public class GoogleFilePreviewJobException extends Exception {}
 
 	private static final Integer FIRST_ATTEMPT = 1;
-	private static final String WARN_LEVEL = 'WARN';
+	private static final String INFO_LEVEL = 'INFO';
 	private static final String ERROR_LEVEL = 'ERROR';
 
 	@TestVisible
@@ -89,16 +91,18 @@ public without sharing class GoogleFileVersionPreviewJob extends GQueueableJob.A
 	 * Clones each version in Drive, stores the copy Id, and queues the size measurement afterwards. The size
 	 * is measured later on purpose, since Drive reports a placeholder until it has finished converting. A
 	 * copy made on a later attempt also queues its own summary and label, because the ones already in its
-	 * chain ran while it was missing. A retry that finds previews turned off makes no copy.
+	 * chain ran while it was missing. A retry that finds previews turned off makes no copy. The copies folder
+	 * is checked once per job, before its first copy; the log is saved only when a copy was given up on or
+	 * the folder could not take one.
 	 */
 	public override void work() {
 		if (skipExecution) return;
 		if (versionIds.isEmpty()) return;
 
+		GoogleMetadataConfigService metadataService = new GoogleMetadataConfigService();
 		Integer currentAttempt = resolveAttempt();
-		if (currentAttempt > FIRST_ATTEMPT && new GoogleMetadataConfigService().isPreviewDisabled()) {
+		if (currentAttempt > FIRST_ATTEMPT && metadataService.isPreviewDisabled()) {
 			Logger.info('Google Workspace Copy Retry Stopped --> Previews are turned off for: ' + String.join(versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			Logger.saveLog();
 			return;
 		}
 
@@ -115,6 +119,8 @@ public without sharing class GoogleFileVersionPreviewJob extends GQueueableJob.A
 		Map<Id, String> retryReasonsByVersionId = new Map<Id, String>();
 		Boolean hasRecordedFailures = false;
 		GoogleDrive remoteGoogleDrive = null;
+		String copiesFolderId = metadataService.getWorkspaceCopyFolderId();
+		Boolean isCopiesFolderChecked = false;
 
         for (GoogleFileVersion__c localFileVersion : localFileVersions) {
             if (String.isNotBlank(localFileVersion.GoogleDocsFileId__c)) continue;
@@ -127,12 +133,27 @@ public without sharing class GoogleFileVersionPreviewJob extends GQueueableJob.A
 					remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
 				}
 
-				GoogleFileEntity clonedFile = remoteGoogleDrive.files().clone(localFileVersion.GoogleDriveFileId__c)
-					.setFields('id')
-					.setFileName(localFileVersion.Name)
-					.setSupportsAllDrives(true)
-					.setMimeType(targetGoogleWorkspaceType)
-					.execute();
+				if (copiesFolderId != null && !isCopiesFolderChecked) {
+					isCopiesFolderChecked = true;
+					GoogleDriveFolderCheckDTO folderCheck = new GoogleDriveFolderCheckCommand(remoteGoogleDrive).check(copiesFolderId);
+					if (folderCheck.isUsable != true) {
+						recordFailure(ERROR_LEVEL, 'Google Workspace Copy Folder Unusable, copies are made beside their originals --> FolderId=' + copiesFolderId + ', Reason=' + folderCheck.message + (String.isBlank(folderCheck.failureDetail) ? '' : ', Message=' + folderCheck.failureDetail));
+						hasRecordedFailures = true;
+						copiesFolderId = null;
+					}
+				}
+
+				GoogleFileEntity clonedFile;
+				try {
+					clonedFile = cloneVersion(remoteGoogleDrive, localFileVersion, targetGoogleWorkspaceType, copiesFolderId);
+				} catch (Exception folderFailure) {
+					if (copiesFolderId == null || !GoogleDriveCapacityErrorClassifier.isCapacityExhaustedError(folderFailure)) throw folderFailure;
+
+					recordFailure(ERROR_LEVEL, 'Google Workspace Copy Folder Full, copies are made beside their originals --> FolderId=' + copiesFolderId + ', VersionId=' + String.valueOf(localFileVersion.Id) + ', Message=' + folderFailure.getMessage());
+					hasRecordedFailures = true;
+					copiesFolderId = null;
+					clonedFile = cloneVersion(remoteGoogleDrive, localFileVersion, targetGoogleWorkspaceType, null);
+				}
 
 				uow.registerDirty(new GoogleFileVersion__c(
 					Id = localFileVersion.Id,
@@ -165,6 +186,20 @@ public without sharing class GoogleFileVersionPreviewJob extends GQueueableJob.A
 			Logger.saveLog();
 		}
     }
+
+	private GoogleFileEntity cloneVersion(GoogleDrive remoteGoogleDrive, GoogleFileVersion__c localFileVersion, String targetGoogleWorkspaceType, String copiesFolderId) {
+		GoogleCloneFileBuilder cloneBuilder = remoteGoogleDrive.files().clone(localFileVersion.GoogleDriveFileId__c)
+			.setFields('id')
+			.setFileName(localFileVersion.Name)
+			.setSupportsAllDrives(true)
+			.setMimeType(targetGoogleWorkspaceType);
+
+		if (String.isNotBlank(copiesFolderId)) {
+			cloneBuilder.setParentFolders(new List<String>{ copiesFolderId });
+		}
+
+		return cloneBuilder.execute();
+	}
 
 	private Integer resolveAttempt() {
 		return this.attempt == null || this.attempt < FIRST_ATTEMPT ? FIRST_ATTEMPT : this.attempt;
@@ -219,7 +254,7 @@ public without sharing class GoogleFileVersionPreviewJob extends GQueueableJob.A
 		Integer nextAttempt = currentAttempt + 1;
 		Integer delayMinutes = failureResolver.resolveRetryDelayMinutes(nextAttempt);
 		for (Id versionId : retryReasonsByVersionId.keySet()) {
-			recordFailure(WARN_LEVEL, 'Google Workspace Copy Retry Scheduled --> VersionId=' + String.valueOf(versionId) + ', NextAttempt=' + nextAttempt + ', InMinutes=' + delayMinutes + ', Message=' + retryReasonsByVersionId.get(versionId));
+			recordFailure(INFO_LEVEL, 'Google Workspace Copy Retry Scheduled --> VersionId=' + String.valueOf(versionId) + ', NextAttempt=' + nextAttempt + ', InMinutes=' + delayMinutes + ', Message=' + retryReasonsByVersionId.get(versionId));
 		}
 
 		GAsync.queueable()
@@ -228,14 +263,14 @@ public without sharing class GoogleFileVersionPreviewJob extends GQueueableJob.A
 			.delay(delayMinutes)
 			.enqueue();
 
-		return true;
+		return false;
 	}
 
 	private void recordFailure(String level, String message) {
 		if (level == ERROR_LEVEL) {
 			Logger.error(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		} else {
-			Logger.warn(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.info(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		}
 
 		loggedFailures.add(level + ' ' + message);

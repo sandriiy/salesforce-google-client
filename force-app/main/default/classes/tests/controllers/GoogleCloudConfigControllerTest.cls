@@ -40,6 +40,15 @@ private class GoogleCloudConfigControllerTest {
 		);
 	}
 
+	private static GoogleClientConfig__mdt buildSavedMetadataConfig(Datetime savedTime) {
+		return (GoogleClientConfig__mdt) JSON.deserialize(JSON.serialize(new Map<String, Object>{
+			'attributes' => new Map<String, Object>{ 'type' => 'GoogleClientConfig__mdt' },
+			'DeveloperName' => 'GoogleClient',
+			'MasterLabel' => 'Google Client',
+			'SystemModstamp' => savedTime
+		}), GoogleClientConfig__mdt.class);
+	}
+
 	@IsTest
 	private static void testGenerateConfigIdPositive() {
 		Test.startTest();
@@ -110,6 +119,7 @@ private class GoogleCloudConfigControllerTest {
 
 	@IsTest
 	private static void testSaveMetadataConfigPositive() {
+		GoogleCloudConfigController.adminAccessOverride = true;
 		GoogleMetadataConfigService.configRecordOverride = buildDefaultMetadataConfig();
 
 		Map<String, Object> fieldApiToValue = new Map<String, Object>{
@@ -128,6 +138,7 @@ private class GoogleCloudConfigControllerTest {
 
 	@IsTest
 	private static void testSaveMetadataConfigNegativeNull() {
+		GoogleCloudConfigController.adminAccessOverride = true;
 		GoogleMetadataConfigService.configRecordOverride = buildDefaultMetadataConfig();
 
 		Test.startTest();
@@ -139,6 +150,7 @@ private class GoogleCloudConfigControllerTest {
 
 	@IsTest
 	private static void testValidateLatestMetadataDeployPositive() {
+		GoogleCloudConfigController.adminAccessOverride = true;
 		Test.startTest();
 		String result = GoogleCloudConfigController.validateLatestMetadataDeploy();
 		Test.stopTest();
@@ -151,7 +163,33 @@ private class GoogleCloudConfigControllerTest {
 	}
 
 	@IsTest
+	private static void testRetrieveMetadataConfigSavedTimePositive() {
+		GoogleCloudConfigController.adminAccessOverride = true;
+		Datetime savedTime = Datetime.newInstanceGmt(2026, 11, 23, 5, 11, 28);
+		GoogleMetadataConfigService.configRecordOverride = buildSavedMetadataConfig(savedTime);
+
+		Test.startTest();
+		Long result = GoogleCloudConfigController.retrieveMetadataConfigSavedTime();
+		Test.stopTest();
+
+		Assert.areEqual(savedTime.getTime(), result, 'A save is confirmed by this time moving, so it must be the moment the settings were last saved');
+	}
+
+	@IsTest
+	private static void testRetrieveMetadataConfigSavedTimeNegativeNothingSaved() {
+		GoogleCloudConfigController.adminAccessOverride = true;
+		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
+
+		Test.startTest();
+		Long result = GoogleCloudConfigController.retrieveMetadataConfigSavedTime();
+		Test.stopTest();
+
+		Assert.isNull(result, 'An org that never saved its settings has no saved time, so its first save reads as a change');
+	}
+
+	@IsTest
 	private static void testValidateDriveMetadataConfigPositive() {
+		GoogleCloudConfigController.adminAccessOverride = true;
 		GoogleMetadataConfigService.configRecordOverride = buildDefaultMetadataConfig();
 		GoogleCloudTestFactory.initMocks();
 
@@ -164,6 +202,7 @@ private class GoogleCloudConfigControllerTest {
 
 	@IsTest
 	private static void testDeactivateIntelligenceMetadataConfigNegativeWithoutSavedConfig() {
+		GoogleCloudConfigController.adminAccessOverride = true;
 		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
 
 		Test.startTest();
@@ -178,6 +217,7 @@ private class GoogleCloudConfigControllerTest {
 
 	@IsTest
 	private static void testDeactivateIntelligenceMetadataConfigPositive() {
+		GoogleCloudConfigController.adminAccessOverride = true;
 		GoogleMetadataConfigService.configRecordOverride = buildGeminiMetadataConfig();
 
 		Test.startTest();
@@ -192,6 +232,7 @@ private class GoogleCloudConfigControllerTest {
 
 	@IsTest
 	private static void testValidateIntelligenceMetadataConfigPositive() {
+		GoogleCloudConfigController.adminAccessOverride = true;
 		GoogleMetadataConfigService.configRecordOverride = buildGeminiMetadataConfig();
 		Test.setMock(HttpCalloutMock.class, new GoogleIntelligenceHttpMock());
 		GoogleClientApiProvider.authorizerClassNameOverride = 'GoogleCloudTestFactory.TestGoogleAuthorizer';
@@ -201,5 +242,61 @@ private class GoogleCloudConfigControllerTest {
 		Test.stopTest();
 
 		Assert.isNotNull(result);
+	}
+
+	@IsTest
+	private static void testSetupMethodsNegativeRefuseUserWithoutAdminAccess() {
+		GoogleMetadataConfigService.configRecordOverride = buildGeminiMetadataConfig();
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudConfigController.adminAccessOverride = false;
+
+		Integer refusedCalls = 0;
+		Test.startTest();
+		try {
+			GoogleCloudConfigController.saveMetadataConfig(new Map<String, Object>{ 'IsFilePreviewDisabled__c' => true });
+		} catch (AuraHandledException ex) {
+			refusedCalls++;
+		}
+		try {
+			GoogleCloudConfigController.validateLatestMetadataDeploy();
+		} catch (AuraHandledException ex) {
+			refusedCalls++;
+		}
+		try {
+			GoogleCloudConfigController.validateDriveMetadataConfig();
+		} catch (AuraHandledException ex) {
+			refusedCalls++;
+		}
+		try {
+			GoogleCloudConfigController.validateIntelligenceMetadataConfig();
+		} catch (AuraHandledException ex) {
+			refusedCalls++;
+		}
+		try {
+			GoogleCloudConfigController.deactivateIntelligenceMetadataConfig();
+		} catch (AuraHandledException ex) {
+			refusedCalls++;
+		}
+		try {
+			GoogleCloudConfigController.retrieveMetadataConfigSavedTime();
+		} catch (AuraHandledException ex) {
+			refusedCalls++;
+		}
+		Test.stopTest();
+
+		Assert.areEqual(6, refusedCalls, 'Every setup method must refuse a user without Google Client administrator access');
+	}
+
+	@IsTest
+	private static void testConfigBusPositiveStaysOpenToUsersWithoutAdminAccess() {
+		GoogleCloudConfigController.adminAccessOverride = false;
+
+		Test.startTest();
+		String generatedConfigId = GoogleCloudConfigController.generateConfigId();
+		GoogleCloudConfigController.pushConfig(generatedConfigId, '{"a":1}');
+		GoogleCloudConfigController.removeConfig(generatedConfigId);
+		Test.stopTest();
+
+		Assert.isTrue(generatedConfigId.startsWith('cfg_'), 'The configuration hand-off serves every Google Client screen, so it must not ask for administrator access');
 	}
 }

@@ -24,6 +24,7 @@
 @IsTest
 private class GoogleFileVersionSummaryJobTest {
 	private static final String DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+	private static final String INFO_LEVEL = 'INFO';
 	private static final String WARN_LEVEL = 'WARN';
 	private static final String ERROR_LEVEL = 'ERROR';
 	private static final String TIMEOUT_REASON = 'Read timed out';
@@ -369,10 +370,11 @@ private class GoogleFileVersionSummaryJobTest {
 		Assert.areEqual(2, retryJobs[0].attempt);
 		Assert.areEqual(1, retryJobs[0].delay, 'The first retry waits about a minute');
 
-		List<String> warnings = loggedEntries(WARN_LEVEL);
-		Assert.areEqual(1, warnings.size());
-		Assert.isTrue(warnings[0].contains(timedOutVersion.Id), 'The warning names the version that will be tried again');
-		Assert.isTrue(warnings[0].contains(TIMEOUT_REASON), 'The warning carries the raw reason');
+		List<String> retriedAttempts = loggedEntries(INFO_LEVEL);
+		Assert.areEqual(1, retriedAttempts.size(), 'An attempt that will be tried again is routine, so it is information');
+		Assert.isTrue(retriedAttempts[0].contains(timedOutVersion.Id), 'The line names the version that will be tried again');
+		Assert.isTrue(retriedAttempts[0].contains(TIMEOUT_REASON), 'The line carries the raw reason');
+		Assert.areEqual(0, loggedEntries(WARN_LEVEL).size(), 'Nothing in the package writes a warning');
 		List<String> errors = loggedEntries(ERROR_LEVEL);
 		Assert.areEqual(1, errors.size(), 'A failure that is never retried is given up at once and logged as an error');
 		Assert.isTrue(errors[0].contains(refusedVersion.Id));
@@ -452,8 +454,9 @@ private class GoogleFileVersionSummaryJobTest {
 		Assert.areEqual(1, retryJobs.size(), 'A summary that timed out is queued to be tried again later');
 		Assert.areEqual(new Set<Id>{ version.Id }, retryJobs[0].versionIds);
 		Assert.areEqual(2, retryJobs[0].attempt);
-		Assert.areEqual(1, loggedEntries(WARN_LEVEL).size());
-		Assert.areEqual(0, loggedEntries(ERROR_LEVEL).size(), 'An attempt that will be retried is a warning, not an error');
+		Assert.areEqual(1, loggedEntries(INFO_LEVEL).size());
+		Assert.areEqual(0, loggedEntries(WARN_LEVEL).size());
+		Assert.areEqual(0, loggedEntries(ERROR_LEVEL).size(), 'An attempt that will be retried is information, not an error');
 	}
 
 	@IsTest
@@ -761,10 +764,9 @@ private class GoogleFileVersionSummaryJobTest {
 		GoogleFileVersionSummaryJob.clearTestResults();
 
 		Assert.isNull(loadSummary(version.Id), 'A version whose expected Workspace copy is missing is not analyzed');
-		List<String> warnings = loggedEntries(WARN_LEVEL);
-		Assert.areEqual(1, warnings.size(), 'A copy that should exist and does not is abnormal and answers why the file has no summary');
-		Assert.isTrue(warnings[0].contains(version.Id));
-		Assert.areEqual(0, loggedEntries(ERROR_LEVEL).size());
+		Assert.areEqual(0, loggedEntries(WARN_LEVEL).size(), 'Nothing in the package writes a warning');
+		Assert.areEqual(1, GoogleFileVersionSummaryJob.loggedFailures.size(), 'A copy that should exist and does not still answers why the file has no summary');
+		Assert.isTrue(GoogleFileVersionSummaryJob.loggedFailures[0].contains(version.Id));
 		Assert.areEqual(0, runningChain.getJobs().size(), 'A missing copy is not a passing failure');
 	}
 
@@ -952,5 +954,57 @@ private class GoogleFileVersionSummaryJobTest {
 		}
 
 		return waitingJobs;
+	}
+
+	@IsTest
+	private static void testExecutePositiveRetriedAttemptAloneSavesNoLog() {
+		prepareRetryContext();
+		GoogleFileVersion__c version = createAnalysisCandidate('SUMLOG1');
+		GoogleFileVersionSummaryJob.setTestResult(version.Id, buildRetryableResult(TIMEOUT_REASON));
+		GoogleCloudTestFactory.runningChain();
+
+		Test.startTest();
+			new GoogleFileVersionSummaryJob(new Set<Id>{ version.Id }).work();
+			Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+		GoogleFileVersionSummaryJob.clearTestResults();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'An attempt that will be tried again is routine, and a run without an error saves nothing');
+		Assert.areEqual(0, loggedEntries(WARN_LEVEL).size());
+	}
+
+	@IsTest
+	private static void testExecutePositiveGivenUpVersionSavesTheLog() {
+		prepareRetryContext();
+		GoogleFileVersion__c version = createAnalysisCandidate('SUMLOG2');
+		GoogleFileVersionSummaryJob.setTestResult(version.Id, buildRetryableResult(TIMEOUT_REASON));
+		GoogleCloudTestFactory.runningChain();
+
+		Test.startTest();
+			new GoogleFileVersionSummaryJob(new Set<Id>{ version.Id }, 3).work();
+			Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+		GoogleFileVersionSummaryJob.clearTestResults();
+
+		Assert.areEqual(1, loggedEntries(ERROR_LEVEL).size());
+		Assert.areEqual(0, unsavedLogEntries, 'A run that recorded an error saves its log at its end');
+	}
+
+	@IsTest
+	private static void testExecutePositiveStoppedRetrySavesNoLog() {
+		GoogleCloudTestFactory.config().apply();
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock(new GoogleDriveHttpMock().withDefaultHappyPath(), new GoogleIntelligenceHttpMock()));
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFileVersionSummaryJob.clearTestResults();
+		GoogleCalloutTimeResolver.elapsedMillisOverride = 0L;
+		GoogleFileVersion__c version = createAnalysisCandidate('SUMLOG3');
+		GoogleCloudTestFactory.runningChain();
+
+		Test.startTest();
+			new GoogleFileVersionSummaryJob(new Set<Id>{ version.Id }, 2).work();
+			Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'A retry that finds AI turned off is routine, so nothing is saved for it');
 	}
 }

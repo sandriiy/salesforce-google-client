@@ -61,6 +61,10 @@
                 <behavior>Edit</behavior>
                 <field>CustomGoogleUploadFolderStructure__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>RecordFolderNamePatterns__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
@@ -70,6 +74,10 @@
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>CustomGoogleCertificate__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>IsFolderRenameEnabled__c</field>
             </layoutItems>
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
@@ -141,6 +149,10 @@
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>IsFilePreviewDisabled__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>WorkspaceCopyFolderId__c</field>
             </layoutItems>
         </layoutColumns>
         <layoutColumns>

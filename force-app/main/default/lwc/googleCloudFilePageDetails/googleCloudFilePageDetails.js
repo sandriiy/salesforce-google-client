@@ -4,9 +4,9 @@ import { NavigationMixin } from 'lightning/navigation';
 
 import { updateTabPresentation, closeWhenReady } from 'c/googleCloudCrossPlatformUtils';
 
-import { download, downloadInChunks } from 'c/googleCloudDownloadUtils';
+import { download, downloadInChunks, resolveDownloadFailureMessage } from 'c/googleCloudDownloadUtils';
 import { isEmpty, showToast, resolveTransferLimits } from 'c/googleCloudUtils';
-import { DEFAULT_FILE_NAME, DEFAULT_ACCESS_RESTRICTED_MESSAGE, DEFAULT_FAILED_DOWNLOAD_MESSAGE, DEFAULT_DOWNLOAD_STARTED_MESSAGE } from 'c/googleCloudUtils';
+import { DEFAULT_FILE_NAME, DEFAULT_ACCESS_RESTRICTED_MESSAGE, DEFAULT_DOWNLOAD_STARTED_MESSAGE } from 'c/googleCloudUtils';
 import { INT_VIEW_FILE_DETAILS_PAGE_NAME } from 'c/googleCloudCrossPlatformUtils';
 
 import GoogleCloudUploadFileModal from 'c/googleCloudUploaderModal';
@@ -122,6 +122,7 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 	}
 
 	handleRedirectClick(event) {
+		event.preventDefault();
 		const recordId = event.currentTarget.dataset.id;
 		this[NavigationMixin.Navigate]({
 			type: 'standard__recordPage',
@@ -330,17 +331,14 @@ export default class GoogleCloudFilePageDetails extends NavigationMixin(Lightnin
 				await downloadInChunks(googleVersion.Id, {
 					size: googleVersion.Size__c,
 					fileName: googleVersion.Name,
-					mimeType: googleVersion.Type__c,
-					onError: (err) => {
-						throw new Error(err?.message || err);
-					}
+					mimeType: googleVersion.Type__c
 				});
 			}
 		} catch (error) {
 			showToast(
 				this,
 				'Unable to download File Version',
-				DEFAULT_FAILED_DOWNLOAD_MESSAGE,
+				resolveDownloadFailureMessage(error),
 				'error'
 			);
 		}

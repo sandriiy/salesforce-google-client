@@ -86,3 +86,61 @@
 .gcdc-file-explorer-empty-icon {
     --slds-c-icon-color-foreground-default: #181818;
 }
+
+@media (max-width: 64rem) {
+    .gcdc-file-explorer-left-nav {
+        width: 12rem;
+        min-width: 12rem;
+    }
+
+    .gcdc-file-explorer-search {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 48rem) {
+    .gcdc-file-explorer-layout {
+        flex-direction: column;
+        overflow-x: hidden;
+    }
+
+    .gcdc-file-explorer-left-nav {
+        width: auto;
+        min-width: 0;
+    }
+
+    .gcdc-file-explorer-left-nav.slds-border_right {
+        border-right: 0;
+        border-bottom: var(--slds-g-sizing-border-1, 1px) solid var(--slds-s-container-color-border, #E5E5E5);
+    }
+
+    .gcdc-file-explorer-header .slds-page-header__row {
+        flex-wrap: wrap;
+    }
+
+    .gcdc-file-explorer-header .slds-page-header__col-title,
+    .gcdc-file-explorer-header .slds-page-header__col-actions {
+        flex: 1 1 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .gcdc-file-explorer-header .slds-page-header__col-actions {
+        margin-top: var(--slds-g-spacing-3, 0.75rem);
+        padding-left: 0;
+        align-items: stretch;
+    }
+
+    .gcdc-file-explorer-controls {
+        flex-wrap: wrap;
+        gap: var(--slds-g-spacing-2, 0.5rem);
+    }
+
+    .gcdc-file-explorer-controls .slds-page-header__control {
+        margin: 0;
+    }
+
+    .gcdc-file-explorer-search {
+        flex: 1 1 100%;
+    }
+}

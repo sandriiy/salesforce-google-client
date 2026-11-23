@@ -1,0 +1,95 @@
+<template>
+    <div class="name-editor">
+        <template lwc:if={hasRows}>
+            <div class="name-editor-grid">
+                <template for:each={rows} for:item="row">
+                    <div key={row.key} class="name-editor-item">
+                        <div class="name-editor-item-header">
+                            <div class="name-editor-item-title">{row.title}</div>
+                            <lightning-button-icon
+                                icon-name="utility:delete"
+                                variant="bare"
+                                alternative-text="Remove formula"
+                                title="Remove formula"
+                                data-row-key={row.key}
+                                onclick={handleRemovePattern}
+                                disabled={disabled}
+                            ></lightning-button-icon>
+                        </div>
+
+                        <div class="name-editor-fields">
+                            <div class="name-editor-object">
+                                <lightning-input
+                                    type="text"
+                                    max-length="255"
+                                    value={row.objectApiName}
+                                    data-row-key={row.key}
+                                    data-field="objectApiName"
+                                    onchange={handleFieldChange}
+                                    label="Object API name"
+                                    field-level-help="The object whose folders this formula names, for example Account, Opportunity or User."
+                                    placeholder="e.g. Account"
+                                    disabled={disabled}
+                                    required
+                                ></lightning-input>
+                            </div>
+
+                            <div class="name-editor-formula">
+                                <lightning-textarea
+                                    value={row.pattern}
+                                    data-row-key={row.key}
+                                    data-field="pattern"
+                                    onchange={handleFieldChange}
+                                    label="Folder name formula"
+                                    field-level-help="A Salesforce formula that returns text, built from this record's fields and its related records' fields. Use TEXT() for dates, numbers and picklists."
+                                    placeholder="e.g. Name &amp; &quot;_&quot; &amp; AccountNumber"
+                                    max-length="3900"
+                                    disabled={disabled}
+                                    required
+                                ></lightning-textarea>
+                            </div>
+                        </div>
+
+                        <template lwc:if={row.isChecking}>
+                            <div class="name-editor-status">Checking…</div>
+                        </template>
+                        <template lwc:if={row.showProblem}>
+                            <div class="name-editor-status slds-text-color_error">{row.problem}</div>
+                        </template>
+                        <template lwc:if={row.hasExample}>
+                            <div class="name-editor-status">Example: <b>{row.exampleName}</b></div>
+                        </template>
+
+                        <template lwc:if={row.hasWarnings}>
+                            <div class="name-editor-warning">
+                                <lightning-input
+                                    type="checkbox"
+                                    label={row.acknowledgement}
+                                    checked={row.isWarningConfirmed}
+                                    data-row-key={row.key}
+                                    data-role="acknowledgement"
+                                    onchange={handleWarningConfirmation}
+                                    disabled={disabled}
+                                ></lightning-input>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </template>
+        <template lwc:else>
+            <div class="name-editor-empty">No formulas yet. Every folder keeps its usual name.</div>
+        </template>
+
+        <div class="name-editor-footer">
+            <lightning-button
+                variant="neutral"
+                icon-name="utility:add"
+                label="Add formula"
+                onclick={handleAddPattern}
+                disabled={addPatternDisabled}
+            ></lightning-button>
+            <span class="name-editor-count">{countLabel}</span>
+        </div>
+    </div>
+</template>

@@ -3,9 +3,9 @@
     <fullName>IsFilePreviewDisabled__c</fullName>
     <defaultValue>false</defaultValue>
     <deprecated>false</deprecated>
-    <description>When enabled, this setting blocks the creation of Google Docs type files used for preview purposes. New and old previews will be unavailable.</description>
+    <description>Stores files only. When enabled, Google Client stops making the Google Workspace copies that previews of documents and spreadsheets, AI, Download As and reading a file's text need, and those stay unavailable for every file. PDFs and images still preview.</description>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>When enabled, this setting blocks the creation of Google Docs type files used for preview purposes. New and old previews will be unavailable.</inlineHelpText>
+    <inlineHelpText>Stores files only: no Google Workspace copies are made, so previews of documents and spreadsheets, AI, Download As and reading a file's text are unavailable. PDFs and images still preview.</inlineHelpText>
     <label>Is File Preview Disabled</label>
     <type>Checkbox</type>
 </CustomField>

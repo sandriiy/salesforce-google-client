@@ -6,6 +6,9 @@ import retrieveLinkedRecords from '@salesforce/apex/GoogleCloudFilesSharingContr
 import { findIconForRecordType, findRoleForAccessType, isEmpty, normalizeError } from 'c/googleCloudUtils';
 
 const DEFAULT_ERROR_MESSAGE = 'Unable to retrieve the linked records.';
+const SHARE_TYPE_LABELS = {
+	InferredFromRecord: 'Set by Record'
+};
 
 export default class GoogleCloudFileLinkedRecords extends NavigationMixin(LightningElement) {
 	@api localFileRecordId;
@@ -42,7 +45,7 @@ export default class GoogleCloudFileLinkedRecords extends NavigationMixin(Lightn
 				displayName: record.LinkedObjectName__c || record.LinkedObjectId__c,
 				typeLabel: record.LinkedObjectType__c || 'Record',
 				iconName: findIconForRecordType(record.LinkedObjectType__c),
-				accessLabel: findRoleForAccessType(record.ShareType__c),
+				accessLabel: this.toAccessLabel(record.ShareType__c),
 				visibilityLabel: record.Visibility__c === 'AllUsers' ? 'All users' : 'Internal users'
 			}));
 		} catch (error) {
@@ -66,6 +69,11 @@ export default class GoogleCloudFileLinkedRecords extends NavigationMixin(Lightn
 				actionName: 'view'
 			}
 		});
+	}
+
+	toAccessLabel(shareType) {
+		const role = findRoleForAccessType(shareType);
+		return SHARE_TYPE_LABELS[role] || role;
 	}
 
 	get badgeText() {

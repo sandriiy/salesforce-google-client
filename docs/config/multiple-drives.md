@@ -1,46 +1,29 @@
 # Multiple Upload Folders
 
-A single Google Drive or Shared Drive has hard limits on how much it can hold. When a drive reaches one of those limits, uploads into it stop working — no matter how much quota the service account itself has.
+A Google Drive or shared drive has hard limits on how much it can hold, and once one is reached, uploads into it stop working, however much quota the service account has. With more than one upload folder, uploads keep working when that happens.
 
-Google Client can be given more than one destination, so uploads keep working when that happens.
+## Configuring the folders
 
-Most organizations never need this. Set it up when you are approaching a drive limit, or ahead of a migration that will move a large volume of files at once.
-
-## Configuring the Folders
-
-1. Open the **Google Client** app
-2. Go to the Google Drive configuration step
-3. Add folders under **Folder Locations**
+1. Open the **Google Client** app.
+2. Expand the **Google Drive** section and go to the **Folder Locations** step.
+3. Add the folders under **Upload Folder Locations (IDs)**.
 
 Up to **ten** folders can be configured, and the order matters.
 
 ![Upload folder locations](../assets/images/config_folder_locations.png)
 
-## How the Order Is Used
+## How the order is used
 
 1. The **first** folder in the list is the primary destination. Everything is uploaded there while it has room.
-2. If Google rejects an upload because the drive or folder is full, Google Client automatically retries into the **next** folder in the list, and continues down the list until one accepts the file.
-3. Whichever folder accepted the file becomes the root for that upload. Any configured [Folder Structure](folder-structure.md) — user folders, record folders, or both — is created inside that folder.
+2. If Google refuses an upload because the drive or folder is full, Google Client tries the **next** folder in the list, and carries on down the list until one accepts the file.
+3. The folder that accepted the file becomes the root for that upload, and any [folder structure](folder-structure.md) is created inside it.
 
-Users are not told any of this happened. The upload simply succeeds.
+The user notices nothing: the upload simply succeeds. Files already stored are never moved, so a record can have files on more than one drive, and every component still finds them.
 
-## What Counts as "Full"
+## What counts as full
 
-Moving to the next folder is triggered only by Google's hard capacity errors: a shared drive reaching its item limit, the storage quota being exhausted, or a folder reaching the maximum number of children.
+Google Client moves to the next folder only when Google reports a hard capacity limit: a shared drive reaching its item limit, the storage quota running out, or a folder reaching the maximum number of items it can hold.
 
-Ordinary failures — a bad file, an expired token, a network problem — are **not** treated as capacity problems. They are reported to the user as errors instead of silently moving the file somewhere else, because moving the file would not have fixed them.
-
-## Choosing the Folders
-
-!!! tip
-    Use folders on **separate Shared Drives** rather than several on the same drive, since most capacity limits apply to the drive as a whole. Files already stored are never moved, so a record can end up with files in more than one drive, and every component still finds them.
-
-## Planning Ahead
-
-Because files are never relocated, the value of this setting comes from configuring it *before* you need it. A second folder added the day the first drive fills up works fine, but the period between the drive filling and someone noticing is the period where uploads fail.
-
-If your organization stores a high volume of files, add a second destination as part of the initial setup and leave it empty.
-
-📘 See [Configure Google Workspace](../setup/configure-drive.md) for the rest of the Drive configuration.
+Any other failure, such as a bad file, an expired sign-in or a network problem, is shown to the user as an error, since another folder would not fix it.
 
 <br>

@@ -543,6 +543,36 @@ private class GoogleFileSummarizeCommandTest {
 	}
 
 	@IsTest
+	private static void testSummarizePositiveDropsThePeriodAfterAQuestionMark() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildUpgradedConfig();
+		GoogleFileVersion__c version = createSummaryCandidate('SUMEND1');
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileSummarizeCommand().summarize(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('Not enough content to summarize... Maybe you have a question?.', 'STOP'));
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual('Not enough content to summarize... Maybe you have a question?', result.text);
+	}
+
+	@IsTest
+	private static void testSummarizePositiveKeepsAnEllipsisAfterAQuestionMark() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildUpgradedConfig();
+		GoogleFileVersion__c version = createSummaryCandidate('SUMEND2');
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleFileSummarizeCommand().summarize(version.Id, 'Agent Platform', 'gemini-3.8-flash', new GenAiClientStub('Who signed the brochure?...', 'STOP'));
+		Test.stopTest();
+
+		Assert.isTrue(result.success);
+		Assert.areEqual('Who signed the brochure?...', result.text);
+	}
+
+	@IsTest
 	private static void testSummarizeNegativeBlankExportIsRetryable() {
 		installExportAnswer('DOCS_SUMRTY6', 200, '');
 		GoogleMetadataConfigService.configRecordOverride = buildUpgradedConfig();

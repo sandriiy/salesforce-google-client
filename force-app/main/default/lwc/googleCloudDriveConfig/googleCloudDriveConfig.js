@@ -2,12 +2,20 @@ import { LightningElement, api } from 'lwc';
 
 import { asString } from 'c/googleCloudUtils';
 
+import checkWorkspaceCopyFolder from '@salesforce/apex/GoogleCloudFolderSetupController.checkWorkspaceCopyFolder';
+
 const STRUCTURE_ORDER_SEPARATOR = '-';
 const UPLOAD_FOLDER_SEPARATOR = ';';
 const MAX_UPLOAD_FOLDERS = 10;
 const VALIDITY_KEY_DUPLICATES = 'upload-folder-duplicates';
+const VALIDITY_KEY_FOLDER_NAME_PATTERNS = 'folder-name-patterns';
+const VALIDITY_KEY_WORKSPACE_COPY_FOLDER = 'workspace-copy-folder';
 const DUPLICATE_ERROR_MESSAGE = 'This folder identification (ID) is already used in another row';
 const DUPLICATE_AGGREGATE_MESSAGE = 'Folder identification (ID) values must be unique across all rows';
+const WORKSPACE_COPY_FOLDER_CHECK_DELAY_MS = 600;
+const WORKSPACE_COPY_FOLDER_CHECKING_MESSAGE = 'Checking the folder…';
+const WORKSPACE_COPY_FOLDER_CHECK_FAILED_MESSAGE = 'The folder could not be checked. Please try again.';
+const WORKSPACE_COPY_FOLDER_STORE_FILES_ONLY_MESSAGE = 'No copies are made while Store files only is on under Advanced → File Management.';
 
 const STEP = {
     auth: 'auth',
@@ -34,6 +42,10 @@ export default class GoogleCloudDriveConfig extends LightningElement {
     localUploadFolderRows = null;
     lastReportedHasDuplicates = null;
     lastReportedVariant = null;
+    workspaceCopyFolderCheck = null;
+    checkingWorkspaceCopyFolderId = null;
+    workspaceCopyFolderCheckPromise = null;
+    workspaceCopyFolderCheckTimer = null;
 
     @api reportValidity() {
         const inputs = Array.from(this.template.querySelectorAll('lightning-input, lightning-radio-group'));
@@ -44,7 +56,30 @@ export default class GoogleCloudDriveConfig extends LightningElement {
             if (typeof input.checkValidity === 'function' && !input.checkValidity()) isValid = false;
         });
 
+        const folderNameEditor = this.refs.folderNameEditor;
+        if (folderNameEditor && typeof folderNameEditor.reportValidity === 'function' && !folderNameEditor.reportValidity()) {
+            isValid = false;
+        }
+
         return isValid;
+    }
+
+    @api async waitForPendingChecks() {
+        if (this.workspaceCopyFolderCheckPromise) {
+            await this.workspaceCopyFolderCheckPromise;
+        }
+
+        const folderNameEditor = this.refs.folderNameEditor;
+        if (folderNameEditor && typeof folderNameEditor.waitForPendingChecks === 'function') {
+            await folderNameEditor.waitForPendingChecks();
+        }
+    }
+
+    connectedCallback() {
+        const folderId = this.workspaceCopyFolderId;
+        if (folderId && folderId !== this.savedWorkspaceCopyFolderId) {
+            this.scheduleWorkspaceCopyFolderCheck(folderId, 0);
+        }
     }
 
     renderedCallback() {
@@ -151,8 +186,71 @@ export default class GoogleCloudDriveConfig extends LightningElement {
     handleRevert() {
         this.localUploadFolderRows = null;
         this.lastReportedHasDuplicates = null;
+        this.resetWorkspaceCopyFolderCheck();
         this.notifyValidityChange(VALIDITY_KEY_DUPLICATES, true, null);
+        this.notifyValidityChange(VALIDITY_KEY_FOLDER_NAME_PATTERNS, true, null);
         this.dispatchAction('revert');
+    }
+
+    handleWorkspaceCopyFolderChange(event) {
+        const folderId = asString(event.target.value).trim();
+        this.dispatchFieldChange('workspaceCopyFolderId', folderId);
+        this.scheduleWorkspaceCopyFolderCheck(folderId, WORKSPACE_COPY_FOLDER_CHECK_DELAY_MS);
+    }
+
+    scheduleWorkspaceCopyFolderCheck(folderId, delayMs) {
+        clearTimeout(this.workspaceCopyFolderCheckTimer);
+        if (!folderId || folderId === this.savedWorkspaceCopyFolderId) {
+            this.resetWorkspaceCopyFolderCheck();
+            return;
+        }
+
+        this.checkingWorkspaceCopyFolderId = folderId;
+        this.notifyValidityChange(VALIDITY_KEY_WORKSPACE_COPY_FOLDER, false, WORKSPACE_COPY_FOLDER_CHECKING_MESSAGE);
+        this.workspaceCopyFolderCheckPromise = new Promise((resolve) => {
+            // eslint-disable-next-line @lwc/lwc/no-async-operation
+            this.workspaceCopyFolderCheckTimer = setTimeout(() => {
+                this.runWorkspaceCopyFolderCheck(folderId).then(resolve);
+            }, delayMs);
+        });
+    }
+
+    async runWorkspaceCopyFolderCheck(folderId) {
+        let check;
+        try {
+            check = await checkWorkspaceCopyFolder({ folderId });
+        } catch {
+            check = { isUsable: false, message: WORKSPACE_COPY_FOLDER_CHECK_FAILED_MESSAGE };
+        }
+
+        if (folderId !== this.workspaceCopyFolderId) {
+            return;
+        }
+
+        this.workspaceCopyFolderCheck = { ...check, folderId };
+        this.checkingWorkspaceCopyFolderId = null;
+        this.notifyValidityChange(VALIDITY_KEY_WORKSPACE_COPY_FOLDER, check?.isUsable === true, check?.message || WORKSPACE_COPY_FOLDER_CHECK_FAILED_MESSAGE);
+    }
+
+    resetWorkspaceCopyFolderCheck() {
+        clearTimeout(this.workspaceCopyFolderCheckTimer);
+        this.workspaceCopyFolderCheck = null;
+        this.checkingWorkspaceCopyFolderId = null;
+        this.workspaceCopyFolderCheckPromise = null;
+        this.notifyValidityChange(VALIDITY_KEY_WORKSPACE_COPY_FOLDER, true, null);
+    }
+
+    handleFolderRenameToggle(event) {
+        this.dispatchFieldChange('isFolderRenameEnabled', event.target.checked);
+    }
+
+    handleFolderNamePatternsChange(event) {
+        this.dispatchFieldChange('recordFolderNamePatterns', event.detail?.value || '');
+    }
+
+    handleFolderNamePatternsValidityChange(event) {
+        const { isValid, message } = event.detail || {};
+        this.notifyValidityChange(VALIDITY_KEY_FOLDER_NAME_PATTERNS, isValid !== false, message);
     }
 
     handleStructureToggle(event) {
@@ -604,6 +702,43 @@ export default class GoogleCloudDriveConfig extends LightningElement {
         return rows.filter((v) => asString(v).trim().length > 0).length > 1;
     }
 
+    get workspaceCopyFolderId() {
+        return asString(this.draft?.workspaceCopyFolderId).trim();
+    }
+
+    get savedWorkspaceCopyFolderId() {
+        return asString(this.server?.workspaceCopyFolderId).trim();
+    }
+
+    get isStoreFilesOnly() {
+        return !!this.draft?.isFilePreviewDisabled;
+    }
+
+    get workspaceCopyFolderMessage() {
+        if (this.isStoreFilesOnly) {
+            return WORKSPACE_COPY_FOLDER_STORE_FILES_ONLY_MESSAGE;
+        }
+
+        const folderId = this.workspaceCopyFolderId;
+        if (folderId && this.checkingWorkspaceCopyFolderId === folderId) {
+            return WORKSPACE_COPY_FOLDER_CHECKING_MESSAGE;
+        }
+
+        const check = this.workspaceCopyFolderCheck;
+        if (!check || check.folderId !== folderId) {
+            return null;
+        }
+
+        return check.isUsable ? `Copies will be kept in “${check.folderName}”.` : check.message || WORKSPACE_COPY_FOLDER_CHECK_FAILED_MESSAGE;
+    }
+
+    get workspaceCopyFolderMessageClass() {
+        const check = this.workspaceCopyFolderCheck;
+        const isRefused = !this.isStoreFilesOnly && check && check.folderId === this.workspaceCopyFolderId
+            && !check.isUsable && this.checkingWorkspaceCopyFolderId !== check.folderId;
+        return isRefused ? 'copies-folder-message slds-text-color_error' : 'copies-folder-message';
+    }
+
     get authModeOptions() {
         return [
             { label: 'Admin setup (recommended for most orgs)', value: 'admin' },
@@ -674,6 +809,14 @@ export default class GoogleCloudDriveConfig extends LightningElement {
 
     get folderStructureTokens() {
         return this.parseFolderStructure(this.draft?.customGoogleUploadFolderStructure);
+    }
+
+    get hasFolderStructure() {
+        return this.folderStructureTokens.length > 0;
+    }
+
+    get isFolderRenameEnabled() {
+        return !!this.draft?.isFolderRenameEnabled;
     }
 
     get folderStructurePreview() {

@@ -2,9 +2,9 @@
     <section lwc:if={isOpen} class="overlay" role="dialog" aria-modal="true" aria-labelledby="gvm-title">
         <div class="chrome">
             <header class="topbar slds-grid slds-grid_vertical-align-center">
-                <div class="slds-col slds-size_1-of-3 slds-grid slds-grid_vertical-align-center">
+                <div class="topbar-start slds-col slds-size_1-of-3 slds-grid slds-grid_vertical-align-center">
                     <lightning-icon icon-name={fileType} size="small" class="slds-m-right_small"></lightning-icon>
-                    <span class="topbar-filename slds-truncate slds-text-heading_small" title={fileName}>
+                    <span class={fileNameClass} title={fileName}>
                         {fileName}
                     </span>
                     <template lwc:if={hasIntelligenceLabels}>
@@ -15,8 +15,8 @@
                     </template>
                 </div>
 
-                <div class="slds-col slds-size_1-of-3 slds-grid slds-grid_align-center slds-grid_vertical-align-center">
-                    <lightning-button-icon onclick={handleFileDownload} value="download" icon-name="utility:download" title="Download" class="topbar-icon slds-m-horizontal_x-small" disabled={isDownloadInProgress}></lightning-button-icon>
+                <div class="topbar-actions slds-col slds-size_1-of-3 slds-grid slds-grid_align-center slds-grid_vertical-align-center">
+                    <lightning-button-icon onclick={handleFileDownload} value="download" icon-name="utility:download" title="Download" class={downloadIconClass} disabled={isDownloadUnavailable}></lightning-button-icon>
                     <lightning-button-icon onclick={handleFileSharing} value="share" icon-name="utility:share" title="Share" class="topbar-icon slds-m-horizontal_x-small" disabled={isReadMode} style={readModeStyles}></lightning-button-icon>
                     <lightning-button-icon onclick={handleFilePublicLink} value="link" icon-name="utility:link" title="Public Link" class="topbar-icon slds-m-horizontal_x-small" disabled={isReadMode} style={readModeStyles}></lightning-button-icon>
                     <lightning-button-menu variant="bare-inverse" class="slds-m-left_small" alternative-text="More" icon-name="utility:chevrondown" menu-alignment="right">
@@ -29,7 +29,7 @@
                     </lightning-button-menu>
                 </div>
 
-                <div class="slds-col slds-size_1-of-3 slds-grid slds-grid_align-end slds-grid_vertical-align-center">
+                <div class="topbar-end slds-col slds-size_1-of-3 slds-grid slds-grid_align-end slds-grid_vertical-align-center">
                     <lightning-button-icon
                         onclick={handlePreviewModalClose} 
                         class="topbar-icon"
@@ -54,6 +54,7 @@
                             {unavailablePreviewMessage}
                         </div>
                         <lightning-button
+                            lwc:if={hasLoadedVersion}
                             label="Download"
                             onclick={handleFileDownload}
                             variant="brand"

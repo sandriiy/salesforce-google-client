@@ -25,6 +25,7 @@
  * Puts a Google Drive shortcut into a record folder when a file that already lives somewhere else is
  * attached to another record. The file itself never moves, so the record it was uploaded from keeps it
  * and the new record gets a pointer. Does nothing unless the configured structure keeps record folders.
+ * The folders it reaches follow their current names when renaming is switched on.
  */
 public without sharing class GoogleFileShortcutPlacementCommand {
 	public class GoogleFileShortcutPlacementCommandException extends Exception {}
@@ -41,8 +42,18 @@ public without sharing class GoogleFileShortcutPlacementCommand {
 
 	public GoogleFileShortcutPlacementCommand() {
 		this.remoteGoogleDrive = new GoogleClientApiProvider().retrieveGoogleDriveClient();
-		this.folderStructureCommand = new GoogleFileFolderStructureCommand();
+		this.folderStructureCommand = new GoogleFileFolderStructureCommand().followCurrentNames();
 		this.metadataService = new GoogleMetadataConfigService();
+	}
+
+	/**
+	 * Says whether a folder the shortcut reached could not be renamed, or its name pattern could not be used,
+	 * so the job knows to save the log although the shortcut was made.
+	 *
+	 * @return True when an error line was written.
+	 */
+	public Boolean hasRecordedErrors() {
+		return this.folderStructureCommand.hasRecordedErrors();
 	}
 
 	/**

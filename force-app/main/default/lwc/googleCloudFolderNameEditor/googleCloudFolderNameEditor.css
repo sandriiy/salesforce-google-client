@@ -1,0 +1,81 @@
+.name-editor {
+    color: #181818;
+}
+
+.name-editor-footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.name-editor-count {
+    font-size: 12.5px;
+}
+
+.name-editor-warning {
+    padding: 10px 12px;
+    border-radius: 12px;
+    line-height: 1.4;
+    background: rgba(254, 147, 57, 0.08);
+    border: 1px solid rgba(254, 147, 57, 0.32);
+    --slds-g-color-neutral-base-30: #181818;
+    --lwc-colorTextLabel: #181818;
+}
+
+.name-editor-grid {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.name-editor-item {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #FFFFFF;
+    border: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+.name-editor-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+}
+
+.name-editor-object {
+    flex: 1 1 180px;
+    min-width: 0;
+}
+
+.name-editor-formula {
+    flex: 2 1 280px;
+    min-width: 0;
+}
+
+.name-editor-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.name-editor-item-title {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.name-editor-status {
+    font-size: 12.5px;
+}
+
+.name-editor-empty {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    background: #FFFFFF;
+    border: 1px dashed rgba(0, 0, 0, 0.16);
+}

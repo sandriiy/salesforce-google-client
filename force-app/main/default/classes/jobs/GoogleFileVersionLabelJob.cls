@@ -35,7 +35,7 @@ public without sharing class GoogleFileVersionLabelJob extends GQueueableJob.All
 
 	private static final Integer FIRST_ATTEMPT = 1;
 	private static final Integer FOLLOW_UP_PRIORITY = 1;
-	private static final String WARN_LEVEL = 'WARN';
+	private static final String INFO_LEVEL = 'INFO';
 	private static final String ERROR_LEVEL = 'ERROR';
 
 	@TestVisible
@@ -102,7 +102,6 @@ public without sharing class GoogleFileVersionLabelJob extends GQueueableJob.All
 			GoogleFileIntelligenceFactory intelligenceFactory = new GoogleFileIntelligenceFactory();
 			if (!intelligenceFactory.isLabelingConfigured()) {
 				Logger.info('File Label Job Skipped --> AI labeling is not configured for: ' + String.join(this.versionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-				Logger.saveLog();
 				return;
 			}
 
@@ -146,7 +145,6 @@ public without sharing class GoogleFileVersionLabelJob extends GQueueableJob.All
 
 				if (labelResult.success == true && String.isBlank(labelResult.errorMessage)) {
 					Logger.info(buildUnlabeledMessage(candidateVersion.Id, labelResult)).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-					Logger.saveLog();
 					continue;
 				}
 
@@ -194,7 +192,7 @@ public without sharing class GoogleFileVersionLabelJob extends GQueueableJob.All
 
 			if (String.isBlank(localFileVersion.GoogleDocsFileId__c)) {
 				if (!isPreviewDisabled && GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.containsKey(localFileVersion.Type__c)) {
-					recordFailure(WARN_LEVEL, 'File Label Not Possible --> VersionId=' + String.valueOf(localFileVersion.Id) + ', Reason=The Google Workspace copy is missing');
+					recordFailure(INFO_LEVEL, 'File Label Not Possible --> VersionId=' + String.valueOf(localFileVersion.Id) + ', Reason=The Google Workspace copy is missing');
 				}
 				continue;
 			}
@@ -262,7 +260,7 @@ public without sharing class GoogleFileVersionLabelJob extends GQueueableJob.All
 		Integer nextAttempt = currentAttempt + 1;
 		Integer delayMinutes = failureResolver.resolveRetryDelayMinutes(nextAttempt);
 		for (Id versionId : retryReasonsByVersionId.keySet()) {
-			recordFailure(WARN_LEVEL, 'File Label Retry Scheduled --> VersionId=' + String.valueOf(versionId) + ', NextAttempt=' + nextAttempt + ', InMinutes=' + delayMinutes + ', ' + retryReasonsByVersionId.get(versionId));
+			recordFailure(INFO_LEVEL, 'File Label Retry Scheduled --> VersionId=' + String.valueOf(versionId) + ', NextAttempt=' + nextAttempt + ', InMinutes=' + delayMinutes + ', ' + retryReasonsByVersionId.get(versionId));
 		}
 
 		GAsync.queueable()
@@ -276,11 +274,11 @@ public without sharing class GoogleFileVersionLabelJob extends GQueueableJob.All
 		if (level == ERROR_LEVEL) {
 			Logger.error(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		} else {
-			Logger.warn(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
+			Logger.info(message).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
 		}
 
 		loggedFailures.add(level + ' ' + message);
-		hasUnsavedFailures = true;
+		if (level == ERROR_LEVEL) hasUnsavedFailures = true;
 	}
 
 	private void saveRecordedFailures() {

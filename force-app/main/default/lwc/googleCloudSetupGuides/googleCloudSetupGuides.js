@@ -26,7 +26,8 @@ const GUIDES = {
         steps: [
             { title: 'Generate certificate', text: 'Create a Service Account → Create a new Key → Convert it into a certificate.' },
             { title: 'Upload to Salesforce', text: 'Setup → Certificate and Key Management.' },
-            { title: 'Enter details', text: 'Specify the Service Account email &amp; uploaded certificate name.' }
+            { title: 'Enter details', text: 'Specify the Service Account email &amp; uploaded certificate name.' },
+            { title: 'Name the folders', text: 'Under Folder structure, choose how record and user folders are named and whether they follow name changes.' }
         ],
         button: { label: 'Open Quick Setup Guide', url: QUICK_SETUP_LINK }
     },
@@ -36,7 +37,8 @@ const GUIDES = {
         steps: [
             { title: 'Generate certificate', text: 'Create a Service Account → Create a new Key → Convert it into a certificate.' },
             { title: 'Upload to Salesforce', text: 'Setup → Certificate and Key Management.' },
-            { title: 'Implement authorizer', text: 'Create an Apex class that implements <b>GoogleAuthorizer</b> and returns an access token.' }
+            { title: 'Implement authorizer', text: 'Create an Apex class that implements <b>GoogleAuthorizer</b> and returns an access token.' },
+            { title: 'Name the folders', text: 'Under Folder structure, choose how record and user folders are named and whether they follow name changes.' }
         ],
         button: { label: 'Open Quick Setup Guide', url: QUICK_SETUP_LINK }
     },
@@ -64,7 +66,7 @@ const GUIDES = {
         title: 'File Management',
         subtitle: 'Advanced settings',
         steps: [
-            { title: 'Preview and upload', text: 'Turn file previews off, or let large uploads go straight from the browser to Google Drive for noticeably faster uploads.' },
+            { title: 'Preview copies and upload', text: 'Store files only, without the Google Workspace copies, and let large uploads go straight from the browser to Google Drive.' },
             { title: 'Open in Google Drive', text: 'Let file owners open a file in Google Drive with temporary view access to that one file.' },
             { title: 'Limits and domain', text: 'Set the maximum preview size, how many files are deleted at a time, and the domain public links are restricted to.' }
         ],

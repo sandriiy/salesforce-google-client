@@ -51,6 +51,7 @@ export default class GoogleCloudUploader extends LightningElement {
 	recordName;
 	recordNameLookup;
 	settleRecordNameLookupPromise;
+	fileToastTimer;
 
 	@wire(getRecord, { recordId: '$recordNameLookupId', layoutTypes: ['Compact'] })
 	wiredRecordForName({ data, error }) {
@@ -185,7 +186,6 @@ export default class GoogleCloudUploader extends LightningElement {
 				} else {
 					this.files[fileIndex] = { ...file, parentFolderId: parentFolderId, id: uploadedId };
 					this.saveGoogleFileLocally(this.files[fileIndex]);
-					this.showFileToast();
 				}
 			}
 		}).catch(error => {
@@ -265,7 +265,6 @@ export default class GoogleCloudUploader extends LightningElement {
 				};
 
 				this.saveGoogleFileLocally(this.files[fileIndex]);
-				this.showFileToast();
 			}
 		}).catch(error => {
 			this.removeFileById(newFilePlaceholder.id);
@@ -611,6 +610,8 @@ export default class GoogleCloudUploader extends LightningElement {
 					this.files[fileIndex] = fileUpdated;
 				}
 
+				this.showFileToast();
+
 				const eventDetail = {
 					fileName: fileUpdated.name,
 					fileId: fileUpdated.localId,
@@ -670,7 +671,8 @@ export default class GoogleCloudUploader extends LightningElement {
 
         toastElement.classList.remove("file-card__status-overlay--hidden");
 
-        setTimeout(() => {
+        clearTimeout(this.fileToastTimer);
+        this.fileToastTimer = setTimeout(() => {
             toastElement.classList.add("file-card__status-overlay--hidden");
         }, 1500);
     }

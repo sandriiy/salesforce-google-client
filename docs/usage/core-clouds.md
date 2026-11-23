@@ -1,124 +1,92 @@
 # Configure Components (Core Clouds)
 
-This page explains how Salesforce administrators add Google Client components to standard Salesforce Lightning pages.
+Add Google Client components to standard Lightning pages in **Sales Cloud, Service Cloud, custom Lightning apps or any standard Lightning record page**. Experience Cloud needs two fixed pages of its own and is covered separately in [Configure Components (Experience Cloud)](experience-cloud.md).
 
-Use this page when you are configuring **Sales Cloud, Service Cloud, custom Lightning apps, or any standard Lightning record page**. Experience Cloud has a different setup because it requires fixed navigation pages, so it is covered separately: [Configure Components (Experience Cloud)](experience-cloud.md).
+Every placeable Google Client component is added with the Lightning App Builder:
 
-All placeable Google Client components are added using the Lightning App Builder.
+1. Open Salesforce in Lightning Experience.
+2. Go to the page where you want the components: a **Home page**, an **App page** or a **Record page**.
+3. Click the ⚙️ Setup icon in the top right corner.
+4. Select **Edit Page**.
 
-<ol>
-  <li>Open Salesforce in Lightning Experience.</li>
-  <li>Navigate to the page where you want to add components:
-    <ul>
-      <li><strong>Home page</strong></li>
-      <li><strong>App page</strong></li>
-      <li><strong>Record page</strong></li>
-    </ul>
-  </li>
-  <li>Click the ⚙️ Setup icon in the top-right corner.</li>
-  <li>Select <strong>Edit Page</strong>.</li>
-</ol>
-
-This opens the Lightning App Builder, where you can drag and configure components.
+The Lightning App Builder opens, and you can drag the components onto the page and configure them.
 
 ![Google Client components in the Lightning App Builder](../assets/images/usage_lightning_app_builder.png)
 
-## Components You Can Place
+## Components you can place
 
-Below is the list of components administrators should place manually, referenced by their visible labels in Lightning App Builder.
+These are the components you place yourself, listed by their labels in the Lightning App Builder.
 
 ### Google Client: Attachments
 
-Provides full Google Drive file management for a Salesforce record in a familiar Notes & Attachments–style list.
+Full Google Drive file management for a Salesforce record, in a list that works like Notes & Attachments.
 
-<strong>Where it can be used</strong>
-<ul>
-  <li>Record Pages</li>
-</ul>
+**Where it can be used:** record pages.
 
-<strong>Configurable properties</strong>
-<ul>
-  <li><strong>Title Icon</strong> — Icon shown in the component header.</li>
-  <li><strong>Title</strong> — Component title.</li>
-  <li><strong>Number of Visible Files</strong> — Number of files shown before “View All” is required.</li>
-  <li><strong>Allow Multiple Files?</strong> — Enables multi-file selection.</li>
-  <li><strong>Supported File Extensions</strong> — File extensions allowed for upload.</li>
-  <li><strong>Maximum File Size (MB)</strong> — Upload size limit per file.</li>
-</ul>
+**Properties**
 
-<strong>Typical use</strong>
-<ul>
-  <li>Replaces Salesforce Files for record attachments while storing the documents in Google Drive.</li>
-  <li>Lets users upload new files or attach existing owned Google Client files to the record.</li>
-  <li>Opens preview, sharing, public link, versioning, and file details flows from one familiar record component.</li>
-</ul>
+- **Title Icon**: the icon in the component header.
+- **Title**: the component title.
+- **Number of Visible Files**: how many files are shown before **View All** is needed.
+- **Allow Multiple Files?**: lets users pick several files at once.
+- **Supported File Extensions**: the file types users may upload.
+- **Maximum File Size (MB)**: the upload size limit per file.
+
+**Typical use**
+
+- Replaces Salesforce Files for record attachments, with the documents stored in Google Drive.
+- Lets users upload new files or attach Google Client files they already own to the record.
+- Opens preview, sharing, public links, versions and file details from one familiar record component, and its **View All** page lets users [download several files at once](../features/bulk-download.md).
 
 ![Attachments component and its properties](../assets/images/usage_attachments_properties.png)
 
 ### Google Client: Uploader
 
-Provides a dedicated upload interface for adding files to Google Drive from Salesforce. <strong>This component is available for use in Screen Flows since version 1.1.</strong>
+A dedicated upload area for adding files to Google Drive from Salesforce. **It has been available in Screen Flows since version 1.1.**
 
-<strong>Where it can be used</strong>
-<ul>
-  <li>Record Pages</li>
-</ul>
+**Where it can be used:** record pages, and [Screen Flows](../features/flows-automation/uploader-screen-flows.md).
 
-<strong>Configurable properties</strong>
-<ul>
-  <li><strong>Supported File Extensions</strong> — Allowed upload types.</li>
-  <li><strong>Maximum File Size (MB)</strong> — Upload size limit.</li>
-  <li><strong>Allow Multiple Files?</strong> — Enables bulk uploads.</li>
-  <li><strong>Maximum Number of Files</strong> — Limits the number of files per upload.</li>
-</ul>
+**Properties**
 
-<strong>Typical use</strong>
-<ul>
-  <li>Replaces Salesforce Files with a dedicated upload experience for a specific record, including support for limiting the number of files (for example, one file per record).</li>
-  <li>Allows users to attach existing owned Google Client files when the component is used on a record page.</li>
-  <li>Lets users tick several of the listed files and download them together as one ZIP archive.</li>
-</ul>
+- **Supported File Extensions**: the file types users may upload.
+- **Maximum File Size (MB)**: the upload size limit per file.
+- **Allow Multiple Files?**: lets users upload several files at once.
+- **Maximum Number of Files**: limits how many files can be uploaded.
+
+**Typical use**
+
+- Replaces Salesforce Files with a dedicated upload area for a record, including a limit on the number of files, for example one file per record.
+- Lets users attach Google Client files they already own when the component sits on a record page.
+- Lets users tick several of the listed files and [download them together](../features/bulk-download.md) as one ZIP archive.
 
 ![Uploader component and its properties](../assets/images/usage_uploader_properties.png)
 
 ### Google Client: Record Page Details
 
-Renders a single Google file with its preview, sharing, public link, download, versions, and linked Salesforce records.
+Shows a single Google file with its preview, sharing, public link, download, versions and linked Salesforce records.
 
-<strong>Where it can be used</strong>
-<ul>
-  <li>Record Pages. It shows a single Google file, so it only has something to display on a <strong>Google File</strong> record page.</li>
-</ul>
+**Where it can be used:** record pages. It shows one Google file, so it only has something to display on a **Google File** record page.
 
-<strong>Typical use</strong>
-<ul>
-  <li>Placement is normally unnecessary. Google Client already overrides the Google File <strong>View</strong> action with a page that hosts this component, so opening a file from global search or a direct link lands on it.</li>
-  <li>Place it manually only when building a custom Google File record page instead of the shipped one.</li>
-</ul>
+**Typical use**
 
-## Components not available for direct placement
+- You normally do not need to place it. Google Client already overrides the Google File **View** action with a page that hosts this component, so opening a file from global search or a direct link lands on it.
+- Place it yourself only when you build your own Google File record page instead of the shipped one.
 
-The following components cannot be added manually in Lightning App Builder.
+## Components you do not place
 
-<ul>
-  <li>Preview, sharing, public link, and version modules</li>
-  <li>Modal dialogs for delete, sharing, public link, attach existing files, download as, and file details</li>
-</ul>
+Previews, sharing, public links, versions and the windows for deleting, sharing, attaching existing files, Download As and file details cannot be added in the Lightning App Builder. Google Client opens them itself when a user opens a file, clicks **View All**, attaches an existing file, edits details, shares, creates a public link, downloads in another format or works with versions.
 
-These components are launched by Google Client when the user opens a file, clicks View All, attaches an existing file, edits details, shares, creates a public link, downloads in another format, or works with versions. They are intentionally hidden to keep navigation and security consistent.
+## What users get after placement
 
-## What Users Get After Placement
-
-After the record components are placed, users can work with Google Drive files directly from the Salesforce record:
+Once the record components are on the page, users work with Google Drive files directly from the Salesforce record:
 
 - Upload new files to Google Drive
-- Attach existing owned Google Client files to the record
+- Attach Google Client files they already own to the record
 - Preview supported files, including large PDFs and images
-- Download files or use Download As where supported
-- Share files, create public links, and manage versions
+- Download files one at a time or several at once, or use Download As where it is offered
+- Share files, create public links and manage versions
 - Open file details to see versions and linked Salesforce records
 
-## Important Notes
+Experience Cloud follows different placement and navigation rules. Use the [Experience Cloud guide](experience-cloud.md) when you configure a site.
 
-Experience Cloud follows different placement and navigation rules. Use the [Experience Cloud guide](experience-cloud.md) when configuring a site.
 <br>

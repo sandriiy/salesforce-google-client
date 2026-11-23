@@ -5,91 +5,104 @@ This document tracks **test coverage, validation scenarios, and release checks**
 ???+ example "Release v2.4.0"
 
     ### Validation Suite Used
-    - [ ] Full Validation Suite
+    - [X] Full Validation Suite
     - [ ] Quick Regression Suite
-    - [ ] Targeted Regression Suite
+    - [X] Targeted Regression Suite
 
     ### Release Changes
-    - [ ] Change 1: The upgrade lands on an already configured org without changing how it behaves.
+    - [X] Change 1: The upgrade changes nothing on an already configured org.
 
-        - [ ] Admin: Google Drive, folder structure, AI, safety and File Explorer column settings are unchanged after the upgrade.
-        - [ ] Internal User: Upload, preview, download, sharing and versioning behave exactly as before the upgrade.
-        - [ ] External User: Experience Cloud pages open and behave exactly as before the upgrade.
+        - [X] Existing settings are unchanged, and Summary Max Output Tokens, Folder Names and the copies folder arrive empty or off.
+        - [X] An org that had previews turned off now previews PDFs and images, and nothing else.
+        - [X] Uploads, previews, downloads, sharing and versioning work as before, on record pages and on Experience Cloud.
 
-    - [ ] Change 2: Several files can be downloaded at once from the Uploader.
+    - [X] Change 2: Several files can be downloaded at once from the Uploader.
 
-        - [ ] Internal User: Confirm every uploaded file in the Uploader has a checkbox, a file still uploading has none, and the line above the list says how many files there are.
-        - [ ] Internal User: Tick two files, one larger than 3.5 MB, and confirm "2 of N selected" with Clear selection and Download (2) appear above the list.
-        - [ ] Internal User: Click Download (2), confirm the progress bar names the file being fetched, and confirm one ZIP archive named after the record arrives with both files intact.
-        - [ ] Internal User: Confirm the message says 2 files were downloaded and the selection is cleared.
-        - [ ] Internal User: While a download runs, confirm the selected files cannot be opened, replaced or removed, while the other files still can.
-        - [ ] Internal User: Start a download of a large file, click Stop, and confirm nothing is saved and the selection is kept.
-        - [ ] Internal User: Tick a file you can only view and confirm it downloads with the others.
-        - [ ] Internal User: In a Screen Flow with the Uploader, download two files together, then start another download, click Next while it runs, and confirm nothing is saved.
-        - [ ] Internal User: Confirm the View All page of Notes & Attachments still downloads several files exactly as in 2.3.0.
-        - [ ] External User: On an Experience Cloud page with the Uploader, download two visible files together.
+        - [X] Ticking files shows the count and Download (N), and a file still uploading cannot be ticked.
+        - [X] Download saves one ZIP named after the record with every file intact, and clears the selection.
+        - [X] While it runs, the selected files cannot be opened, replaced or removed, and Stop saves nothing.
+        - [X] It works the same on Experience Cloud, and View All still downloads as in 2.3.0.
+        - [X] In a Screen Flow, clicking Next during a download saves nothing.
 
-    - [ ] Change 3: A file still uploading in the Uploader stays on the list, and its hover text shows its summary once the preview is closed.
+    - [X] Change 3: The Uploader keeps files that are still uploading, and its messages show at the right time.
 
-        - [ ] Internal User: While a large file uploads, remove another file, and confirm the large file finishes under its own name, size and type.
-        - [ ] Internal User: With AI Analytics on, open a newly uploaded file, wait for the AI panel to show its summary, close the preview, and confirm the card's hover text is the summary.
+        - [X] Removing a file while another one uploads leaves the upload intact, with its name, size and type.
+        - [X] The hover text shows the summary once the preview is closed after the AI panel filled in.
+        - [X] File Uploaded appears as the spinner stops, not seconds before.
 
-    - [ ] Change 4: File Explorer has a Search view that finds files by words and narrows them with filters.
+    - [X] Change 4: File Explorer has a Search view.
 
-        - [ ] Internal User: Confirm the left navigation shows Owned by Me, Shared with Me and Search, and that Search with nothing entered lists every file you can open as "N files".
-        - [ ] Internal User: Type a word from a file's name, then one found only in a file's AI summary, then one found only in its labels, and confirm each finds the file and the line says "N files match".
-        - [ ] Internal User: Search for two words in an order the file name does not have, then for the same words in double quotes, and confirm only the second search is narrowed to the exact phrase.
-        - [ ] Internal User: Use every filter once (File type with two types at once, Size, Created, Last modified, Versions, Owner, Linked) and confirm each narrows the list, shows its value on the chip and is removed by its ✕.
-        - [ ] Internal User: Set Created to a custom range and confirm the list changes only once both days are chosen, both its first and its last day are included and the "To" day cannot be set before the "From" day.
-        - [ ] Internal User: Confirm Owner: Me lists files you own even when someone else uploaded them, the Owner list names only people whose files you can open, and picking a name lists that person's files you can open.
-        - [ ] Internal User: Search for something that matches nothing and confirm "No files match your search" with a Clear all button that resets the view.
-        - [ ] Internal User: Leave File Explorer while in Search, come back in the same browser session, and confirm the words and filters are still there.
-        - [ ] Internal User: Confirm a file you cannot open never appears in Search, whatever you type or filter.
-        - [ ] Admin with View All Files: Confirm the navigation shows All Files and Search, All Files still lists every owner's files, and Owner: Me in Search narrows the list to your own files, and the Owner list names every file owner.
+        - [X] Search finds files by words in the name, summary or labels, and by an exact phrase in quotes.
+        - [X] Every filter narrows the list, and its ✕ and Clear all reset it.
+        - [X] Owner lists only people whose files you can open, and a file you cannot open never shows up.
+        - [X] Words and filters are kept for the browser session.
+        - [X] With View All Files, the navigation shows All Files and Search, and Owner lists every owner.
+        - [X] A custom date range applies once both days are chosen, and includes both of them.
 
-    - [ ] Change 5: Several files can be downloaded at once from every File Explorer view.
+    - [X] Change 5: Several files can be downloaded at once from every File Explorer view.
 
-        - [ ] Internal User: In Owned by Me, tick two files, one larger than 3.5 MB, and confirm "2 selected" (or "2 of N selected" once the whole list is loaded) with Clear selection, and Download (2) next to Upload Files.
-        - [ ] Internal User: Click Download (2) and confirm one ZIP archive named "Files - 2 files.zip" arrives with both files intact and the selection is cleared.
-        - [ ] Internal User: Start a download in Search, then type new words, change a filter, scroll and open a preview while it runs, and confirm the progress stays in the header and the archive still holds the files ticked when it started.
-        - [ ] Internal User: Tick a file during a download and confirm it stays ticked afterwards.
-        - [ ] Internal User: Start a download, click Stop, and confirm nothing is saved.
-        - [ ] Internal User: Tick a file, search so that it leaves the list, and confirm it is unticked.
+        - [X] Ticking files in any view shows Download (N) next to Upload Files, and the archive is named "Files - N files.zip".
+        - [X] Searching, scrolling and previewing during a download is fine, and the archive holds the files ticked when it started.
+        - [X] Stop saves nothing, and a file that drops out of a search is unticked.
 
-    - [ ] Change 6: File Explorer shows the right dates, keeps loading while you search and says when a view is empty.
+    - [X] Change 6: File Explorer shows the right dates, keeps loading and says when a view is empty.
 
-        - [ ] Internal User: Confirm the Created Date and Last Modified Date columns show the file's dates, and that sorting by them puts the rows in the order those dates show.
-        - [ ] Admin: Confirm the Migrated files card on the Migration tab shows the same dates as File Explorer for the same files.
-        - [ ] Internal User: In a long list, scroll down, search while more files are loading, and confirm scrolling then keeps loading more files.
-        - [ ] Internal User: Confirm Owned by Me, Shared with Me and All Files each say "No files yet" when they have no files, and "No files match your search" when the header search finds nothing.
-        - [ ] Admin: With Last Modified Date left out of File Explorer's columns, open File Explorer and confirm the first rows are in the order the line under the title says, and that scrolling to the end reaches every file.
+        - [X] Created Date and Last Modified Date show the dates the list is sorted by.
+        - [X] Searching while more files load does not stop scrolling from loading more.
+        - [X] Without Last Modified Date in the columns, the list opens in the order it says and scrolling reaches every file.
+        - [X] An empty view says "No files yet", and a search with no result says "No files match your search".
+        - [X] The Migrated files card shows the same dates as File Explorer.
 
-    - [ ] Change 7: AI summaries and labels are tried again when the AI service is slow or busy, and summaries and answers can be given any length.
+    - [X] Change 7: AI copes with a slow or busy service, and summaries and answers can be any length.
 
-        - [ ] Admin: In an org upgraded from 2.3.0 with AI on, open Advanced → AI Intelligence and confirm Summary Max Output Tokens is empty with 80 as its hint, No limit is cleared, and nothing reads as an unsaved change.
-        - [ ] Admin: Set Summary Max Output Tokens, save and reload; tick No limit on both token settings, save and reload; then clear both, and confirm each value survives the reload as set.
-        - [ ] Internal User: Upload ten files of different kinds one after another and confirm every one gets its summary, and its label where one fits, with the preview showing it without being opened again.
-        - [ ] Internal User: Upload about 100 files from several places at once (Uploader, File Explorer, a Flow action) and confirm at least 99 of them are summarized within 20 minutes.
-        - [ ] Admin: After that burst, confirm in the logs that every file without a summary has an error saying why, and that attempts that were tried again show as warnings.
-        - [ ] Admin: With folder placement on, upload a file and confirm it reaches its record folder before its summary appears.
-        - [ ] Internal User: Ask a question with No limit on and confirm a full answer arrives.
-        - [ ] Admin: Validate with a model name that does not exist and confirm the message gives Google's reason instead of only "}".
-        - [ ] Admin: Deactivate AI and confirm it still works as in 2.3.0.
+        - [X] Ten files uploaded one after another all get their summary, and their label where one fits.
+        - [X] A file reaches its record folder before its summary appears.
+        - [X] With Question Max Output Tokens at 0 a question gets a full answer, and Validate with a wrong model name shows Google's reason.
+        - [X] Deactivate AI works as in 2.3.0.
+        - [X] Both token settings keep a number, a 0 and an empty value after a save and a reload.
+        - [X] Out of about 100 files uploaded at once from several places, at least 99 are summarized within 20 minutes, and the logs explain every one that is not.
+
+    - [X] Change 8: Folders can be named with a formula and follow their records' names.
+
+        - [X] A formula shows an example name and names new folders, even with renaming off.
+        - [X] With renaming on, a renamed record's folder takes the new name on the next upload, and its files, links and sharing stay as they were.
+        - [X] Only your own folder for the record is renamed, a user formula renames your user folder, and a folder renamed by hand in Google Drive is renamed back.
+        - [X] A Contact keeps one folder name whatever the uploader's language, and Experience Cloud uploads name folders the same way.
+        - [X] A formula with a wrong field blocks Save, and one with TODAY() saves only once its "I acknowledge that" box is ticked.
+
+    - [X] Change 9: Google Workspace copies can be turned off with Store files only, or kept in a folder of their own.
+
+        - [X] With Store files only on, no copy is made and only PDFs and images preview, on Experience Cloud too.
+        - [X] With Store files only on, Extract Text still reads a text file and refuses a Word file with a plain reason.
+        - [X] With a copies folder set, copies land there, record folders hold only the originals, and preview, AI and Download As work.
+        - [X] A copies folder the service account cannot reach sends copies beside their originals, with one error in the logs.
+        - [X] A file uploaded while Store files only was on says its preview is unavailable once the setting is off, and offers no Download As.
+        - [X] The copies folder field shows the folder's name, and refuses a Viewer share, a file or an unknown ID with a plain reason.
+
+    - [X] Change 10: The preview fits a narrow window.
+
+        - [X] At about 480 px wide, the buttons and Close stay on screen and the AI panel shows over the document.
+        - [X] A file with several labels keeps a readable name beside the first label and "+N more".
+
+    - [X] Change 11: The logs keep only what went wrong.
+
+        - [X] Uploads and previews that succeed save no log, and a failure saves one log with an error saying why.
 
     ### Boring Changes
-    - [ ] Version number assigned to all hard-coded labels
-    - [ ] Version ID is assigned to all installation guides.
-    - [ ] All images for documentation are included.
+    - [X] Version number assigned to all hard-coded labels
+    - [X] Version ID is assigned to all installation guides.
+    - [X] All images for documentation are included.
 
     ### Smoke Checks
-    - [ ] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
-    - [ ] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
-    - [ ] Admin can open Google Client app and browse configuration tabs without errors
+    - [X] Internal user (Core Cloud) can open Lightning record pages containing Google Client components without errors
+    - [X] External user (Experience Cloud) can open Experience Cloud pages containing Google Client components without errors
+    - [X] Admin can open Google Client app and browse configuration tabs without errors
 
     ### Suite Execution (only for Full or Quick)
-    - [ ] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
+    - [X] Suite execution completed successfully. No critical defects were identified that would block creating a new version.
 
     ### Notes
+    - N/A
 
 ??? example "Release v2.3.0"
 

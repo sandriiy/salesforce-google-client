@@ -11,6 +11,7 @@ import { CONFIG_CONTEXT_MESSAGE_TYPE, CONFIG_SECTION, CONFIG_VIEW, DOCS_BASE_URL
 
 import CONFIG_CONTEXT_CHANNEL from '@salesforce/messageChannel/GoogleClientConfigContext__c';
 import checkConfig from '@salesforce/apex/GoogleCloudConfigController.validateLatestMetadataDeploy';
+import retrieveConfigSavedTime from '@salesforce/apex/GoogleCloudConfigController.retrieveMetadataConfigSavedTime';
 import validateDriveConfig from '@salesforce/apex/GoogleCloudConfigController.validateDriveMetadataConfig';
 import validateIntelligenceConfig from '@salesforce/apex/GoogleCloudConfigController.validateIntelligenceMetadataConfig';
 import saveConfig from '@salesforce/apex/GoogleCloudConfigController.saveMetadataConfig';
@@ -67,6 +68,9 @@ const QUERY = gql`
                             IsOpenInDriveEnabled__c { value }
                             MaxDeleteChainSize__c { value }
                             CustomGoogleUploadFolderStructure__c { value }
+                            IsFolderRenameEnabled__c { value }
+                            RecordFolderNamePatterns__c { value }
+                            WorkspaceCopyFolderId__c { value }
 
                             CustomGeminiApiKey__c { value }
                             CustomModelName__c { value }
@@ -96,11 +100,16 @@ const QUERY = gql`
 
 const MAX_DEPLOY_STATUS_CHECKS = 10;
 const DEPLOY_STATUS_DELAY_MS = 1000;
+const DEPLOY_STATUS = {
+    succeeded: 'success',
+    failed: 'fail',
+    pending: 'pending',
+    unconfirmed: 'unconfirmed'
+};
 const AUTOMATIC_BIG_FILE_SIZE = 0;
 const DEFAULT_MAX_DELETE_CHAIN_SIZE = 3;
 const DEFAULT_QUESTION_MAX_OUTPUT_TOKENS = 1024;
 const DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS = 80;
-const UNLIMITED_OUTPUT_TOKENS = 0;
 const DEFAULT_AI_SAFETY_MODE = 'Standard';
 const DEFAULT_AI_LABELING_MIN_CONFIDENCE = 80;
 const DEFAULT_AI_LABELING_THINKING_BUDGET = 1024;
@@ -131,6 +140,7 @@ const ADVANCED_TAB_KEYS = ADVANCED_TABS.map((tab) => tab.key);
 const ADVANCED_INPUT_SELECTOR = 'lightning-input, lightning-textarea, lightning-dual-listbox, c-google-cloud-ai-label-editor';
 const NOTICE_AI_OFF = 'aiOff';
 const NOTICE_AI_PROVIDER_MISSING = 'aiProviderMissing';
+const NOTICE_AI_WITHOUT_COPIES = 'aiWithoutCopies';
 const FILE_EXPLORER_REQUIRED_COLUMNS = ['title'];
 const FILE_EXPLORER_COLUMNS_OVERFLOW_MESSAGE = `You can display up to ${MAX_FILE_EXPLORER_COLUMNS} columns.`;
 const SAFETY_MODE_GUIDE_URL = `${DOCS_BASE_URL}/features/artificial-intelligence/safety/`;
@@ -173,6 +183,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         defaultGoogleUploadFolderId: '',
         additionalGoogleUploadFolderIds: '',
         customGoogleUploadFolderStructure: '',
+        isFolderRenameEnabled: false,
+        recordFolderNamePatterns: '',
+        workspaceCopyFolderId: '',
         organizationalDomain: '',
         defaultBigFileSize: null,
         isFilePreviewDisabled: false,
@@ -219,7 +232,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     contextSubscription = null;
     isDeactivateAiModalOpen = false;
     transferLimits = DEFAULT_TRANSFER_LIMITS;
-    outputLimitFieldToRefresh = null;
 
     connectedCallback() {
         resolveTransferLimits().then((transferLimits) => {
@@ -236,13 +248,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         window.removeEventListener('click', this._windowClickHandler);
         unsubscribe(this.contextSubscription);
         this.contextSubscription = null;
-    }
-
-    renderedCallback() {
-        if (this.outputLimitFieldToRefresh) {
-            this.refreshOutputLimitInput(this.outputLimitFieldToRefresh);
-            this.outputLimitFieldToRefresh = null;
-        }
     }
 
     @wire(graphql, { query: QUERY })
@@ -393,6 +398,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         }
 
         this.draft = this.toDraft(this.server);
+        this.resetValidationIssues();
         this.applyNavigation(navigation);
     }
 
@@ -442,16 +448,17 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.busy = true;
         try {
             showToast(this, 'Deactivating AI...', 'Turning AI off and clearing its configuration. Please stay on this page.', 'info');
-            const deployId = await deactivateIntelligenceConfig();
-            const deployStatus = await this.waitForDeployResult(deployId);
+            const savedTimeBeforeSave = await retrieveConfigSavedTime();
+            await deactivateIntelligenceConfig();
+            const deployStatus = await this.waitForDeployResult(savedTimeBeforeSave);
 
-            if (deployStatus === 'fail') {
-                showToast(this, 'Something went wrong', 'Unable to deactivate AI. Please try again or contact your System Administrator', 'error');
+            if (deployStatus === DEPLOY_STATUS.failed) {
+                showToast(this, 'AI Not Deactivated', 'Salesforce could not save the change, so AI is still on. Please try again or contact your System Administrator', 'error');
                 return;
             }
 
-            if (deployStatus === 'pending') {
-                showToast(this, 'Still In Progress', 'Taking longer than expected. Refresh the page to confirm AI is off.', 'info');
+            if (deployStatus === DEPLOY_STATUS.pending || deployStatus === DEPLOY_STATUS.unconfirmed) {
+                showToast(this, 'Still In Progress', 'This is taking longer than usual. Refresh the page in a minute to check that AI is off', 'info');
                 return;
             }
 
@@ -530,27 +537,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         };
     }
 
-    handleNoLimitToggle(event) {
-        const fieldName = event.target.dataset.field;
-        this.draft = {
-            ...this.draft,
-            [fieldName]: event.target.checked ? UNLIMITED_OUTPUT_TOKENS : this.resolveLimitWhenNoLimitCleared(fieldName)
-        };
-        this.outputLimitFieldToRefresh = fieldName;
-    }
-
-    handleChangeOutputLimit(event) {
-        const limitValue = this.toNumberOrNull(event.target.value);
-        if (limitValue !== null && limitValue <= UNLIMITED_OUTPUT_TOKENS) {
-            return;
-        }
-
-        this.draft = {
-            ...this.draft,
-            [event.target.dataset.field]: limitValue
-        };
-    }
-
     async handleIntelligenceToggle(event) {
         const toggle = event.target;
         if (!toggle.checked) {
@@ -598,6 +584,17 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             ...this.draft,
             aiLabelDefinitions: event.detail?.value || ''
         };
+    }
+
+    resetValidationIssues() {
+        this.validationIssues.clear();
+    }
+
+    async waitForPendingChecks() {
+        const configComponent = this.refs.configComponent;
+        if (!this.isAdvancedView && configComponent && typeof configComponent.waitForPendingChecks === 'function') {
+            await configComponent.waitForPendingChecks();
+        }
     }
 
     async checkIntelligenceProvider() {
@@ -691,6 +688,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     async saveInternal({ alsoValidate }) {
         this.busy = true;
         try {
+            await this.waitForPendingChecks();
             if (!this.validateInputsBeforeSave()) {
                 return;
             }
@@ -702,14 +700,20 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             }
 
             showToast(this, 'Saving Configuration...', 'This may take a moment — we’ll also validate authentication if needed. Please stay on this page.', 'info');
-            const deployId = await this.saveMetadata(changedFieldApiToValue);
+            const savedTimeBeforeSave = await retrieveConfigSavedTime();
+            await this.saveMetadata(changedFieldApiToValue);
+            const lastSavedState = this.server;
 
             this.server = {
                 ...this.server,
                 ...this.applyDraftToSnapshot(this.draft)
             };
 
-            const deployStatus = await this.waitForDeployResult(deployId);
+            const deployStatus = await this.waitForDeployResult(savedTimeBeforeSave);
+            if (deployStatus === DEPLOY_STATUS.failed) {
+                this.server = lastSavedState;
+            }
+
             const shouldContinue = await this.handleDeployOutcome(deployStatus);
             if (!shouldContinue) {
                 return;
@@ -736,20 +740,18 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
     }
 
     validateInputsBeforeSave() {
+        const configComponent = this.refs.configComponent;
+        const isSectionValid = this.isAdvancedView || !configComponent || typeof configComponent.reportValidity !== 'function' || configComponent.reportValidity();
+
         const trackedMessage = this.firstTrackedValidationMessage();
         if (trackedMessage) {
             showToast(this, 'Invalid Fields', trackedMessage, 'error');
             return false;
         }
 
-        const configComponent = this.refs.configComponent;
-
-        if (!this.isAdvancedView && configComponent && typeof configComponent.reportValidity === 'function') {
-            const isValid = configComponent.reportValidity();
-            if (!isValid) {
-                showToast(this, 'Invalid Fields', 'Please review the highlighted fields and try again', 'error');
-                return false;
-            }
+        if (!isSectionValid) {
+            showToast(this, 'Invalid Fields', 'Please review the highlighted fields and try again', 'error');
+            return false;
         }
 
         if (this.isAdvancedView && this.hasInputErrors(this.scopedAdvancedSelector('.advanced-container'))) {
@@ -768,27 +770,39 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return saveConfig({ fieldApiToValue });
     }
 
-    async waitForDeployResult() {
+    async waitForDeployResult(savedTimeBeforeSave) {
+        let hasReportedStatus = false;
         for (let attempt = 0; attempt < MAX_DEPLOY_STATUS_CHECKS; attempt++) {
             const status = await checkConfig();
-            if (status !== 'pending') {
+            if (status && status !== DEPLOY_STATUS.pending) {
                 return status;
+            }
+
+            hasReportedStatus = hasReportedStatus || !!status;
+            if (!status && await this.isSavedSince(savedTimeBeforeSave)) {
+                return DEPLOY_STATUS.succeeded;
             }
 
             await new Promise((resolve) => setTimeout(resolve, DEPLOY_STATUS_DELAY_MS));
         }
 
-        return 'pending';
+        return hasReportedStatus ? DEPLOY_STATUS.pending : DEPLOY_STATUS.unconfirmed;
+    }
+
+    async isSavedSince(savedTimeBeforeSave) {
+        const savedTime = await retrieveConfigSavedTime();
+        return Number.isFinite(savedTime) && savedTime !== savedTimeBeforeSave;
     }
 
     async handleDeployOutcome(deployStatus) {
-        if (deployStatus === 'fail') {
-            showToast(this, 'Something went wrong', 'Unable to save the configuration. Please try again or contact your System Administrator', 'error');
+        if (deployStatus === DEPLOY_STATUS.failed) {
+            showToast(this, 'Changes Not Saved', 'Salesforce could not save these settings, so nothing was changed. Review your changes and try again, or contact your System Administrator', 'error');
             return false;
         }
 
-        if (deployStatus === 'pending') {
-            showToast(this, 'Still In Progress', 'Taking longer than expected. Refresh the page, confirm it’s saved, then click Validate.', 'info');
+        if (deployStatus === DEPLOY_STATUS.pending || deployStatus === DEPLOY_STATUS.unconfirmed) {
+            const nextStep = this.isAdvancedView ? '' : ', then click Validate';
+            showToast(this, 'Still In Progress', `This is taking longer than usual. Refresh the page in a minute to check that your changes were saved${nextStep}`, 'info');
             return false;
         }
 
@@ -838,6 +852,7 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         }
 
         this.draft = this.toDraft(this.server);
+        this.resetValidationIssues();
         showToast(this, 'Reverted', 'Draft values were restored to the last saved configuration', 'info');
     }
 
@@ -869,6 +884,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             defaultGoogleUploadFolderId: null,
             additionalGoogleUploadFolderIds: '',
             customGoogleUploadFolderStructure: '',
+            isFolderRenameEnabled: false,
+            recordFolderNamePatterns: '',
+            workspaceCopyFolderId: '',
             organizationalDomain: '',
             defaultBigFileSize: null,
             isFilePreviewDisabled: false,
@@ -906,6 +924,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             defaultGoogleUploadFolderId: extractGraphValue(recordNode?.DefaultGoogleUploadFolderId__c),
             additionalGoogleUploadFolderIds: extractGraphValue(recordNode?.AdditionalGoogleUploadFolderIds__c) || '',
             customGoogleUploadFolderStructure: extractGraphValue(recordNode?.CustomGoogleUploadFolderStructure__c) || '',
+            isFolderRenameEnabled: !!extractGraphValue(recordNode?.IsFolderRenameEnabled__c),
+            recordFolderNamePatterns: extractGraphValue(recordNode?.RecordFolderNamePatterns__c) || '',
+            workspaceCopyFolderId: extractGraphValue(recordNode?.WorkspaceCopyFolderId__c) || '',
             organizationalDomain: extractGraphValue(recordNode?.OrganizationalDomain__c) || '',
             defaultBigFileSize: this.toConfiguredBigFileSize(extractGraphValue(recordNode?.DefaultBigFileSize__c)),
             isFilePreviewDisabled: !!extractGraphValue(recordNode?.IsFilePreviewDisabled__c),
@@ -942,6 +963,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             defaultGoogleUploadFolderId: serverSnapshot.defaultGoogleUploadFolderId || '',
             additionalGoogleUploadFolderIds: serverSnapshot.additionalGoogleUploadFolderIds || '',
             customGoogleUploadFolderStructure: serverSnapshot.customGoogleUploadFolderStructure || '',
+            isFolderRenameEnabled: !!serverSnapshot.isFolderRenameEnabled,
+            recordFolderNamePatterns: serverSnapshot.recordFolderNamePatterns || '',
+            workspaceCopyFolderId: serverSnapshot.workspaceCopyFolderId || '',
             organizationalDomain: serverSnapshot.organizationalDomain || '',
             defaultBigFileSize: serverSnapshot.defaultBigFileSize,
             isFilePreviewDisabled: !!serverSnapshot.isFilePreviewDisabled,
@@ -998,6 +1022,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         this.putIfChanged(changed, 'IsOpenInDriveEnabled__c', !!serverState.isOpenInDriveEnabled, !!draftState.isOpenInDriveEnabled);
         this.putIfChanged(changed, 'MaxDeleteChainSize__c', serverState.maxDeleteChainSize, draftState.maxDeleteChainSize);
         this.putIfChanged(changed, 'CustomGoogleUploadFolderStructure__c', serverState.customGoogleUploadFolderStructure, draftState.customGoogleUploadFolderStructure);
+        this.putIfChanged(changed, 'IsFolderRenameEnabled__c', !!serverState.isFolderRenameEnabled, !!draftState.isFolderRenameEnabled);
+        this.putIfChanged(changed, 'RecordFolderNamePatterns__c', serverState.recordFolderNamePatterns, draftState.recordFolderNamePatterns);
+        this.putIfChanged(changed, 'WorkspaceCopyFolderId__c', serverState.workspaceCopyFolderId, draftState.workspaceCopyFolderId);
         this.putIfChanged(changed, 'CustomGeminiApiKey__c', serverState.customGeminiApiKey, draftState.customGeminiApiKey);
         this.putIfChanged(changed, 'CustomModelName__c', serverState.customModelName, draftState.customModelName);
         this.putIfChanged(changed, 'CustomAgentLocation__c', serverState.customAgentLocation, draftState.customAgentLocation);
@@ -1030,6 +1057,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             defaultGoogleUploadFolderId: draftState.defaultGoogleUploadFolderId || '',
             additionalGoogleUploadFolderIds: draftState.additionalGoogleUploadFolderIds || '',
             customGoogleUploadFolderStructure: draftState.customGoogleUploadFolderStructure || '',
+            isFolderRenameEnabled: !!draftState.isFolderRenameEnabled,
+            recordFolderNamePatterns: draftState.recordFolderNamePatterns || '',
+            workspaceCopyFolderId: draftState.workspaceCopyFolderId || '',
             organizationalDomain: draftState.organizationalDomain || '',
             defaultBigFileSize: draftState.defaultBigFileSize,
             isFilePreviewDisabled: !!draftState.isFilePreviewDisabled,
@@ -1115,28 +1145,6 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
 
         const numberValue = Number(value);
         return Number.isFinite(numberValue) ? numberValue : null;
-    }
-
-    resolveLimitWhenNoLimitCleared(fieldName) {
-        const savedLimit = this.server?.[fieldName];
-        if (savedLimit > UNLIMITED_OUTPUT_TOKENS) {
-            return savedLimit;
-        }
-
-        if (fieldName === 'questionMaxOutputTokens') {
-            return DEFAULT_QUESTION_MAX_OUTPUT_TOKENS;
-        }
-
-        return savedLimit === UNLIMITED_OUTPUT_TOKENS ? DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS : null;
-    }
-
-    refreshOutputLimitInput(fieldName) {
-        const limitInput = this.refs?.[fieldName];
-        if (!limitInput) return;
-
-        const limitValue = this.draft?.[fieldName];
-        limitInput.value = limitValue === UNLIMITED_OUTPUT_TOKENS ? null : limitValue;
-        limitInput.reportValidity();
     }
 
     toConfiguredBigFileSize(value) {
@@ -1303,36 +1311,8 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
         return !this.isIntelligenceProviderSaved && !this.isIntelligenceEnabled;
     }
 
-    get isQuestionOutputUnlimited() {
-        return this.draft?.questionMaxOutputTokens === UNLIMITED_OUTPUT_TOKENS;
-    }
-
-    get isSummaryOutputUnlimited() {
-        return this.draft?.summaryMaxOutputTokens === UNLIMITED_OUTPUT_TOKENS;
-    }
-
-    get questionMaxOutputTokensValue() {
-        return this.isQuestionOutputUnlimited ? null : this.draft?.questionMaxOutputTokens;
-    }
-
-    get summaryMaxOutputTokensValue() {
-        return this.isSummaryOutputUnlimited ? null : this.draft?.summaryMaxOutputTokens;
-    }
-
-    get isQuestionOutputLimitDisabled() {
-        return this.isIntelligenceDisabled || this.isQuestionOutputUnlimited;
-    }
-
-    get isSummaryOutputLimitDisabled() {
-        return this.isIntelligenceDisabled || this.isSummaryOutputUnlimited;
-    }
-
-    get isQuestionOutputLimitRequired() {
-        return this.isIntelligenceEnabled && !this.isQuestionOutputUnlimited;
-    }
-
     get summaryMaxOutputTokensPlaceholder() {
-        return this.isSummaryOutputUnlimited ? '' : `${DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS} (default)`;
+        return `${DEFAULT_SUMMARY_MAX_OUTPUT_TOKENS} (default)`;
     }
 
     get isLabelingEnabled() {
@@ -1375,6 +1355,18 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
                 text: 'Provider details can be saved and validated here, but summaries, questions and labels stay off until AI Analytics is turned on under Advanced → AI Intelligence.',
                 actionLabel: 'Open AI Intelligence',
                 navigation: { view: CONFIG_VIEW.advanced, tab: ADVANCED_TAB_AI_INTELLIGENCE }
+            };
+        }
+
+        if (this.isAdvancedView && this.server?.isFileIntelligenceEnabled && this.server?.isFilePreviewDisabled
+            && (this.activeAdvancedTab === ADVANCED_TAB_AI_INTELLIGENCE || this.activeAdvancedTab === ADVANCED_TAB_FILE_MANAGEMENT)) {
+            const isFileManagementOpen = this.activeAdvancedTab === ADVANCED_TAB_FILE_MANAGEMENT;
+            return {
+                key: NOTICE_AI_WITHOUT_COPIES,
+                title: 'AI has nothing to read',
+                text: 'AI needs the Google Workspace copies, which are turned off by Store files only under File Management, so no file can be analyzed.',
+                actionLabel: isFileManagementOpen ? null : 'Open File Management',
+                navigation: isFileManagementOpen ? null : { view: CONFIG_VIEW.advanced, tab: ADVANCED_TAB_FILE_MANAGEMENT }
             };
         }
 
@@ -1539,6 +1531,9 @@ export default class GoogleCloudMetadataConfigWizard extends LightningElement {
             (serverState.defaultGoogleUploadFolderId || '') !== (draftState.defaultGoogleUploadFolderId || '') ||
             (serverState.additionalGoogleUploadFolderIds || '') !== (draftState.additionalGoogleUploadFolderIds || '') ||
             (serverState.customGoogleUploadFolderStructure || '') !== (draftState.customGoogleUploadFolderStructure || '') ||
+            (!!serverState.isFolderRenameEnabled !== !!draftState.isFolderRenameEnabled) ||
+            (serverState.recordFolderNamePatterns || '') !== (draftState.recordFolderNamePatterns || '') ||
+            (serverState.workspaceCopyFolderId || '') !== (draftState.workspaceCopyFolderId || '') ||
             (serverState.organizationalDomain || '') !== (draftState.organizationalDomain || '') ||
             (serverState.defaultBigFileSize ?? null) !== (draftState.defaultBigFileSize ?? null) ||
             (!!serverState.isFilePreviewDisabled !== !!draftState.isFilePreviewDisabled) ||

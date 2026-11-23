@@ -98,4 +98,30 @@ private class GoogleFileUploadActionTest {
 
 		Assert.areEqual(0, outputs.size());
 	}
+
+	@IsTest
+	private static void testPermissionSetsNegativeNeverOpenFlowActionsToDirectCalls() {
+		Set<String> flowActionClassNames = new Set<String>{
+			'GoogleFileUploadAction',
+			'GoogleFileDownloadAction',
+			'GoogleFileTextExtractAction',
+			'GoogleFolderCreateAction',
+			'GoogleFileEditDetailsAction',
+			'GoogleFileVersionExpireLinkAction',
+			'GoogleFileAccessCheckAction'
+		};
+		Set<Id> flowActionClassIds = new Map<Id, ApexClass>([SELECT Id FROM ApexClass WHERE Name IN :flowActionClassNames]).keySet();
+
+		Test.startTest();
+		List<SetupEntityAccess> grants = [
+			SELECT Parent.Name, SetupEntityId
+			FROM SetupEntityAccess
+			WHERE Parent.Name IN ('GoogleCloudClientUser', 'GoogleCloudClientAdmin')
+			AND SetupEntityId IN :flowActionClassIds
+		];
+		Test.stopTest();
+
+		Assert.areEqual(flowActionClassNames.size(), flowActionClassIds.size(), 'Every Flow action class must exist for this check to mean anything');
+		Assert.isTrue(grants.isEmpty(), 'Flows run the actions without these grants; a grant only lets a user call an action directly through the API, outside any flow, in system context');
+	}
 }

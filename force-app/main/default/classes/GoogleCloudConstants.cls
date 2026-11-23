@@ -128,9 +128,10 @@ public class GoogleCloudConstants {
 	// MIME types that can be rendered directly without converted file.
 	/**
 	 * The files a browser renders itself, which therefore need no Google Workspace copy and no size check.
+	 * SVG is left out because Lightning refuses to show it, and TIFF because browsers cannot draw it.
 	 */
 	public static final Set<String> DIRECT_PREVIEW_MIME_TYPES = new Set<String>{
-		MIME_TYPE_PDF, MIME_TYPE_PNG, MIME_TYPE_JPEG, MIME_TYPE_GIF, MIME_TYPE_BMP, MIME_TYPE_SVG, MIME_TYPE_WEBP, MIME_TYPE_TIFF
+		MIME_TYPE_PDF, MIME_TYPE_PNG, MIME_TYPE_JPEG, MIME_TYPE_GIF, MIME_TYPE_BMP, MIME_TYPE_WEBP
 	};
 
 	// Source MIME types mapped to the Google Workspace preview file type to generate.
@@ -146,9 +147,6 @@ public class GoogleCloudConstants {
 		MIME_TYPE_JPEG => GOOGLE_WORKSPACE_DOCUMENT_TYPE,
 		MIME_TYPE_GIF => GOOGLE_WORKSPACE_DOCUMENT_TYPE,
 		MIME_TYPE_BMP => GOOGLE_WORKSPACE_DOCUMENT_TYPE,
-		MIME_TYPE_SVG => GOOGLE_WORKSPACE_DOCUMENT_TYPE,
-		MIME_TYPE_WEBP => GOOGLE_WORKSPACE_DOCUMENT_TYPE,
-		MIME_TYPE_TIFF => GOOGLE_WORKSPACE_DOCUMENT_TYPE,
 		MIME_TYPE_CSV => GOOGLE_WORKSPACE_SPREADSHEET_TYPE,
 		MIME_TYPE_XLSX => GOOGLE_WORKSPACE_SPREADSHEET_TYPE,
 		GOOGLE_WORKSPACE_SPREADSHEET_TYPE => GOOGLE_WORKSPACE_SPREADSHEET_TYPE

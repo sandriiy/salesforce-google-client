@@ -158,6 +158,35 @@ private class GoogleFileVersionPreviewSizeJobTest {
 	}
 
 	@IsTest
+	private static void testExecutePositiveExhaustedAttemptsSaveNoLog() {
+		GoogleCloudTestFactory.initMocks(mockPreviewSize('DOCS_PS_LOG1', '1'));
+		GoogleFileVersion__c version = createVersion('PSLOG1.docx', 'GD_PS_LOG1', 'DOCS_PS_LOG1', null);
+
+		Test.startTest();
+		new GoogleFileVersionPreviewSizeJob(new Set<Id>{ version.Id }, 3).work();
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'A copy left unmeasured is routine, so nothing is saved for it');
+	}
+
+	@IsTest
+	private static void testExecutePositiveChainedAnalysisSavesNoLog() {
+		analysisConfig().apply();
+		GoogleCloudTestFactory.initMocks(mockPreviewSize('DOCS_PS_LOG2', FITTING_COPY_SIZE));
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFileVersion__c version = createVersion('PSLOG2.docx', 'GD_PS_LOG2', 'DOCS_PS_LOG2', null, UPLOAD_OVER_ANALYSIS_LIMIT_BYTES);
+		GoogleFileVersionSummaryJob.setTestResult(version.Id, buildSummaryResult(SECOND_PASS_SUMMARY));
+
+		Test.startTest();
+		new GoogleFileVersionPreviewSizeJob(new Set<Id>{ version.Id }).work();
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'Chaining the analysis of a measured copy is routine, so nothing is saved for it');
+	}
+
+	@IsTest
 	private static void testExecutePositiveSkipsAlreadyMeasuredVersion() {
 		GoogleDriveHttpMock driveMock = mockPreviewSize('DOCS_PS_4', '9999');
 		GoogleCloudTestFactory.initMocks(driveMock);

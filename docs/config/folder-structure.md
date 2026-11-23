@@ -1,67 +1,75 @@
 # Folder Structure
 
-Folder Structure controls how Google Client organizes uploaded files in Google Drive. It lets you keep Drive clean and predictable by automatically placing files into the right folders based on your configuration.
+Folder Structure decides where uploaded files land in Google Drive and how those folders are named, so Drive stays organized without anyone sorting files by hand.
 
-## Where to Configure It
+## Where to configure it
 
-Folder Structure is configured in the **Google Client** Lightning app in Salesforce.
+In the **Google Client** app, expand the **Google Drive** section under **Google Integration Settings** and go to the **Folder Structure** step.
 
 ![Folder Structure Configuration](../assets/images/folder_structure_configuration.png)
 
-## Default Behavior
+## How folder structure works
 
-By default, Google Client uploads files into a **single Drive folder** (your **Default Upload Folder Id**) with **no additional structure**.
+Without a structure, every file goes straight into the **default upload folder**.
 
-This is the simplest option and works well for small teams or proof-of-concepts.
+Turn on one or both levels to sort files into folders:
 
-## How Folder Structure Works
+- **Record folder** creates a folder for each Salesforce record.
+- **User folder** creates a folder for each user.
 
-You can enable one or both structure levels:
+With both on, their **order** sets the hierarchy: **Record → User** puts a folder per user inside each record's folder, and **User → Record** the other way round. The **Preview** at the top of the step shows the resulting path.
 
-- **User folder** — creates a folder per user
-- **Record folder** — creates a folder per Salesforce record
+![Folder Structure in Google Drive](../assets/images/folder_structure_drive_view.png)
 
-You can also change the **order** of these levels (move them up/down) to define the hierarchy, for example:
+## When it applies
 
-- **Record → User** (a folder per record, then a folder per user inside)
-- **User → Record** (a folder per user, then record folders inside)
+The structure applies to every upload through Google Client, on a record, as a new version or from File Explorer.
 
-The **Preview** in the configuration screen shows the resulting path.
+When an existing file is attached to another record, the file stays where it is, and a Google Drive shortcut to it is added to the newly linked record's folder:
 
-## When It Applies
-
-Folder Structure rules are applied whenever a file is uploaded through Google Client, including:
-
-- Upload from record context
-- Upload from preview window
-- Upload from File Explorer
-- Attach an existing Google Client file to another record, when the configured structure includes a record folder
-
-In all cases, Google Client computes the target folder path and places the file accordingly.
-
-When an existing file is attached to another record, Google Client keeps the original Drive file in place and creates a Google Drive shortcut in the resolved folder for the newly linked record.
-
-Shortcut behavior depends on the configured structure:
-
-| Folder Structure | Existing File Attachment Behavior |
-|------------------|-----------------------------------|
-| No folder structure / Default folder only | No shortcut is created |
+| Folder structure | When an existing file is attached |
+|---|---|
+| None, files go into the default upload folder | No shortcut is created |
 | Folder per User | No shortcut is created |
-| Folder per Record | Shortcut is created in the resolved record folder |
-| Folder per User → Record | Shortcut is created in the resolved nested record folder |
-| Folder per Record → User | Shortcut is created in the resolved nested user folder |
+| Folder per Record | A shortcut is created in the record folder |
+| Folder per User → Record | A shortcut is created in the record folder inside the user folder |
+| Folder per Record → User | A shortcut is created in the user folder inside the record folder |
 
 ![Drive shortcut in a record folder](../assets/images/gdrive_shortcuts.png)
 
-## Processing Time
+!!! note
+    Files reach their folders in the background, usually within a minute of the upload. If a record ends up with two folders, see [Known Issues](../help/known-issues.md).
 
-The destination folder is resolved — and created when it does not exist yet — **once per upload**, while the files are transferring, so every file of the same upload shares one folder. Moving the uploaded file into that folder is still handled by an **asynchronous job**, so after upload or existing-file attachment it can take **around 1 minute** for the file, folder structure, or shortcut to appear in its final place in Google Drive.
+## Folder names
 
-!!! tip "Allocate Org Cache for reliable folder placement"
-    Without Org Cache a record can end up with duplicate folders when several people upload at the same moment. Set **Org Cache** to at least `1` MB in **Setup → Platform Cache → GoogleCloudClient**, or see [Known Issues](../help/known-issues.md) for the steps.
+Every folder is named when it is created:
 
-## How It Looks in Google Drive
+- A record folder as `<Object> : <record name>`, for example `Account : Acme`
+- A user folder as `User : <First name> <Last name>`, for example `User : Jane Doe`
 
-![Folder Structure in Google Drive](../assets/images/folder_structure_drive_view.png)
+To name an object's folders differently, add a row under **Folder Names** with the object, such as `Account`, `Opportunity` or `User`, and a Salesforce formula that returns text. The formula can use the record's fields and the fields of records related to it, and each row shows an example name as you type.
+
+| Object | Formula | Folder name |
+|---|---|---|
+| Account | `Name & "_" & AccountNumber & "_" & TEXT(Contract_Date__c)` | `ABCD_10042_2026-10-24` |
+| Opportunity | `Name & " (" & Account.Name & ")"` | `Renewal 2027 (Acme)` |
+| User | `LastName & ", " & FirstName` | `Doe, Jane` |
+
+![Folder name formulas for Account and User](../assets/images/folder_name_patterns.png)
+
+Objects without a row keep the usual names, and a record whose fields in the formula are all blank does too.
+
+- Dates, numbers and picklists need `TEXT()`. A date reads `2026-10-24`, a date and time `2026-10-24 23:30:00Z` in GMT, and a picklist gives its stored value, so a folder gets the same name whoever uploads.
+- `$User` and other values that depend on who is signed in are not available, and neither is a person's full name: use `FirstName & " " & LastName`.
+- Where the owner can also be a queue, as on Lead or Case, the owner is written with its type, such as `Owner:User.LastName`, and only its name fields can be used.
+- A name longer than 255 characters is cut.
+
+Folder names, including values taken from related records, are visible to everyone who can open the folder in Google Drive.
+
+## Renaming folders
+
+With the toggle beside **Folder Names** on, a folder follows its record. When a record is renamed, or its formula gives a different name, its folder takes the new name the next time a file is added to it. Files, links and sharing are untouched.
+
+The toggle is off by default, and while it is off no folder is ever renamed. Folders are never renamed in bulk, so a record that gets no new file keeps its folder's old name.
 
 <br>

@@ -46,6 +46,22 @@ private class GoogleLocalDriveAccessServiceTest {
 	}
 
 	@IsTest
+	private static void testOpenInDrivePositiveGrantSavesNoLog() {
+		enableOpenInDrive();
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.mockUser(UserInfo.getUserId(), 'Standard', ACTING_USER_EMAIL);
+
+		GoogleFileVersion__c localFileVersion = insertFileWithVersion('OID_LOG', 'GD_OID_LOG');
+
+		Test.startTest();
+		new GoogleLocalDriveAccessService().openInDrive(localFileVersion.GoogleFileId__c, localFileVersion.Id);
+		Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'A grant that worked is logged but not saved; only a run that failed saves its log');
+	}
+
+	@IsTest
 	private static void testOpenInDrivePositiveReusesExistingPermission() {
 		enableOpenInDrive();
 

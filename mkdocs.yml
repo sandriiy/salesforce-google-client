@@ -80,14 +80,15 @@ nav:
         - Configure Components (Experience Cloud): usage/experience-cloud.md
 
   - Features:
+      - Preview: features/preview.md
+      - Download As: features/download-as.md
+      - Sharing: features/sharing.md
+      - Versioning: features/versioning.md
+      - Public Links: features/public-links.md
       - File Explorer: features/file-explorer.md
       - File Reuse & Linked Records: features/file-reuse-linked-records.md
-      - Preview: features/preview.md
       - Bulk Download: features/bulk-download.md
-      - Sharing: features/sharing.md
-      - Public Links: features/public-links.md
       - Open in Google Drive: features/open-in-drive.md
-      - Versioning: features/versioning.md
       - Migrate Salesforce Files: features/migrate-salesforce-files.md
       - Audit & Logging: features/audit.md
       - Flows & Automation:
@@ -96,6 +97,7 @@ nav:
           - Upload File to Google Drive: features/flows-automation/upload-file-action.md
           - Download File from Google Drive: features/flows-automation/download-file-action.md
           - Extract File Content as Text: features/flows-automation/extract-text-action.md
+          - Check Access to a Google File: features/flows-automation/check-access-action.md
           - Edit Google File Details: features/flows-automation/edit-file-details-action.md
           - Public Link Expiration: features/flows-automation/expire-public-link-action.md
       - AI & Intelligence:
@@ -108,6 +110,7 @@ nav:
   - Settings:
       - Folder Structure: config/folder-structure.md
       - Multiple Upload Folders: config/multiple-drives.md
+      - Google Workspace Folder: config/workspace-copies-folder.md
       - Direct Browser Upload: config/direct-browser-upload.md
       - Advanced Settings:
           - config/advanced-settings.md

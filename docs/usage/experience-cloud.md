@@ -1,165 +1,105 @@
 # Configure Components (Experience Cloud)
 
-This page explains how to use **Google Client** Lightning components in **Experience Cloud** sites.
+Use **Google Client** components on **Experience Cloud** sites. They work on both **LWR** and **Aura** sites.
 
-Google Client components work in both **LWR** and **Aura-based** Experience Cloud sites.  
+An Experience Cloud site needs a little more setup than a Lightning page, because a site only navigates to pages that exist in it. Google Client needs two fixed pages, one for **View All** and one for **File Details**, before its record components work correctly.
 
-Experience Cloud requires additional setup compared to Core Clouds because site navigation is stricter. Google Client needs two fixed pages for View All and File Details navigation before record components can work correctly.
+If you are configuring standard Lightning record pages instead, use [Configure Components (Core Clouds)](core-clouds.md).
 
-If you are configuring standard Salesforce Lightning record pages instead, use [Configure Components (Core Clouds)](core-clouds.md).
+## Required pages
 
-## Required Setup
+Create **two empty pages** in the site, with exactly these **URLs**:
 
-Experience Cloud does not allow components to open arbitrary pages at runtime. For Google Client to support navigation patterns such as **View All** and **File Details**, two dedicated pages must exist in the site.
+- **gview-all-files** opens when a user clicks **View All**. Give it a friendly name such as "View All Files".
+- **gfile-details** opens when a user clicks **View File Details**. Give it a friendly name such as "File Details".
 
-These pages act as fixed navigation targets and host internal Google Client components.
+## Creating the required pages
 
-### Pages you must create
-
-You must create **two empty Experience Cloud pages** with the following **URLs**:
-
-<ul>
-  <li>
-    <strong>gview-all-files</strong>
-    <ul>
-      <li>Label/API can be set to something user-friendly (for example: “View All Files”).</li>
-      <li>This page will be opened automatically when users click “View All”.</li>
-    </ul>
-  </li>
-  <li>
-    <strong>gfile-details</strong>
-    <ul>
-      <li>Label/API can be set to something user-friendly (for example: “File Details”).</li>
-      <li>This page will be opened automatically when users click “View File Details“.</li>
-    </ul>
-  </li>
-</ul>
-
-## Step-by-step: Creating the Required Pages
-
-<ol>
-  <li>Open Salesforce and navigate to your Experience Cloud site.</li>
-  <li>Click <strong>Builder</strong> to open Experience Builder.</li>
-  <li>In the top-left corner, open the <strong>Pages</strong> panel.</li>
-  <li>Click <strong>New Page</strong>.</li>
-  <li>Select <strong>Standard Page</strong>.</li>
-  <li>Click <strong>New Blank Page</strong>.</li>
-  <li>Choose <strong>1 full-width column</strong> layout.</li>
-  <li>Create the first page:
-    <ul>
-      <li>Name: View All Files (or similar)</li>
-      <li>API Name: ViewAllFiles (or similar)</li>
-	  <li>URL: <strong>gview-all-files</strong></li>
-    </ul>
-  </li>
-  <li>Create the second page:
-    <ul>
-      <li>Name: File Details (or similar)</li>
-      <li>API Name: FileDetails (or similar)</li>
-	  <li>URL: <strong>gfile-details</strong></li>
-    </ul>
-  </li>
-</ol>
+1. Open your Experience Cloud site in Salesforce.
+2. Click **Builder** to open Experience Builder.
+3. Open the **Pages** panel in the top left corner.
+4. Click **New Page**.
+5. Select **Standard Page**.
+6. Click **New Blank Page**.
+7. Choose the **1 full-width column** layout.
+8. Create the first page:
+    - Name: View All Files (or similar)
+    - API Name: ViewAllFiles (or similar)
+    - URL: **gview-all-files**
+9. Create the second page:
+    - Name: File Details (or similar)
+    - API Name: FileDetails (or similar)
+    - URL: **gfile-details**
 
 ![Creating the View All Files page in Experience Builder](../assets/images/usage_experience_new_page.png)
 
-## Place Required Internal Components
+## Place the page components
 
-After creating the pages, place the required internal Google Client components on each page. These components are not the main record components your users work with directly; they are navigation targets used by Google Client after a user clicks View All or View File Details.
+Each of the two pages hosts one Google Client component. Your users never work with these pages directly. Google Client opens them after a user clicks **View All** or **View File Details**.
 
 ### Page: gview-all-files
 
-<ul>
-  <li>Open the <strong>gview-all-files</strong> page in Experience Builder.</li>
-  <li>From the components panel, locate <strong>Google Client: All Attachments</strong>.</li>
-  <li>Drag the component into the main content area.</li>
-  <li>Use a single, wide section for best results.</li>
-</ul>
+1. Open the **gview-all-files** page in Experience Builder.
+2. Find **Google Client: All Attachments** in the components panel.
+3. Drag it into the main content area. A single, wide section works best.
 
 ### Page: gfile-details
 
-<ul>
-  <li>Open the <strong>gfile-details</strong> page in Experience Builder.</li>
-  <li>From the components panel, locate <strong>Google Client: Record Page Details</strong>.</li>
-  <li>Drag the component into the main content area.</li>
-  <li>Use a single, wide section for best results.</li>
-</ul>
+1. Open the **gfile-details** page in Experience Builder.
+2. Find **Google Client: Record Page Details** in the components panel.
+3. Drag it into the main content area. A single, wide section works best.
 
 ![All Attachments placed on the gview-all-files page](../assets/images/usage_experience_component_placed.png)
 
-After placing both components, click <strong>Publish</strong> to make the pages available. At this point, navigation used by Google Client components is fully configured.
+After placing both components, click **Publish**. The navigation Google Client needs is now in place.
 
-## Components You Can Place on Record Pages
+## Components you can place on record pages
 
-After completing the setup above, you can safely place Google Client components on record-driven Experience Cloud pages.
+With the two pages in place, you can add Google Client components to record pages of the site.
 
 ### Google Client: Attachments
 
-Provides full Google Drive file management for a Salesforce record, serving as a complete replacement for Notes & Attachments.
+Full Google Drive file management for a Salesforce record, a complete replacement for Notes & Attachments.
 
-<strong>Where it can be used</strong>
-<ul>
-  <li>Experience Cloud record pages</li>
-</ul>
+**Where it can be used:** Experience Cloud record pages.
 
-<strong>Important configuration notes</strong>
-<ul>
-  <li>
-    <strong>recordId</strong>  
-    Use <code>{!recordId}</code> to enable dynamic binding to the current record.
-  </li>
-  <li>
-    <strong>objectApiName</strong>  
-    Set this statically based on the object where the component is placed.
-  </li>
-</ul>
+**Properties to set**
 
-<strong>Typical use</strong>
-<ul>
-  <li>Main file list for records exposed in Experience Cloud.</li>
-  <li>Lets external users upload new files or attach existing owned Google Client files where their access allows it.</li>
-  <li>Automatically opens the “View All Files” page when needed.</li>
-</ul>
+- **Record Id**: enter `{!recordId}` so the component follows the record on the page.
+- **Object API Name**: enter the API name of the object the page shows.
+
+**Typical use**
+
+- The main file list for records shown on the site.
+- Lets external users upload new files or attach Google Client files they own, where their access allows it.
+- Opens the **View All Files** page when needed, where users can [download several files at once](../features/bulk-download.md).
 
 ### Google Client: Uploader
 
-Provides a dedicated upload interface for adding files to Google Drive from Experience Cloud.
+A dedicated upload area for adding files to Google Drive from an Experience Cloud site.
 
-<strong>Where it can be used</strong>
-<ul>
-  <li>Experience Cloud record pages</li>
-</ul>
+**Where it can be used:** Experience Cloud record pages.
 
-<strong>Important configuration notes</strong>
-<ul>
-  <li>
-    <strong>recordId</strong>  
-    Use <code>{!recordId}</code> for dynamic binding.
-  </li>
-  <li>
-    <strong>objectApiName</strong>  
-    Set statically to match the record type used on the page.
-  </li>
-</ul>
+**Properties to set**
 
-<strong>Typical use</strong>
-<ul>
-  <li>Controlled upload experience for external or community users.</li>
-  <li>Supports the same preview, sharing, version, and attach-existing flows when the user has the required access.</li>
-  <li>Lets users tick several of the files they can see and download them together as one ZIP archive.</li>
-</ul>
+- **Record Id**: enter `{!recordId}` so the component follows the record on the page.
 
-## What Users Get After Placement
+**Typical use**
 
-Experience Cloud users work with the same Google Client security model used in Core Clouds. Access is resolved through ownership, direct sharing, record access, public link rules, internal/external visibility, and linked record associations.
+- A controlled upload area for external or community users.
+- Offers the same preview, sharing, versions and attach-existing options when the user has the access they need.
+- Lets users tick several of the files they can see and [download them together](../features/bulk-download.md) as one ZIP archive.
 
-Depending on their access, users can upload, attach existing owned files, preview supported files, download, share, manage public links, and open file details without leaving the site.
+## What users get after placement
 
-## Important Notes
+Experience Cloud users are covered by the same security model as everyone else. Access comes from ownership, direct sharing, record access, internal or external visibility and the records a file is linked to.
 
-<ul>
-  <li>Both LWR and Aura Experience Cloud sites are supported.</li>
-  <li>The required pages must exist before record-level components will work correctly.</li>
-  <li>The page URLs must match exactly: <code>gview-all-files</code> and <code>gfile-details</code>.</li>
-  <li>Record context must be provided using <code>{!recordId}</code>.</li>
-</ul>
+Depending on their access, users can upload, attach files they own, preview supported files, download, share, manage public links and open file details without leaving the site.
+
+## Things to check
+
+- The two pages must exist before the record components work correctly.
+- The page URLs must match exactly: `gview-all-files` and `gfile-details`.
+- Each record component needs `{!recordId}` in its **Record Id** property.
+
+<br>

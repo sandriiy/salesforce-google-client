@@ -64,7 +64,8 @@ public with sharing class GoogleFileInsertFinalizeCommand {
     /**
      * Works out what the new versions need and chains the jobs in order: the Workspace copy, the folder
      * placement, the summary, then the label. Placement comes before any AI call, so a slow or retried
-     * answer never holds a file in the wrong folder.
+     * answer never holds a file in the wrong folder. While previews are turned off no copy is made, so no
+     * summary or label job is queued either: there would be nothing for it to read.
      *
      * @param newFileVersions The versions that were just inserted.
      */
@@ -75,7 +76,7 @@ public with sharing class GoogleFileInsertFinalizeCommand {
         Boolean folderPlacementEnabled = !String.isBlank(this.googleConfig.getGoogleDriveFolderStructure());
         if (previewDisabled && !folderPlacementEnabled) return;
 
-        Boolean analyzeVersions = !intelligenceSkipped;
+        Boolean analyzeVersions = !intelligenceSkipped && !previewDisabled;
         Set<Id> parentFileIds = this.versionContextResolver.collectParentFileIds(newFileVersions);
         Map<Id, Id> linkIdsByFileId = folderPlacementEnabled == true
             ? this.versionContextResolver.resolveLatestLinkIdsByFileId(parentFileIds)

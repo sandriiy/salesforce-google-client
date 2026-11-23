@@ -517,9 +517,34 @@ private class GoogleLocalFileTransferServiceTest {
 			new GoogleLocalFileTransferService().uploadSalesforceFile(request);
 			Assert.fail('An unknown source must still be refused');
 		} catch (GoogleLocalFileTransferService.GoogleLocalFileTransferException ex) {
-			Assert.areEqual('The file source must be one of "Notes & Attachments", "Uploader", "Migration"', ex.getMessage());
+			Assert.areEqual('The file source must be one of "Notes & Attachments", "Uploader", "File Details", "File Explorer", "Migration"', ex.getMessage());
 		}
 		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testUploadSalesforceFilePositiveAcceptsALinkSourceTheFirstInstalledFieldLacks() {
+		GoogleMetadataConfigService.configRecordOverride = buildConfig(DEFAULT_BIG_FILE_SIZE);
+		GoogleCloudTestFactory.initMocks();
+		GoogleFileCloudFolderJob.skipExecution = true;
+		GoogleLocalFileTransferService.activeFieldSourcesOverride = new List<String>{ GoogleCloudConstants.FILE_SOURCE_NOTES_AND_ATTACHMENTS, 'Uploader', 'File Details' };
+
+		ContentVersion sourceFile = GoogleCloudTestFactory.salesforceFile().withTitle('Brochure').mock();
+
+		GoogleFileUploadRequestDTO request = new GoogleFileUploadRequestDTO();
+		request.salesforceFileId = sourceFile.Id;
+		request.relatedRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		request.source = 'File Explorer';
+
+		Test.startTest();
+		GoogleFileUploadResultDTO result = new GoogleLocalFileTransferService().uploadSalesforceFile(request);
+		Test.stopTest();
+
+		Assert.isNotNull(result.googleFileId, 'An org first installed on 1.0.0 has no File Explorer value on the file field, and the upload must still go through');
+		GoogleFile__c createdFile = [SELECT Source__c FROM GoogleFile__c WHERE Id = :result.googleFileId];
+		Assert.areEqual('File Explorer', createdFile.Source__c, 'The source a link accepts is accepted for the file too');
+		GoogleFileLink__c createdLink = [SELECT Source__c FROM GoogleFileLink__c WHERE GoogleFileId__c = :result.googleFileId];
+		Assert.areEqual('File Explorer', createdLink.Source__c);
 	}
 
 	@IsTest

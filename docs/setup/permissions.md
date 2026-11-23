@@ -1,60 +1,32 @@
 # Permissions
 
-<p>
-Access to Google Workspace functionality and configuration is controlled through permission sets.
-Assign permissions based on the user’s role and responsibilities.
-</p>
+Access to Google Client and its configuration is controlled through permission sets. Assign them according to what each person does.
 
-<h2>Permission sets</h2>
+## Permission sets
 
-<ul>
-  <li>
-    <strong>Google Cloud Client User</strong><br>
-    Grants access to all operational features. Only users with this permission can actively work with Google Workspace files.
-  </li>
-
-  <li>
-    <strong>Google Cloud Client Admin</strong><br>
-    Grants access <strong>only</strong> to administrative and configuration features. This permission does <strong>not</strong> grant access to day-to-day file operations.
-  </li>
-
-  <li>
-    <strong>Google Cloud Client User &amp; Admin</strong> (Permission Group)<br>
-    A combined permission group for users who need:
-    <ul>
-      <li>Full operational access to Google Workspace files</li>
-      <li>Full administrative access to configuration and integration settings</li>
-    </ul>
-    <p>
-      This is typically assigned to technical leads or system owners.
-    </p>
-  </li>
-</ul>
+| Permission set | What it grants |
+|---|---|
+| **Google Cloud Client User** | Everything people need to work with files. Only users with this permission set can use the Google Client components. |
+| **Google Cloud Client Admin** | The **Google Client** app, its configuration and the **Migration** tab. It does **not** grant day-to-day work with files. |
+| **Google Cloud Client User & Admin** (permission set group) | Both of the above, usually for technical leads and system owners who configure Google Client and work with files too. |
 
 !!! note
-    The Google Client components only appear for users holding **Google Cloud Client User**. Without it, the Uploader and Attachments components stay hidden on the page instead of loading and failing.
+    The Google Client components appear only for users holding **Google Cloud Client User**. Without it, the Uploader and Attachments components stay hidden on the page instead of loading and failing.
 
-!!! note
-    The **Migration** tab is visible to holders of **Google Cloud Client Admin**, and running a migration also needs the standard **Query All Files** permission on the user's profile or on a permission set. Without it the tab says what to ask for and offers nothing else. See [Migrate Salesforce Files](../features/migrate-salesforce-files.md).
+## Flow actions
 
-<h2>How to assign</h2>
+The Google Client Flow actions need no permission set. A flow runs them for whoever runs the flow, so who may use one is decided by who may run that flow. Calling an action directly through the Salesforce API, outside any flow, needs access to its Apex class, which none of the Google Client permission sets gives.
 
-<ol>
-  <li>Go to <strong>Setup → Permission Sets</strong> or <strong>Permission Set Groups</strong></li>
-  <li>
-    Assign one of the following:
-    <ul>
-      <li><strong>Google Cloud Client User</strong></li>
-      <li><strong>Google Cloud Client Admin</strong></li>
-      <li><strong>Google Cloud Client User &amp; Admin</strong> (recommended when both are required)</li>
-    </ul>
-  </li>
-  <li>
-    Verify access by opening the <strong>Google Client</strong> app:
-    <ul>
-      <li>Users should be able to load and operate on files</li>
-      <li>Admins should be able to access configuration pages</li>
-    </ul>
-  </li>
-</ol>
+## Access to every file
+
+Two custom permissions, **Google Client: View All Files** and **Google Client: Edit All Files**, give internal users at least View or Edit access on every Google File. Nobody has them until you add them to a permission set or a profile, except the **System Administrator** profile, which receives both when Google Client is installed for admins only. Every System Administrator can therefore open and change every internal file.
+
+📘 See [Security](../security.md) for how they combine with the rest of the access rules.
+
+## How to assign
+
+1. Go to **Setup** → **Permission Sets**, or **Permission Set Groups** for the combined group.
+2. Assign **Google Cloud Client User**, **Google Cloud Client Admin**, or **Google Cloud Client User & Admin** when someone needs both.
+3. Open the **Google Client** app to check. Users should be able to load and work with files, and administrators should be able to open the configuration.
+
 <br>

@@ -81,9 +81,10 @@ public without sharing class GoogleFileTextExportCommand {
 
 	/**
 	 * Exports the Workspace copy in the format you ask for, which is how the AI commands get text and
-	 * how Download As gets any other format.
+	 * how Download As gets any other format. Google Sheets cannot export plain text, so plain text asked
+	 * of a spreadsheet's copy comes back as CSV text instead, its first sheet only.
 	 *
-	 * @param localFileVersion The version whose Workspace copy is exported.
+	 * @param localFileVersion The version whose Workspace copy is exported, with its Type__c loaded.
 	 * @param exportMimeType The MIME type Google exports to.
 	 * @return The exported content as text, or null when there is no Workspace copy.
 	 */
@@ -91,11 +92,18 @@ public without sharing class GoogleFileTextExportCommand {
 		if (localFileVersion == null || String.isBlank(localFileVersion.GoogleDocsFileId__c)) return null;
 
 		GoogleFileEntity result = googleApiProvider.retrieveGoogleDriveClient().files().retrieve().export(localFileVersion.GoogleDocsFileId__c)
-			.setMimeType(exportMimeType)
+			.setMimeType(resolveExportMimeType(localFileVersion, exportMimeType))
 			.setSearchOnAllDrives(true)
 			.execute();
 
 		return toText(result);
+	}
+
+	private String resolveExportMimeType(GoogleFileVersion__c localFileVersion, String exportMimeType) {
+		Boolean isSpreadsheetCopy = GoogleCloudConstants.FILE_EXTENSION_TO_PREVIEW_TYPE.get(localFileVersion.Type__c) == GoogleCloudConstants.GOOGLE_WORKSPACE_SPREADSHEET_TYPE;
+		return isSpreadsheetCopy && exportMimeType == GoogleCloudConstants.MIME_TYPE_TEXT
+			? GoogleCloudConstants.MIME_TYPE_CSV
+			: exportMimeType;
 	}
 
 	private Boolean supportsRawText(GoogleFileVersion__c localFileVersion) {

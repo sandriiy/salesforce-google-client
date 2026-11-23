@@ -71,6 +71,10 @@ private class GoogleFileSelectorTest {
 		return matchedIds(GoogleFileSelector.query().withBaseFields().byLatestVersion(filter));
 	}
 
+	private static Set<Id> matchedBySearchTerm(String term) {
+		return matchedIds(GoogleFileSelector.query().withBaseFields().bySearchTerm(term));
+	}
+
 	private static GoogleFileSelector.LatestVersionFilter phrases(List<String> searchPhrases) {
 		return new GoogleFileSelector.LatestVersionFilter().withPhrases(searchPhrases);
 	}
@@ -149,6 +153,58 @@ private class GoogleFileSelectorTest {
 		Assert.areEqual(new Set<Id>{ percentFile.Id }, matchedByLatestVersion(phrases(new List<String>{ '50%' })));
 		Assert.areEqual(new Set<Id>{ underscoreFile.Id }, matchedByLatestVersion(phrases(new List<String>{ 'plan_a' })));
 		Assert.areEqual(new Set<Id>{ backslashFile.Id }, matchedByLatestVersion(phrases(new List<String>{ 'k\\s' })));
+	}
+
+	@IsTest
+	private static void testSearchPositiveFindsAWordOnlyTheFileOwnNameHolds() {
+		setUpRealRecords();
+
+		GoogleFile__c renamedFile = insertFile('Harbour Lease Agreement');
+		GoogleCloudTestFactory.version()
+			.forFile(renamedFile.Id)
+			.withName('scan001.pdf')
+			.withSummary('Signed copy of the rental terms')
+			.withAiLabels('Legal; Finance')
+			.isLatest(true)
+			.insertRecord();
+		insertFileWithLatestVersion('Office Supplies', 'order.pdf');
+
+		Assert.areEqual(new Set<Id>{ renamedFile.Id }, matchedBySearchTerm('harbour'), 'The search box finds a file by the name it shows, even when its current version is named otherwise');
+		Assert.areEqual(new Set<Id>{ renamedFile.Id }, matchedBySearchTerm('LEASE AGREEMENT'));
+		Assert.areEqual(new Set<Id>{ renamedFile.Id }, matchedByLatestVersion(phrases(new List<String>{ 'harbour' })), 'A key phrase finds the file by its own name as well');
+		Assert.areEqual(
+			new Set<Id>{ renamedFile.Id },
+			matchedByLatestVersion(phrases(new List<String>{ 'harbour', 'rental', 'legal' })),
+			'Each phrase may be found in the file name, the version name, the summary or the labels'
+		);
+	}
+
+	@IsTest
+	private static void testSearchNegativeAWordInNeitherNameIsNotFound() {
+		setUpRealRecords();
+
+		insertFileWithLatestVersion('Harbour Lease Agreement', 'scan001.pdf');
+		insertFileWithLatestVersion('Office Supplies', 'order.pdf');
+
+		Assert.isTrue(matchedBySearchTerm('invoice').isEmpty(), 'A word in neither the file name nor its current version finds nothing');
+		Assert.isTrue(matchedByLatestVersion(phrases(new List<String>{ 'invoice' })).isEmpty());
+		Assert.isTrue(matchedByLatestVersion(phrases(new List<String>{ 'harbour', 'invoice' })).isEmpty(), 'Every phrase must still be found');
+	}
+
+	@IsTest
+	private static void testSearchNegativeWildcardsInTheFileNameMatchOnlyThemselves() {
+		setUpRealRecords();
+
+		GoogleFile__c percentFile = insertFileWithLatestVersion('Save 50% now', 'first.pdf');
+		insertFileWithLatestVersion('Save 500 now', 'second.pdf');
+		GoogleFile__c underscoreFile = insertFileWithLatestVersion('plan_a', 'third.pdf');
+		insertFileWithLatestVersion('planxa', 'fourth.pdf');
+
+		Assert.areEqual(new Set<Id>{ percentFile.Id }, matchedBySearchTerm('50%'), 'A percent sign in the file name matches only itself');
+		Assert.areEqual(new Set<Id>{ underscoreFile.Id }, matchedBySearchTerm('plan_a'), 'An underscore in the file name matches only itself');
+		Assert.areEqual(new Set<Id>{ percentFile.Id }, matchedByLatestVersion(phrases(new List<String>{ '50%' })));
+		Assert.areEqual(new Set<Id>{ underscoreFile.Id }, matchedByLatestVersion(phrases(new List<String>{ 'plan_a' })));
+		Assert.areEqual(new Set<Id>{ percentFile.Id }, matchedBySearchTerm('%'), 'A bare percent sign finds only the name holding one, never every file');
 	}
 
 	@IsTest

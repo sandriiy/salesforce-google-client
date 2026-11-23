@@ -195,7 +195,6 @@ public without sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJ
 		}
 
 		Logger.info('Preview Size Measurement --> AI analysis chained for versions admitted by their Workspace copy: ' + String.join(admittedVersionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-		Logger.saveLog();
 		analysisChainer.enqueue();
 	}
 
@@ -204,7 +203,6 @@ public without sharing class GoogleFileVersionPreviewSizeJob extends GQueueableJ
 
 		if (this.measurementAttempt >= MAX_MEASUREMENT_ATTEMPTS) {
 			Logger.info('Preview Size Measurement --> Attempts exhausted, the uploaded file size stays in use for: ' + String.join(unmeasuredVersionIds, ', ')).addTag(GoogleCloudConstants.DEFAULT_LOGGER_TAG);
-			Logger.saveLog();
 			return;
 		}
 

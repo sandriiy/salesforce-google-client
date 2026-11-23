@@ -642,6 +642,77 @@ private class GoogleCloudFilesControllerTest {
 		Test.stopTest();
 	}
 
+	private static GoogleFileVersion__c insertStoredOnlyPdf(String fileName) {
+		GoogleCloudTestFactory.config().withPreviewDisabled(true).apply();
+		GoogleCloudTestFactory.initMocks();
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFile__c localFile = GoogleCloudTestFactory.file().withName(fileName).insertRecord();
+		return GoogleCloudTestFactory.version()
+			.forFile(localFile.Id)
+			.withName(fileName + '.pdf')
+			.withType(GoogleCloudConstants.MIME_TYPE_PDF)
+			.withSize(10L)
+			.withDriveId('GD_' + fileName)
+			.insertRecord();
+	}
+
+	private static void mockExternalViewerOf(Id localFileId, String visibility) {
+		GoogleCloudTestFactory.denyAllRecordAccess();
+		GoogleCloudTestFactory.mockExternalUser();
+		GoogleCloudTestFactory.mockNoGroupMemberships();
+		GoogleCloudTestFactory.mockShares(new List<GoogleFile__Share>());
+		Id readableRecordId = GoogleCloudTestFactory.fakeId(GoogleFile__c.SObjectType);
+		GoogleCloudTestFactory.grantRecordAccess(readableRecordId, true, false);
+		GSOQL.mock(GoogleFileSelector.MOCK_ID).thenReturn(new List<SObject>{
+			new GoogleFile__c(Id = localFileId, OwnerId = GoogleCloudTestFactory.otherUserId())
+		});
+		GoogleCloudTestFactory.mockLinks(new List<GoogleFileLink__c>{
+			GoogleCloudTestFactory.link().forFile(localFileId).withLinkedRecord(readableRecordId).withShareType('Viewer').withVisibility(visibility).build()
+		});
+	}
+
+	@IsTest
+	private static void testValidateFilePreviewNegativeRefusesAnUnknownVersionWhilePreviewsAreOff() {
+		GoogleCloudTestFactory.config().withPreviewDisabled(true).apply();
+		GoogleCloudTestFactory.initMocks();
+
+		Test.startTest();
+		try {
+			GoogleCloudFilesController.validateFilePreview(GoogleCloudTestFactory.fakeId(GoogleFileVersion__c.SObjectType));
+			Assert.fail('A PDF preview while files are stored only still checks access first');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testValidateFilePreviewNegativeRefusesAnExternalUserAnInternalPdfWhilePreviewsAreOff() {
+		GoogleFileVersion__c localFileVersion = insertStoredOnlyPdf('EXTOFF1');
+		mockExternalViewerOf(localFileVersion.GoogleFileId__c, 'InternalUsers');
+
+		Test.startTest();
+		try {
+			GoogleCloudFilesController.validateFilePreview(localFileVersion.Id);
+			Assert.fail('An external user never previews an internal-only file');
+		} catch (AuraHandledException ex) {
+			Assert.isNotNull(ex);
+		}
+		Test.stopTest();
+	}
+
+	@IsTest
+	private static void testValidateFilePreviewPositiveExternalUserPreviewsASharedPdfWhilePreviewsAreOff() {
+		GoogleFileVersion__c localFileVersion = insertStoredOnlyPdf('EXTOFF2');
+		mockExternalViewerOf(localFileVersion.GoogleFileId__c, 'AllUsers');
+
+		Test.startTest();
+		String previewAction = GoogleCloudFilesController.validateFilePreview(localFileVersion.Id);
+		Test.stopTest();
+
+		Assert.areEqual('DIRECT', previewAction, 'An external user previews exactly the PDFs the access rules grant them');
+	}
+
 	@IsTest
 	private static void testChangeEndpointsNegativeRefuseAFileTheUserCannotOpen() {
 		GoogleCloudTestFactory.initMocks();

@@ -6,8 +6,10 @@ export default class GoogleCloudBaseCard extends LightningElement {
     @api subtitle;
     @api badgeText;
     @api showFooter = false;
+    @api plainTitle = false;
 
-    handleHeaderClick() {
+    handleHeaderClick(event) {
+        event.preventDefault();
         this.dispatchEvent(new CustomEvent('headerclick'));
     }
 }

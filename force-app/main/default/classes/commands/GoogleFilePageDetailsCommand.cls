@@ -44,6 +44,8 @@ public without sharing class GoogleFilePageDetailsCommand {
 	 * is skipped, so a stale field set degrades to fewer values rather than an error.
 	 */
 	public class RetrieveHeaderCommand {
+		private final String REFERENCE_LABEL_SUFFIX = ' ID';
+
 		private Id fileId;
 
 		/**
@@ -59,8 +61,10 @@ public without sharing class GoogleFilePageDetailsCommand {
 
 		/**
 		 * Runs the query and shapes the result. A lookup comes back with the related record's Name
-		 * as its display value and its Id in referenceId. There is no access check in here; the
-		 * caller must have resolved the user's access to the file before asking for its header.
+		 * as its display value, its Id in referenceId and its label without the trailing " ID", and a
+		 * date or time is written in the running user's locale and time zone. There is no access
+		 * check in here; the caller must have resolved the user's access to the file before asking
+		 * for its header.
 		 *
 		 * @return The header, empty (no name, no fields) when no file was chosen, the field set is
 		 * missing or the file was not found.
@@ -137,10 +141,10 @@ public without sharing class GoogleFilePageDetailsCommand {
 		private GoogleFileHeaderInfoDTO.CompactFieldDTO buildFieldDto(GoogleFile__c fileRecord, String apiName, Schema.DescribeFieldResult fieldDescribe, String relationshipName) {
 			GoogleFileHeaderInfoDTO.CompactFieldDTO fieldDto = new GoogleFileHeaderInfoDTO.CompactFieldDTO();
 			fieldDto.apiName = apiName;
-			fieldDto.label = fieldDescribe.getLabel();
 
 			Boolean isReference = fieldDescribe.getType() == Schema.DisplayType.REFERENCE;
 			fieldDto.isReference = isReference;
+			fieldDto.label = resolveLabel(fieldDescribe.getLabel(), isReference);
 
 			Object rawValue = fileRecord.get(apiName);
 			fieldDto.referenceId = (isReference && rawValue != null) ? (Id) rawValue : null;
@@ -159,7 +163,23 @@ public without sharing class GoogleFilePageDetailsCommand {
 				}
 			}
 
+			if (rawValue instanceof Date) {
+				return ((Date) rawValue).format();
+			}
+
+			if (rawValue instanceof Datetime) {
+				return ((Datetime) rawValue).format();
+			}
+
 			return rawValue == null ? null : String.valueOf(rawValue);
+		}
+
+		private String resolveLabel(String fieldLabel, Boolean isReference) {
+			if (isReference && fieldLabel != null && fieldLabel.endsWith(REFERENCE_LABEL_SUFFIX)) {
+				return fieldLabel.removeEnd(REFERENCE_LABEL_SUFFIX);
+			}
+
+			return fieldLabel;
 		}
 
 		private HeaderQueryPlan buildHeaderQueryPlan(List<String> requestedHeaderFields, Map<String, Schema.SObjectField> fieldTokenByApiName) {

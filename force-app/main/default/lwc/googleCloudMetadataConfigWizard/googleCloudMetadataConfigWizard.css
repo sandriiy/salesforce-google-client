@@ -2,6 +2,12 @@
     margin: 0 auto 5% auto;
 }
 
+@media (max-width: 64em) {
+    .client-shell {
+        margin-bottom: 0;
+    }
+}
+
 .client-frame {
     background: #ffffff;
     border-radius: 14px;

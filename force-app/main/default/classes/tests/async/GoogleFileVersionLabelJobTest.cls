@@ -24,6 +24,7 @@
 @IsTest
 private class GoogleFileVersionLabelJobTest {
 	private static final String DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+	private static final String INFO_LEVEL = 'INFO';
 	private static final String WARN_LEVEL = 'WARN';
 	private static final String ERROR_LEVEL = 'ERROR';
 	private static final String TIMEOUT_REASON = 'Read timed out';
@@ -268,10 +269,11 @@ private class GoogleFileVersionLabelJobTest {
 		Assert.areEqual(2, retryJobs[0].attempt);
 		Assert.areEqual(1, retryJobs[0].delay);
 
-		List<String> warnings = loggedEntries(WARN_LEVEL);
-		Assert.areEqual(1, warnings.size());
-		Assert.isTrue(warnings[0].contains(timedOutVersion.Id));
-		Assert.isTrue(warnings[0].contains(TIMEOUT_REASON));
+		List<String> retriedAttempts = loggedEntries(INFO_LEVEL);
+		Assert.areEqual(1, retriedAttempts.size(), 'An attempt that will be tried again is routine, so it is information');
+		Assert.isTrue(retriedAttempts[0].contains(timedOutVersion.Id));
+		Assert.isTrue(retriedAttempts[0].contains(TIMEOUT_REASON));
+		Assert.areEqual(0, loggedEntries(WARN_LEVEL).size(), 'Nothing in the package writes a warning');
 		List<String> errors = loggedEntries(ERROR_LEVEL);
 		Assert.areEqual(1, errors.size(), 'A Drive refusal is given up on at once, as today');
 		Assert.isTrue(errors[0].contains(refusedVersion.Id));
@@ -453,9 +455,9 @@ private class GoogleFileVersionLabelJobTest {
 		GoogleFileVersionLabelJob.clearTestResults();
 
 		Assert.isNull(loadLabel(version.Id));
-		List<String> warnings = loggedEntries(WARN_LEVEL);
-		Assert.areEqual(1, warnings.size());
-		Assert.isTrue(warnings[0].contains(version.Id));
+		Assert.areEqual(0, loggedEntries(WARN_LEVEL).size(), 'Nothing in the package writes a warning');
+		Assert.areEqual(1, GoogleFileVersionLabelJob.loggedFailures.size(), 'A copy that should exist and does not still answers why the file has no label');
+		Assert.isTrue(GoogleFileVersionLabelJob.loggedFailures[0].contains(version.Id));
 		Assert.areEqual(0, runningChain.getJobs().size());
 	}
 
@@ -496,11 +498,12 @@ private class GoogleFileVersionLabelJobTest {
 		Assert.areEqual(new Set<Id>{ version.Id }, retryJobs[0].versionIds);
 		Assert.areEqual(2, retryJobs[0].attempt);
 		Assert.areEqual(1, retryJobs[0].delay);
-		List<String> warnings = loggedEntries(WARN_LEVEL);
-		Assert.areEqual(1, warnings.size());
-		Assert.isTrue(warnings[0].contains('File Label Retry Scheduled'));
-		Assert.isTrue(warnings[0].contains(version.Id));
-		Assert.isTrue(warnings[0].contains('FinishReason=MAX_TOKENS'));
+		List<String> retriedAttempts = loggedEntries(INFO_LEVEL);
+		Assert.areEqual(1, retriedAttempts.size());
+		Assert.isTrue(retriedAttempts[0].contains('File Label Retry Scheduled'));
+		Assert.isTrue(retriedAttempts[0].contains(version.Id));
+		Assert.isTrue(retriedAttempts[0].contains('FinishReason=MAX_TOKENS'));
+		Assert.areEqual(0, loggedEntries(WARN_LEVEL).size());
 		Assert.areEqual(0, loggedEntries(ERROR_LEVEL).size());
 	}
 
@@ -662,5 +665,78 @@ private class GoogleFileVersionLabelJobTest {
 		}
 
 		return false;
+	}
+
+	@IsTest
+	private static void testExecutePositiveUnsureAnswerSavesNoLog() {
+		prepareRetryContext();
+		GoogleFileVersion__c version = createAnalysisCandidate('LBLLOG1', true);
+		GoogleFileVersionLabelJob.setTestResult(version.Id, buildTestResult(true, null, false, 'Invoice', 40, null));
+		GoogleCloudTestFactory.runningChain();
+
+		Test.startTest();
+			new GoogleFileVersionLabelJob(new Set<Id>{ version.Id }).work();
+			Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+		GoogleFileVersionLabelJob.clearTestResults();
+
+		Assert.isTrue(unsavedLogEntries > 0, '"No label fits" is the normal way to stay unlabeled, so nothing is saved for it');
+	}
+
+	@IsTest
+	private static void testExecutePositiveRetriedAttemptAloneSavesNoLog() {
+		prepareRetryContext();
+		GoogleFileVersion__c version = createAnalysisCandidate('LBLLOG2', true);
+		GoogleFileVersionLabelJob.setTestResult(version.Id, buildRetryableResult(TIMEOUT_REASON));
+		GoogleCloudTestFactory.runningChain();
+
+		Test.startTest();
+			new GoogleFileVersionLabelJob(new Set<Id>{ version.Id }).work();
+			Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+		GoogleFileVersionLabelJob.clearTestResults();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'A run without an error saves nothing');
+		Assert.areEqual(1, loggedEntries(INFO_LEVEL).size());
+	}
+
+	@IsTest
+	private static void testExecutePositiveGivenUpVersionSavesTheLog() {
+		prepareRetryContext();
+		GoogleFileVersion__c version = createAnalysisCandidate('LBLLOG3', true);
+		GoogleFileVersionLabelJob.setTestResult(version.Id, buildRetryableResult(TIMEOUT_REASON));
+		GoogleCloudTestFactory.runningChain();
+
+		Test.startTest();
+			new GoogleFileVersionLabelJob(new Set<Id>{ version.Id }, 3).work();
+			Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+		GoogleFileVersionLabelJob.clearTestResults();
+
+		Assert.areEqual(1, loggedEntries(ERROR_LEVEL).size());
+		Assert.areEqual(0, unsavedLogEntries, 'A run that recorded an error saves its log at its end');
+	}
+
+	@IsTest
+	private static void testExecutePositiveLabelingNotConfiguredSavesNoLog() {
+		GoogleCloudTestFactory.config()
+			.withFileIntelligence(true)
+			.withGeminiApiKey('api-key-1')
+			.withAiModel('gemini-2.0-flash')
+			.withAiLabelDefinitions(LABEL_DEFINITIONS)
+			.apply();
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock(new GoogleDriveHttpMock().withDefaultHappyPath(), new GoogleIntelligenceHttpMock()));
+		GoogleCloudTestFactory.bypassTriggers();
+		GoogleFileVersionLabelJob.clearTestResults();
+		GoogleCalloutTimeResolver.elapsedMillisOverride = 0L;
+		GoogleFileVersion__c version = createAnalysisCandidate('LBLLOG4', true);
+		GoogleCloudTestFactory.runningChain();
+
+		Test.startTest();
+			new GoogleFileVersionLabelJob(new Set<Id>{ version.Id }).work();
+			Integer unsavedLogEntries = Logger.getBufferSize();
+		Test.stopTest();
+
+		Assert.isTrue(unsavedLogEntries > 0, 'Labeling being turned off is routine, so nothing is saved for it');
 	}
 }

@@ -40,6 +40,12 @@ private class GoogleLocalFileIntelligenceServiceTest {
 		return config;
 	}
 
+	private static GoogleClientConfig__mdt buildStoreFilesOnlyConfig() {
+		GoogleClientConfig__mdt config = buildLabelingConfig();
+		config.IsFilePreviewDisabled__c = true;
+		return config;
+	}
+
 	private static GoogleFileVersion__c createAnalyzedVersion(String fileName) {
 		GoogleCloudTestFactory.bypassTriggers();
 		GoogleFile__c parentFile = GoogleCloudTestFactory.file().withName(fileName).withDescription('D').insertRecord();
@@ -377,6 +383,20 @@ private class GoogleLocalFileIntelligenceServiceTest {
 	}
 
 	@IsTest
+	private static void testRetrieveIntelligenceStatesNegativeReportsLabelingOffWhileStoringFilesOnly() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildStoreFilesOnlyConfig();
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTLOFF4');
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.areEqual(false, states[0].isLabelingEnabled, 'No label job is queued while files are stored only, so the panel must not wait for a label');
+	}
+
+	@IsTest
 	private static void testRetrieveIntelligenceStatesNegativeReportsLabelingOffOnAFreshInstall() {
 		GoogleCloudTestFactory.initMocks();
 		GoogleMetadataConfigService.configRecordOverride = new GoogleClientConfig__mdt();
@@ -424,5 +444,84 @@ private class GoogleLocalFileIntelligenceServiceTest {
 		Assert.isTrue(result.success);
 		Assert.isNotNull(intelligenceMock.getLastRequestBody());
 		Assert.isFalse(intelligenceMock.getLastRequestBody().contains('maxOutputTokens'), 'No limit reaches Google as a request without an output cap');
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesNegativeNotEligibleWhilePreviewsAreOff() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildStoreFilesOnlyConfig();
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTOFF1');
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.isFalse(states[0].isIntelligenceEligible, 'AI follows the switch for every file, older copies included');
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesPositiveStoredSummaryAndLabelsStayVisibleWhilePreviewsAreOff() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildStoreFilesOnlyConfig();
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTOFF2');
+		update new GoogleFileVersion__c(Id = localFileVersion.Id, Summary__c = 'This file describes a signed project agreement.');
+		GoogleCloudTestFactory.versionLabel()
+			.forVersion(localFileVersion.Id)
+			.withName('Invoice')
+			.withDriveLabelId('LABEL_INVOICE')
+			.withConfidence(92)
+			.insertRecord();
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(new List<Id>{ localFileVersion.Id });
+		Test.stopTest();
+
+		Assert.isTrue(states[0].hasSummary, 'A stored summary stays visible');
+		Assert.areEqual('This file describes a signed project agreement.', states[0].summary);
+		Assert.areEqual(new List<String>{ 'Invoice' }, states[0].labels, 'Stored labels stay visible');
+		Assert.isFalse(states[0].isIntelligenceEligible, 'Its questions are turned off');
+	}
+
+	@IsTest
+	private static void testRetrieveIntelligenceStatesNegativeEveryVersionIneligibleWhilePreviewsAreOff() {
+		GoogleCloudTestFactory.initMocks();
+		GoogleMetadataConfigService.configRecordOverride = buildStoreFilesOnlyConfig();
+		List<Id> versionIds = new List<Id>{
+			createAnalyzedVersion('INTOFF3A').Id,
+			createAnalyzedVersion('INTOFF3B').Id,
+			createAnalyzedVersion('INTOFF3C').Id
+		};
+
+		List<GoogleFileIntelligenceStateDTO> states;
+		Test.startTest();
+			states = new GoogleLocalFileIntelligenceService().retrieveIntelligenceStates(versionIds);
+		Test.stopTest();
+
+		Assert.areEqual(3, states.size());
+		for (Integer index = 0; index < states.size(); index++) {
+			Assert.areEqual(versionIds[index], states[index].versionId, 'States come back in the order asked');
+			Assert.isFalse(states[index].isIntelligenceEligible);
+		}
+	}
+
+	@IsTest
+	private static void testAnswerQuestionNegativeRefusedWithoutAModelCallWhilePreviewsAreOff() {
+		GoogleIntelligenceHttpMock intelligenceMock = new GoogleIntelligenceHttpMock();
+		GoogleDriveHttpMock driveMock = new GoogleDriveHttpMock().withDefaultHappyPath();
+		GoogleCloudTestFactory.initMocks(new GoogleCompositeHttpMock(driveMock, intelligenceMock));
+		GoogleMetadataConfigService.configRecordOverride = buildStoreFilesOnlyConfig();
+		GoogleFileVersion__c localFileVersion = createAnalyzedVersion('INTOFFQ');
+
+		GoogleFileAnalysisResultDTO result;
+		Test.startTest();
+			result = new GoogleLocalFileIntelligenceService().answerQuestion(localFileVersion.Id, 'What does this file cover?');
+		Test.stopTest();
+
+		Assert.isTrue(result.blocked, 'The server refuses a question, not only the panel');
+		Assert.areEqual('Questions are not available while file previews are turned off.', result.errorMessage);
+		Assert.areEqual(0, intelligenceMock.getRequestCount(), 'Nothing reaches the model');
+		Assert.isTrue(driveMock.getCapturedRequests().isEmpty(), 'Nothing is read from the older copy');
 	}
 }
